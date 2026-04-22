@@ -594,8 +594,6 @@ class _TokenRow extends StatelessWidget {
   }
 }
 
-// ─── _OnboardingPage ──────────────────────────────────────────────────────────
-
 class _OnboardingPage {
   final String emoji;
   final Widget? iconWidget;
