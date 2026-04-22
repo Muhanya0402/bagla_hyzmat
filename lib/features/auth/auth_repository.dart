@@ -1,0 +1,238 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/api_client.dart';
+
+class AuthRepository {
+  final ApiClient _api = ApiClient();
+
+  /// 1. Запрос OTP
+  Future<bool> sendOTP(String phone) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_token');
+      await prefs.remove('refresh_token');
+
+      final response = await _api.dio.post(
+        '/items/otp_codes',
+        data: {'identifier': phone.trim()},
+        options: Options(
+          headers: {'Authorization': 'Bearer 8TYMndErscy0GgMcVcO1u_jLD-6GaqMD'},
+        ),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } on DioException catch (e) {
+      debugPrint("Ошибка SEND_OTP: ${e.response?.data}");
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> verifyOTP(String phone, String code) async {
+    try {
+      final response = await _api.dio.post(
+        '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73',
+        data: {'identifier': phone.trim(), 'code': code.trim()},
+        options: Options(
+          headers: {'Authorization': 'Bearer 8TYMndErscy0GgMcVcO1u_jLD-6GaqMD'},
+        ),
+      );
+
+      final data = response.data as Map<String, dynamic>;
+
+      // Ищем access_token в любом ключе ответа
+      String? accessToken;
+      String? refreshToken;
+      String? customerId;
+
+      for (final key in data.keys) {
+        final value = data[key];
+        if (value is Map && value['access_token'] != null) {
+          accessToken = value['access_token'] as String;
+          refreshToken = value['refresh_token'] as String?;
+          customerId = value['customer_id']?.toString();
+          break;
+        }
+      }
+
+      if (accessToken != null) {
+        await _saveTokens(accessToken, refreshToken ?? '');
+
+        final profile = await fetchProfileFromServer(phone.trim());
+        if (profile != null) {
+          profile['access_token'] = accessToken;
+          profile['refresh_token'] = refreshToken ?? '';
+          return profile;
+        }
+      }
+      return null;
+    } on DioException catch (e) {
+      debugPrint("Ошибка verifyOTP: ${e.response?.data}");
+      return null;
+    }
+  }
+
+  /// 3. Обновление access_token через refresh_token
+  Future<bool> refreshAccessToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+
+      if (refreshToken == null) return false;
+
+      final response = await _api.dio.post(
+        '/flows/trigger/ВАШ_REFRESH_FLOW_ID', // сюда вставим ID нового Flow
+        data: {'refresh_token': refreshToken},
+      );
+
+      final data = response.data;
+
+      String? newAccessToken;
+      String? newRefreshToken;
+
+      for (final key in data.keys) {
+        final value = data[key];
+        if (value is Map && value['access_token'] != null) {
+          newAccessToken = value['access_token'] as String;
+          newRefreshToken = value['refresh_token'] as String?;
+          break;
+        }
+      }
+
+      if (newAccessToken != null) {
+        await _saveTokens(newAccessToken, newRefreshToken ?? refreshToken);
+        return true;
+      }
+      return false;
+    } on DioException catch (e) {
+      debugPrint("Ошибка refreshAccessToken: ${e.response?.data}");
+      return false;
+    }
+  }
+
+  /// 4. Обновление данных профиля
+  Future<bool> updateProfile({
+    required String userId,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final response = await _api.dio.patch(
+        '/items/customers/$userId',
+        data: data,
+      );
+      if (response.statusCode == 200) {
+        await _saveUserToLocal(response.data['data']);
+        return true;
+      }
+      return false;
+    } on DioException catch (e) {
+      debugPrint("Ошибка PATCH профиля: ${e.response?.data}");
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchProfileFromServer(String phone) async {
+    try {
+      final response = await _api.dio.get(
+        '/items/customers',
+        queryParameters: {
+          'filter[phone][_eq]': phone.trim(),
+          'fields':
+              'id,phone,name,surname,role,status,rating,balance_points,address',
+        },
+        // без options — токен подставится автоматически
+      );
+
+      final List data = response.data['data'];
+      if (data.isNotEmpty) {
+        final user = data[0];
+        debugPrint("📡 Получен статус от сервера: ${user['status']}");
+        await _saveUserToLocal(user);
+        return user;
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Ошибка запроса профиля: $e");
+      return null;
+    }
+  }
+
+  /// Загрузка файла
+  Future<String?> uploadFile(String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _api.dio.post('/files', data: formData);
+      return response.data['data']['id'];
+    } catch (e) {
+      debugPrint("Ошибка загрузки файла: $e");
+      return null;
+    }
+  }
+
+  /// Пополнение баланса
+  Future<bool> requestTopUp({
+    required String userId,
+    required int points,
+    required double amountTmt,
+  }) async {
+    try {
+      final response = await _api.dio.post(
+        '/items/customer_balance',
+        data: {
+          'customer_ID': [
+            {"item": userId, "collection": "customers"},
+          ],
+          'amountToBeReplenished': amountTmt,
+          'points': points,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (e) {
+      debugPrint("❌ Ошибка M2A: ${e.response?.data}");
+      return false;
+    }
+  }
+
+  Future<void> _saveTokens(String accessToken, String refreshToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', accessToken);
+    await prefs.setString('refresh_token', refreshToken);
+    debugPrint("✅ Токены сохранены");
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
+
+  static Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('refresh_token');
+  }
+
+  Future<void> _saveUserToLocal(Map<String, dynamic> user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', user['id'].toString());
+    await prefs.setString('phone', user['phone'] ?? "");
+    await prefs.setString('name', user['name'] ?? "");
+    await prefs.setString('surname', user['surname'] ?? "");
+    await prefs.setString('role', user['role'] ?? "client");
+    await prefs.setString('status', user['status'] ?? "pending");
+    await prefs.setString('shop_address', user['address'] ?? "");
+    await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
+    await prefs.setInt('balance_points', user['balance_points'] ?? 0);
+    await prefs.setBool('is_logged_in', true);
+    debugPrint("✅ Локальный кэш обновлен.");
+  }
+
+  static Future<bool> checkAuthStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('is_logged_in') ?? false;
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+  }
+}
