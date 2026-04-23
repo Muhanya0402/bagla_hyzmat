@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart'; // Убедитесь, что путь к вашему ApiClient верен
@@ -158,6 +160,97 @@ class OrderService {
     } catch (e) {
       print("Ошибка получения заказов: $e");
       return [];
+    }
+  }
+
+  // Хелпер для парсинга ответа Flow
+  Map<String, dynamic> _parseFlowResponse(dynamic raw) {
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return {};
+  }
+
+  Future<Map<String, dynamic>> generateDeliveryCode({
+    required String orderId,
+    required String courierId,
+    required String clientPhone,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/flows/trigger/64ece654-d07e-4ff4-a34c-f50d736a3b32',
+        data: {
+          'order_id': orderId,
+          'courier_id': courierId,
+          'client_phone': clientPhone,
+        },
+      );
+
+      final data = _parseFlowResponse(response.data);
+      print("generateDeliveryCode data: $data");
+
+      if (data['delivery_code'] != null) {
+        return {'success': true, 'code': data['delivery_code'].toString()};
+      }
+
+      for (final key in data.keys) {
+        final value = data[key];
+        if (value is Map) {
+          final inner = Map<String, dynamic>.from(value);
+          if (inner['delivery_code'] != null) {
+            return {'success': true, 'code': inner['delivery_code'].toString()};
+          }
+        }
+      }
+
+      return {'success': false};
+    } catch (e) {
+      print("Ошибка генерации кода: $e");
+      return {'success': false};
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyDeliveryCode({
+    required String orderId,
+    required String code,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/flows/trigger/6074ab32-630b-406b-9cb5-936c33f8bc42',
+        data: {'order_id': orderId, 'code': code},
+      );
+
+      final data = _parseFlowResponse(response.data);
+      print("verifyDeliveryCode data: $data");
+
+      if (data['success'] != null) {
+        return {
+          'success': data['success'] == 'yes' || data['success'] == true,
+          'message': data['message'] ?? '',
+        };
+      }
+
+      for (final key in data.keys) {
+        final value = data[key];
+        if (value is Map) {
+          final inner = Map<String, dynamic>.from(value);
+          if (inner['success'] != null) {
+            return {
+              'success': inner['success'] == 'yes' || inner['success'] == true,
+              'message': inner['message'] ?? '',
+            };
+          }
+        }
+      }
+
+      return {'success': false, 'message': 'Ошибка'};
+    } catch (e) {
+      print("Ошибка верификации кода: $e");
+      return {'success': false, 'message': 'Ошибка сети'};
     }
   }
 }

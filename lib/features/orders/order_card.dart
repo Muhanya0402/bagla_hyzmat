@@ -332,15 +332,8 @@ class OrderCard extends StatelessWidget {
             label: "Доставлено",
             color: HomeScreen.brandBlue,
             cashback: cashback,
-            onTap: () => _confirmAction(
-              context: context,
-              title: "Завершить заказ",
-              message: cashback > 0
-                  ? "Вам будет начислено ${cashback.toStringAsFixed(0)} баллов. Подтвердить?"
-                  : "Подтвердите, что заказ успешно передан клиенту.",
-              actionColor: HomeScreen.brandBlue,
-              action: () => service.updateStatus(orderId, 'completed'),
-            ),
+            onTap: () => onTap
+                ?.call(), // открываем OrderDetailScreen где есть полная логика
           ),
         ],
       );

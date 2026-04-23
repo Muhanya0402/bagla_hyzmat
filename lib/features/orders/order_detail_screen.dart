@@ -748,7 +748,6 @@ class OrderDetailScreen extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Кнопка отмены для курьера
             GestureDetector(
               onTap: () => _showCancelReasonModal(context, orderId, service),
               child: Container(
@@ -771,28 +770,281 @@ class OrderDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Кнопка завершить с кешбеком
             _buildButton(
               label: cashback > 0
                   ? "Завершить  •  +${cashback.toStringAsFixed(0)} баллов"
                   : "Завершить доставку",
               color: HomeScreen.brandBlue,
               filled: true,
-              onTap: () => _confirmAction(
-                context: context,
-                title: "Завершить заказ",
-                message: cashback > 0
-                    ? "Вам будет начислено ${cashback.toStringAsFixed(0)} баллов. Подтвердить?"
-                    : "Заказ передан клиенту?",
-                actionColor: HomeScreen.brandBlue,
-                action: () => service.updateStatus(orderId, 'completed'),
-              ),
+              onTap: () => _showDeliveryCodeModal(context, orderId, service),
             ),
           ],
         );
       }
     }
     return const SizedBox.shrink();
+  }
+
+  Future<void> _showDeliveryCodeModal(
+    BuildContext context,
+    String orderId,
+    OrderService service,
+  ) async {
+    final TextEditingController codeController = TextEditingController();
+    bool isLoading = false;
+    bool codeSent = false;
+    String generatedCode = '';
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              12,
+              24,
+              MediaQuery.of(ctx).padding.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF0F3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: HomeScreen.brandBlue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline_rounded,
+                    color: HomeScreen.brandBlue,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Подтверждение доставки',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F1117),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Text(
+                  codeSent
+                      ? 'Введите код который получил клиент по SMS'
+                      : 'Нажмите кнопку — клиент получит код по SMS',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: const Color(0xFF9AA3AF),
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                if (!codeSent) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: HomeScreen.brandBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              setModalState(() => isLoading = true);
+                              final result = await service.generateDeliveryCode(
+                                orderId: orderId,
+                                courierId: currentUserId,
+                                clientPhone: order['client_phone'] ?? '',
+                              );
+                              setModalState(() {
+                                isLoading = false;
+                                if (result['success'] == true) {
+                                  codeSent = true;
+                                  generatedCode = result['code'] ?? '';
+                                }
+                              });
+                              if (result['success'] != true && ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Ошибка отправки кода'),
+                                    backgroundColor: HomeScreen.brandRed,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'ОТПРАВИТЬ КОД КЛИЕНТУ',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: .5,
+                              ),
+                            ),
+                    ),
+                  ),
+                ] else ...[
+                  TextField(
+                    controller: codeController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 8,
+                      color: const Color(0xFF0F1117),
+                    ),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: '• • • •',
+                      hintStyle: GoogleFonts.inter(
+                        fontSize: 28,
+                        letterSpacing: 8,
+                        color: const Color(0xFFD1D5DB),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF5F7FA),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: HomeScreen.brandGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              final code = codeController.text.trim();
+                              if (code.length != 4) return;
+
+                              setModalState(() => isLoading = true);
+                              final result = await service.verifyDeliveryCode(
+                                orderId: orderId,
+                                code: code,
+                              );
+                              setModalState(() => isLoading = false);
+
+                              if (result['success'] == true) {
+                                Navigator.pop(ctx);
+                                if (onUpdate != null) onUpdate!();
+                                if (context.mounted) Navigator.pop(context);
+                              } else {
+                                codeController.clear();
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        result['message'] ?? 'Неверный код',
+                                      ),
+                                      backgroundColor: HomeScreen.brandRed,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'ПОДТВЕРДИТЬ',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: .5,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            setModalState(() {
+                              codeSent = false;
+                              codeController.clear();
+                            });
+                          },
+                    child: Text(
+                      'Отправить код повторно',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF9AA3AF),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // Добавить метод в OrderDetailScreen (аналог из OrderCard):
