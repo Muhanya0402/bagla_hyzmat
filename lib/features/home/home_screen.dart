@@ -1,3 +1,4 @@
+import 'package:bagla/core/api_client.dart';
 import 'package:bagla/features/home/create_order_screen.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
@@ -8,7 +9,6 @@ import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -59,11 +59,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkWelcomeBonus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool shown = prefs.getBool('welcome_bonus_shown') ?? false;
-    if (!shown) {
-      await prefs.setBool('welcome_bonus_shown', true);
-      if (mounted) _showWelcomeBonusModal();
+    final authProv = context.read<AuthProvider>();
+
+    // Проверяем поле на сервере а не локально
+    try {
+      final response = await ApiClient().dio.get(
+        '/items/customers/${authProv.userId}',
+        queryParameters: {'fields': 'welcome_bonus_shown'},
+      );
+
+      final bool shown = response.data['data']['welcome_bonus_shown'] ?? false;
+
+      if (!shown && mounted) {
+        // Помечаем на сервере
+        await ApiClient().dio.patch(
+          '/items/customers/${authProv.userId}',
+          data: {'welcome_bonus_shown': true},
+        );
+        _showWelcomeBonusModal();
+      }
+    } catch (e) {
+      debugPrint('Ошибка проверки welcome bonus: $e');
     }
   }
 
@@ -93,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.toll_rounded,
                     size: 48,
                     color: Color(0xFF27AE60),
@@ -141,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 32,
                     height: 32,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.toll_rounded,
                       size: 32,
                       color: Color(0xFF27AE60),
@@ -367,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icons.inbox_rounded,
                       text: isShop
                           ? "У вас пока нет заказов"
-                          : (words.emptyList ?? "Заказов пока нет"),
+                          : (words.emptyList),
                     );
                   }
 

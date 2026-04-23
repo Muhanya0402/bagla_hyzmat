@@ -1,3 +1,4 @@
+import 'package:bagla/core/base_url.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -8,7 +9,7 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   late Dio dio;
-  static const String _baseUrl = 'http://192.168.10.173:8055';
+  static const String _baseUrl = BaseUrl.url;
 
   bool _isRefreshing = false;
   List<Completer<void>> _refreshCompleters = [];

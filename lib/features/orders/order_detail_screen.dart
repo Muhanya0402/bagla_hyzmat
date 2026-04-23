@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -9,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class OrderDetailScreen extends StatelessWidget {
+class OrderDetailScreen extends StatefulWidget {
   final dynamic order;
   final String role;
   final String currentUserId;
@@ -23,7 +24,63 @@ class OrderDetailScreen extends StatelessWidget {
     this.onUpdate,
   });
 
+  @override
+  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+}
+
+class _OrderDetailScreenState extends State<OrderDetailScreen> {
   static const String _baseUrl = 'http://192.168.10.173:8055';
+
+  Timer? _timer;
+  Duration _timeLeft = Duration.zero;
+  bool _isExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    final String? timeOfDelivery = widget.order['time_of_delivery'];
+    if (timeOfDelivery == null || timeOfDelivery.isEmpty) return;
+
+    final DateTime deadline = DateTime.parse(timeOfDelivery).toLocal();
+    _updateTimeLeft(deadline);
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateTimeLeft(deadline);
+    });
+  }
+
+  void _updateTimeLeft(DateTime deadline) {
+    final Duration diff = deadline.difference(DateTime.now());
+    if (mounted) {
+      setState(() {
+        if (diff.isNegative) {
+          _timeLeft = Duration.zero;
+          _isExpired = true;
+        } else {
+          _timeLeft = diff;
+          _isExpired = false;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (h > 0) return '$h:$m:$s';
+    return '$m:$s';
+  }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
     final String cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
@@ -90,7 +147,7 @@ class OrderDetailScreen extends StatelessWidget {
     if (confirmed == true) {
       try {
         await action();
-        if (onUpdate != null) onUpdate!();
+        if (widget.onUpdate != null) widget.onUpdate!();
         if (context.mounted) Navigator.pop(context);
       } catch (e) {
         if (context.mounted) {
@@ -131,19 +188,145 @@ class OrderDetailScreen extends StatelessWidget {
     );
   }
 
+  void _showCashbackSuccessModal(BuildContext context, double points) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: HomeScreen.brandGreen.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: HomeScreen.brandGreen,
+                  size: 44,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Заказ выполнен!',
+                style: GoogleFonts.montserrat(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F1117),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Вы доставили заказ вовремя',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF9AA3AF),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: HomeScreen.brandGreen.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: HomeScreen.brandGreen.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/images/point_icon.png',
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.toll_rounded,
+                        color: HomeScreen.brandGreen,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '+$points жетонов',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: HomeScreen.brandGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'кэшбек за своевременную доставку',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF9AA3AF),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: HomeScreen.brandGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'ОТЛИЧНО!',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: .5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final status = (order['order_status'] ?? 'published')
+    final status = (widget.order['order_status'] ?? 'published')
         .toString()
         .toLowerCase();
-    final isShop = role == 'shop' || role == 'business';
-    // Номера скрыты только для курьера, если заказ еще "свободен"
+    final isShop = widget.role == 'shop' || widget.role == 'business';
     final bool isDataLocked = !isShop && status == 'published';
-
-    final String orderId = order['id'].toString();
-    final double total = (order['total_amount'] ?? 0.0).toDouble();
-    final double delivery = (order['delivery_amount'] ?? 0.0).toDouble();
-    final List pictures = order['pictures'] is List ? order['pictures'] : [];
+    final String orderId = widget.order['id'].toString();
+    final double total = (widget.order['total_amount'] ?? 0.0).toDouble();
+    final double delivery = (widget.order['delivery_amount'] ?? 0.0).toDouble();
+    final List pictures = widget.order['pictures'] is List
+        ? widget.order['pictures']
+        : [];
+    final bool showCountdown =
+        !isShop &&
+        status == 'active' &&
+        widget.order['time_of_delivery'] != null &&
+        widget.order['time_of_delivery'].toString().isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -191,6 +374,13 @@ class OrderDetailScreen extends StatelessWidget {
         children: [
           _buildStatusCard(status),
           const SizedBox(height: 12),
+
+          // Обратный отсчёт для курьера
+          if (showCountdown) ...[
+            _buildCountdownCard(),
+            const SizedBox(height: 12),
+          ],
+
           _buildSection(
             title: "Маршрут",
             child: _buildRouteBlock(isDataLocked),
@@ -202,9 +392,9 @@ class OrderDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Блок связи со второй стороной (Магазин <-> Курьер)
           if (!isDataLocked &&
-              (order['courierId'] != null || order['shopId'] != null)) ...[
+              (widget.order['courierId'] != null ||
+                  widget.order['shopId'] != null)) ...[
             _buildSection(
               title: isShop ? "Исполнитель" : "Отправитель",
               child: _buildCounterpartyBlock(isShop),
@@ -226,11 +416,11 @@ class OrderDetailScreen extends StatelessWidget {
             const SizedBox(height: 12),
           ],
 
-          if ((order['comment'] ?? '').toString().isNotEmpty) ...[
+          if ((widget.order['comment'] ?? '').toString().isNotEmpty)
             _buildSection(
               title: "Комментарий",
               child: Text(
-                order['comment'].toString(),
+                widget.order['comment'].toString(),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: const Color(0xFF0F1117),
@@ -238,7 +428,6 @@ class OrderDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ],
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -250,24 +439,118 @@ class OrderDetailScreen extends StatelessWidget {
     );
   }
 
-  // Новый виджет для связи с Магазином или Курьером
+  Widget _buildCountdownCard() {
+    final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
+    final Color color = _isExpired
+        ? HomeScreen.brandRed
+        : HomeScreen.brandGreen;
+    final Color bgColor = _isExpired
+        ? HomeScreen.brandRed.withOpacity(0.06)
+        : HomeScreen.brandGreen.withOpacity(0.06);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
+              color: color,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isExpired ? 'Время истекло' : 'До истечения кэшбека',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: color.withOpacity(0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _isExpired
+                      ? 'Кэшбек не будет начислен'
+                      : _formatDuration(_timeLeft),
+                  style: GoogleFonts.montserrat(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_isExpired && cashback > 0) ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Кэшбек',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: const Color(0xFF9AA3AF),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/point_icon.png',
+                      width: 20,
+                      height: 20,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.toll_rounded,
+                        size: 20,
+                        color: HomeScreen.brandGreen,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '+${cashback.toDouble()}',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: HomeScreen.brandGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildCounterpartyBlock(bool isShop) {
     String? phone;
-    String? name;
     IconData icon;
-
     if (isShop) {
-      // Магазин видит курьера
-      phone = order['courier_phone'];
+      phone = widget.order['courier_phone'];
       icon = Icons.delivery_dining_outlined;
     } else {
-      // Курьер видит магазин
-      phone = order['shop_phone'];
+      phone = widget.order['shop_phone'];
       icon = Icons.storefront_outlined;
     }
-
     if (phone == null || phone.isEmpty) return const SizedBox.shrink();
-
     return Row(
       children: [
         Expanded(
@@ -284,15 +567,13 @@ class OrderDetailScreen extends StatelessWidget {
   }
 
   Widget _buildRecipientBlock(bool isLocked) {
-    final String phone = (order['client_phone'] ?? '').toString();
-    final String name = 'Клиент';
-
+    final String phone = (widget.order['client_phone'] ?? '').toString();
     return Row(
       children: [
         Expanded(
           child: _buildInfoRow(
             icon: Icons.person_outline,
-            label: isLocked ? "Телефон скрыт" : name,
+            label: isLocked ? "Телефон скрыт" : "Клиент",
             value: isLocked ? "+993 ••• •• ••" : (phone.isEmpty ? '—' : phone),
             color: HomeScreen.brandGreen,
           ),
@@ -389,7 +670,6 @@ class OrderDetailScreen extends StatelessWidget {
       ),
     };
     final style = styles[status] ?? styles['published']!;
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -467,7 +747,7 @@ class OrderDetailScreen extends StatelessWidget {
         _buildRoutePoint(
           icon: Icons.inventory_2_outlined,
           label: "Откуда",
-          value: order['shop_adress'] ?? '—',
+          value: widget.order['shop_adress'] ?? '—',
           color: HomeScreen.brandRed,
         ),
         Padding(
@@ -486,7 +766,7 @@ class OrderDetailScreen extends StatelessWidget {
           label: "Куда",
           value: isLocked
               ? "Адрес скрыт"
-              : (order['adress_of_delivery'] ?? '—'),
+              : (widget.order['adress_of_delivery'] ?? '—'),
           color: HomeScreen.brandGreen,
           isGrey: isLocked,
         ),
@@ -541,25 +821,34 @@ class OrderDetailScreen extends StatelessWidget {
 
   Widget _buildPriceBlock(bool isShop, double total, double delivery) {
     final double itemPrice = total - delivery;
+    final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
     return Column(
       children: [
         _buildPriceRow(
           label: "Товар",
-          value: "${itemPrice.toStringAsFixed(0)} TMT",
+          value: "${itemPrice.toDouble()} TMT",
           valueColor: const Color(0xFF0F1117),
         ),
         const SizedBox(height: 10),
         _buildPriceRow(
           label: "Доставка",
-          value: "${delivery.toStringAsFixed(0)} TMT",
+          value: "${delivery.toDouble()} TMT",
           valueColor: HomeScreen.brandGreen,
         ),
+        if (!isShop && cashback > 0) ...[
+          const SizedBox(height: 10),
+          _buildPriceRow(
+            label: "Кэшбек (20%)",
+            value: "+${cashback.toDouble()} жетонов",
+            valueColor: HomeScreen.brandGreen,
+          ),
+        ],
         const Divider(color: Color(0xFFF1F4F8), height: 20),
         _buildPriceRow(
           label: isShop ? "К получению" : "Выплата",
           value: isShop
-              ? "${itemPrice.toStringAsFixed(0)} TMT"
-              : "${delivery.toStringAsFixed(0)} TMT",
+              ? "${itemPrice.toDouble()} TMT"
+              : "${delivery.toDouble()} TMT",
           valueColor: HomeScreen.brandBlue,
           isTotal: true,
         ),
@@ -657,7 +946,7 @@ class OrderDetailScreen extends StatelessWidget {
     if (!isShop) {
       if (status == 'published') {
         final authProv = context.watch<AuthProvider>();
-        final int points = order['points_amount'] ?? 0;
+        final int points = widget.order['points_amount'] ?? 0;
         final balancePoints = authProv.balancePoints;
         final bool isRestricted =
             authProv.role == 'courier' && authProv.status == 'pending';
@@ -671,7 +960,6 @@ class OrderDetailScreen extends StatelessWidget {
           filled: true,
           onTap: () {
             if (isRestricted) {
-              // показываем RestrictedAccessView в bottom sheet
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
@@ -720,15 +1008,15 @@ class OrderDetailScreen extends StatelessWidget {
                   action: () => service.updateStatus(
                     orderId,
                     'active',
-                    userId: currentUserId,
+                    userId: widget.currentUserId,
                   ),
                 );
               } else {
                 showModalBottomSheet(
                   context: context,
                   builder: (_) => TopUpModal(
-                    userId: currentUserId,
-                    role: role,
+                    userId: widget.currentUserId,
+                    role: widget.role,
                     status: status,
                   ),
                 );
@@ -743,8 +1031,8 @@ class OrderDetailScreen extends StatelessWidget {
           },
         );
       } else if (status == 'active') {
-        final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
-
+        final double cashback = (widget.order['cashback_amount'] ?? 0.0)
+            .toDouble();
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -772,7 +1060,7 @@ class OrderDetailScreen extends StatelessWidget {
             ),
             _buildButton(
               label: cashback > 0
-                  ? "Завершить  •  +${cashback.toStringAsFixed(0)} баллов"
+                  ? "Завершить  •  +${cashback.toDouble()} баллов"
                   : "Завершить доставку",
               color: HomeScreen.brandBlue,
               filled: true,
@@ -793,7 +1081,6 @@ class OrderDetailScreen extends StatelessWidget {
     final TextEditingController codeController = TextEditingController();
     bool isLoading = false;
     bool codeSent = false;
-    String generatedCode = '';
 
     await showModalBottomSheet(
       context: context,
@@ -827,7 +1114,6 @@ class OrderDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 Container(
                   width: 64,
                   height: 64,
@@ -842,7 +1128,6 @@ class OrderDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Text(
                   'Подтверждение доставки',
                   style: GoogleFonts.inter(
@@ -852,7 +1137,6 @@ class OrderDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-
                 Text(
                   codeSent
                       ? 'Введите код который получил клиент по SMS'
@@ -885,19 +1169,16 @@ class OrderDetailScreen extends StatelessWidget {
                               setModalState(() => isLoading = true);
                               final result = await service.generateDeliveryCode(
                                 orderId: orderId,
-                                courierId: currentUserId,
-                                clientPhone: order['client_phone'] ?? '',
+                                courierId: widget.currentUserId,
+                                clientPhone: widget.order['client_phone'] ?? '',
                               );
                               setModalState(() {
                                 isLoading = false;
-                                if (result['success'] == true) {
-                                  codeSent = true;
-                                  generatedCode = result['code'] ?? '';
-                                }
+                                if (result['success'] == true) codeSent = true;
                               });
                               if (result['success'] != true && ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(
+                                  const SnackBar(
                                     content: Text('Ошибка отправки кода'),
                                     backgroundColor: HomeScreen.brandRed,
                                     behavior: SnackBarBehavior.floating,
@@ -980,9 +1261,29 @@ class OrderDetailScreen extends StatelessWidget {
                               setModalState(() => isLoading = false);
 
                               if (result['success'] == true) {
+                                // Начисляем кэшбек
+                                final double cashback =
+                                    (widget.order['cashback_amount'] ?? 0.0)
+                                        .toDouble();
+                                await service.applyCashbackIfOnTime(
+                                  orderId: orderId,
+                                  courierId: widget.currentUserId,
+                                );
+
                                 Navigator.pop(ctx);
-                                if (onUpdate != null) onUpdate!();
-                                if (context.mounted) Navigator.pop(context);
+                                if (widget.onUpdate != null) widget.onUpdate!();
+
+                                // Показываем алерт если кэшбек начислен
+                                if (context.mounted &&
+                                    cashback > 0 &&
+                                    !_isExpired) {
+                                  _showCashbackSuccessModal(
+                                    context,
+                                    cashback.toDouble(),
+                                  );
+                                } else if (context.mounted) {
+                                  Navigator.pop(context);
+                                }
                               } else {
                                 codeController.clear();
                                 if (ctx.mounted) {
@@ -1024,12 +1325,10 @@ class OrderDetailScreen extends StatelessWidget {
                   TextButton(
                     onPressed: isLoading
                         ? null
-                        : () {
-                            setModalState(() {
-                              codeSent = false;
-                              codeController.clear();
-                            });
-                          },
+                        : () => setModalState(() {
+                            codeSent = false;
+                            codeController.clear();
+                          }),
                     child: Text(
                       'Отправить код повторно',
                       style: GoogleFonts.inter(
@@ -1047,14 +1346,12 @@ class OrderDetailScreen extends StatelessWidget {
     );
   }
 
-  // Добавить метод в OrderDetailScreen (аналог из OrderCard):
   Future<void> _showCancelReasonModal(
     BuildContext context,
     String orderId,
     OrderService service,
   ) async {
     final TextEditingController reasonController = TextEditingController();
-
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1147,7 +1444,7 @@ class OrderDetailScreen extends StatelessWidget {
                           'canceled',
                           cancelReason: reason,
                         );
-                        if (onUpdate != null) onUpdate!();
+                        if (widget.onUpdate != null) widget.onUpdate!();
                         if (context.mounted) Navigator.pop(context);
                       },
                       child: Container(

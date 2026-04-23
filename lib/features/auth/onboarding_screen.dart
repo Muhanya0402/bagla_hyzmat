@@ -116,7 +116,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _goToRoleSelection() {
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const UserTypeSelectionScreen()),
     );

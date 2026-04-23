@@ -2,13 +2,12 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
-import '../core/api_client.dart'; // Убедитесь, что путь к вашему ApiClient верен
+import '../core/api_client.dart';
 
 class OrderService {
   final ApiClient _apiClient = ApiClient();
 
   /// 1. СОЗДАНИЕ ЗАКАЗА
-  /// Загружает изображения, получает их ID и создает запись в коллекции orders
   Future<bool> createOrder({
     required String address,
     required String shopAddress,
@@ -25,7 +24,6 @@ class OrderService {
     try {
       List<String> fileIds = [];
 
-      // Шаг A: Загрузка изображений в Directus (коллекция /files)
       for (var image in images) {
         FormData formData = FormData.fromMap({
           "file": await MultipartFile.fromFile(
@@ -33,24 +31,19 @@ class OrderService {
             filename: image.name,
           ),
         });
-
-        // Отправляем файл. Если токен истек, ApiClient сам его обновит
         var resFile = await _apiClient.dio.post("/files", data: formData);
-
         if (resFile.data != null && resFile.data["data"] != null) {
           fileIds.add(resFile.data["data"]["id"]);
         }
       }
 
-      // Шаг B: Формирование структуры заказа
-      // ВАЖНО: Убедитесь, что системное поле статуса в Directus называется 'status' или 'order_status'
+      // Считаем кэшбек — 20% от суммы доставки
+      final double cashbackAmount = (pointsAmount * 0.2).toDouble();
+
       final Map<String, dynamic> orderData = {
-        "order_status": "published", // Системное поле Directus для отображения
+        "order_status": "published",
         "shopId": [
-          {
-            "item": userId,
-            "collection": "customers", // Связь M2M (Many-to-Many)
-          },
+          {"item": userId, "collection": "customers"},
         ],
         "shop_adress": shopAddress,
         "shop_phone": shopPhone,
@@ -61,17 +54,18 @@ class OrderService {
         "delivery_amount": deliveryFee,
         "total_amount": itemPrice + deliveryFee,
         "points_amount": pointsAmount,
-        // Формат для загрузки картинок в реляционное поле (M2M с directus_files)
+        "cashback_amount": cashbackAmount, // 20% кэшбек доставщику
         "pictures": fileIds.map((id) => {"directus_files_id": id}).toList(),
       };
 
-      // Шаг C: Отправка заказа
       final response = await _apiClient.dio.post(
         "/items/orders",
         data: orderData,
       );
 
-      return response.statusCode == 200 || response.statusCode == 204;
+      return response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 204;
     } on DioException catch (e) {
       final errorMsg = e.response?.data?['errors']?[0]?['message'] ?? e.message;
       print("Ошибка при создании заказа (Dio): $errorMsg");
@@ -83,7 +77,6 @@ class OrderService {
   }
 
   /// 2. ОБНОВЛЕНИЕ СТАТУСА ЗАКАЗА
-  /// Используется для принятия заказа курьером, отмены или завершения
   Future<bool> updateStatus(
     String orderId,
     String newStatus, {
@@ -95,14 +88,12 @@ class OrderService {
     try {
       final Map<String, dynamic> data = {"order_status": newStatus};
 
-      // Курьер берёт заказ
       if (newStatus == 'active' && userId != null) {
         data["courierId"] = [
           {"item": userId, "collection": "customers"},
         ];
       }
 
-      // Магазин отменяет заказ
       if (newStatus == 'cancelled' && shopId != null) {
         data["cancelled_by"] = "shop";
       }
@@ -119,7 +110,6 @@ class OrderService {
   }
 
   /// 3. ПОЛУЧЕНИЕ СПИСКА ЗАКАЗОВ
-  /// Включает фильтрацию по ролям и подгрузку связанных файлов
   Future<List<dynamic>> getOrders({
     required String role,
     required String userId,
@@ -130,24 +120,19 @@ class OrderService {
 
       if (role == 'courier') {
         if (myOrdersOnly) {
-          // Заказы текущего курьера
           filters.add("filter[courierId][item:customers][id][_eq]=$userId");
         } else {
-          // Все доступные новые заказы для всех курьеров
-          filters.add("filter[order_status][_eq]=published");
+          filters.add("filter[order_status][_nin]=completed,cancelled");
+          filters.add("filter[courierId][_null]=true");
         }
       } else if (role == 'shop') {
-        // Заказы конкретного магазина
         filters.add("filter[shopId][item:customers][id][_eq]=$userId");
-      } else if (role == 'client') {
-        // Заказы клиента (если есть связь clientId)
-        // filters.add("filter[user_created][_eq]=$userId");
+      } else {
+        // 👇 ВАЖНО: только свободные заказы (без курьера)
+        filters.add("filter[courierId][_null]=true");
       }
 
-      // Сборка Query параметров
       final String filterQuery = filters.isNotEmpty ? filters.join('&') : "";
-
-      // fields=* подгружает все поля, pictures.directus_files_id — ID файлов для Image.network
       final String url =
           "/items/orders?$filterQuery&sort=-date_created&fields=*,pictures.directus_files_id&limit=-1";
 
@@ -160,6 +145,64 @@ class OrderService {
     } catch (e) {
       print("Ошибка получения заказов: $e");
       return [];
+    }
+  }
+
+  /// 4. НАЧИСЛЕНИЕ КЭШБЕКА ДОСТАВЩИКУ
+  /// Вызывается после успешного закрытия заказа через код подтверждения
+  Future<void> applyCashbackIfOnTime({
+    required String orderId,
+    required String courierId,
+  }) async {
+    try {
+      // Читаем заказ
+      final orderResp = await _apiClient.dio.get(
+        '/items/orders/$orderId',
+        queryParameters: {
+          'fields': 'cashback_amount,time_of_delivery,courierId',
+        },
+      );
+
+      final order = orderResp.data['data'];
+      final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
+      final String? timeOfDelivery = order['time_of_delivery'];
+
+      if (cashback <= 0) return;
+
+      // Проверяем не просрочен ли заказ
+      bool isOnTime = true;
+      if (timeOfDelivery != null && timeOfDelivery.isNotEmpty) {
+        final DateTime deadline = DateTime.parse(timeOfDelivery).toLocal();
+        final DateTime now = DateTime.now();
+        isOnTime = now.isBefore(deadline);
+      }
+
+      if (!isOnTime) {
+        print("⏰ Заказ просрочен — кэшбек не начисляется");
+        return;
+      }
+
+      // Читаем текущий баланс курьера
+      final courierResp = await _apiClient.dio.get(
+        '/items/customers/$courierId',
+        queryParameters: {'fields': 'balance_points'},
+      );
+
+      final int currentPoints =
+          (courierResp.data['data']['balance_points'] ?? 0) as int;
+      final int newPoints = currentPoints + cashback.toInt();
+
+      // Начисляем кэшбек
+      await _apiClient.dio.patch(
+        '/items/customers/$courierId',
+        data: {'balance_points': newPoints},
+      );
+
+      print(
+        "✅ Кэшбек начислен: +${cashback.toInt()} жетонов курьеру $courierId",
+      );
+    } catch (e) {
+      print("Ошибка начисления кэшбека: $e");
     }
   }
 

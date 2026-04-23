@@ -322,7 +322,7 @@ class OrderCard extends StatelessWidget {
     }
 
     // 3. Если заказ В РАБОТЕ (status == 'active') — кнопки "Отменить" и "Доставлено"
-    if (status == 'active') {
+    if (status == 'active' && role == 'courier') {
       final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
       return Row(
         mainAxisSize: MainAxisSize.min,
