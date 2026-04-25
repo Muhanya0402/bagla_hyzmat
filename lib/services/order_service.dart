@@ -94,7 +94,7 @@ class OrderService {
         ];
       }
 
-      if (newStatus == 'cancelled' && shopId != null) {
+      if (newStatus == 'canceled' && shopId != null) {
         data["cancelled_by"] = "shop";
       }
 
@@ -122,7 +122,7 @@ class OrderService {
         if (myOrdersOnly) {
           filters.add("filter[courierId][item:customers][id][_eq]=$userId");
         } else {
-          filters.add("filter[order_status][_nin]=completed,cancelled");
+          filters.add("filter[order_status][_nin]=completed,canceled");
           filters.add("filter[courierId][_null]=true");
         }
       } else if (role == 'shop') {

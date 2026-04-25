@@ -1,4 +1,5 @@
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
+import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/providers/auth_provider.dart';
@@ -246,22 +247,12 @@ class OrderCard extends StatelessWidget {
     if (status == 'completed' || status == 'canceled') return const SizedBox();
 
     // 1. Если это МАГАЗИН и заказ еще свободен — кнопка отмены
+    // СТАЛО:
     if (isShop && status == 'published') {
       return _buildOutlineButton(
         label: "Отменить",
         color: HomeScreen.brandRed,
-        onTap: () => _confirmAction(
-          context: context,
-          title: "Отмена заказа",
-          message: "Вы действительно хотите отменить этот заказ?",
-          actionColor: HomeScreen.brandRed,
-          action: () => service.updateStatus(
-            orderId,
-            'canceled',
-            cancelReason: 'Причина отмены',
-            shopId: userId,
-          ),
-        ),
+        onTap: () => _showCancelReasonModal(context, orderId, service),
       );
     }
 
@@ -475,129 +466,23 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Future<void> _showCancelReasonModal(
+  void _showCancelReasonModal(
     BuildContext context,
     String orderId,
     OrderService service,
-  ) async {
-    final TextEditingController reasonController = TextEditingController();
-
-    await showModalBottomSheet(
+  ) {
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.fromLTRB(
-            24,
-            12,
-            24,
-            MediaQuery.of(ctx).padding.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF0F3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                "Причина отмены",
-                style: GoogleFonts.inter(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: reasonController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: "Укажите причину...",
-                  hintStyle: GoogleFonts.inter(color: const Color(0xFF9AA3AF)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: HomeScreen.brandRed),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFEEF0F3)),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Назад",
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () async {
-                        final reason = reasonController.text.trim();
-                        if (reason.isEmpty) return;
-                        Navigator.pop(ctx);
-                        await service.updateStatus(
-                          orderId,
-                          'canceled',
-                          cancelReason: reason,
-                        );
-                        if (onUpdate != null) onUpdate!();
-                      },
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: HomeScreen.brandRed,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Отменить",
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+      builder: (_) => CancelReasonModal(
+        orderId: orderId,
+        currentUserId: currentUserId, // или widget.currentUserId
+        service: service,
+        onSuccess: () {
+          if (onUpdate != null) onUpdate!(); // или widget.onUpdate
+          if (context.mounted) Navigator.pop(context); // только в DetailScreen
+        },
       ),
     );
   }
