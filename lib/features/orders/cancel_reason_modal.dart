@@ -1,7 +1,7 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class CancelReasonModal extends StatefulWidget {
   final String orderId;
@@ -68,8 +68,8 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
     setState(() => _isLoading = false);
 
-    if (widget.onSuccess != null) widget.onSuccess!();
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context); // сначала закрываем модалку
+    if (widget.onSuccess != null) widget.onSuccess!(); // потом колбэк
   }
 
   @override
@@ -108,16 +108,15 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
             Text(
               "Причина отмены",
-              style: GoogleFonts.inter(
+              style: AppText.semiBold(
                 fontSize: 17,
-                fontWeight: FontWeight.w600,
                 color: const Color(0xFF0F1117),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               "Выберите причину и добавьте комментарий",
-              style: GoogleFonts.inter(
+              style: AppText.regular(
                 fontSize: 13,
                 color: const Color(0xFF9AA3AF),
               ),
@@ -135,9 +134,9 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: "Дополнительный комментарий (необязательно)...",
-                hintStyle: GoogleFonts.inter(
-                  color: const Color(0xFF9AA3AF),
+                hintStyle: AppText.regular(
                   fontSize: 13,
+                  color: const Color(0xFF9AA3AF),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -169,10 +168,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: Text(
-                        "Назад",
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w500),
-                      ),
+                      child: Text("Назад", style: AppText.medium(fontSize: 14)),
                     ),
                   ),
                 ),
@@ -203,9 +199,9 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                             )
                           : Text(
                               "Отменить заказ",
-                              style: GoogleFonts.inter(
+                              style: AppText.medium(
+                                fontSize: 14,
                                 color: Colors.white,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                     ),
@@ -261,13 +257,12 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
             Expanded(
               child: Text(
                 reason.label,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected
-                      ? HomeScreen.brandRed
-                      : const Color(0xFF0F1117),
-                ),
+                style: isSelected
+                    ? AppText.semiBold(fontSize: 14, color: HomeScreen.brandRed)
+                    : AppText.regular(
+                        fontSize: 14,
+                        color: const Color(0xFF0F1117),
+                      ),
               ),
             ),
             if (isSelected)

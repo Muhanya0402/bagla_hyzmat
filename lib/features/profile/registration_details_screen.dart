@@ -1,6 +1,6 @@
 import 'dart:io';
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -168,11 +168,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         ),
         title: Text(
           words.confirmBtn.toUpperCase(),
-          style: GoogleFonts.montserrat(
-            color: brandBlue,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppText.bold(fontSize: 16),
         ),
       ),
       body: ListView(
@@ -258,11 +254,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         const SizedBox(height: 16),
         Text(
           isCourier ? "Анкета курьера" : "Детали профиля",
-          style: GoogleFonts.montserrat(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: brandBlue,
-          ),
+          style: AppText.bold(fontSize: 24, color: brandBlue),
         ),
       ],
     );

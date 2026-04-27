@@ -1,4 +1,5 @@
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/create_order_screen.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
@@ -7,7 +8,6 @@ import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -60,18 +60,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _checkWelcomeBonus() async {
     final authProv = context.read<AuthProvider>();
-
-    // Проверяем поле на сервере а не локально
     try {
       final response = await ApiClient().dio.get(
         '/items/customers/${authProv.userId}',
         queryParameters: {'fields': 'welcome_bonus_shown'},
       );
-
       final bool shown = response.data['data']['welcome_bonus_shown'] ?? false;
-
       if (!shown && mounted) {
-        // Помечаем на сервере
         await ApiClient().dio.patch(
           '/items/customers/${authProv.userId}',
           data: {'welcome_bonus_shown': true},
@@ -109,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
+                  errorBuilder: (_, __, ___) => const Icon(
                     Icons.toll_rounded,
                     size: 48,
                     color: Color(0xFF27AE60),
@@ -117,29 +112,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
             Text(
               '🎁 Подарок за первый вход!',
-              style: GoogleFonts.montserrat(
+              style: AppText.extraBold(
                 fontSize: 20,
-                fontWeight: FontWeight.w800,
                 color: const Color(0xFF1B3A6B),
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 12),
-
             Text(
               'Мы начислили вам',
-              style: GoogleFonts.inter(fontSize: 15, color: Colors.black45),
+              style: AppText.regular(fontSize: 15, color: Colors.black45),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 16),
-
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               decoration: BoxDecoration(
@@ -157,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 32,
                     height: 32,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(
+                    errorBuilder: (_, __, ___) => const Icon(
                       Icons.toll_rounded,
                       size: 32,
                       color: Color(0xFF27AE60),
@@ -166,30 +154,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 10),
                   Text(
                     '3 жетона',
-                    style: GoogleFonts.montserrat(
+                    style: AppText.extraBold(
                       fontSize: 28,
-                      fontWeight: FontWeight.w800,
                       color: const Color(0xFF27AE60),
                     ),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
             Text(
-              'Используйте жетоны для для выполнения заказов внутри приложения',
-              style: GoogleFonts.inter(
+              'Используйте жетоны для выполнения заказов внутри приложения',
+              style: AppText.regular(
                 fontSize: 13,
                 color: Colors.black38,
-                height: 1.5,
-              ),
+              ).copyWith(height: 1.5),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 28),
-
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -205,11 +187,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'ОТЛИЧНО!',
-                  style: GoogleFonts.inter(
+                  style: AppText.bold(
                     fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .5,
-                  ),
+                    color: Colors.white,
+                  ).copyWith(letterSpacing: .5),
                 ),
               ),
             ),
@@ -246,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isActive = currentStatus == 'active';
     final bool isShop = role == 'shop' || role == 'business';
     final bool isCourier = role == 'courier';
-
     final bool isBanned =
         currentStatus == 'archived' || currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
@@ -315,13 +295,11 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: _buildSegmentedFilter(),
             ),
-
           if (isBanned || isPending)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: _buildStatusBanner(isBanned),
             ),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 0, 10),
             child: Column(
@@ -331,9 +309,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.only(right: 16),
                   child: Text(
                     isShop ? "Мои заказы" : "Доступные заказы",
-                    style: GoogleFonts.inter(
+                    style: AppText.semiBold(
                       fontSize: 20,
-                      fontWeight: FontWeight.w600,
                       color: HomeScreen.brandBlue,
                     ),
                   ),
@@ -344,7 +321,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
           Expanded(
             child: RefreshIndicator(
               color: HomeScreen.brandGreen,
@@ -368,25 +344,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   }
-
                   if (snapshot.hasError) {
                     return _buildScrollableEmptyState(
                       icon: Icons.wifi_off_rounded,
                       text: "Ошибка загрузки. Потяните вниз.",
                     );
                   }
-
                   final orders = _filterByStatus(snapshot.data ?? []);
-
                   if (orders.isEmpty) {
                     return _buildScrollableEmptyState(
                       icon: Icons.inbox_rounded,
-                      text: isShop
-                          ? "У вас пока нет заказов"
-                          : (words.emptyList),
+                      text: isShop ? "У вас пока нет заказов" : words.emptyList,
                     );
                   }
-
                   return ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
@@ -467,9 +437,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 4),
               Text(
                 "${authProv.balancePoints}",
-                style: GoogleFonts.inter(
+                style: AppText.semiBold(
                   fontSize: 18,
-                  fontWeight: FontWeight.w600,
                   color: HomeScreen.brandGreen,
                 ),
               ),
@@ -521,15 +490,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                   Text(
                     filter.label,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? filter.color
-                          : const Color(0xFF9AA3AF),
-                    ),
+                    style: isSelected
+                        ? AppText.semiBold(fontSize: 12, color: filter.color)
+                        : AppText.medium(
+                            fontSize: 12,
+                            color: const Color(0xFF9AA3AF),
+                          ),
                   ),
                 ],
               ),
@@ -572,10 +538,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Text(
             label,
-            style: GoogleFonts.inter(
-              color: isSelected ? Colors.white : const Color(0xFF9AA3AF),
-              fontWeight: FontWeight.w500,
+            style: AppText.medium(
               fontSize: 13,
+              color: isSelected ? Colors.white : const Color(0xFF9AA3AF),
             ),
           ),
         ),
@@ -619,11 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(
-                color: color,
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-              ),
+              style: AppText.medium(fontSize: 13, color: color),
             ),
           ),
         ],
@@ -650,12 +611,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Text(
               "Создать заказ",
-              style: GoogleFonts.inter(
-                color: Colors.white,
+              style: AppText.medium(
                 fontSize: 15,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.2,
-              ),
+                color: Colors.white,
+              ).copyWith(letterSpacing: 0.2),
             ),
           ],
         ),
@@ -691,11 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Center(
           child: Text(
             text,
-            style: GoogleFonts.inter(
-              color: const Color(0xFF9AA3AF),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppText.medium(fontSize: 14, color: const Color(0xFF9AA3AF)),
           ),
         ),
       ],

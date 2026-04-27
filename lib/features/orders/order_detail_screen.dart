@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
@@ -7,7 +8,6 @@ import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -103,16 +103,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          title,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 17),
-        ),
+        title: Text(title, style: AppText.semiBold(fontSize: 17)),
         content: Text(
           message,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF9AA3AF),
-          ),
+          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
         ),
         actions: [
           Row(
@@ -178,14 +172,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         border: isBordered ? Border.all(color: const Color(0xFFEEF0F3)) : null,
       ),
       alignment: Alignment.center,
-      child: Text(
-        text,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: textColor,
-        ),
-      ),
+      child: Text(text, style: AppText.medium(fontSize: 14, color: textColor)),
     );
   }
 
@@ -217,16 +204,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               const SizedBox(height: 20),
               Text(
                 'Заказ выполнен!',
-                style: GoogleFonts.montserrat(
+                style: AppText.extraBold(
                   fontSize: 20,
-                  fontWeight: FontWeight.w800,
                   color: const Color(0xFF0F1117),
                 ),
               ),
               const SizedBox(height: 10),
               Text(
                 'Вы доставили заказ вовремя',
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 14,
                   color: const Color(0xFF9AA3AF),
                 ),
@@ -262,9 +248,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     const SizedBox(width: 10),
                     Text(
                       '+$points жетонов',
-                      style: GoogleFonts.montserrat(
+                      style: AppText.extraBold(
                         fontSize: 26,
-                        fontWeight: FontWeight.w800,
                         color: HomeScreen.brandGreen,
                       ),
                     ),
@@ -274,7 +259,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               const SizedBox(height: 8),
               Text(
                 'кэшбек за своевременную доставку',
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 12,
                   color: const Color(0xFF9AA3AF),
                 ),
@@ -295,11 +280,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   onPressed: () => Navigator.pop(ctx),
                   child: Text(
                     'ОТЛИЧНО!',
-                    style: GoogleFonts.inter(
+                    style: AppText.bold(
                       fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: .5,
-                    ),
+                    ).copyWith(letterSpacing: .5),
                   ),
                 ),
               ),
@@ -354,15 +337,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           children: [
             Text(
               "Заказ",
-              style: GoogleFonts.inter(
+              style: AppText.semiBold(
                 fontSize: 17,
-                fontWeight: FontWeight.w600,
                 color: const Color(0xFF0F1117),
               ),
             ),
             Text(
               "ID: ${orderId.split('-').first.toUpperCase()}",
-              style: GoogleFonts.inter(
+              style: AppText.regular(
                 fontSize: 11,
                 color: const Color(0xFF9AA3AF),
               ),
@@ -422,10 +404,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               title: "Комментарий",
               child: Text(
                 widget.order['comment'].toString(),
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 14,
                   color: const Color(0xFF0F1117),
-                  height: 1.5,
                 ),
               ),
             ),
@@ -478,10 +459,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               children: [
                 Text(
                   _isExpired ? 'Время истекло' : 'До истечения кэшбека',
-                  style: GoogleFonts.inter(
+                  style: AppText.mono(
                     fontSize: 12,
                     color: color.withOpacity(0.7),
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -489,11 +469,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   _isExpired
                       ? 'Кэшбек не будет начислен'
                       : _formatDuration(_timeLeft),
-                  style: GoogleFonts.montserrat(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
+                  style: AppText.extraBold(fontSize: 22, color: color),
                 ),
               ],
             ),
@@ -504,7 +480,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               children: [
                 Text(
                   'Кэшбек',
-                  style: GoogleFonts.inter(
+                  style: AppText.regular(
                     fontSize: 11,
                     color: const Color(0xFF9AA3AF),
                   ),
@@ -525,9 +501,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '+${cashback.toDouble()}',
-                      style: GoogleFonts.inter(
+                      style: AppText.bold(
                         fontSize: 16,
-                        fontWeight: FontWeight.w700,
                         color: HomeScreen.brandGreen,
                       ),
                     ),
@@ -623,16 +598,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             children: [
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 11,
                   color: const Color(0xFF9AA3AF),
                 ),
               ),
               Text(
                 value,
-                style: GoogleFonts.inter(
+                style: AppText.mono(
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
                   color: const Color(0xFF0F1117),
                 ),
               ),
@@ -695,15 +669,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             children: [
               Text(
                 style.label,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: style.color,
-                ),
+                style: AppText.semiBold(fontSize: 15, color: style.color),
               ),
               Text(
                 style.description,
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 12,
                   color: style.color.withOpacity(0.7),
                 ),
@@ -728,12 +698,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         children: [
           Text(
             title,
-            style: GoogleFonts.inter(
+            style: AppText.semiBold(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
               color: const Color(0xFF9AA3AF),
-              letterSpacing: 0.5,
-            ),
+            ).copyWith(letterSpacing: 0.5),
           ),
           const SizedBox(height: 12),
           child,
@@ -800,16 +768,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             children: [
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 11,
                   color: const Color(0xFF9AA3AF),
                 ),
               ),
               Text(
                 value,
-                style: GoogleFonts.inter(
+                style: AppText.mono(
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
                   color: isGrey ? Colors.grey : const Color(0xFF0F1117),
                 ),
               ),
@@ -868,18 +835,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: isTotal ? 14 : 13,
-            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
-          ),
+          style: isTotal
+              ? AppText.semiBold(fontSize: 14)
+              : AppText.regular(fontSize: 13),
         ),
         Text(
           value,
-          style: GoogleFonts.inter(
-            fontSize: isTotal ? 18 : 14,
-            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w500,
-            color: valueColor,
-          ),
+          style: isTotal
+              ? AppText.semiBold(fontSize: 18, color: valueColor)
+              : AppText.mono(fontSize: 14, color: valueColor),
         ),
       ],
     );
@@ -929,7 +893,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (status == 'completed' || status == 'canceled')
       return const SizedBox.shrink();
 
-    if (isShop && status == 'published') {
+    if (isShop && status == 'published' || status == 'active') {
       return _buildButton(
         label: "Отменить заказ",
         color: HomeScreen.brandRed,
@@ -1098,9 +1062,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Подтверждение доставки',
-                  style: GoogleFonts.inter(
+                  style: AppText.bold(
                     fontSize: 18,
-                    fontWeight: FontWeight.w700,
                     color: const Color(0xFF0F1117),
                   ),
                 ),
@@ -1109,10 +1072,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   codeSent
                       ? 'Введите код который получил клиент по SMS'
                       : 'Нажмите кнопку — клиент получит код по SMS',
-                  style: GoogleFonts.inter(
+                  style: AppText.regular(
                     fontSize: 13,
                     color: const Color(0xFF9AA3AF),
-                    height: 1.5,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -1165,11 +1127,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             )
                           : Text(
                               'ОТПРАВИТЬ КОД КЛИЕНТУ',
-                              style: GoogleFonts.inter(
+                              style: AppText.bold(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: .5,
-                              ),
+                              ).copyWith(letterSpacing: .5),
                             ),
                     ),
                   ),
@@ -1179,20 +1139,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     keyboardType: TextInputType.number,
                     maxLength: 4,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
+                    style: AppText.bold(
                       fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 8,
                       color: const Color(0xFF0F1117),
-                    ),
+                    ).copyWith(letterSpacing: 8),
                     decoration: InputDecoration(
                       counterText: '',
                       hintText: '• • • •',
-                      hintStyle: GoogleFonts.inter(
+                      hintStyle: AppText.regular(
                         fontSize: 28,
-                        letterSpacing: 8,
                         color: const Color(0xFFD1D5DB),
-                      ),
+                      ).copyWith(letterSpacing: 8),
                       filled: true,
                       fillColor: const Color(0xFFF5F7FA),
                       border: OutlineInputBorder(
@@ -1281,11 +1238,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             )
                           : Text(
                               'ПОДТВЕРДИТЬ',
-                              style: GoogleFonts.inter(
+                              style: AppText.bold(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: .5,
-                              ),
+                              ).copyWith(letterSpacing: .5),
                             ),
                     ),
                   ),
@@ -1299,7 +1254,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           }),
                     child: Text(
                       'Отправить код повторно',
-                      style: GoogleFonts.inter(
+                      style: AppText.regular(
                         fontSize: 13,
                         color: const Color(0xFF9AA3AF),
                       ),
@@ -1329,7 +1284,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         service: service,
         onSuccess: () {
           if (widget.onUpdate != null) widget.onUpdate!(); // исправлено
-          if (context.mounted) Navigator.pop(context);
         },
       ),
     );
@@ -1353,9 +1307,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: GoogleFonts.inter(
+          style: AppText.mono(
             fontSize: 15,
-            fontWeight: FontWeight.w500,
             color: filled ? Colors.white : color,
           ),
         ),

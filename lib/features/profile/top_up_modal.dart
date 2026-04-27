@@ -1,7 +1,7 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../features/auth/auth_repository.dart';
 
 class TopUpModal extends StatefulWidget {
@@ -125,16 +125,15 @@ class _TopUpModalState extends State<TopUpModal> {
         children: [
           Text(
             "Итого к оплате",
-            style: GoogleFonts.inter(
+            style: AppText.regular(
               fontSize: 15,
               color: const Color(0xFF1B3A6B),
             ),
           ),
           Text(
             "${_points * rate} TMT",
-            style: GoogleFonts.inter(
+            style: AppText.extraBold(
               fontSize: 22,
-              fontWeight: FontWeight.w800,
               color: const Color(0xFF27AE60),
             ),
           ),

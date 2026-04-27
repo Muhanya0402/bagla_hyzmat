@@ -1,3 +1,4 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -5,7 +6,6 @@ import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../home/home_screen.dart';
 
@@ -42,17 +42,13 @@ class OrderCard extends StatelessWidget {
         titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
         contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        title: Text(
-          title,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 17),
-        ),
+        title: Text(title, style: AppText.semiBold(fontSize: 17)),
         content: Text(
           message,
-          style: GoogleFonts.inter(
+          style: AppText.regular(
             fontSize: 14,
             color: const Color(0xFF9AA3AF),
-            height: 1.5,
-          ),
+          ).copyWith(height: 1.5),
         ),
         actions: [
           Row(
@@ -69,10 +65,7 @@ class OrderCard extends StatelessWidget {
                     alignment: Alignment.center,
                     child: Text(
                       "Назад",
-                      style: GoogleFonts.inter(
-                        color: const Color.fromARGB(255, 0, 0, 0),
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: AppText.medium(color: Colors.black),
                     ),
                   ),
                 ),
@@ -90,10 +83,7 @@ class OrderCard extends StatelessWidget {
                     alignment: Alignment.center,
                     child: Text(
                       "Да",
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: AppText.medium(color: Colors.white),
                     ),
                   ),
                 ),
@@ -114,7 +104,7 @@ class OrderCard extends StatelessWidget {
             SnackBar(
               content: Text(
                 "Ошибка сети. Попробуйте позже.",
-                style: GoogleFonts.inter(fontSize: 13),
+                style: AppText.regular(fontSize: 13, color: Colors.white),
               ),
               backgroundColor: HomeScreen.brandRed,
               behavior: SnackBarBehavior.floating,
@@ -247,8 +237,7 @@ class OrderCard extends StatelessWidget {
     if (status == 'completed' || status == 'canceled') return const SizedBox();
 
     // 1. Если это МАГАЗИН и заказ еще свободен — кнопка отмены
-    // СТАЛО:
-    if (isShop && status == 'published') {
+    if (isShop && status == 'published' || status == 'active') {
       return _buildOutlineButton(
         label: "Отменить",
         color: HomeScreen.brandRed,
@@ -356,11 +345,7 @@ class OrderCard extends StatelessWidget {
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppText.semiBold(fontSize: 13, color: Colors.white),
             ),
             if (points > 0) ...[
               const SizedBox(width: 8),
@@ -379,11 +364,7 @@ class OrderCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 "$points",
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppText.regular(fontSize: 13, color: Colors.white),
               ),
             ],
             if (cashback > 0) ...[
@@ -405,11 +386,7 @@ class OrderCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 "+${cashback.toDouble()}",
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppText.regular(fontSize: 13, color: Colors.white),
               ),
             ],
           ],
@@ -481,7 +458,6 @@ class OrderCard extends StatelessWidget {
         service: service,
         onSuccess: () {
           if (onUpdate != null) onUpdate!(); // или widget.onUpdate
-          if (context.mounted) Navigator.pop(context); // только в DetailScreen
         },
       ),
     );
@@ -513,16 +489,15 @@ class OrderCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: AppText.regular(
                   fontSize: 11,
                   color: const Color(0xFF9AA3AF),
                 ),
               ),
               Text(
                 address,
-                style: GoogleFonts.inter(
+                style: AppText.medium(
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
                   color: isGrey
                       ? const Color(0xFF9AA3AF)
                       : const Color(0xFF0F1117),
@@ -547,10 +522,7 @@ class OrderCard extends StatelessWidget {
       children: [
         Text(
           isShop ? "К получению" : "За доставку",
-          style: GoogleFonts.inter(
-            color: const Color(0xFF9AA3AF),
-            fontSize: 11,
-          ),
+          style: AppText.regular(fontSize: 11, color: const Color(0xFF9AA3AF)),
         ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -558,16 +530,15 @@ class OrderCard extends StatelessWidget {
           children: [
             Text(
               amount.toStringAsFixed(0),
-              style: GoogleFonts.inter(
+              style: AppText.semiBold(
                 fontSize: 24,
-                fontWeight: FontWeight.w600,
                 color: HomeScreen.brandBlue,
               ),
             ),
             const SizedBox(width: 4),
             Text(
               "TMT",
-              style: GoogleFonts.inter(
+              style: AppText.regular(
                 fontSize: 12,
                 color: HomeScreen.brandBlue.withOpacity(0.4),
               ),
@@ -587,11 +558,7 @@ class OrderCard extends StatelessWidget {
       ),
       child: Text(
         "ID: ${order['id'].toString().split('-').first.toUpperCase()}",
-        style: GoogleFonts.inter(
-          color: const Color(0xFF9AA3AF),
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-        ),
+        style: AppText.medium(fontSize: 11, color: const Color(0xFF9AA3AF)),
       ),
     );
   }
@@ -634,11 +601,7 @@ class OrderCard extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             style.label,
-            style: GoogleFonts.inter(
-              color: style.color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppText.semiBold(fontSize: 11, color: style.color),
           ),
         ],
       ),
@@ -660,14 +623,7 @@ class OrderCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            color: color,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        child: Text(label, style: AppText.medium(fontSize: 13, color: color)),
       ),
     );
   }

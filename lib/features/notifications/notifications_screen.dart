@@ -1,6 +1,6 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -108,22 +108,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         title: Text(
           'Уведомления',
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF0F1117),
-          ),
+          style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         actions: [
           TextButton(
             onPressed: _markAllRead,
             child: Text(
               'Прочитать все',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: brandGreen,
-              ),
+              style: AppText.medium(fontSize: 13, color: brandGreen),
             ),
           ),
           const SizedBox(width: 8),
@@ -169,9 +161,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Уведомлений пока нет',
-                    style: GoogleFonts.inter(
+                    style: AppText.medium(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
                       color: const Color(0xFF9AA3AF),
                     ),
                   ),
@@ -239,13 +230,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   Expanded(
                                     child: Text(
                                       n['title'] ?? '',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: isRead
-                                            ? FontWeight.w500
-                                            : FontWeight.w700,
-                                        color: const Color(0xFF0F1117),
-                                      ),
+                                      style: isRead
+                                          ? AppText.medium(
+                                              fontSize: 14,
+                                              color: const Color(0xFF0F1117),
+                                            )
+                                          : AppText.bold(
+                                              fontSize: 14,
+                                              color: const Color(0xFF0F1117),
+                                            ),
                                     ),
                                   ),
                                   if (!isRead)
@@ -262,16 +255,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 n['body'] ?? '',
-                                style: GoogleFonts.inter(
+                                style: AppText.regular(
                                   fontSize: 13,
                                   color: const Color(0xFF9AA3AF),
-                                  height: 1.4,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 _formatDate(n['date_created']),
-                                style: GoogleFonts.inter(
+                                style: AppText.regular(
                                   fontSize: 11,
                                   color: const Color(0xFFD1D5DB),
                                 ),

@@ -1,6 +1,6 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../providers/auth_provider.dart';
@@ -153,12 +153,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   // Логотип
                   Text(
                     'Bagla',
-                    style: GoogleFonts.outfit(
+                    style: AppText.display(
                       fontSize: 20,
-                      fontWeight: FontWeight.w800,
                       color: brandBlue,
-                      letterSpacing: .4,
-                    ),
+                    ).copyWith(letterSpacing: .4),
                   ),
 
                   // Кнопка «Пропустить» — только на последней странице
@@ -183,9 +181,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                           child: Text(
                             'Пропустить',
-                            style: GoogleFonts.outfit(
+                            style: AppText.semiBold(
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
                               color: Colors.black45,
                             ),
                           ),
@@ -262,24 +259,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                         Text(
                           p.title,
-                          style: GoogleFonts.outfit(
+                          style: AppText.display(
                             fontSize: 28,
-                            fontWeight: FontWeight.w800,
                             color: p.accentColor,
-                            height: 1.15,
-                            letterSpacing: -0.3,
-                          ),
+                          ).copyWith(height: 1.15, letterSpacing: -0.3),
                         ),
 
                         const SizedBox(height: 14),
 
                         Text(
                           p.subtitle,
-                          style: GoogleFonts.outfit(
+                          style: AppText.regular(
                             fontSize: 15,
                             color: Colors.black54,
-                            height: 1.6,
-                          ),
+                          ).copyWith(height: 1.6),
                         ),
 
                         if (index == 1) ...[
@@ -355,12 +348,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               _canNext
                                   ? (isLast ? 'ВЫБРАТЬ РОЛЬ' : 'ДАЛЕЕ')
                                   : 'ПОДОЖДИТЕ  $_secondsLeft',
-                              style: GoogleFonts.outfit(
+                              style: AppText.bold(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: .8,
                                 color: _canNext ? Colors.white : Colors.white60,
-                              ),
+                              ).copyWith(letterSpacing: .8),
                             ),
                             if (_canNext) ...[
                               const SizedBox(width: 8),
@@ -452,11 +443,7 @@ class _TwoSideCard extends StatelessWidget {
             ),
             child: Text(
               label,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: labelColor,
-              ),
+              style: AppText.bold(fontSize: 12, color: labelColor),
             ),
           ),
           const SizedBox(height: 12),
@@ -492,11 +479,7 @@ class _MiniStep extends StatelessWidget {
             child: Center(
               child: Text(
                 num,
-                style: GoogleFonts.dmMono(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black45,
-                ),
+                style: AppText.mono(fontSize: 11, color: Colors.black45),
               ),
             ),
           ),
@@ -504,11 +487,10 @@ class _MiniStep extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.outfit(
+              style: AppText.regular(
                 fontSize: 13,
                 color: Colors.black87,
-                height: 1.4,
-              ),
+              ).copyWith(height: 1.4),
             ),
           ),
         ],
@@ -583,11 +565,7 @@ class _TokenRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           text,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+          style: AppText.semiBold(fontSize: 14, color: Colors.black87),
         ),
       ],
     );

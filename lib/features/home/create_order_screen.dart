@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -131,7 +131,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   void _msg(String text, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(text, style: GoogleFonts.inter(fontSize: 13)),
+        content: Text(text, style: AppText.regular(fontSize: 13)),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -169,11 +169,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         title: Text(
           "Новый заказ",
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF0F1117),
-          ),
+          style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
@@ -276,12 +272,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               const SizedBox(width: 6),
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: AppText.semiBold(
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF9AA3AF),
-                  letterSpacing: 0.3,
-                ),
+                ).copyWith(letterSpacing: 0.3),
               ),
             ],
           ),
@@ -331,7 +325,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     const SizedBox(height: 4),
                     Text(
                       "Добавить",
-                      style: GoogleFonts.inter(
+                      style: AppText.regular(
                         fontSize: 10,
                         color: brandBlue.withOpacity(0.4),
                       ),
@@ -394,10 +388,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       controller: controller,
       readOnly: readOnly,
       onTap: onTap,
-      style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0F1117)),
+      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(
+        hintStyle: AppText.regular(
           fontSize: 14,
           color: const Color(0xFF9AA3AF),
         ),
@@ -430,10 +424,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       controller: _phoneController,
       keyboardType: TextInputType.phone,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0F1117)),
+      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
       decoration: InputDecoration(
         hintText: "Телефон клиента",
-        hintStyle: GoogleFonts.inter(
+        hintStyle: AppText.regular(
           fontSize: 14,
           color: const Color(0xFF9AA3AF),
         ),
@@ -443,7 +437,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           size: 18,
         ),
         prefixText: "+993 ",
-        prefixStyle: GoogleFonts.inter(
+        prefixStyle: AppText.regular(
           fontSize: 14,
           color: const Color(0xFF0F1117),
         ),
@@ -476,10 +470,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       controller: _dateTimeController,
       readOnly: true,
       onTap: _pickDateTime,
-      style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0F1117)),
+      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
       decoration: InputDecoration(
         hintText: "Время доставки",
-        hintStyle: GoogleFonts.inter(
+        hintStyle: AppText.regular(
           fontSize: 14,
           color: const Color(0xFF9AA3AF),
         ),
@@ -513,14 +507,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       onChanged: (v) => setState(() {}),
-      style: GoogleFonts.inter(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: brandBlue,
-      ),
+      style: AppText.semiBold(fontSize: 20, color: brandBlue),
       decoration: InputDecoration(
         hintText: "Сумма товара",
-        hintStyle: GoogleFonts.inter(
+        hintStyle: AppText.regular(
           fontSize: 14,
           color: const Color(0xFF9AA3AF),
         ),
@@ -530,7 +520,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           size: 18,
         ),
         suffixText: "TMT",
-        suffixStyle: GoogleFonts.inter(
+        suffixStyle: AppText.regular(
           fontSize: 14,
           color: const Color(0xFF9AA3AF),
         ),
@@ -579,7 +569,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               children: [
                 Text(
                   "Курьеру: ${delivery.toStringAsFixed(0)} TMT",
-                  style: GoogleFonts.inter(
+                  style: AppText.regular(
                     color: const Color(0xFF9AA3AF),
                     fontSize: 12,
                   ),
@@ -591,16 +581,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   children: [
                     Text(
                       total.toStringAsFixed(0),
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: brandBlue,
-                      ),
+                      style: AppText.semiBold(fontSize: 24, color: brandBlue),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       "TMT",
-                      style: GoogleFonts.inter(
+                      style: AppText.regular(
                         fontSize: 13,
                         color: brandBlue.withOpacity(0.4),
                       ),
@@ -622,11 +608,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               alignment: Alignment.center,
               child: Text(
                 "Оформить",
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: AppText.mono(fontSize: 15, color: Colors.white),
               ),
             ),
           ),

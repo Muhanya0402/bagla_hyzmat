@@ -1,5 +1,5 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/role_provider.dart';
@@ -45,11 +45,7 @@ class UserTypeSelectionScreen extends StatelessWidget {
 
               Text(
                 words.selectRole,
-                style: GoogleFonts.montserrat(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: brandBlue,
-                ),
+                style: AppText.extraBold(fontSize: 28, color: brandBlue),
               ),
               const SizedBox(height: 8),
               Text(

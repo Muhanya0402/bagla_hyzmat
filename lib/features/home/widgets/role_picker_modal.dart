@@ -1,6 +1,6 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class RolePickerEmbedded extends StatelessWidget {
   final VoidCallback onClose;
@@ -14,19 +14,12 @@ class RolePickerEmbedded extends StatelessWidget {
       children: [
         Text(
           "Кто вы?",
-          style: GoogleFonts.inter(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF0F1117),
-          ),
+          style: AppText.bold(fontSize: 22, color: const Color(0xFF0F1117)),
         ),
         const SizedBox(height: 6),
         Text(
           "Выберите вашу роль чтобы продолжить",
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF9AA3AF),
-          ),
+          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
         ),
         const SizedBox(height: 24),
         _RoleOption(
@@ -104,16 +97,15 @@ class _RoleOption extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: AppText.semiBold(
                       fontSize: 15,
-                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF0F1117),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     description,
-                    style: GoogleFonts.inter(
+                    style: AppText.regular(
                       fontSize: 13,
                       color: const Color(0xFF9AA3AF),
                     ),

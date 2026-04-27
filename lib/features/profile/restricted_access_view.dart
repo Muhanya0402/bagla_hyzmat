@@ -1,6 +1,6 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// ЭКРАН 1: Заглушка для пользователей на модерации
 class RestrictedAccessView extends StatelessWidget {
@@ -34,22 +34,19 @@ class RestrictedAccessView extends StatelessWidget {
         const SizedBox(height: 20),
         Text(
           title,
-          style: GoogleFonts.inter(
+          style: AppText.extraBold(
             fontSize: 20,
-            fontWeight: FontWeight.w800,
             color: brandBlue,
-            letterSpacing: -0.5,
-          ),
+          ).copyWith(letterSpacing: -0.5),
         ),
         const SizedBox(height: 8),
         Text(
           message,
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: AppText.regular(
             fontSize: 14,
             color: const Color(0xFF9AA3AF),
-            height: 1.5,
-          ),
+          ).copyWith(height: 1.5),
         ),
         const SizedBox(height: 32),
         _buildButton(buttonText, onActionPressed, brandGreen, true),
@@ -89,19 +86,12 @@ class TopUpFormView extends StatelessWidget {
       children: [
         Text(
           "Пополнение баллов",
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: brandBlue,
-          ),
+          style: AppText.extraBold(fontSize: 20, color: brandBlue),
         ),
         const SizedBox(height: 6),
         Text(
           "Курс конвертации: 1 балл = $rate TMT",
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF9AA3AF),
-          ),
+          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
         ),
         const SizedBox(height: 32),
         TextField(
@@ -109,11 +99,7 @@ class TopUpFormView extends StatelessWidget {
           autofocus: true,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: GoogleFonts.inter(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: brandBlue,
-          ),
+          style: AppText.bold(fontSize: 24, color: brandBlue),
           textAlign: TextAlign.center,
           decoration: InputDecoration(
             hintText: "0",
@@ -180,13 +166,7 @@ Widget _buildButton(
                 strokeWidth: 2.5,
               ),
             )
-          : Text(
-              text,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          : Text(text, style: AppText.bold(fontSize: 16, color: Colors.white)),
     ),
   );
 }

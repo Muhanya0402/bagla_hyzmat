@@ -1,5 +1,5 @@
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,11 +53,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         title: Text(
           "Профиль",
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF0F1117),
-          ),
+          style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         actions: [
           IconButton(
@@ -85,17 +81,15 @@ class ProfileScreen extends StatelessWidget {
 
                     Text(
                       fullName,
-                      style: GoogleFonts.inter(
+                      style: AppText.extraBold(
                         fontSize: 28,
-                        fontWeight: FontWeight.w800,
                         color: brandBlue,
-                        letterSpacing: -0.5,
-                      ),
+                      ).copyWith(letterSpacing: -0.5),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       auth.phone.isNotEmpty ? auth.phone : "+993 ...",
-                      style: GoogleFonts.inter(
+                      style: AppText.regular(
                         fontSize: 15,
                         color: const Color(0xFF9AA3AF),
                       ),
@@ -227,18 +221,18 @@ class ProfileScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          "Выход",
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-        ),
+        title: Text("Выход", style: AppText.bold(fontSize: 16)),
         content: Text(
           "Вы действительно хотите выйти?",
-          style: GoogleFonts.inter(),
+          style: AppText.regular(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text("Отмена", style: GoogleFonts.inter(color: Colors.grey)),
+            child: Text(
+              "Отмена",
+              style: AppText.regular(fontSize: 14, color: Colors.grey),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -247,10 +241,7 @@ class ProfileScreen extends StatelessWidget {
             },
             child: Text(
               "Выйти",
-              style: GoogleFonts.inter(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
+              style: AppText.bold(fontSize: 14, color: Colors.red),
             ),
           ),
         ],
@@ -280,17 +271,15 @@ class _FooterSection extends StatelessWidget {
         children: [
           Text(
             "BAGLA IT SOLUTIONS",
-            style: GoogleFonts.inter(
+            style: AppText.extraBold(
               fontSize: 12,
-              fontWeight: FontWeight.w800,
               color: const Color(0xFFD1D5DB),
-              letterSpacing: 1.5,
-            ),
+            ).copyWith(letterSpacing: 1.5),
           ),
           const SizedBox(height: 6),
           Text(
             "© 2024-2026. Все права защищены.",
-            style: GoogleFonts.inter(
+            style: AppText.regular(
               fontSize: 11,
               color: const Color(0xFF9AA3AF),
             ),
@@ -301,9 +290,8 @@ class _FooterSection extends StatelessWidget {
             builder: (context, snapshot) {
               return Text(
                 snapshot.data ?? "",
-                style: GoogleFonts.inter(
+                style: AppText.medium(
                   fontSize: 10,
-                  fontWeight: FontWeight.w500,
                   color: const Color(0xFFD1D5DB),
                 ),
               );
@@ -365,7 +353,7 @@ class _QuickStatCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: AppText.regular(
                 fontSize: 12,
                 color: const Color(0xFF9AA3AF),
               ),
@@ -373,11 +361,7 @@ class _QuickStatCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               value,
-              style: GoogleFonts.inter(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: ProfileScreen.brandBlue,
-              ),
+              style: AppText.bold(fontSize: 17, color: ProfileScreen.brandBlue),
             ),
           ],
         ),
@@ -422,16 +406,12 @@ class _ProfileTile extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: GoogleFonts.inter(
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
-          color: const Color(0xFF0F1117),
-        ),
+        style: AppText.semiBold(fontSize: 15, color: const Color(0xFF0F1117)),
       ),
       subtitle: subtitle != null
           ? Text(
               subtitle!,
-              style: GoogleFonts.inter(
+              style: AppText.regular(
                 fontSize: 12,
                 color: const Color(0xFF9AA3AF),
               ),
@@ -443,10 +423,9 @@ class _ProfileTile extends StatelessWidget {
           if (trailing != null)
             Text(
               trailing!,
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w700,
-                color: ProfileScreen.brandGreen,
+              style: AppText.bold(
                 fontSize: 14,
+                color: ProfileScreen.brandGreen,
               ),
             ),
           const SizedBox(width: 8),
