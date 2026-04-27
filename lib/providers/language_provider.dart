@@ -5,43 +5,41 @@ import '../l10n/app_localizations.dart';
 class LanguageProvider extends ChangeNotifier {
   static const String _langKey = 'selected_lang';
 
-  // Инициализируем сразу, чтобы UI не получал null или мусор при старте
-  AppLanguage _words = AppLanguage.ru;
-  bool _isRussian = true;
-  bool _isSaving = false; // Флаг для предотвращения "шума" при быстрых кликах
+  AppLocale _locale = AppLocale.ru;
+  bool _isSaving = false;
+  late AppLocalizations _localizations;
 
-  AppLanguage get words => _words;
-  String get label => _isRussian ? "RU" : "TK";
+  LanguageProvider() {
+    _localizations = AppLocalizations(_locale);
+  }
+
+  AppLocalizations get words => _localizations;
+  AppLocale get locale => _locale;
+  String get label => _locale == AppLocale.ru ? 'RU' : 'TK';
 
   Future<void> loadSavedLanguage() async {
     final prefs = await SharedPreferences.getInstance();
-    final String savedCode = prefs.getString(_langKey) ?? 'ru';
-
-    _isRussian = (savedCode == 'ru');
-    _words = _isRussian ? AppLanguage.ru : AppLanguage.tk;
-
-    // Уведомляем только если данные действительно загружены
+    final String saved = prefs.getString(_langKey) ?? 'ru';
+    _locale = saved == 'ru' ? AppLocale.ru : AppLocale.tk;
+    _localizations = AppLocalizations(_locale);
     notifyListeners();
   }
 
-  void toggleLanguage() async {
-    // 1. Блокируем повторный вызов, пока идет сохранение
+  Future<void> toggleLanguage() async {
     if (_isSaving) return;
     _isSaving = true;
 
-    // 2. МГНОВЕННО обновляем состояние в памяти (Синхронно)
-    _isRussian = !_isRussian;
-    _words = _isRussian ? AppLanguage.ru : AppLanguage.tk;
-
-    // 3. Сразу уведомляем UI, чтобы отрисовка была чистой
+    // Мгновенно меняем в памяти
+    _locale = _locale == AppLocale.ru ? AppLocale.tk : AppLocale.ru;
+    _localizations = AppLocalizations(_locale);
     notifyListeners();
 
-    // 4. Сохраняем на диск в фоновом режиме
+    // Сохраняем в фоне
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_langKey, _isRussian ? 'ru' : 'tk');
+      await prefs.setString(_langKey, _locale == AppLocale.ru ? 'ru' : 'tk');
     } catch (e) {
-      debugPrint("Ошибка сохранения языка: $e");
+      debugPrint('Ошибка сохранения языка: $e');
     } finally {
       _isSaving = false;
     }

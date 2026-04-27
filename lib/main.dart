@@ -67,11 +67,51 @@ class MyApp extends StatelessWidget {
       title: 'Bagla',
       theme: ThemeData(
         useMaterial3: true,
+        fontFamily: 'Nunito', // — глобальный шрифт
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1B3A6B),
           primary: const Color(0xFF1B3A6B),
         ),
         scaffoldBackgroundColor: Colors.white,
+        // Глобальные стили текста
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(fontFamily: 'Nunito'),
+          bodyMedium: TextStyle(fontFamily: 'Nunito'),
+          bodySmall: TextStyle(fontFamily: 'Nunito'),
+          titleLarge: TextStyle(fontFamily: 'Nunito'),
+          titleMedium: TextStyle(fontFamily: 'Nunito'),
+          titleSmall: TextStyle(fontFamily: 'Nunito'),
+          labelLarge: TextStyle(fontFamily: 'Nunito'),
+          labelMedium: TextStyle(fontFamily: 'Nunito'),
+          labelSmall: TextStyle(fontFamily: 'Nunito'),
+        ),
+        // Глобальный стиль AppBar
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          titleTextStyle: TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF0F1117),
+          ),
+        ),
+        // Глобальный стиль ElevatedButton
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            textStyle: const TextStyle(
+              fontFamily: 'Nunito',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        // Глобальный стиль TextField
+        inputDecorationTheme: InputDecorationTheme(
+          hintStyle: TextStyle(
+            fontFamily: 'Nunito',
+            color: Colors.grey.shade400,
+          ),
+        ),
       ),
       home: home,
       onGenerateRoute: (settings) {
