@@ -16,6 +16,7 @@ class LanguageProvider extends ChangeNotifier {
   AppLocalizations get words => _localizations;
   AppLocale get locale => _locale;
   String get label => _locale == AppLocale.ru ? 'RU' : 'TK';
+  bool get isRu => _locale == AppLocale.ru;
 
   Future<void> loadSavedLanguage() async {
     final prefs = await SharedPreferences.getInstance();

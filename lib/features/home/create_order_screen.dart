@@ -117,6 +117,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         images: _images,
         userId: auth.userId,
         shopPhone: auth.phone,
+        districtId: auth.districtId,
       );
 
       _msg("Заказ успешно создан!", brandGreen);

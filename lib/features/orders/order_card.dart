@@ -237,7 +237,7 @@ class OrderCard extends StatelessWidget {
     if (status == 'completed' || status == 'canceled') return const SizedBox();
 
     // 1. Если это МАГАЗИН и заказ еще свободен — кнопка отмены
-    if (isShop && status == 'published' || status == 'active') {
+    if (isShop && status == 'published' || isShop && status == 'active') {
       return _buildOutlineButton(
         label: "Отменить",
         color: HomeScreen.brandRed,

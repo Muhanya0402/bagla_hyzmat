@@ -20,6 +20,7 @@ class OrderService {
     required List<XFile> images,
     required String userId,
     required String shopPhone,
+    required String districtId, // 👈 Добавляем новый обязательный параметр
   }) async {
     try {
       List<String> fileIds = [];
@@ -48,6 +49,7 @@ class OrderService {
         "shop_adress": shopAddress,
         "shop_phone": shopPhone,
         "adress_of_delivery": address,
+        "district": districtId, // 👈 Добавляем район в данные заказа
         "client_phone": phone.contains('+993') ? phone : "+993 $phone",
         "comment": comment,
         "time_of_delivery": deliveryTime?.toIso8601String(),
@@ -130,6 +132,7 @@ class OrderService {
       } else {
         // 👇 ВАЖНО: только свободные заказы (без курьера)
         filters.add("filter[courierId][_null]=true");
+        filters.add("filter[order_status][_nin]=completed,canceled");
       }
 
       final String filterQuery = filters.isNotEmpty ? filters.join('&') : "";

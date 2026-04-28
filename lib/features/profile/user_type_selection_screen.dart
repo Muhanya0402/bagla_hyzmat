@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
@@ -86,23 +87,31 @@ class UserTypeSelectionScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandGreen,
                     foregroundColor: Colors.white,
-                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: roleProv.isSaving
-                      ? null
-                      : () => roleProv.saveRole(context),
-                  child: roleProv.isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          words.saveBtn.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  // ИЗМЕНЕНИЕ ЗДЕСЬ:
+                  onPressed: roleProv.selectedRole == null
+                      ? null // Кнопка не активна, пока роль не выбрана
+                      : () {
+                          // Просто переходим на экран деталей, ничего в Directus пока не шлем
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegistrationDetailsScreen(
+                                role: roleProv.selectedRole!,
+                              ),
+                            ),
+                          );
+                        },
+                  child: Text(
+                    words.saveBtn.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

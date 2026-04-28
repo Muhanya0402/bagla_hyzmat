@@ -1,13 +1,15 @@
 import 'dart:io';
-import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 
 import '../../core/app_sizes.dart';
+import '../../core/app_text_styles.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/district.dart';
 import '../auth/auth_repository.dart';
 
 class RegistrationDetailsScreen extends StatefulWidget {
@@ -34,8 +36,11 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   static const Color brandGreen = Color(0xFF27AE60);
 
   final _c1 = TextEditingController(); // Имя / Организация
-  final _c2 = TextEditingController(); // Фамилия / Адрес
+  final _c2 = TextEditingController(); // Фамилия / Юр. Адрес
   final _c3 = TextEditingController(); // Отчество
+
+  // Состояние выбранного района
+  District? _selectedDistrict;
 
   Future<void> _pickImage(bool isPassport) async {
     final XFile? image = await _picker.pickImage(
@@ -56,7 +61,15 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Проверка наличия фото для курьера (оставляем как есть)
+    // Валидация района (обязательно для обеих ролей)
+    if (_selectedDistrict == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Пожалуйста, выберите район")),
+      );
+      return;
+    }
+
+    // Проверка фото только для курьера
     if (widget.role == 'courier' &&
         (_passportFile == null || _addressFile == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,7 +90,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       String? passportId;
       String? addressId;
 
-      // 1. Загружаем файлы (оставляем без изменений)
+      // 1. Загружаем файлы
       if (_passportFile != null)
         passportId = await _authRepo.uploadFile(_passportFile!.path);
       if (_addressFile != null)
@@ -88,6 +101,8 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         'role': widget.role,
         'passport_scan': passportId,
         'adress_scan': addressId,
+        'district':
+            _selectedDistrict!.id, // Передаем ID района (M2O связь в Directus)
       };
 
       if (widget.role == 'courier') {
@@ -100,7 +115,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       } else {
         updateData.addAll({
           'organization_name': _c1.text.trim(),
-          'address': _c2.text.trim(), // Это поле адреса
+          'address': _c2.text.trim(),
           'name': _c1.text.trim(),
           'status': "pending",
         });
@@ -115,21 +130,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       if (success) {
         if (!mounted) return;
 
-        // 🔹 ВОТ ТУТ ГЛАВНОЕ ИЗМЕНЕНИЕ:
-        // Если это не курьер, принудительно обновляем адрес в AuthProvider
         if (widget.role != 'courier') {
           final newAddr = _c2.text.trim();
           context.read<AuthProvider>().updateShopAddress(newAddr);
         }
 
-        // Обновляем весь профиль из сервера для верности
         await context.read<AuthProvider>().refreshProfile();
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              "Данные отправлены. Ожидайте подтверждения модератора",
-            ),
+            content: Text("Данные отправлены. Ожидайте подтверждения"),
             backgroundColor: brandGreen,
           ),
         );
@@ -151,7 +161,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   Widget build(BuildContext context) {
     final sizes = AppSizes.of(context);
     final isCourier = widget.role == 'courier';
-    final words = context.watch<LanguageProvider>().words;
+    final langProvider = context.watch<LanguageProvider>();
+    final isRu = langProvider.isRu;
+    final words = langProvider.words;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -180,7 +192,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Поля ввода в зависимости от роли
                 if (!isCourier) ...[
                   _InputField(
                     label: "Наименование организации",
@@ -195,8 +209,59 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   _InputField(label: "Фамилия", controller: _c2),
                   const SizedBox(height: 20),
                   _InputField(label: "Отчество", controller: _c3),
+                ],
+
+                const SizedBox(height: 20),
+
+                // 🔥 ВЫБОР РАЙОНА (Общий для всех)
+                const Text(
+                  "РАЙОН / ВЕЛАЯТ",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: brandBlue,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                DropdownSearch<District>(
+                  asyncItems: (filter) async {
+                    if (filter.isEmpty) return await _authRepo.getDistricts();
+                    return await _authRepo.searchDistricts(
+                      filter,
+                      lang: isRu ? 'ru' : 'tk',
+                    );
+                  },
+                  itemAsString: (d) => d.label(isRu),
+                  onChanged: (val) => setState(() => _selectedDistrict = val),
+                  compareFn: (item, selectedItem) => item.id == selectedItem.id,
+                  validator: (v) => v == null ? "Выберите район" : null,
+                  dropdownDecoratorProps: DropDownDecoratorProps(
+                    dropdownSearchDecoration: InputDecoration(
+                      hintText: "Начните вводить...",
+                      filled: true,
+                      fillColor: const Color(0xFFF6F6F6),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  popupProps: PopupProps.bottomSheet(
+                    showSearchBox: true,
+                    searchFieldProps: TextFieldProps(
+                      decoration: InputDecoration(
+                        hintText: "Поиск...",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (isCourier) ...[
                   const SizedBox(height: 30),
-                  // Секция фото
                   const Text(
                     "ФОТО ПАСПОРТА",
                     style: TextStyle(
@@ -223,9 +288,12 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     ],
                   ),
                 ],
+
                 const SizedBox(height: 40),
                 _isLoading
-                    ? const CircularProgressIndicator(color: brandGreen)
+                    ? const Center(
+                        child: CircularProgressIndicator(color: brandGreen),
+                      )
                     : _SubmitButton(
                         text: words.saveBtn,
                         onPressed: _handleSubmit,
@@ -261,7 +329,45 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   }
 }
 
-// 🔹 Виджет выбора фото
+// --- ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ ---
+
+class _InputField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  const _InputField({required this.label, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF1B3A6B),
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFF6F6F6),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          validator: (v) => (v == null || v.isEmpty) ? "Заполните поле" : null,
+        ),
+      ],
+    );
+  }
+}
+
 class _PhotoBox extends StatelessWidget {
   final String text;
   final File? file;
@@ -321,44 +427,6 @@ class _PhotoBox extends StatelessWidget {
                 ),
         ),
       ),
-    );
-  }
-}
-
-// Поля ввода и Кнопка остаются такими же как были...
-class _InputField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  const _InputField({required this.label, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF1B3A6B),
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFFF6F6F6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
-          validator: (v) => (v == null || v.isEmpty) ? "Заполните поле" : null,
-        ),
-      ],
     );
   }
 }

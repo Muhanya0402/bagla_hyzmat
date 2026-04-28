@@ -1,22 +1,115 @@
-import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/providers/auth_provider.dart';
-import 'package:bagla/providers/language_provider.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
-import '../home/home_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/providers/language_provider.dart';
+import 'package:bagla/core/app_text_styles.dart';
+
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
-  static const Color brandBlue = Color(0xFF1B3A6B);
-  static const Color brandGreen = Color(0xFF27AE60);
-  static const Color surfaceColor = Color(0xFFF5F7FA);
+  static const Color primary = Color(0xFF1B3A6B);
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  int seconds = 30;
+  Timer? timer;
+
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
+
+  /// 📱 Маска номера
+  final phoneMask = MaskTextInputFormatter(
+    mask: '+993########',
+    filter: {"#": RegExp(r'[0-9]')},
+  );
+
+  @override
+  void initState() {
+    super.initState();
+
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _shakeAnimation = Tween(
+      begin: 0.0,
+      end: 8.0,
+    ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeController);
+
+    startTimer();
+
+    /// 🔒 Ограничение: только 6 или 7 после +993
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+
+      auth.phoneController.addListener(() {
+        final text = auth.phoneController.text;
+        final clean = _cleanPhone(text);
+
+        if (clean.length >= 4) {
+          final first = clean.substring(3, 4);
+
+          if (first != '6' && first != '7') {
+            auth.phoneController.clear();
+          }
+        }
+      });
+    });
+  }
+
+  void startTimer() {
+    timer?.cancel();
+    seconds = 30;
+
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (seconds == 0) {
+        timer?.cancel();
+      } else {
+        setState(() => seconds--);
+      }
+    });
+  }
+
+  void shake() {
+    _shakeController.forward(from: 0);
+  }
+
+  String _cleanPhone(String input) {
+    return input.replaceAll(RegExp(r'\D'), '');
+  }
+
+  bool _isValidPhone(String input) {
+    final clean = _cleanPhone(input);
+
+    if (clean.length != 11) return false;
+
+    final first = clean.substring(3, 4);
+    return first == '6' || first == '7';
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    _shakeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
+
+    final auth = context.read<AuthProvider>();
+
     final isCodeSent = context.select<AuthProvider, bool>((a) => a.isCodeSent);
     final isLoading = context.select<AuthProvider, bool>((a) => a.isLoading);
 
@@ -28,18 +121,16 @@ class LoginScreen extends StatelessWidget {
         actions: [
           GestureDetector(
             onTap: () => lang.toggleLanguage(),
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: brandBlue.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: brandBlue.withOpacity(0.1)),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                lang.label.toUpperCase(),
-                style: AppText.bold(fontSize: 12, color: brandBlue),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Center(
+                child: Text(
+                  lang.label.toUpperCase(),
+                  style: AppText.medium(
+                    fontSize: 13,
+                    color: LoginScreen.primary,
+                  ),
+                ),
               ),
             ),
           ),
@@ -47,87 +138,149 @@ class LoginScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             children: [
-              const SizedBox(height: 20),
-              const _BrandingHeader(),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      (isCodeSent ? words.otpLabel : words.phoneLabel),
-                      style: AppText.semiBold(
-                        fontSize: 13,
-                        color: const Color(0xFF9AA3AF),
-                      ).copyWith(letterSpacing: 0.2),
-                    ),
-                    const SizedBox(height: 12),
-                    if (!isCodeSent)
-                      TextField(
-                        controller: context
-                            .read<AuthProvider>()
-                            .phoneController,
+              const Spacer(),
+
+              /// 🔥 ЛОГОТИП
+              Image.asset(
+                'assets/images/bagla_logo.png',
+                width: 90,
+                height: 90,
+              ),
+
+              const SizedBox(height: 16),
+
+              /// 🔥 СЛОГАН
+              Text(
+                "Услуга доставки с двери до двери",
+                textAlign: TextAlign.center,
+                style: AppText.regular(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              /// Заголовок
+              Text(
+                isCodeSent ? words.otpLabel : words.phoneLabel,
+                textAlign: TextAlign.center,
+                style: AppText.semiBold(fontSize: 20, color: Colors.black),
+              ),
+
+              const SizedBox(height: 24),
+
+              /// Ввод с shake
+              AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(_shakeAnimation.value, 0),
+                    child: child,
+                  );
+                },
+                child: !isCodeSent
+                    ? TextField(
+                        controller: auth.phoneController,
                         keyboardType: TextInputType.phone,
+                        autofocus: true,
+                        inputFormatters: [phoneMask],
                         style: AppText.semiBold(
                           fontSize: 18,
-                          color: const Color(0xFF0F1117),
+                          color: Colors.black,
                         ),
                         decoration: InputDecoration(
-                          filled: true,
-                          fillColor: surfaceColor,
-                          hintText: "+993",
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          contentPadding: const EdgeInsets.all(18),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFEEF0F3),
-                            ),
+                          hintText: "+993 6_ ___ ___",
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 18,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                              color: brandBlue,
+                              color: LoginScreen.primary,
                               width: 1.5,
                             ),
                           ),
                         ),
                       )
-                    else
-                      const Center(child: _OtpInput()),
-                    const SizedBox(height: 24),
-                    _MainActionButton(
-                      text: isCodeSent ? words.confirmBtn : words.getCodeBtn,
-                      onPressed: () => context.read<AuthProvider>().handleAuth(
-                        context,
-                        lang,
+                    : _OtpInput(
+                        onError: shake,
+                        onResend: () {
+                          auth.resetStatus();
+                          startTimer();
+                        },
+                        seconds: seconds,
                       ),
-                      isLoading: isLoading,
+              ),
+
+              const SizedBox(height: 28),
+
+              /// Кнопка
+              SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final phone = auth.phoneController.text;
+
+                          if (!isCodeSent && !_isValidPhone(phone)) {
+                            shake();
+                            return;
+                          }
+
+                          try {
+                            await auth.handleAuth(context, lang);
+                          } catch (_) {
+                            shake();
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LoginScreen.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    if (isCodeSent)
-                      Center(
-                        child: TextButton(
-                          onPressed: context.read<AuthProvider>().resetStatus,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
                           ),
-                          child: Text(
-                            words.changePhoneBtn,
-                            style: AppText.medium(
-                              fontSize: 14,
-                              color: brandBlue,
-                            ),
+                        )
+                      : Text(
+                          (isCodeSent ? words.confirmBtn : words.getCodeBtn)
+                              .toUpperCase(),
+                          style: AppText.semiBold(
+                            fontSize: 15,
+                            color: Colors.white,
                           ),
                         ),
-                      ),
-                  ],
                 ),
               ),
-              const _PrivacyPolicySection(),
-              const SizedBox(height: 10),
+
+              const Spacer(),
+
+              Text(
+                "Нажимая кнопку, вы соглашаетесь с условиями",
+                textAlign: TextAlign.center,
+                style: AppText.regular(
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -136,143 +289,66 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
+/// OTP блок
 class _OtpInput extends StatelessWidget {
-  const _OtpInput();
+  final VoidCallback onError;
+  final VoidCallback onResend;
+  final int seconds;
+
+  const _OtpInput({
+    required this.onError,
+    required this.onResend,
+    required this.seconds,
+  });
 
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final lang = context.read<LanguageProvider>();
 
-    final defaultPinTheme = PinTheme(
-      width: 64,
-      height: 64,
-      textStyle: AppText.bold(fontSize: 24, color: const Color(0xFF0F1117)),
+    final pinTheme = PinTheme(
+      width: 52,
+      height: 52,
+      textStyle: AppText.bold(fontSize: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
       ),
     );
 
-    return Pinput(
-      length: 4,
-      controller: auth.otpController,
-      defaultPinTheme: defaultPinTheme,
-      focusedPinTheme: defaultPinTheme.copyWith(
-        decoration: defaultPinTheme.decoration!.copyWith(
-          border: Border.all(color: LoginScreen.brandBlue, width: 2),
-        ),
-      ),
-      onCompleted: (pin) => auth.handleAuth(context, lang),
-      hapticFeedbackType: HapticFeedbackType.lightImpact,
-      autofocus: true,
-    );
-  }
-}
-
-class _BrandingHeader extends StatelessWidget {
-  const _BrandingHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
+    return Column(
       children: [
-        Image.asset(
-          'assets/images/bagla_logo.png',
-          width: 128,
-          height: 128,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              Container(width: 6, height: 22, color: Colors.red),
-        ),
-        Flexible(
-          child: Text(
-            "BAGLA",
-            overflow: TextOverflow.ellipsis,
-            style: AppText.bold(
-              fontSize: 36,
-              color: HomeScreen.brandBlue,
-            ).copyWith(letterSpacing: 1.5),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MainActionButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-
-  const _MainActionButton({
-    required this.text,
-    this.onPressed,
-    required this.isLoading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: LoginScreen.brandBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : Text(
-                text.toUpperCase(),
-                style: AppText.semiBold(
-                  fontSize: 15,
-                  color: Colors.white,
-                ).copyWith(letterSpacing: 0.5),
-              ),
-      ),
-    );
-  }
-}
-
-class _PrivacyPolicySection extends StatelessWidget {
-  const _PrivacyPolicySection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Text.rich(
-        TextSpan(
-          text: "Нажимая кнопку, вы соглашаетесь с ",
-          style: AppText.regular(fontSize: 12, color: const Color(0xFF9AA3AF)),
-          children: [
-            TextSpan(
-              text: "\nПолитикой конфиденциальности",
-              style: AppText.semiBold(
-                fontSize: 12,
-                color: LoginScreen.brandBlue,
-              ),
+        Pinput(
+          length: 4,
+          controller: auth.otpController,
+          defaultPinTheme: pinTheme,
+          focusedPinTheme: pinTheme.copyWith(
+            decoration: pinTheme.decoration!.copyWith(
+              border: Border.all(color: LoginScreen.primary, width: 1.5),
             ),
-          ],
+          ),
+          onCompleted: (pin) async {
+            try {
+              await auth.handleAuth(context, lang);
+            } catch (_) {
+              onError();
+            }
+          },
+          autofocus: true,
         ),
-        textAlign: TextAlign.center,
-      ),
+
+        const SizedBox(height: 16),
+
+        seconds > 0
+            ? Text(
+                "Отправить код через $seconds сек",
+                style: AppText.regular(fontSize: 12, color: Colors.grey),
+              )
+            : TextButton(
+                onPressed: onResend,
+                child: const Text("Отправить код повторно"),
+              ),
+      ],
     );
   }
 }

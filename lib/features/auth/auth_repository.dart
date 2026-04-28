@@ -1,3 +1,4 @@
+import 'package:bagla/models/district.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -234,5 +235,43 @@ class AuthRepository {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  Future<List<District>> getDistricts() async {
+    try {
+      final res = await _api.dio.get('/items/district_classifier');
+
+      final List data = res.data['data'];
+
+      return data.map((e) => District.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception("Ошибка загрузки районов: $e");
+    }
+  }
+
+  Future<List<District>> searchDistricts(
+    String query, {
+    String lang = 'ru',
+  }) async {
+    if (query.isEmpty) return [];
+
+    final field = lang == 'ru' ? 'district_ru' : 'district_tk';
+
+    try {
+      final res = await _api.dio.get(
+        '/items/district_classifier',
+        queryParameters: {
+          'fields': 'id,district_ru,district_tk',
+          'filter[$field][_icontains]': query,
+          'limit': 20,
+        },
+      );
+
+      final List data = res.data['data'];
+      return data.map((e) => District.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint("Ошибка поиска районов: $e");
+      return [];
+    }
   }
 }

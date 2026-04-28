@@ -19,6 +19,7 @@ class AuthProvider extends ChangeNotifier {
   String _surname = "";
   String _phone = "";
   String _address = "";
+  String _districtId = ""; // 📍 Добавлено
   String _role = "client";
   String _status = "pending";
   double _rating = 0.0;
@@ -32,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
   String get surname => _surname;
   String get phone => _phone;
   String get address => _address;
+  String get districtId => _districtId; // 📍 Добавлено
   String get role => _role;
   String get status => _status;
   double get rating => _rating;
@@ -49,6 +51,7 @@ class AuthProvider extends ChangeNotifier {
     _surname = prefs.getString('surname') ?? "";
     _phone = prefs.getString('phone') ?? "";
     _address = prefs.getString('shop_address') ?? "";
+    _districtId = prefs.getString('district_id') ?? ""; // 📍 Добавлено
     _role = prefs.getString('role') ?? "client";
     _status = prefs.getString('status') ?? "pending";
     _rating = prefs.getDouble('rating') ?? 0.0;
@@ -90,7 +93,18 @@ class AuthProvider extends ChangeNotifier {
     _rating = (user['rating'] ?? 0.0).toDouble();
     _balancePoints = user['balance_points'] ?? 0;
 
-    debugPrint("📡 AuthProvider: ID: $_userId, status: $_status, role: $_role");
+    // 📍 Обработка района (поддержка и ID, и объекта от Directus)
+    if (user['district'] != null) {
+      if (user['district'] is Map) {
+        _districtId = user['district']['id']?.toString() ?? "";
+      } else {
+        _districtId = user['district'].toString();
+      }
+    }
+
+    debugPrint(
+      "📡 AuthProvider: ID: $_userId, status: $_status, role: $_role, district: $_districtId",
+    );
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', _token);
@@ -99,6 +113,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('surname', _surname);
     await prefs.setString('phone', _phone);
     await prefs.setString('shop_address', _address);
+    await prefs.setString('district_id', _districtId); // 📍 Сохраняем
     await prefs.setString('role', _role);
     await prefs.setString('status', _status);
     await prefs.setDouble('rating', _rating);
@@ -176,7 +191,6 @@ class AuthProvider extends ChangeNotifier {
   Future<void> skipOnboarding(BuildContext context) async {
     _setLoading(true);
     try {
-      // Ставим роль client по умолчанию
       await _authRepo.updateProfile(userId: _userId, data: {'role': 'client'});
       _role = 'client';
 
@@ -196,7 +210,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Вызывается из UserTypeSelectionScreen после сохранения роли
   Future<void> completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
@@ -217,6 +230,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 📍 Метод для ручного обновления района
+  void updateDistrict(String newDistrictId) async {
+    _districtId = newDistrictId;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('district_id', newDistrictId);
+    debugPrint("📍 Район обновлен: $_districtId");
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -226,6 +248,7 @@ class AuthProvider extends ChangeNotifier {
     _name = "";
     _surname = "";
     _address = "";
+    _districtId = ""; // 📍 Сброс
     _role = "client";
     _status = "pending";
     _balancePoints = 0;

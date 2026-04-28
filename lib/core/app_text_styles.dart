@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppText {
+  AppText._();
+
   static const String _font = 'Nunito';
 
   static TextStyle regular({
@@ -53,7 +55,6 @@ class AppText {
     color: color,
   );
 
-  // В AppText добавь:
   static TextStyle display({
     double fontSize = 14,
     Color color = const Color(0xFF0F1117),

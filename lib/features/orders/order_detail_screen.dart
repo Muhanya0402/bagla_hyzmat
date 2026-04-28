@@ -893,7 +893,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (status == 'completed' || status == 'canceled')
       return const SizedBox.shrink();
 
-    if (isShop && status == 'published' || status == 'active') {
+    if (isShop && status == 'published' || isShop && status == 'active') {
       return _buildButton(
         label: "Отменить заказ",
         color: HomeScreen.brandRed,
