@@ -118,6 +118,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         userId: auth.userId,
         shopPhone: auth.phone,
         districtId: auth.districtId,
+        etrapId: auth.etraptId,
+        provinceId: auth.provinceId,
       );
 
       _msg("Заказ успешно создан!", brandGreen);

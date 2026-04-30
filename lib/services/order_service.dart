@@ -20,7 +20,9 @@ class OrderService {
     required List<XFile> images,
     required String userId,
     required String shopPhone,
-    required String districtId, // 👈 Добавляем новый обязательный параметр
+    required String districtId,
+    required String etrapId,
+    required String provinceId,
   }) async {
     try {
       List<String> fileIds = [];
@@ -49,7 +51,9 @@ class OrderService {
         "shop_adress": shopAddress,
         "shop_phone": shopPhone,
         "adress_of_delivery": address,
-        "district": districtId, // 👈 Добавляем район в данные заказа
+        "district": districtId,
+        "etrap": etrapId,
+        "province": provinceId,
         "client_phone": phone.contains('+993') ? phone : "+993 $phone",
         "comment": comment,
         "time_of_delivery": deliveryTime?.toIso8601String(),

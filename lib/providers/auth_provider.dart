@@ -19,7 +19,9 @@ class AuthProvider extends ChangeNotifier {
   String _surname = "";
   String _phone = "";
   String _address = "";
-  String _districtId = ""; // 📍 Добавлено
+  String _districtId = "";
+  String _etraptId = "";
+  String _provinceId = "";
   String _role = "client";
   String _status = "pending";
   double _rating = 0.0;
@@ -33,7 +35,9 @@ class AuthProvider extends ChangeNotifier {
   String get surname => _surname;
   String get phone => _phone;
   String get address => _address;
-  String get districtId => _districtId; // 📍 Добавлено
+  String get districtId => _districtId;
+  String get etraptId => _etraptId;
+  String get provinceId => _provinceId;
   String get role => _role;
   String get status => _status;
   double get rating => _rating;
@@ -51,7 +55,9 @@ class AuthProvider extends ChangeNotifier {
     _surname = prefs.getString('surname') ?? "";
     _phone = prefs.getString('phone') ?? "";
     _address = prefs.getString('shop_address') ?? "";
-    _districtId = prefs.getString('district_id') ?? ""; // 📍 Добавлено
+    _districtId = prefs.getString('district_id') ?? "";
+    _etraptId = prefs.getString('etrap_id') ?? "";
+    _provinceId = prefs.getString('province_id') ?? "";
     _role = prefs.getString('role') ?? "client";
     _status = prefs.getString('status') ?? "pending";
     _rating = prefs.getDouble('rating') ?? 0.0;
@@ -99,6 +105,22 @@ class AuthProvider extends ChangeNotifier {
         _districtId = user['district']['id']?.toString() ?? "";
       } else {
         _districtId = user['district'].toString();
+      }
+    }
+
+    if (user['etrap'] != null) {
+      if (user['etrap'] is Map) {
+        _etraptId = user['etrap']['id']?.toString() ?? "";
+      } else {
+        _etraptId = user['etrap'].toString();
+      }
+    }
+
+    if (user['province'] != null) {
+      if (user['province'] is Map) {
+        _provinceId = user['province']['id']?.toString() ?? "";
+      } else {
+        _provinceId = user['province'].toString();
       }
     }
 

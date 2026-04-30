@@ -1,4 +1,6 @@
 import 'package:bagla/models/district.dart';
+import 'package:bagla/models/province.dart';
+import 'package:bagla/models/etrap.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,7 +9,8 @@ import '../../core/api_client.dart';
 class AuthRepository {
   final ApiClient _api = ApiClient();
 
-  /// 1. Запрос OTP
+  // ─── OTP ───────────────────────────────────────────────────────────────────
+
   Future<bool> sendOTP(String phone) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -40,17 +43,14 @@ class AuthRepository {
 
       final data = response.data as Map<String, dynamic>;
 
-      // Ищем access_token в любом ключе ответа
       String? accessToken;
       String? refreshToken;
-      String? customerId;
 
       for (final key in data.keys) {
         final value = data[key];
         if (value is Map && value['access_token'] != null) {
           accessToken = value['access_token'] as String;
           refreshToken = value['refresh_token'] as String?;
-          customerId = value['customer_id']?.toString();
           break;
         }
       }
@@ -72,21 +72,18 @@ class AuthRepository {
     }
   }
 
-  /// 3. Обновление access_token через refresh_token
   Future<bool> refreshAccessToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString('refresh_token');
-
       if (refreshToken == null) return false;
 
       final response = await _api.dio.post(
-        '/flows/trigger/ВАШ_REFRESH_FLOW_ID', // сюда вставим ID нового Flow
+        '/flows/trigger/ВАШ_REFRESH_FLOW_ID',
         data: {'refresh_token': refreshToken},
       );
 
       final data = response.data;
-
       String? newAccessToken;
       String? newRefreshToken;
 
@@ -110,7 +107,8 @@ class AuthRepository {
     }
   }
 
-  /// 4. Обновление данных профиля
+  // ─── Профиль ───────────────────────────────────────────────────────────────
+
   Future<bool> updateProfile({
     required String userId,
     required Map<String, dynamic> data,
@@ -131,6 +129,7 @@ class AuthRepository {
     }
   }
 
+  /// Получение профиля — запрашиваем district, etrap, province вложенно
   Future<Map<String, dynamic>?> fetchProfileFromServer(String phone) async {
     try {
       final response = await _api.dio.get(
@@ -138,9 +137,9 @@ class AuthRepository {
         queryParameters: {
           'filter[phone][_eq]': phone.trim(),
           'fields':
-              'id,phone,name,surname,role,status,rating,balance_points,address',
+              'id,phone,name,surname,role,status,rating,balance_points,address,'
+              'district.id,etrap.id,province.id',
         },
-        // без options — токен подставится автоматически
       );
 
       final List data = response.data['data'];
@@ -157,7 +156,8 @@ class AuthRepository {
     }
   }
 
-  /// Загрузка файла
+  // ─── Файлы ─────────────────────────────────────────────────────────────────
+
   Future<String?> uploadFile(String filePath) async {
     try {
       final formData = FormData.fromMap({
@@ -171,7 +171,8 @@ class AuthRepository {
     }
   }
 
-  /// Пополнение баланса
+  // ─── Баланс ────────────────────────────────────────────────────────────────
+
   Future<bool> requestTopUp({
     required String userId,
     required int points,
@@ -195,6 +196,109 @@ class AuthRepository {
     }
   }
 
+  // ─── Локация: Велаят → Этрап → Район ──────────────────────────────────────
+
+  Future<List<Province>> getProvinces() async {
+    try {
+      final res = await _api.dio.get(
+        '/items/province',
+        queryParameters: {
+          'fields': 'id,province_ru,province_tk',
+          'sort': 'province_ru',
+        },
+      );
+      final List data = res.data['data'];
+      return data.map((e) => Province.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception("Ошибка загрузки велаятов: $e");
+    }
+  }
+
+  Future<List<Etrap>> getEtrapsByProvince(String provinceId) async {
+    try {
+      final res = await _api.dio.get(
+        '/items/etraps',
+        queryParameters: {
+          'fields': 'id,etrap_ru,etrap_tk,province',
+          'filter[province][_eq]': provinceId,
+          'sort': 'etrap_ru',
+        },
+      );
+      final List data = res.data['data'];
+      return data.map((e) => Etrap.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception("Ошибка загрузки этрапов: $e");
+    }
+  }
+
+  Future<List<District>> getDistrictsByEtrap(
+    String etrapId, {
+    String query = '',
+    String lang = 'ru',
+  }) async {
+    try {
+      final params = <String, dynamic>{
+        'fields': 'id,district_ru,district_tk,etrap',
+        'filter[etrap][_eq]': etrapId,
+        'sort': 'district_ru',
+        'limit': 100,
+      };
+
+      if (query.isNotEmpty) {
+        final field = lang == 'ru' ? 'district_ru' : 'district_tk';
+        params['filter[$field][_icontains]'] = query;
+        params['limit'] = 30;
+      }
+
+      final res = await _api.dio.get(
+        '/items/district_classifier',
+        queryParameters: params,
+      );
+      final List data = res.data['data'];
+      return data.map((e) => District.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception("Ошибка загрузки районов: $e");
+    }
+  }
+
+  Future<List<District>> getDistricts() async {
+    try {
+      final res = await _api.dio.get(
+        '/items/district_classifier',
+        queryParameters: {'fields': 'id,district_ru,district_tk,etrap'},
+      );
+      final List data = res.data['data'];
+      return data.map((e) => District.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception("Ошибка загрузки районов: $e");
+    }
+  }
+
+  Future<List<District>> searchDistricts(
+    String query, {
+    String lang = 'ru',
+  }) async {
+    if (query.isEmpty) return [];
+    final field = lang == 'ru' ? 'district_ru' : 'district_tk';
+    try {
+      final res = await _api.dio.get(
+        '/items/district_classifier',
+        queryParameters: {
+          'fields': 'id,district_ru,district_tk',
+          'filter[$field][_icontains]': query,
+          'limit': 20,
+        },
+      );
+      final List data = res.data['data'];
+      return data.map((e) => District.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint("Ошибка поиска районов: $e");
+      return [];
+    }
+  }
+
+  // ─── Токены и кэш ──────────────────────────────────────────────────────────
+
   Future<void> _saveTokens(String accessToken, String refreshToken) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', accessToken);
@@ -212,6 +316,13 @@ class AuthRepository {
     return prefs.getString('refresh_token');
   }
 
+  /// Вспомогательная функция — достать ID из M2O поля (может прийти как Map или String/int)
+  static String _extractId(dynamic field) {
+    if (field == null) return '';
+    if (field is Map) return field['id']?.toString() ?? '';
+    return field.toString();
+  }
+
   Future<void> _saveUserToLocal(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_id', user['id'].toString());
@@ -223,8 +334,19 @@ class AuthRepository {
     await prefs.setString('shop_address', user['address'] ?? "");
     await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
     await prefs.setInt('balance_points', user['balance_points'] ?? 0);
+
+    // ─── Локация ───────────────────────────────────────────────────────────
+    await prefs.setString('district_id', _extractId(user['district']));
+    await prefs.setString('etrap_id', _extractId(user['etrap']));
+    await prefs.setString('province_id', _extractId(user['province']));
+
     await prefs.setBool('is_logged_in', true);
-    debugPrint("✅ Локальный кэш обновлен.");
+    debugPrint(
+      "✅ Локальный кэш обновлен. "
+      "district=${_extractId(user['district'])} "
+      "etrap=${_extractId(user['etrap'])} "
+      "province=${_extractId(user['province'])}",
+    );
   }
 
   static Future<bool> checkAuthStatus() async {
@@ -235,43 +357,5 @@ class AuthRepository {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-  }
-
-  Future<List<District>> getDistricts() async {
-    try {
-      final res = await _api.dio.get('/items/district_classifier');
-
-      final List data = res.data['data'];
-
-      return data.map((e) => District.fromJson(e)).toList();
-    } catch (e) {
-      throw Exception("Ошибка загрузки районов: $e");
-    }
-  }
-
-  Future<List<District>> searchDistricts(
-    String query, {
-    String lang = 'ru',
-  }) async {
-    if (query.isEmpty) return [];
-
-    final field = lang == 'ru' ? 'district_ru' : 'district_tk';
-
-    try {
-      final res = await _api.dio.get(
-        '/items/district_classifier',
-        queryParameters: {
-          'fields': 'id,district_ru,district_tk',
-          'filter[$field][_icontains]': query,
-          'limit': 20,
-        },
-      );
-
-      final List data = res.data['data'];
-      return data.map((e) => District.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint("Ошибка поиска районов: $e");
-      return [];
-    }
   }
 }
