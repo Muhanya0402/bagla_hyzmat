@@ -51,9 +51,9 @@ class OrderService {
         "shop_adress": shopAddress,
         "shop_phone": shopPhone,
         "adress_of_delivery": address,
-        "district": districtId,
-        "etrap": etrapId,
-        "province": provinceId,
+        "district": tryParse(districtId),
+        "etrap": tryParse(etrapId),
+        "province": tryParse(provinceId),
         "client_phone": phone.contains('+993') ? phone : "+993 $phone",
         "comment": comment,
         "time_of_delivery": deliveryTime?.toIso8601String(),
@@ -73,6 +73,22 @@ class OrderService {
           response.statusCode == 201 ||
           response.statusCode == 204;
     } on DioException catch (e) {
+      // 1. Выводим весь ответ сервера в консоль
+      if (e.response != null) {
+        print("--------------------------------------------------");
+        print("ПОЛНЫЙ ОТВЕТ ОТ СЕРВЕРА: ${e.response?.data}");
+        print("--------------------------------------------------");
+
+        // В Directus ошибка обычно лежит здесь:
+        final errors = e.response?.data['errors'];
+        if (errors != null && errors is List && errors.isNotEmpty) {
+          final detail = errors[0]['extensions'];
+          final message = errors[0]['message'];
+          print("ПРИЧИНА: $message");
+          print("ДЕТАЛИ: $detail");
+        }
+      }
+
       final errorMsg = e.response?.data?['errors']?[0]?['message'] ?? e.message;
       print("Ошибка при создании заказа (Dio): $errorMsg");
       throw Exception("Не удалось создать заказ: $errorMsg");
@@ -80,6 +96,11 @@ class OrderService {
       print("Неизвестная ошибка в OrderService: $e");
       return false;
     }
+  }
+
+  int? tryParse(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return int.tryParse(value);
   }
 
   /// 2. ОБНОВЛЕНИЕ СТАТУСА ЗАКАЗА

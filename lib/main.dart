@@ -2,13 +2,14 @@ import 'package:bagla/features/auth/onboarding_screen.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/providers/role_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'features/profile/registration_details_screen.dart';
 import 'providers/language_provider.dart';
 import 'features/auth/auth_repository.dart';
-import 'features/auth/login_screen.dart';
+import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,6 +34,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),
+        ChangeNotifierProvider(create: (_) => LevelProvider()), // 👈 ВОТ ЭТО
         ChangeNotifierProvider.value(value: langProvider),
       ],
       child: MyApp(isLoggedIn: loggedIn, showOnboarding: showOnboarding),
@@ -54,7 +56,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget home;
     if (!isLoggedIn) {
-      home = const LoginScreen();
+      home = const PhoneScreen();
     } else if (showOnboarding) {
       home = const OnboardingScreen();
     } else {
@@ -122,7 +124,7 @@ class MyApp extends StatelessWidget {
           );
         }
         if (settings.name == '/login') {
-          return MaterialPageRoute(builder: (_) => const LoginScreen());
+          return MaterialPageRoute(builder: (_) => const PhoneScreen());
         }
         if (settings.name == '/home') {
           return MaterialPageRoute(builder: (_) => const HomeScreen());

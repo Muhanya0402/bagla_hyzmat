@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +34,9 @@ class ProfileScreen extends StatelessWidget {
     final String fullName = (auth.name.isEmpty && auth.surname.isEmpty)
         ? "Пользователь"
         : "${auth.name} ${auth.surname}".trim();
+
+    // Показываем карточку уровня только курьерам
+    final bool isCourier = auth.role == 'courier';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,21 +74,16 @@ class ProfileScreen extends StatelessWidget {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
+            /// ───────── HEADER ─────────
+            SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 10),
-
                     Text(
                       fullName,
-                      style: AppText.extraBold(
-                        fontSize: 28,
-                        color: brandBlue,
-                      ).copyWith(letterSpacing: -0.5),
+                      style: AppText.extraBold(fontSize: 28, color: brandBlue),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -94,9 +93,20 @@ class ProfileScreen extends StatelessWidget {
                         color: const Color(0xFF9AA3AF),
                       ),
                     ),
+                  ],
+                ),
+              ),
+            ),
 
-                    const SizedBox(height: 24),
+            /// ───────── LEVEL CARD (EDGE TO EDGE) ─────────
+            if (isCourier) const SliverToBoxAdapter(child: LevelCardWidget()),
 
+            /// ───────── CONTENT ─────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Column(
+                  children: [
                     Row(
                       children: [
                         _QuickStatCard(
@@ -106,26 +116,12 @@ class ProfileScreen extends StatelessWidget {
                             'assets/images/point_icon.png',
                             width: 48,
                             height: 48,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(
-                                  Icons.toll_rounded,
-                                  color: brandBlue,
-                                  size: 22,
-                                ),
                           ),
                           buttonIcon: Icons.add_circle,
                           onActionTap: () {
                             showModalBottomSheet(
                               context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(24),
-                                ),
-                              ),
-                              builder: (context) => TopUpModal(
+                              builder: (_) => TopUpModal(
                                 userId: auth.userId,
                                 role: auth.role,
                                 status: auth.status,
@@ -137,17 +133,16 @@ class ProfileScreen extends StatelessWidget {
                         _QuickStatCard(
                           label: "История",
                           value: "Платежи",
-                          iconData: Icons.history_rounded,
-                          buttonIcon: Icons.arrow_forward_ios_rounded,
-                          onActionTap: () {
-                            debugPrint("Переход в историю платежей");
-                          },
+                          iconData: Icons.history,
+                          buttonIcon: Icons.arrow_forward_ios,
+                          onActionTap: () {},
                         ),
                       ],
                     ),
 
                     const SizedBox(height: 24),
 
+                    /// MENU
                     Container(
                       decoration: BoxDecoration(
                         color: surfaceColor,
@@ -159,47 +154,22 @@ class ProfileScreen extends StatelessWidget {
                           _ProfileTile(
                             title: "Мой рейтинг",
                             trailing: auth.rating.toStringAsFixed(1),
-                            icon: Icons.star_rounded,
+                            icon: Icons.star,
                             iconColor: goldColor,
                             onTap: () {},
                           ),
-                          if (auth.role != 'courier' &&
-                              auth.role != 'shop') ...[
-                            _buildDivider(),
-                            _ProfileTile(
-                              title: words.selectRole,
-                              subtitle: "Стать курьером или заказчиком",
-                              icon: Icons.assignment_ind_rounded,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const UserTypeSelectionScreen(),
-                                ),
-                              ),
-                            ),
-                          ],
                           _buildDivider(),
                           _ProfileTile(
-                            title: "Язык / Dil",
-                            icon: Icons.translate_rounded,
+                            title: "Язык",
+                            icon: Icons.translate,
                             trailing: lang.label.toUpperCase(),
                             onTap: () => lang.toggleLanguage(),
-                          ),
-                          _buildDivider(),
-                          _ProfileTile(
-                            title: "Обратная связь",
-                            icon: Icons.feedback,
-                            onTap: () {
-                              debugPrint("Переход в обратную связь");
-                            },
                           ),
                         ],
                       ),
                     ),
 
-                    const Spacer(),
-
+                    const SizedBox(height: 40),
                     const _FooterSection(),
                     const SizedBox(height: 20),
                   ],
@@ -249,6 +219,8 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+
+// ─── ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ (без изменений) ──────────────────────────────
 
 class _FooterSection extends StatelessWidget {
   const _FooterSection();

@@ -1,4 +1,5 @@
 import 'package:bagla/features/levels/level_definition.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import '../../core/api_client.dart';
 
@@ -12,17 +13,20 @@ class LevelRepository {
         '/items/level_definitions',
         queryParameters: {
           'fields':
-              'id,level_number,title_ru,title_tk,icon,xp_required,color_hex,'
-              'description_ru,description_tk,'
-              'bonuses.bonus_type,bonuses.value_number,bonuses.value_text,'
-              'bonuses.label_ru,bonuses.label_tk,bonuses.icon',
+              'id,level_number,title_ru,title_tk,xp_required,color_hex,description_ru,description_tk',
+
           'filter[is_active][_eq]': true,
           'sort': 'level_number',
         },
       );
+
       final List data = res.data['data'];
       return data.map((e) => LevelDefinition.fromJson(e)).toList();
     } catch (e) {
+      if (e is DioException) {
+        debugPrint("STATUS: ${e.response?.statusCode}");
+        debugPrint("DATA: ${e.response?.data}");
+      }
       debugPrint("Ошибка загрузки уровней: $e");
       return [];
     }
@@ -37,7 +41,7 @@ class LevelRepository {
           'fields':
               'experience_points,current_level_id.id,'
               'current_level_id.level_number,current_level_id.title_ru,'
-              'current_level_id.title_tk,current_level_id.icon,'
+              'current_level_id.title_tk,'
               'current_level_id.color_hex,current_level_id.xp_required',
         },
       );

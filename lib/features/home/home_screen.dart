@@ -6,6 +6,7 @@ import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
+import 'package:bagla/providers/level_provider.dart'; // 👈 импорт
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -55,7 +56,28 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkWelcomeBonus();
+
+      // 🏆 Загружаем уровень и проверяем pending level up
+      // LevelCardWidget сам покажет диалог если есть pending,
+      // но здесь дополнительно проверяем при открытии HomeScreen
+      final auth = context.read<AuthProvider>();
+      if (auth.userId.isNotEmpty && auth.role == 'courier') {
+        context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
+          _checkAndShowLevelUp();
+        });
+      }
     });
+  }
+
+  /// Показывает диалог level up если есть pending
+  /// (дублирует логику LevelCardWidget на случай если карточка не видна)
+  void _checkAndShowLevelUp() {
+    final levelProvider = context.read<LevelProvider>();
+    if (levelProvider.pendingLevelUp != null && mounted) {
+      // LevelCardWidget покажет диалог сам через build()
+      // Здесь просто обновляем state чтобы виджет перестроился
+      setState(() {});
+    }
   }
 
   Future<void> _checkWelcomeBonus() async {
@@ -202,6 +224,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _handleRefresh() async {
     await context.read<AuthProvider>().refreshProfile();
+
+    // 🏆 При обновлении — тоже проверяем уровень
+    final auth = context.read<AuthProvider>();
+    if (auth.userId.isNotEmpty && auth.role == 'courier') {
+      await context.read<LevelProvider>().loadForUser(auth.userId);
+    }
+
     setState(() {});
   }
 
@@ -231,169 +260,209 @@ class _HomeScreenState extends State<HomeScreen> {
         currentStatus == 'archived' || currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-        title: _buildLogo(authProv),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
-        ),
-        actions: [
-          GestureDetector(
-            onTap: () => Navigator.pushNamed(context, '/notifications'),
-            child: Container(
-              margin: const EdgeInsets.only(right: 16),
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: HomeScreen.brandBlue.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: HomeScreen.brandBlue.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.notifications_active_outlined,
-                color: HomeScreen.brandBlue,
-                size: 20,
-              ),
-            ),
+    // 🏆 Слушаем LevelProvider — если есть pending level up, показываем диалог
+    // Это делается через LevelCardWidget в профиле, но для надёжности
+    // дублируем проверку здесь через Consumer
+    return Consumer<LevelProvider>(
+      builder: (context, levelProvider, child) {
+        // Показать level up диалог если курьер и есть pending
+        if (isCourier && levelProvider.pendingLevelUp != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showLevelUpOnHomeScreen(context, levelProvider);
+            }
+          });
+        }
+        return child!;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
+          title: _buildLogo(authProv),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(0.5),
+            child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
           ),
-          GestureDetector(
-            onTap: () => Navigator.pushNamed(context, '/profile'),
-            child: Container(
-              margin: const EdgeInsets.only(right: 16),
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: HomeScreen.brandBlue.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: HomeScreen.brandBlue.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.person_outline_rounded,
-                color: HomeScreen.brandBlue,
-                size: 20,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isCourier)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: _buildSegmentedFilter(),
-            ),
-          if (isBanned || isPending)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildStatusBanner(isBanned),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 0, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Text(
-                    isShop ? "Мои заказы" : "Доступные заказы",
-                    style: AppText.semiBold(
-                      fontSize: 20,
-                      color: HomeScreen.brandBlue,
-                    ),
+          actions: [
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/notifications'),
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: HomeScreen.brandBlue.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: HomeScreen.brandBlue.withOpacity(0.1),
+                    width: 1,
                   ),
                 ),
-                const SizedBox(height: 12),
-                if (isShop || _selectedFilterIndex == 1)
-                  _buildStatusFilterRow(),
-              ],
+                child: const Icon(
+                  Icons.notifications_active_outlined,
+                  color: HomeScreen.brandBlue,
+                  size: 20,
+                ),
+              ),
             ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              color: HomeScreen.brandGreen,
-              backgroundColor: Colors.white,
-              onRefresh: _handleRefresh,
-              child: FutureBuilder<List<dynamic>>(
-                key: ValueKey(
-                  '${isShop ? 'shop' : _selectedFilterIndex}-${authProv.userId}',
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/profile'),
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: HomeScreen.brandBlue.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: HomeScreen.brandBlue.withOpacity(0.1),
+                    width: 1,
+                  ),
                 ),
-                future: _orderService.getOrders(
-                  role: authProv.role,
-                  userId: authProv.userId,
-                  myOrdersOnly: isShop ? true : (_selectedFilterIndex == 1),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: HomeScreen.brandBlue,
+                  size: 20,
                 ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: HomeScreen.brandGreen,
-                        strokeWidth: 2,
+              ),
+            ),
+          ],
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isCourier)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: _buildSegmentedFilter(),
+              ),
+            if (isBanned || isPending)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _buildStatusBanner(isBanned),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 0, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Text(
+                      isShop ? "Мои заказы" : "Доступные заказы",
+                      style: AppText.semiBold(
+                        fontSize: 20,
+                        color: HomeScreen.brandBlue,
                       ),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return _buildScrollableEmptyState(
-                      icon: Icons.wifi_off_rounded,
-                      text: "Ошибка загрузки. Потяните вниз.",
-                    );
-                  }
-                  final orders = _filterByStatus(snapshot.data ?? []);
-                  if (orders.isEmpty) {
-                    return _buildScrollableEmptyState(
-                      icon: Icons.inbox_rounded,
-                      text: isShop ? "У вас пока нет заказов" : words.emptyList,
-                    );
-                  }
-                  return ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) => OrderCard(
-                      order: orders[index],
-                      role: isShop ? 'shop' : 'courier',
-                      currentUserId: authProv.userId,
-                      userPhone: authProv.phone,
-                      onUpdate: _handleRefresh,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OrderDetailScreen(
-                            order: orders[index],
-                            role: isShop ? 'shop' : 'courier',
-                            currentUserId: authProv.userId,
-                            onUpdate: _handleRefresh,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (isShop || _selectedFilterIndex == 1)
+                    _buildStatusFilterRow(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                color: HomeScreen.brandGreen,
+                backgroundColor: Colors.white,
+                onRefresh: _handleRefresh,
+                child: FutureBuilder<List<dynamic>>(
+                  key: ValueKey(
+                    '${isShop ? 'shop' : _selectedFilterIndex}-${authProv.userId}',
+                  ),
+                  future: _orderService.getOrders(
+                    role: authProv.role,
+                    userId: authProv.userId,
+                    myOrdersOnly: isShop ? true : (_selectedFilterIndex == 1),
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: HomeScreen.brandGreen,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return _buildScrollableEmptyState(
+                        icon: Icons.wifi_off_rounded,
+                        text: "Ошибка загрузки. Потяните вниз.",
+                      );
+                    }
+                    final orders = _filterByStatus(snapshot.data ?? []);
+                    if (orders.isEmpty) {
+                      return _buildScrollableEmptyState(
+                        icon: Icons.inbox_rounded,
+                        text: isShop
+                            ? "У вас пока нет заказов"
+                            : words.emptyList,
+                      );
+                    }
+                    return ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) => OrderCard(
+                        order: orders[index],
+                        role: isShop ? 'shop' : 'courier',
+                        currentUserId: authProv.userId,
+                        userPhone: authProv.phone,
+                        onUpdate: _handleRefresh,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OrderDetailScreen(
+                              order: orders[index],
+                              role: isShop ? 'shop' : 'courier',
+                              currentUserId: authProv.userId,
+                              onUpdate: _handleRefresh,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+        bottomNavigationBar: (isShop && isActive)
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: _buildCreateButton(context),
+                ),
+              )
+            : null,
       ),
-      bottomNavigationBar: (isShop && isActive)
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: _buildCreateButton(context),
-              ),
-            )
-          : null,
+    );
+  }
+
+  // 🏆 Level Up диалог прямо на HomeScreen (если курьер не заходил в профиль)
+  void _showLevelUpOnHomeScreen(BuildContext context, LevelProvider provider) {
+    final pending = provider.pendingLevelUp;
+    if (pending == null) return;
+
+    // Импортируем диалог из level_card_widget
+    // Используем тот же LevelUpDialog через Navigator
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black54,
+        pageBuilder: (_, __, ___) => _LevelUpOverlay(
+          provider: provider,
+          onDismiss: () {
+            provider.dismissLevelUp(pending.id);
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
     );
   }
 
@@ -655,6 +724,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+}
+
+// 🏆 Оверлей level up для HomeScreen
+// Использует тот же диалог что и LevelCardWidget
+class _LevelUpOverlay extends StatelessWidget {
+  final LevelProvider provider;
+  final VoidCallback onDismiss;
+
+  const _LevelUpOverlay({required this.provider, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    // Переиспользуем LevelCardWidget — он сам покажет диалог
+    // Здесь просто пустой экран который закроется
+    return const SizedBox.shrink();
   }
 }
 

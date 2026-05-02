@@ -5,9 +5,7 @@ import '../features/auth/auth_repository.dart';
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepo = AuthRepository();
 
-  final TextEditingController phoneController = TextEditingController(
-    text: '+993',
-  );
+  final TextEditingController phoneController = TextEditingController();
   final TextEditingController otpController = TextEditingController();
 
   bool _isCodeSent = false;
@@ -302,5 +300,51 @@ class AuthProvider extends ChangeNotifier {
     phoneController.dispose();
     otpController.dispose();
     super.dispose();
+  }
+
+  Future<bool> sendOTPOnly(BuildContext context, dynamic lang) async {
+    _setLoading(true);
+
+    try {
+      final success = await _authRepo.sendOTP(
+        '+993${phoneController.text.trim()}',
+      );
+
+      if (!success) {
+        _showError(context, lang.words.errorCodeSend);
+      }
+
+      return success;
+    } catch (e) {
+      _showError(context, "$e");
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> verifyOtpAndLogin(BuildContext context, dynamic lang) async {
+    _setLoading(true);
+
+    try {
+      final user = await _authRepo.verifyOTP(
+        '+993${phoneController.text.trim()}',
+        otpController.text.trim(),
+      );
+
+      if (user != null) {
+        setUserData(user);
+        await _navigate(context);
+        return true;
+      } else {
+        _showError(context, lang.words.errorInvalidCode);
+        return false;
+      }
+    } catch (e) {
+      _showError(context, "$e");
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 }

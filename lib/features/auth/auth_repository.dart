@@ -138,7 +138,7 @@ class AuthRepository {
           'filter[phone][_eq]': phone.trim(),
           'fields':
               'id,phone,name,surname,role,status,rating,balance_points,address,'
-              'district.id,etrap.id,province.id',
+              'district.id,etrap.id,province.id,experience_points',
         },
       );
 
