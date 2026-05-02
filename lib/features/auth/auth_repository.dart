@@ -138,7 +138,7 @@ class AuthRepository {
           'filter[phone][_eq]': phone.trim(),
           'fields':
               'id,phone,name,surname,role,status,rating,balance_points,address,'
-              'district.id,etrap.id,province.id,experience_points',
+              'district.id,etrap.id,province.id,experience_points,wallet_balance',
         },
       );
 
@@ -334,6 +334,10 @@ class AuthRepository {
     await prefs.setString('shop_address', user['address'] ?? "");
     await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
     await prefs.setInt('balance_points', user['balance_points'] ?? 0);
+    await prefs.setDouble(
+      'wallet_balance',
+      (user['wallet_balance'] ?? 0.0).toDouble(),
+    );
 
     // ─── Локация ───────────────────────────────────────────────────────────
     await prefs.setString('district_id', _extractId(user['district']));

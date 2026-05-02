@@ -24,6 +24,7 @@ class AuthProvider extends ChangeNotifier {
   String _status = "pending";
   double _rating = 0.0;
   int _balancePoints = 0;
+  double _walletBalance = 0.0;
 
   bool get isCodeSent => _isCodeSent;
   bool get isLoading => _isLoading;
@@ -40,6 +41,7 @@ class AuthProvider extends ChangeNotifier {
   String get status => _status;
   double get rating => _rating;
   int get balancePoints => _balancePoints;
+  double get walletBalance => _walletBalance;
 
   AuthProvider() {
     loadUserData();
@@ -60,6 +62,7 @@ class AuthProvider extends ChangeNotifier {
     _status = prefs.getString('status') ?? "pending";
     _rating = prefs.getDouble('rating') ?? 0.0;
     _balancePoints = prefs.getInt('balance_points') ?? 0;
+    _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
 
     if (_phone.isNotEmpty) {
       phoneController.text = _phone;
@@ -96,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
     _status = (user['status']?.toString() ?? "pending").toLowerCase().trim();
     _rating = (user['rating'] ?? 0.0).toDouble();
     _balancePoints = user['balance_points'] ?? 0;
+    _walletBalance = (user['wallet_balance'] ?? 0.0).toDouble();
 
     // 📍 Обработка района (поддержка и ID, и объекта от Directus)
     if (user['district'] != null) {
@@ -138,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('status', _status);
     await prefs.setDouble('rating', _rating);
     await prefs.setInt('balance_points', _balancePoints);
+    await prefs.setDouble('wallet_balance', _walletBalance);
     await prefs.setBool('is_logged_in', true);
 
     notifyListeners();

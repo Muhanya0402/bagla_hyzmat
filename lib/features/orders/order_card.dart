@@ -27,6 +27,7 @@ class OrderCard extends StatelessWidget {
     required this.userPhone,
   });
 
+  // ── Confirm dialog ─────────────────────────────────────────────────────────
   Future<void> _confirmAction({
     required BuildContext context,
     required String title,
@@ -36,61 +37,83 @@ class OrderCard extends StatelessWidget {
   }) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => Dialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        title: Text(title, style: AppText.semiBold(fontSize: 17)),
-        content: Text(
-          message,
-          style: AppText.regular(
-            fontSize: 14,
-            color: const Color(0xFF9AA3AF),
-          ).copyWith(height: 1.5),
-        ),
-        actions: [
-          Row(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(ctx, false),
-                  child: Container(
-                    height: 46,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFEEF0F3)),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Назад",
-                      style: AppText.medium(color: Colors.black),
-                    ),
-                  ),
+              // Gradient accent bar
+              Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: HomeScreen.brandGradient,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(ctx, true),
-                  child: Container(
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: actionColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Да",
-                      style: AppText.medium(color: Colors.white),
+              const SizedBox(height: 16),
+              Text(title, style: AppText.semiBold(fontSize: 17)),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: AppText.regular(
+                  fontSize: 14,
+                  color: const Color(0xFF9AA3AF),
+                ).copyWith(height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  // Cancel
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFEEF0F3)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Назад',
+                          style: AppText.medium(color: Colors.black87),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  // Confirm
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              actionColor,
+                              actionColor.withOpacity(0.75),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Да',
+                          style: AppText.medium(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
 
@@ -103,7 +126,7 @@ class OrderCard extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                "Ошибка сети. Попробуйте позже.",
+                'Ошибка сети. Попробуйте позже.',
                 style: AppText.regular(fontSize: 13, color: Colors.white),
               ),
               backgroundColor: HomeScreen.brandRed,
@@ -137,22 +160,16 @@ class OrderCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF0F3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            _sheetHandle(),
             const SizedBox(height: 24),
             RestrictedAccessView(onActionPressed: () => Navigator.pop(ctx)),
           ],
         ),
       ),
-    );
+    ).then((_) => onUpdate?.call()); // ← авто-рефреш
   }
 
+  // ── Main build ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final status = (order['status'] ?? order['order_status'] ?? 'published')
@@ -167,7 +184,14 @@ class OrderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFEEF0F3), width: 1),
+        border: Border.all(color: const Color(0xFFEEF0F3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
@@ -177,8 +201,11 @@ class OrderCard extends StatelessWidget {
           highlightColor: Colors.transparent,
           child: Column(
             children: [
+              // ── Top gradient strip (status-coloured) ────────────────────
+              _StatusStrip(status: status),
+
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -186,20 +213,23 @@ class OrderCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [_buildOrderId(), _buildStatusBadge(status)],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     _buildRouteTimeline(
                       shopAddress: order['shop_adress'] ?? 'Адрес магазина',
                       deliveryAddress:
                           order['adress_of_delivery'] ?? 'Адрес доставки',
+                      district: order['district'], // 👈 добавить
                       isLocked: isDataLocked,
                     ),
                   ],
                 ),
               ),
+
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 14),
                 child: Divider(color: Color(0xFFF1F4F8), height: 1),
               ),
+
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: Row(
@@ -224,6 +254,7 @@ class OrderCard extends StatelessWidget {
     );
   }
 
+  // ── Action buttons (logic preserved exactly) ───────────────────────────────
   Widget _buildActionButtons(
     BuildContext context,
     String status,
@@ -234,33 +265,33 @@ class OrderCard extends StatelessWidget {
   ) {
     final OrderService service = OrderService();
 
-    if (status == 'completed' || status == 'canceled') return const SizedBox();
+    if (status == 'completed' || status == 'canceled') {
+      return const SizedBox();
+    }
 
-    // 1. Если это МАГАЗИН и заказ еще свободен — кнопка отмены
-    if (isShop && status == 'published' || isShop && status == 'active') {
+    // Shop: cancel button
+    if (isShop && (status == 'published' || status == 'active')) {
       return _buildOutlineButton(
-        label: "Отменить",
+        label: 'Отменить',
         color: HomeScreen.brandRed,
         onTap: () => _showCancelReasonModal(context, orderId, service),
       );
     }
 
-    // 2. Если заказ СВОБОДЕН и смотрит КУРЬЕР — кнопка "Взять"
+    // Courier: take order
     if (!isShop && status == 'published') {
       final int points = order['points_amount'] ?? 0;
       final authProv = context.watch<AuthProvider>();
-      final balancePoints = authProv.balancePoints;
+      final int balancePoints = authProv.balancePoints;
 
       final bool isRestricted =
-          (authProv.role == 'courier' && authProv.status == 'pending');
-
+          authProv.role == 'courier' && authProv.status == 'pending';
       final bool isUserActive =
-          (authProv.role == 'courier' && authProv.status == 'active');
-
+          authProv.role == 'courier' && authProv.status == 'active';
       final bool isClient = authProv.role == 'client';
 
       return _buildFilledButton(
-        label: "Взять",
+        label: 'Взять',
         points: points,
         balancePoints: balancePoints,
         color: HomeScreen.brandGreen,
@@ -271,10 +302,10 @@ class OrderCard extends StatelessWidget {
             if (balancePoints >= points) {
               _confirmAction(
                 context: context,
-                title: "Принять заказ",
+                title: 'Принять заказ',
                 message: points > 0
-                    ? "С вашего баланса будет списано $points баллов. Приступить?"
-                    : "Заказ будет закреплён за вами. Приступить?",
+                    ? 'С вашего баланса будет списано $points баллов. Приступить?'
+                    : 'Заказ будет закреплён за вами. Приступить?',
                 actionColor: HomeScreen.brandGreen,
                 action: () => service.updateStatus(
                   orderId,
@@ -286,153 +317,80 @@ class OrderCard extends StatelessWidget {
             } else {
               showModalBottomSheet(
                 context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
                 builder: (_) =>
                     TopUpModal(userId: userId, role: role, status: status),
-              );
+              ).then((_) => onUpdate?.call()); // ← авто-рефреш
             }
           } else if (isClient) {
             showModalBottomSheet(
               context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.white,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
               builder: (_) =>
                   RolePickerEmbedded(onClose: () => Navigator.pop(context)),
-            );
+            ).then((_) => onUpdate?.call()); // ← авто-рефреш
           }
         },
       );
     }
 
-    // 3. Если заказ В РАБОТЕ (status == 'active') — кнопки "Отменить" и "Доставлено"
+    // Courier: delivered button
     if (status == 'active' && role == 'courier') {
       final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(width: 8),
-          _buildFilledButton(
-            label: "Доставлено",
-            color: HomeScreen.brandBlue,
-            cashback: cashback,
-            onTap: () => onTap
-                ?.call(), // открываем OrderDetailScreen где есть полная логика
-          ),
-        ],
+      return _buildFilledButton(
+        label: 'Доставлено',
+        color: HomeScreen.brandGreen,
+        cashback: cashback,
+        onTap: () => onTap?.call(),
       );
     }
 
     return const SizedBox();
   }
 
-  Widget _buildFilledButton({
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-    int points = 0,
-    int balancePoints = 0,
-    double cashback = 0,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppText.semiBold(fontSize: 13, color: Colors.white),
-            ),
-            if (points > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                width: 1,
-                height: 14,
-                color: Colors.white.withOpacity(0.3),
-              ),
-              const SizedBox(width: 8),
-              Image.asset(
-                'assets/images/point_icon.png',
-                width: 32,
-                height: 32,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                "$points",
-                style: AppText.regular(fontSize: 13, color: Colors.white),
-              ),
-            ],
-            if (cashback > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                width: 1,
-                height: 14,
-                color: Colors.white.withOpacity(0.3),
-              ),
-              const SizedBox(width: 8),
-              Image.asset(
-                'assets/images/point_icon.png', // Используем тот же путь к ассету
-                width: 26,
-                height: 26,
-                colorBlendMode: BlendMode
-                    .srcIn, // Позволяет перекрасить иконку, сохраняя её форму
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                "+${cashback.toDouble()}",
-                style: AppText.regular(fontSize: 13, color: Colors.white),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  // ── Sub-widgets ────────────────────────────────────────────────────────────
 
   Widget _buildRouteTimeline({
     required String shopAddress,
     required String deliveryAddress,
+    required dynamic district, // 👈 добавить
     required bool isLocked,
   }) {
+    // Формируем итоговый адрес "Куда"
+    String districtName = '';
+    if (district is Map) {
+      districtName = district['district_ru']?.toString() ?? '';
+    }
+    final String fullDeliveryAddress = districtName.isNotEmpty
+        ? '$districtName, $deliveryAddress'
+        : deliveryAddress;
+
     return Column(
       children: [
         _buildPoint(
           icon: Icons.inventory_2_outlined,
-          label: "Откуда",
+          label: 'Откуда',
           address: shopAddress,
           iconColor: HomeScreen.brandRed,
           iconBg: HomeScreen.brandRed.withOpacity(0.08),
         ),
-        Padding(
-          padding: const EdgeInsets.only(left: 17),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: 2,
-              height: 18,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [HomeScreen.brandRed, HomeScreen.brandGreen],
-                ),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ),
+        const SizedBox(height: 12),
         _buildPoint(
           icon: isLocked
               ? Icons.lock_outline_rounded
               : Icons.location_on_outlined,
-          label: "Куда",
-          address: isLocked ? "Адрес скрыт до принятия" : deliveryAddress,
+          label: 'Куда',
+          address: isLocked
+              ? 'Адрес скрыт до принятия'
+              : fullDeliveryAddress, // 👈
           iconColor: isLocked ? const Color(0xFF9AA3AF) : HomeScreen.brandGreen,
           iconBg: isLocked
               ? const Color(0xFF9AA3AF).withOpacity(0.08)
@@ -454,13 +412,11 @@ class OrderCard extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => CancelReasonModal(
         orderId: orderId,
-        currentUserId: currentUserId, // или widget.currentUserId
+        currentUserId: currentUserId,
         service: service,
-        onSuccess: () {
-          if (onUpdate != null) onUpdate!(); // или widget.onUpdate
-        },
+        onSuccess: () => onUpdate?.call(),
       ),
-    );
+    ).then((_) => onUpdate?.call()); // ← авто-рефреш
   }
 
   Widget _buildPoint({
@@ -521,26 +477,26 @@ class OrderCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isShop ? "К получению" : "За доставку",
+          isShop ? 'К получению' : 'За доставку',
           style: AppText.regular(fontSize: 11, color: const Color(0xFF9AA3AF)),
         ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(
-              amount.toStringAsFixed(0),
-              style: AppText.semiBold(
-                fontSize: 24,
-                color: HomeScreen.brandBlue,
+            ShaderMask(
+              shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
+              child: Text(
+                amount.toStringAsFixed(0),
+                style: AppText.semiBold(fontSize: 24, color: Colors.white),
               ),
             ),
             const SizedBox(width: 4),
             Text(
-              "TMT",
+              'TMT',
               style: AppText.regular(
                 fontSize: 12,
-                color: HomeScreen.brandBlue.withOpacity(0.4),
+                color: HomeScreen.brandGreen.withOpacity(0.5),
               ),
             ),
           ],
@@ -557,53 +513,121 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        "ID: ${order['id'].toString().split('-').first.toUpperCase()}",
+        'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
         style: AppText.medium(fontSize: 11, color: const Color(0xFF9AA3AF)),
       ),
     );
   }
 
   Widget _buildStatusBadge(String status) {
-    final Map<String, _BadgeStyle> styles = {
+    const styles = {
       'published': _BadgeStyle(
         color: HomeScreen.brandRed,
-        label: "Свободный",
+        label: 'Свободный',
         icon: Icons.search_rounded,
       ),
       'active': _BadgeStyle(
-        color: HomeScreen.brandBlue,
-        label: "В работе",
+        color: HomeScreen.brandGreen,
+        label: 'В работе',
         icon: Icons.local_shipping_outlined,
       ),
       'canceled': _BadgeStyle(
-        color: const Color(0xFF9AA3AF),
-        label: "Отменён",
+        color: Color(0xFF9AA3AF),
+        label: 'Отменён',
         icon: Icons.cancel_outlined,
       ),
       'completed': _BadgeStyle(
         color: HomeScreen.brandGreen,
-        label: "Доставлен",
+        label: 'Доставлен',
         icon: Icons.check_circle_outline_rounded,
       ),
     };
-    final style = styles[status] ?? styles['canceled']!;
+    final s = styles[status] ?? styles['canceled']!;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: style.color.withOpacity(0.08),
+        color: s.color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(style.icon, size: 12, color: style.color),
+          Icon(s.icon, size: 12, color: s.color),
           const SizedBox(width: 5),
-          Text(
-            style.label,
-            style: AppText.semiBold(fontSize: 11, color: style.color),
-          ),
+          Text(s.label, style: AppText.semiBold(fontSize: 11, color: s.color)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilledButton({
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    int points = 0,
+    int balancePoints = 0,
+    double cashback = 0,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AppText.semiBold(fontSize: 13, color: Colors.white),
+            ),
+            if (points > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: 1,
+                height: 14,
+                color: Colors.white.withOpacity(0.3),
+              ),
+              const SizedBox(width: 8),
+              Image.asset(
+                'assets/images/point_icon.png',
+                width: 22,
+                height: 22,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '$points',
+                style: AppText.regular(fontSize: 13, color: Colors.white),
+              ),
+            ],
+            if (cashback > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: 1,
+                height: 14,
+                color: Colors.white.withOpacity(0.3),
+              ),
+              const SizedBox(width: 8),
+              Image.asset(
+                'assets/images/point_icon.png',
+                width: 20,
+                height: 20,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '+${cashback.toDouble()}',
+                style: AppText.regular(fontSize: 13, color: Colors.white),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -624,6 +648,47 @@ class OrderCard extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: Text(label, style: AppText.medium(fontSize: 13, color: color)),
+      ),
+    );
+  }
+
+  Widget _sheetHandle() => Container(
+    width: 36,
+    height: 4,
+    decoration: BoxDecoration(
+      color: const Color(0xFFEEF0F3),
+      borderRadius: BorderRadius.circular(2),
+    ),
+  );
+}
+
+// ── Thin gradient strip at top of card ───────────────────────────────────────
+class _StatusStrip extends StatelessWidget {
+  final String status;
+  const _StatusStrip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color left, right;
+    switch (status) {
+      case 'active':
+        left = right = HomeScreen.brandGreen;
+        break;
+      case 'canceled':
+        left = right = const Color(0xFF9AA3AF);
+        break;
+      case 'completed':
+        left = right = HomeScreen.brandGreen;
+        break;
+      default: // published
+        left = HomeScreen.brandGreen;
+        right = HomeScreen.brandRed;
+    }
+    return Container(
+      height: 3,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [left, right]),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
     );
   }

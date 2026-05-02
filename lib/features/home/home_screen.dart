@@ -1,22 +1,31 @@
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/create_order_screen.dart';
+import 'package:bagla/features/home/widgets/wallet_info_modal.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
-import 'package:bagla/providers/level_provider.dart'; // 👈 импорт
+import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/services/order_service.dart';
+import 'package:bagla/features/auth/phone_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static const Color brandBlue = Color(0xFF1B3A6B);
-  static const Color brandGreen = Color(0xFF27AE60);
-  static const Color brandRed = Color(0xFFB00020);
+  // ── Brand colours ──────────────────────────────────────────────────────────
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const Color brandDark = Color(0xFF111111);
+
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -37,12 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _StatusFilter(
       label: "В работе",
       value: "active",
-      color: HomeScreen.brandBlue,
+      color: HomeScreen.brandGreen,
     ),
     _StatusFilter(
       label: "Доставлены",
       value: "completed",
-      color: HomeScreen.brandGreen,
+      color: Color(0xFF1A7A3C),
     ),
     _StatusFilter(
       label: "Отменены",
@@ -56,28 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkWelcomeBonus();
-
-      // 🏆 Загружаем уровень и проверяем pending level up
-      // LevelCardWidget сам покажет диалог если есть pending,
-      // но здесь дополнительно проверяем при открытии HomeScreen
       final auth = context.read<AuthProvider>();
       if (auth.userId.isNotEmpty && auth.role == 'courier') {
         context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
-          _checkAndShowLevelUp();
+          if (mounted) setState(() {});
         });
       }
     });
-  }
-
-  /// Показывает диалог level up если есть pending
-  /// (дублирует логику LevelCardWidget на случай если карточка не видна)
-  void _checkAndShowLevelUp() {
-    final levelProvider = context.read<LevelProvider>();
-    if (levelProvider.pendingLevelUp != null && mounted) {
-      // LevelCardWidget покажет диалог сам через build()
-      // Здесь просто обновляем state чтобы виджет перестроился
-      setState(() {});
-    }
   }
 
   Future<void> _checkWelcomeBonus() async {
@@ -117,7 +111,11 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FFF6),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE8F5EE), Color(0xFFFFF0EE)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Center(
@@ -129,21 +127,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   errorBuilder: (_, __, ___) => const Icon(
                     Icons.toll_rounded,
                     size: 48,
-                    color: Color(0xFF27AE60),
+                    color: HomeScreen.brandGreen,
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              '🎁 Подарок за первый вход!',
-              style: AppText.extraBold(
-                fontSize: 20,
-                color: const Color(0xFF1B3A6B),
+            ShaderMask(
+              shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
+              child: Text(
+                '🎁 Подарок за первый вход!',
+                style: AppText.extraBold(fontSize: 20, color: Colors.white),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               'Мы начислили вам',
               style: AppText.regular(fontSize: 15, color: Colors.black45),
@@ -153,10 +151,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FFF6),
+                color: const Color(0xFFE8F5EE),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFF27AE60).withOpacity(0.2),
+                  color: HomeScreen.brandGreen.withOpacity(0.2),
                 ),
               ),
               child: Row(
@@ -170,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.toll_rounded,
                       size: 32,
-                      color: Color(0xFF27AE60),
+                      color: HomeScreen.brandGreen,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -178,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     '3 жетона',
                     style: AppText.extraBold(
                       fontSize: 28,
-                      color: const Color(0xFF27AE60),
+                      color: HomeScreen.brandGreen,
                     ),
                   ),
                 ],
@@ -197,41 +195,43 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(
               width: double.infinity,
               height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF27AE60),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: HomeScreen.brandGradient,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'ОТЛИЧНО!',
-                  style: AppText.bold(
-                    fontSize: 15,
-                    color: Colors.white,
-                  ).copyWith(letterSpacing: .5),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'ОТЛИЧНО!',
+                    style: AppText.bold(
+                      fontSize: 15,
+                      color: Colors.white,
+                    ).copyWith(letterSpacing: .5),
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
+    ).then((_) => _handleRefresh());
   }
 
   Future<void> _handleRefresh() async {
     await context.read<AuthProvider>().refreshProfile();
-
-    // 🏆 При обновлении — тоже проверяем уровень
     final auth = context.read<AuthProvider>();
     if (auth.userId.isNotEmpty && auth.role == 'courier') {
       await context.read<LevelProvider>().loadForUser(auth.userId);
     }
-
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   List<dynamic> _filterByStatus(List<dynamic> orders) {
@@ -260,17 +260,11 @@ class _HomeScreenState extends State<HomeScreen> {
         currentStatus == 'archived' || currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
 
-    // 🏆 Слушаем LevelProvider — если есть pending level up, показываем диалог
-    // Это делается через LevelCardWidget в профиле, но для надёжности
-    // дублируем проверку здесь через Consumer
     return Consumer<LevelProvider>(
       builder: (context, levelProvider, child) {
-        // Показать level up диалог если курьер и есть pending
         if (isCourier && levelProvider.pendingLevelUp != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _showLevelUpOnHomeScreen(context, levelProvider);
-            }
+            if (mounted) _showLevelUpOnHomeScreen(context, levelProvider);
           });
         }
         return child!;
@@ -281,52 +275,27 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.white,
           elevation: 0,
           centerTitle: false,
-          title: _buildLogo(authProv),
+          title: _buildLogoRow(authProv),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(0.5),
             child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
           ),
           actions: [
-            GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/notifications'),
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: HomeScreen.brandBlue.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: HomeScreen.brandBlue.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.notifications_active_outlined,
-                  color: HomeScreen.brandBlue,
-                  size: 20,
-                ),
-              ),
+            _AppBarIcon(
+              icon: Icons.notifications_active_outlined,
+              onTap: () => Navigator.pushNamed(
+                context,
+                '/notifications',
+              ).then((_) => _handleRefresh()),
             ),
-            GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/profile'),
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: HomeScreen.brandBlue.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: HomeScreen.brandBlue.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.person_outline_rounded,
-                  color: HomeScreen.brandBlue,
-                  size: 20,
-                ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: _AppBarIcon(
+                icon: Icons.person_outline_rounded,
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/profile',
+                ).then((_) => _handleRefresh()),
               ),
             ),
           ],
@@ -351,11 +320,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
-                    child: Text(
-                      isShop ? "Мои заказы" : "Доступные заказы",
+                    child: _GradientText(
+                      text: isShop ? 'Мои заказы' : 'Доступные заказы',
                       style: AppText.semiBold(
                         fontSize: 20,
-                        color: HomeScreen.brandBlue,
+                        color: Colors.black,
                       ),
                     ),
                   ),
@@ -389,17 +358,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
                     if (snapshot.hasError) {
-                      return _buildScrollableEmptyState(
+                      return _buildEmptyState(
                         icon: Icons.wifi_off_rounded,
-                        text: "Ошибка загрузки. Потяните вниз.",
+                        text: 'Ошибка загрузки. Потяните вниз.',
                       );
                     }
                     final orders = _filterByStatus(snapshot.data ?? []);
                     if (orders.isEmpty) {
-                      return _buildScrollableEmptyState(
+                      return _buildEmptyState(
                         icon: Icons.inbox_rounded,
                         text: isShop
-                            ? "У вас пока нет заказов"
+                            ? 'У вас пока нет заказов'
                             : words.emptyList,
                       );
                     }
@@ -423,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onUpdate: _handleRefresh,
                             ),
                           ),
-                        ),
+                        ).then((_) => _handleRefresh()),
                       ),
                     );
                   },
@@ -444,77 +413,177 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 🏆 Level Up диалог прямо на HomeScreen (если курьер не заходил в профиль)
-  void _showLevelUpOnHomeScreen(BuildContext context, LevelProvider provider) {
-    final pending = provider.pendingLevelUp;
-    if (pending == null) return;
+  // ── Logo row с кошельком для shop и жетонами для остальных ────────────────
+  Widget _buildLogoRow(AuthProvider authProv) {
+    final bool isShop = authProv.role == 'shop' || authProv.role == 'business';
 
-    // Импортируем диалог из level_card_widget
-    // Используем тот же LevelUpDialog через Navigator
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black54,
-        pageBuilder: (_, __, ___) => _LevelUpOverlay(
-          provider: provider,
-          onDismiss: () {
-            provider.dismissLevelUp(pending.id);
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogo(AuthProvider authProv) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
           'assets/images/bagla_logo.png',
-          width: 56,
-          height: 56,
+          width: 40,
+          height: 40,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              Container(width: 6, height: 22, color: Colors.red),
+          errorBuilder: (_, __, ___) => const BaglaLogo(width: 48, height: 24),
         ),
-        GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
+        const SizedBox(width: 8),
+
+        if (isShop)
+          // ── Кошелёк для магазина ────────────────────────────────────
+          GestureDetector(
+            onTap: () => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => WalletInfoModal(balance: authProv.walletBalance),
+            ).then((_) => _handleRefresh()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5EE),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: HomeScreen.brandGreen.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 18,
+                    color: HomeScreen.brandGreen,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${authProv.walletBalance.toStringAsFixed(2)} TMT',
+                    style: AppText.semiBold(
+                      fontSize: 13,
+                      color: HomeScreen.brandGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          // ── Жетоны для курьера/клиента ──────────────────────────────
+          GestureDetector(
+            onTap: () => showModalBottomSheet(
               context: context,
               isScrollControlled: true,
               backgroundColor: Colors.white,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              builder: (context) => TopUpModal(
+              builder: (_) => TopUpModal(
                 userId: authProv.userId,
                 role: authProv.role,
                 status: authProv.status,
               ),
-            );
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/point_icon.png',
-                width: 36,
-                height: 36,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                "${authProv.balancePoints}",
-                style: AppText.semiBold(
-                  fontSize: 18,
-                  color: HomeScreen.brandGreen,
+            ).then((_) => _handleRefresh()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5EE),
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: HomeScreen.brandGreen.withOpacity(0.2),
                 ),
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/point_icon.png',
+                    width: 22,
+                    height: 22,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.toll_rounded,
+                      size: 20,
+                      color: HomeScreen.brandGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${authProv.balancePoints}',
+                    style: AppText.semiBold(
+                      fontSize: 15,
+                      color: HomeScreen.brandGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  void _showLevelUpOnHomeScreen(BuildContext context, LevelProvider provider) {
+    final pending = provider.pendingLevelUp;
+    if (pending == null) return;
+    Navigator.of(context)
+        .push(
+          PageRouteBuilder(
+            opaque: false,
+            barrierColor: Colors.black54,
+            pageBuilder: (_, __, ___) => _LevelUpOverlay(
+              provider: provider,
+              onDismiss: () {
+                provider.dismissLevelUp(pending.id);
+                Navigator.of(context).pop();
+              },
+            ),
+          ),
+        )
+        .then((_) => _handleRefresh());
+  }
+
+  Widget _buildSegmentedFilter() {
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFEEF0F3)),
+      ),
+      child: Row(
+        children: [
+          _filterItem(0, 'Доступные заказы'),
+          _filterItem(1, 'Мои заказы'),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterItem(int index, String label) {
+    final bool sel = _selectedFilterIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedFilterIndex = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: sel ? HomeScreen.brandGradient : null,
+            color: sel ? null : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            style: AppText.medium(
+              fontSize: 13,
+              color: sel ? Colors.white : const Color(0xFF9AA3AF),
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -523,44 +592,41 @@ class _HomeScreenState extends State<HomeScreen> {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.only(right: 16),
       child: Row(
-        children: _statusFilters.map((filter) {
-          final bool isSelected = _selectedStatus == filter.value;
+        children: _statusFilters.map((f) {
+          final bool sel = _selectedStatus == f.value;
           return GestureDetector(
-            onTap: () => setState(() => _selectedStatus = filter.value),
+            onTap: () => setState(() => _selectedStatus = f.value),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? filter.color.withOpacity(0.1)
-                    : Colors.white,
+                color: sel ? f.color.withOpacity(0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected
-                      ? filter.color.withOpacity(0.4)
+                  color: sel
+                      ? f.color.withOpacity(0.4)
                       : const Color(0xFFEEF0F3),
-                  width: 1,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isSelected) ...[
+                  if (sel) ...[
                     Container(
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: filter.color,
+                        color: f.color,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
                   ],
                   Text(
-                    filter.label,
-                    style: isSelected
-                        ? AppText.semiBold(fontSize: 12, color: filter.color)
+                    f.label,
+                    style: sel
+                        ? AppText.semiBold(fontSize: 12, color: f.color)
                         : AppText.medium(
                             fontSize: 12,
                             color: const Color(0xFF9AA3AF),
@@ -575,68 +641,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSegmentedFilter() {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEF0F3), width: 1),
-      ),
-      child: Row(
-        children: [
-          _filterItem(0, "Доступные заказы"),
-          _filterItem(1, "Мои заказы"),
-        ],
-      ),
-    );
-  }
-
-  Widget _filterItem(int index, String label) {
-    final bool isSelected = _selectedFilterIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedFilterIndex = index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected ? HomeScreen.brandGreen : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            style: AppText.medium(
-              fontSize: 13,
-              color: isSelected ? Colors.white : const Color(0xFF9AA3AF),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildStatusBanner(bool isBanned) {
     final Color color = isBanned
         ? HomeScreen.brandRed
         : const Color(0xFFE67E22);
     final Color bgColor = isBanned
-        ? const Color(0xFFFFF0F0)
+        ? const Color(0xFFFFF0EE)
         : const Color(0xFFFFF8EE);
     final IconData icon = isBanned
         ? Icons.block_rounded
         : Icons.access_time_rounded;
     final String text = isBanned
-        ? "Аккаунт заблокирован"
-        : "Ожидание проверки модератора";
+        ? 'Аккаунт заблокирован'
+        : 'Ожидание проверки модератора';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
+        border: Border.all(color: color.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -644,7 +675,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 17),
@@ -666,20 +697,39 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const CreateOrderScreen()),
-      ).then((_) => setState(() {})),
+      ).then((_) => _handleRefresh()),
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: HomeScreen.brandGreen,
+          gradient: HomeScreen.brandGradient,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: HomeScreen.brandGreen.withOpacity(0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
             Text(
-              "Создать заказ",
+              'Создать заказ',
               style: AppText.medium(
                 fontSize: 15,
                 color: Colors.white,
@@ -691,10 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildScrollableEmptyState({
-    required IconData icon,
-    required String text,
-  }) {
+  Widget _buildEmptyState({required IconData icon, required String text}) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
@@ -706,12 +753,12 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFEEF0F3), width: 1),
+              border: Border.all(color: const Color(0xFFEEF0F3)),
             ),
             child: Icon(
               icon,
               size: 32,
-              color: HomeScreen.brandBlue.withOpacity(0.2),
+              color: HomeScreen.brandGreen.withOpacity(0.25),
             ),
           ),
         ),
@@ -727,27 +774,61 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// 🏆 Оверлей level up для HomeScreen
-// Использует тот же диалог что и LevelCardWidget
-class _LevelUpOverlay extends StatelessWidget {
-  final LevelProvider provider;
-  final VoidCallback onDismiss;
+// ─────────────────────────────────────────────────────────────────────────────
+// Private helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const _LevelUpOverlay({required this.provider, required this.onDismiss});
+class _AppBarIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _AppBarIcon({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    // Переиспользуем LevelCardWidget — он сам покажет диалог
-    // Здесь просто пустой экран который закроется
-    return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: HomeScreen.brandGreen.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: HomeScreen.brandGreen.withOpacity(0.12)),
+        ),
+        child: Icon(icon, color: HomeScreen.brandGreen, size: 19),
+      ),
+    );
   }
+}
+
+class _GradientText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  const _GradientText({required this.text, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (bounds) => HomeScreen.brandGradient.createShader(bounds),
+      child: Text(text, style: style.copyWith(color: Colors.white)),
+    );
+  }
+}
+
+class _LevelUpOverlay extends StatelessWidget {
+  final LevelProvider provider;
+  final VoidCallback onDismiss;
+  const _LevelUpOverlay({required this.provider, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _StatusFilter {
   final String label;
   final String? value;
   final Color color;
-
   const _StatusFilter({
     required this.label,
     required this.value,

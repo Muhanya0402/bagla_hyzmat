@@ -10,6 +10,7 @@ class OrderService {
   /// 1. СОЗДАНИЕ ЗАКАЗА
   Future<bool> createOrder({
     required String address,
+    required String addresstk,
     required String shopAddress,
     required String phone,
     required String comment,
@@ -51,6 +52,7 @@ class OrderService {
         "shop_adress": shopAddress,
         "shop_phone": shopPhone,
         "adress_of_delivery": address,
+        "adress_of_deliverytk": addresstk,
         "district": tryParse(districtId),
         "etrap": tryParse(etrapId),
         "province": tryParse(provinceId),
@@ -298,30 +300,36 @@ class OrderService {
       final data = _parseFlowResponse(response.data);
       print("verifyDeliveryCode data: $data");
 
-      if (data['success'] != null) {
-        return {
-          'success': data['success'] == 'yes' || data['success'] == true,
-          'message': data['message'] ?? '',
-        };
-      }
+      Map<String, dynamic>? found;
 
-      for (final key in data.keys) {
-        final value = data[key];
-        if (value is Map) {
-          final inner = Map<String, dynamic>.from(value);
-          if (inner['success'] != null) {
-            return {
-              'success': inner['success'] == 'yes' || inner['success'] == true,
-              'message': inner['message'] ?? '',
-            };
+      if (data['success'] != null) {
+        found = data;
+      } else {
+        for (final key in data.keys) {
+          final value = data[key];
+          if (value is Map) {
+            final inner = Map<String, dynamic>.from(value);
+            if (inner['success'] != null) {
+              found = inner;
+              break;
+            }
           }
         }
       }
 
-      return {'success': false, 'message': 'Ошибка'};
+      if (found != null) {
+        return {
+          'success': found['success'] == 'yes' || found['success'] == true,
+          'message': found['message'] ?? '',
+          'xp_earned': found['xp_earned'] ?? 0, // 👈
+          'level_up': found['level_up'] ?? false, // 👈
+        };
+      }
+
+      return {'success': false, 'message': 'Ошибка', 'xp_earned': 0};
     } catch (e) {
       print("Ошибка верификации кода: $e");
-      return {'success': false, 'message': 'Ошибка сети'};
+      return {'success': false, 'message': 'Ошибка сети', 'xp_earned': 0};
     }
   }
 }

@@ -84,15 +84,6 @@ class TopUpFormView extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          "Пополнение баллов",
-          style: AppText.extraBold(fontSize: 20, color: brandBlue),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          "Курс конвертации: 1 балл = $rate TMT",
-          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
-        ),
         const SizedBox(height: 32),
         TextField(
           controller: controller,
