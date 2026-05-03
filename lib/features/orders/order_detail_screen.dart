@@ -286,7 +286,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '+${points.toStringAsFixed(0)} жетонов',
+                      '+${points.toDouble()} жетонов',
                       style: AppText.extraBold(fontSize: 22, color: _green),
                     ),
                   ],
@@ -756,7 +756,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           value: widget.order['shop_adress'] ?? '—',
           color: _red,
         ),
-        // ... connector line ...
+        const SizedBox(height: 12),
         _buildRoutePoint(
           icon: isLocked
               ? Icons.lock_outline_rounded
@@ -847,7 +847,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         Expanded(
           child: _buildInfoRow(
             icon: icon,
-            label: isShop ? 'Курьер' : 'Магазин',
+            label: isShop ? 'Курьер' : 'Заказчик',
             value: phone,
             color: _red,
           ),
@@ -1033,7 +1033,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       if (status == 'published') {
         final authProv = context.watch<AuthProvider>();
         final int points = widget.order['points_amount'] ?? 0;
-        final int balancePoints = authProv.balancePoints;
+        final double balancePoints = authProv.balancePoints;
         final bool isRestricted =
             authProv.role == 'courier' && authProv.status == 'pending';
         final bool isUserActive =

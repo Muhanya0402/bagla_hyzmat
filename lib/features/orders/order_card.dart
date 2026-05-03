@@ -282,7 +282,7 @@ class OrderCard extends StatelessWidget {
     if (!isShop && status == 'published') {
       final int points = order['points_amount'] ?? 0;
       final authProv = context.watch<AuthProvider>();
-      final int balancePoints = authProv.balancePoints;
+      final double balancePoints = authProv.balancePoints;
 
       final bool isRestricted =
           authProv.role == 'courier' && authProv.status == 'pending';
@@ -566,7 +566,7 @@ class OrderCard extends StatelessWidget {
     required Color color,
     required VoidCallback onTap,
     int points = 0,
-    int balancePoints = 0,
+    double balancePoints = 0,
     double cashback = 0,
   }) {
     return GestureDetector(

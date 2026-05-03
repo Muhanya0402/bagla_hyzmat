@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -96,7 +97,7 @@ class _PhoneScreenState extends State<PhoneScreen>
                 children: [
                   const BaglaLogo(width: 72, height: 36),
                   const Spacer(),
-                  _LangSwitcher(isRu: lang.isRu, onToggle: lang.toggleLanguage),
+                  const LangToggle(),
                 ],
               ),
 
@@ -191,61 +192,6 @@ class _PhoneScreenState extends State<PhoneScreen>
 // ─────────────────────────────────────────────────────────────────────────────
 //  Language Switcher
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _LangSwitcher extends StatelessWidget {
-  final bool isRu;
-  final VoidCallback onToggle;
-  const _LangSwitcher({required this.isRu, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onToggle,
-      child: Container(
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: Colors.black12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _LangTab(label: 'RU', active: isRu),
-            _LangTab(label: 'TK', active: !isRu),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LangTab extends StatelessWidget {
-  final String label;
-  final bool active;
-  const _LangTab({required this.label, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: active ? PhoneScreen.brandGradient : null,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          color: active ? Colors.white : Colors.black38,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  BaglaLogo — exported, reused in OtpScreen & PolicyScreen

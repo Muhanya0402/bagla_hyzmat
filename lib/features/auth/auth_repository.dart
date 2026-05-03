@@ -333,7 +333,10 @@ class AuthRepository {
     await prefs.setString('status', user['status'] ?? "pending");
     await prefs.setString('shop_address', user['address'] ?? "");
     await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
-    await prefs.setInt('balance_points', user['balance_points'] ?? 0);
+    await prefs.setDouble(
+      'balance_points',
+      (user['balance_points'] ?? 0.0).toDouble(),
+    );
     await prefs.setDouble(
       'wallet_balance',
       (user['wallet_balance'] ?? 0.0).toDouble(),

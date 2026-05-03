@@ -23,7 +23,7 @@ class AuthProvider extends ChangeNotifier {
   String _role = "client";
   String _status = "pending";
   double _rating = 0.0;
-  int _balancePoints = 0;
+  double _balancePoints = 0.0;
   double _walletBalance = 0.0;
 
   bool get isCodeSent => _isCodeSent;
@@ -40,7 +40,7 @@ class AuthProvider extends ChangeNotifier {
   String get role => _role;
   String get status => _status;
   double get rating => _rating;
-  int get balancePoints => _balancePoints;
+  double get balancePoints => _balancePoints;
   double get walletBalance => _walletBalance;
 
   AuthProvider() {
@@ -61,7 +61,7 @@ class AuthProvider extends ChangeNotifier {
     _role = prefs.getString('role') ?? "client";
     _status = prefs.getString('status') ?? "pending";
     _rating = prefs.getDouble('rating') ?? 0.0;
-    _balancePoints = prefs.getInt('balance_points') ?? 0;
+    _balancePoints = prefs.getDouble('balance_points') ?? 0.0;
     _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
 
     if (_phone.isNotEmpty) {
@@ -98,7 +98,7 @@ class AuthProvider extends ChangeNotifier {
     _role = user['role'] ?? "client";
     _status = (user['status']?.toString() ?? "pending").toLowerCase().trim();
     _rating = (user['rating'] ?? 0.0).toDouble();
-    _balancePoints = user['balance_points'] ?? 0;
+    _balancePoints = (user['balance_points'] ?? 0.0).toDouble();
     _walletBalance = (user['wallet_balance'] ?? 0.0).toDouble();
 
     // 📍 Обработка района (поддержка и ID, и объекта от Directus)
@@ -141,7 +141,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('role', _role);
     await prefs.setString('status', _status);
     await prefs.setDouble('rating', _rating);
-    await prefs.setInt('balance_points', _balancePoints);
+    await prefs.setDouble('balance_points', _balancePoints);
     await prefs.setDouble('wallet_balance', _walletBalance);
     await prefs.setBool('is_logged_in', true);
 
@@ -276,7 +276,7 @@ class AuthProvider extends ChangeNotifier {
     _districtId = ""; // 📍 Сброс
     _role = "client";
     _status = "pending";
-    _balancePoints = 0;
+    _balancePoints = 0.0;
     _rating = 0.0;
     _isCodeSent = false;
     notifyListeners();

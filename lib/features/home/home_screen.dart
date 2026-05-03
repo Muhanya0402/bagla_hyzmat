@@ -693,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    '${authProv.balancePoints}',
+                    authProv.balancePoints.toDouble().toStringAsFixed(2),
                     style: AppText.semiBold(
                       fontSize: 15,
                       color: HomeScreen.brandGreen,
