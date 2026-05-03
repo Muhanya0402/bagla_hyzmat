@@ -1,5 +1,6 @@
 import 'package:bagla/features/auth/onboarding_screen.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
+import 'package:bagla/features/profile/appeals_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
@@ -137,6 +138,9 @@ class MyApp extends StatelessWidget {
         }
         if (settings.name == '/notifications') {
           return MaterialPageRoute(builder: (_) => const NotificationsScreen());
+        }
+        if (settings.name == '/appeals') {
+          return MaterialPageRoute(builder: (_) => const AppealsScreen());
         }
         return null;
       },
