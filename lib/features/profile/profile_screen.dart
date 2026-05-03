@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/language_provider.dart';
 import '../../providers/auth_provider.dart';
-import 'user_type_selection_screen.dart';
 import 'top_up_modal.dart';
 
 class ProfileScreen extends StatelessWidget {

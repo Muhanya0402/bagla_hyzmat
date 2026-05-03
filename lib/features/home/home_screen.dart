@@ -8,6 +8,7 @@ import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
+import 'package:bagla/services/order_realtime_service.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:bagla/features/auth/phone_screen.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,6 @@ import 'package:provider/provider.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  // ── Brand colours ──────────────────────────────────────────────────────────
   static const Color brandGreen = Color(0xFF1A7A3C);
   static const Color brandRed = Color(0xFFD32F1E);
   static const Color brandDark = Color(0xFF111111);
@@ -35,6 +35,17 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedFilterIndex = 0;
   String? _selectedStatus;
   final OrderService _orderService = OrderService();
+
+  // ── Realtime ───────────────────────────────────────────────────────────────
+  final OrderRealtimeService _realtimeService = OrderRealtimeService();
+  List<dynamic> _orders = [];
+  bool _ordersLoading = true;
+  bool _ordersError = false;
+  int _httpOffset = 0;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+  static const int _pageSize = 6;
+  final ScrollController _scrollController = ScrollController();
 
   static const List<_StatusFilter> _statusFilters = [
     _StatusFilter(label: "Все", value: null, color: Color(0xFF9AA3AF)),
@@ -65,6 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkWelcomeBonus();
+      _initRealtime();
+      _scrollController.addListener(_onScroll);
       final auth = context.read<AuthProvider>();
       if (auth.userId.isNotEmpty && auth.role == 'courier') {
         context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
@@ -72,6 +85,153 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+
+    final auth = context.read<AuthProvider>();
+    final bool isShop = auth.role == 'shop';
+
+    try {
+      final more = await _orderService.getOrders(
+        role: auth.role,
+        userId: auth.userId,
+        myOrdersOnly: isShop ? true : _selectedFilterIndex == 1,
+        offset: _httpOffset,
+        limit: _pageSize,
+      );
+      if (mounted) {
+        setState(() {
+          // Добавляем только те которых ещё нет (по id)
+          for (final o in more) {
+            final id = o['id'].toString();
+            final exists = _orders.any((e) => e['id'].toString() == id);
+            if (!exists) _orders.add(o);
+          }
+          _httpOffset += more.length;
+          _hasMore = more.length == _pageSize;
+          _loadingMore = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _realtimeService.disconnect();
+    _scrollController.dispose();
+
+    super.dispose();
+  }
+
+  // ── Инициализация WebSocket ────────────────────────────────────────────────
+  void _initRealtime() {
+    final auth = context.read<AuthProvider>();
+    if (auth.userId.isEmpty) return;
+
+    _setupRealtimeCallbacks();
+
+    final bool isShop = auth.role == 'shop' || auth.role == 'business';
+    _realtimeService.connect(
+      role: auth.role,
+      userId: auth.userId,
+      myOrdersOnly: isShop || _selectedFilterIndex == 1,
+    );
+  }
+
+  void _setupRealtimeCallbacks() {
+    _realtimeService.onConnectionChanged = (isConnected) {
+      if (mounted) setState(() {});
+    };
+    // Начальные данные — приходят при подключении (event: init)
+    _realtimeService.onOrdersUpdate = (orders) {
+      if (!mounted) return;
+      setState(() {
+        _orders = orders;
+        _ordersLoading = false;
+        _ordersError = false;
+      });
+    };
+
+    // Живые события — create / update / delete
+    _realtimeService.onOrderEvent = (order, event) {
+      if (!mounted) return;
+      setState(() {
+        final String id = order['id'].toString();
+        if (event == 'create') {
+          final exists = _orders.any((o) => o['id'].toString() == id);
+          if (!exists) _orders.insert(0, order);
+        } else if (event == 'update') {
+          final idx = _orders.indexWhere((o) => o['id'].toString() == id);
+          if (idx != -1) {
+            _orders[idx] = order;
+          } else {
+            _orders.insert(0, order);
+          }
+        } else if (event == 'delete') {
+          _orders.removeWhere((o) => o['id'].toString() == id);
+        }
+      });
+    };
+  }
+
+  // ── Переподключение при смене фильтра ─────────────────────────────────────
+  Future<void> _reconnectRealtime() async {
+    await _realtimeService.disconnect();
+    setState(() {
+      _orders = [];
+      _ordersLoading = true;
+      _ordersError = false;
+    });
+
+    _setupRealtimeCallbacks();
+
+    final auth = context.read<AuthProvider>();
+    final bool isShop = auth.role == 'shop' || auth.role == 'business';
+    await _realtimeService.connect(
+      role: auth.role,
+      userId: auth.userId,
+      myOrdersOnly: isShop || _selectedFilterIndex == 1,
+    );
+  }
+
+  // ── Pull-to-refresh (HTTP fallback) ───────────────────────────────────────
+  Future<void> _handleRefresh() async {
+    _httpOffset = 0;
+    _hasMore = true;
+    await context.read<AuthProvider>().refreshProfile();
+    final auth = context.read<AuthProvider>();
+    if (auth.userId.isNotEmpty && auth.role == 'courier') {
+      await context.read<LevelProvider>().loadForUser(auth.userId);
+    }
+    try {
+      final bool isShop = auth.role == 'shop' || auth.role == 'business';
+      final orders = await _orderService.getOrders(
+        role: auth.role,
+        userId: auth.userId,
+        myOrdersOnly: isShop ? true : _selectedFilterIndex == 1,
+      );
+      if (mounted) {
+        setState(() {
+          _orders = orders;
+          _ordersLoading = false;
+          _ordersError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _ordersError = true);
+    }
   }
 
   Future<void> _checkWelcomeBonus() async {
@@ -225,15 +385,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ).then((_) => _handleRefresh());
   }
 
-  Future<void> _handleRefresh() async {
-    await context.read<AuthProvider>().refreshProfile();
-    final auth = context.read<AuthProvider>();
-    if (auth.userId.isNotEmpty && auth.role == 'courier') {
-      await context.read<LevelProvider>().loadForUser(auth.userId);
-    }
-    if (mounted) setState(() {});
-  }
-
   List<dynamic> _filterByStatus(List<dynamic> orders) {
     if (_selectedStatus == null) return orders;
     return orders
@@ -259,6 +410,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isBanned =
         currentStatus == 'archived' || currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
+
+    final List<dynamic> filteredOrders = _filterByStatus(_orders);
 
     return Consumer<LevelProvider>(
       builder: (context, levelProvider, child) {
@@ -339,63 +492,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: HomeScreen.brandGreen,
                 backgroundColor: Colors.white,
                 onRefresh: _handleRefresh,
-                child: FutureBuilder<List<dynamic>>(
-                  key: ValueKey(
-                    '${isShop ? 'shop' : _selectedFilterIndex}-${authProv.userId}',
-                  ),
-                  future: _orderService.getOrders(
-                    role: authProv.role,
-                    userId: authProv.userId,
-                    myOrdersOnly: isShop ? true : (_selectedFilterIndex == 1),
-                  ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: HomeScreen.brandGreen,
-                          strokeWidth: 2,
-                        ),
-                      );
-                    }
-                    if (snapshot.hasError) {
-                      return _buildEmptyState(
-                        icon: Icons.wifi_off_rounded,
-                        text: 'Ошибка загрузки. Потяните вниз.',
-                      );
-                    }
-                    final orders = _filterByStatus(snapshot.data ?? []);
-                    if (orders.isEmpty) {
-                      return _buildEmptyState(
-                        icon: Icons.inbox_rounded,
-                        text: isShop
-                            ? 'У вас пока нет заказов'
-                            : words.emptyList,
-                      );
-                    }
-                    return ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                      itemCount: orders.length,
-                      itemBuilder: (context, index) => OrderCard(
-                        order: orders[index],
-                        role: isShop ? 'shop' : 'courier',
-                        currentUserId: authProv.userId,
-                        userPhone: authProv.phone,
-                        onUpdate: _handleRefresh,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => OrderDetailScreen(
-                              order: orders[index],
-                              role: isShop ? 'shop' : 'courier',
-                              currentUserId: authProv.userId,
-                              onUpdate: _handleRefresh,
-                            ),
-                          ),
-                        ).then((_) => _handleRefresh()),
-                      ),
-                    );
-                  },
+                child: _buildOrdersList(
+                  filteredOrders,
+                  isShop,
+                  authProv,
+                  words,
                 ),
               ),
             ),
@@ -413,24 +514,109 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Logo row с кошельком для shop и жетонами для остальных ────────────────
+  // ── Список (заменяет FutureBuilder) ───────────────────────────────────────
+  Widget _buildOrdersList(
+    List<dynamic> orders,
+    bool isShop,
+    AuthProvider authProv,
+    dynamic words,
+  ) {
+    if (_ordersLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: HomeScreen.brandGreen,
+          strokeWidth: 2,
+        ),
+      );
+    }
+    if (_ordersError) {
+      return _buildEmptyState(
+        icon: Icons.wifi_off_rounded,
+        text: 'Ошибка загрузки. Потяните вниз.',
+      );
+    }
+    if (orders.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.inbox_rounded,
+        text: isShop ? 'У вас пока нет заказов' : words.emptyList,
+      );
+    }
+    return ListView.builder(
+      controller: _scrollController, // 👈
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+      itemCount: orders.length + 1, // 👈 +1 для футера
+      itemBuilder: (context, index) {
+        // Футер — индикатор загрузки или конец списка
+        if (index == orders.length) {
+          // 👈
+          if (_loadingMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: HomeScreen.brandGreen,
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          }
+          if (!_hasMore && orders.isNotEmpty) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'Все заказы загружены',
+                  style: AppText.regular(
+                    fontSize: 12,
+                    color: const Color(0xFF9AA3AF),
+                  ),
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+
+        return OrderCard(
+          order: orders[index],
+          role: isShop ? 'shop' : 'courier',
+          currentUserId: authProv.userId,
+          userPhone: authProv.phone,
+          onUpdate: _handleRefresh,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OrderDetailScreen(
+                order: orders[index],
+                role: isShop ? 'shop' : 'courier',
+                currentUserId: authProv.userId,
+                onUpdate: _handleRefresh,
+              ),
+            ),
+          ).then((_) => _handleRefresh()),
+        );
+      },
+    );
+  }
+
+  // ── Logo row ───────────────────────────────────────────────────────────────
   Widget _buildLogoRow(AuthProvider authProv) {
     final bool isShop = authProv.role == 'shop' || authProv.role == 'business';
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/images/bagla_logo.png',
+          _realtimeService.isConnected
+              ? 'assets/images/bagla_logo.png'
+              : 'assets/images/bagla_logo_gray.png',
           width: 40,
           height: 40,
           fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
-
         if (isShop)
-          // ── Кошелёк для магазина ────────────────────────────────────
           GestureDetector(
             onTap: () => showModalBottomSheet(
               context: context,
@@ -468,7 +654,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         else
-          // ── Жетоны для курьера/клиента ──────────────────────────────
           GestureDetector(
             onTap: () => showModalBottomSheet(
               context: context,
@@ -566,7 +751,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool sel = _selectedFilterIndex == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedFilterIndex = index),
+        onTap: () {
+          if (_selectedFilterIndex == index) return;
+          setState(() {
+            _selectedFilterIndex = index;
+            _ordersLoading = true;
+          });
+          _reconnectRealtime(); // переподключаем WS с новым фильтром
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           alignment: Alignment.center,
@@ -775,7 +967,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Private helpers
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AppBarIcon extends StatelessWidget {

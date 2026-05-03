@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
@@ -7,7 +6,10 @@ import '../core/api_client.dart';
 class OrderService {
   final ApiClient _apiClient = ApiClient();
 
-  /// 1. СОЗДАНИЕ ЗАКАЗА
+  static const int pageSize = 5; // заказов за один запрос
+
+  // ─── 1. СОЗДАНИЕ ЗАКАЗА ───────────────────────────────────────────────────
+
   Future<bool> createOrder({
     required String address,
     required String addresstk,
@@ -27,75 +29,64 @@ class OrderService {
   }) async {
     try {
       List<String> fileIds = [];
-
       for (var image in images) {
-        FormData formData = FormData.fromMap({
-          "file": await MultipartFile.fromFile(
+        final formData = FormData.fromMap({
+          'file': await MultipartFile.fromFile(
             image.path,
             filename: image.name,
           ),
         });
-        var resFile = await _apiClient.dio.post("/files", data: formData);
-        if (resFile.data != null && resFile.data["data"] != null) {
-          fileIds.add(resFile.data["data"]["id"]);
+        final resFile = await _apiClient.dio.post('/files', data: formData);
+        if (resFile.data?['data'] != null) {
+          fileIds.add(resFile.data['data']['id']);
         }
       }
 
-      // Считаем кэшбек — 20% от суммы доставки
       final double cashbackAmount = (pointsAmount * 0.2).toDouble();
 
-      final Map<String, dynamic> orderData = {
-        "order_status": "published",
-        "shopId": [
-          {"item": userId, "collection": "customers"},
+      final orderData = {
+        'order_status': 'published',
+        'shopId': [
+          {'item': userId, 'collection': 'customers'},
         ],
-        "shop_adress": shopAddress,
-        "shop_phone": shopPhone,
-        "adress_of_delivery": address,
-        "adress_of_deliverytk": addresstk,
-        "district": tryParse(districtId),
-        "etrap": tryParse(etrapId),
-        "province": tryParse(provinceId),
-        "client_phone": phone.contains('+993') ? phone : "+993 $phone",
-        "comment": comment,
-        "time_of_delivery": deliveryTime?.toIso8601String(),
-        "delivery_amount": deliveryFee,
-        "total_amount": itemPrice + deliveryFee,
-        "points_amount": pointsAmount,
-        "cashback_amount": cashbackAmount, // 20% кэшбек доставщику
-        "pictures": fileIds.map((id) => {"directus_files_id": id}).toList(),
+        'shop_adress': shopAddress,
+        'shop_phone': shopPhone,
+        'adress_of_delivery': address,
+        'adress_of_deliverytk': addresstk,
+        'district': tryParse(districtId),
+        'etrap': tryParse(etrapId),
+        'province': tryParse(provinceId),
+        'client_phone': phone.contains('+993') ? phone : '+993 $phone',
+        'comment': comment,
+        'time_of_delivery': deliveryTime?.toIso8601String(),
+        'delivery_amount': deliveryFee,
+        'total_amount': itemPrice + deliveryFee,
+        'points_amount': pointsAmount,
+        'cashback_amount': cashbackAmount,
+        'pictures': fileIds.map((id) => {'directus_files_id': id}).toList(),
       };
 
       final response = await _apiClient.dio.post(
-        "/items/orders",
+        '/items/orders',
         data: orderData,
       );
-
       return response.statusCode == 200 ||
           response.statusCode == 201 ||
           response.statusCode == 204;
     } on DioException catch (e) {
-      // 1. Выводим весь ответ сервера в консоль
       if (e.response != null) {
-        print("--------------------------------------------------");
-        print("ПОЛНЫЙ ОТВЕТ ОТ СЕРВЕРА: ${e.response?.data}");
-        print("--------------------------------------------------");
-
-        // В Directus ошибка обычно лежит здесь:
+        print('ОТВЕТ СЕРВЕРА: ${e.response?.data}');
         final errors = e.response?.data['errors'];
-        if (errors != null && errors is List && errors.isNotEmpty) {
-          final detail = errors[0]['extensions'];
-          final message = errors[0]['message'];
-          print("ПРИЧИНА: $message");
-          print("ДЕТАЛИ: $detail");
+        if (errors is List && errors.isNotEmpty) {
+          print('ПРИЧИНА: ${errors[0]['message']}');
+          print('ДЕТАЛИ: ${errors[0]['extensions']}');
         }
       }
-
-      final errorMsg = e.response?.data?['errors']?[0]?['message'] ?? e.message;
-      print("Ошибка при создании заказа (Dio): $errorMsg");
-      throw Exception("Не удалось создать заказ: $errorMsg");
+      throw Exception(
+        'Не удалось создать заказ: ${e.response?.data?['errors']?[0]?['message'] ?? e.message}',
+      );
     } catch (e) {
-      print("Неизвестная ошибка в OrderService: $e");
+      print('Неизвестная ошибка createOrder: $e');
       return false;
     }
   }
@@ -105,7 +96,8 @@ class OrderService {
     return int.tryParse(value);
   }
 
-  /// 2. ОБНОВЛЕНИЕ СТАТУСА ЗАКАЗА
+  // ─── 2. ОБНОВЛЕНИЕ СТАТУСА ────────────────────────────────────────────────
+
   Future<bool> updateStatus(
     String orderId,
     String newStatus, {
@@ -115,134 +107,129 @@ class OrderService {
     String? shopId,
   }) async {
     try {
-      final Map<String, dynamic> data = {"order_status": newStatus};
-
+      final Map<String, dynamic> data = {'order_status': newStatus};
       if (newStatus == 'active' && userId != null) {
-        data["courierId"] = [
-          {"item": userId, "collection": "customers"},
+        data['courierId'] = [
+          {'item': userId, 'collection': 'customers'},
         ];
       }
-
       if (newStatus == 'canceled' && shopId != null) {
-        data["cancelled_by"] = "shop";
+        data['cancelled_by'] = 'shop';
       }
+      if (courierPhone != null) data['courier_phone'] = courierPhone;
+      if (cancelReason != null) data['cancel_reason'] = cancelReason;
 
-      if (courierPhone != null) data["courier_phone"] = courierPhone;
-      if (cancelReason != null) data["cancel_reason"] = cancelReason;
-
-      await _apiClient.dio.patch("/items/orders/$orderId", data: data);
+      await _apiClient.dio.patch('/items/orders/$orderId', data: data);
       return true;
     } catch (e) {
-      print("Ошибка обновления статуса: $e");
+      print('Ошибка updateStatus: $e');
       return false;
     }
   }
 
-  /// 3. ПОЛУЧЕНИЕ СПИСКА ЗАКАЗОВ
+  // ─── 3. ПОЛУЧЕНИЕ ЗАКАЗОВ С ПАГИНАЦИЕЙ ───────────────────────────────────
+  //
+  // offset = 0  → первые 5 заказов
+  // offset = 5  → следующие 5
+  // offset = 10 → ещё 5
+  // ...
+  // Возвращает пустой список когда заказы кончились.
+
   Future<List<dynamic>> getOrders({
     required String role,
     required String userId,
     bool myOrdersOnly = false,
+    int offset = 0, // ← новый параметр
+    int limit = pageSize, // ← новый параметр
   }) async {
     try {
-      List<String> filters = [];
+      final filters = <String>[];
 
       if (role == 'courier') {
         if (myOrdersOnly) {
-          filters.add("filter[courierId][item:customers][id][_eq]=$userId");
+          filters.add('filter[courierId][item:customers][id][_eq]=$userId');
         } else {
-          filters.add("filter[order_status][_nin]=completed,canceled");
-          filters.add("filter[courierId][_null]=true");
+          filters.add('filter[order_status][_nin]=completed,canceled');
+          filters.add('filter[courierId][_null]=true');
         }
-      } else if (role == 'shop') {
-        filters.add("filter[shopId][item:customers][id][_eq]=$userId");
+      } else if (role == 'shop' || role == 'business') {
+        filters.add('filter[shopId][item:customers][id][_eq]=$userId');
       } else {
-        // 👇 ВАЖНО: только свободные заказы (без курьера)
-        filters.add("filter[courierId][_null]=true");
-        filters.add("filter[order_status][_nin]=completed,canceled");
+        filters.add('filter[courierId][_null]=true');
+        filters.add('filter[order_status][_nin]=completed,canceled');
       }
 
-      final String filterQuery = filters.isNotEmpty ? filters.join('&') : "";
-      final String url =
-          "/items/orders?$filterQuery&sort=-date_created&fields=*,pictures.directus_files_id&limit=-1";
+      final filterQuery = filters.join('&');
+      final url =
+          '/items/orders'
+          '?$filterQuery'
+          '&sort=-date_created'
+          '&fields=*,pictures.directus_files_id'
+          '&limit=$limit'
+          '&offset=$offset';
 
       final response = await _apiClient.dio.get(url);
-
-      if (response.data != null && response.data["data"] != null) {
-        return response.data["data"] as List<dynamic>;
+      if (response.data?['data'] != null) {
+        return response.data['data'] as List<dynamic>;
       }
       return [];
     } catch (e) {
-      print("Ошибка получения заказов: $e");
+      print('Ошибка getOrders: $e');
       return [];
     }
   }
 
-  /// 4. НАЧИСЛЕНИЕ КЭШБЕКА ДОСТАВЩИКУ
-  /// Вызывается после успешного закрытия заказа через код подтверждения
+  // ─── 4. КЭШБЕК ───────────────────────────────────────────────────────────
+
   Future<void> applyCashbackIfOnTime({
     required String orderId,
     required String courierId,
   }) async {
     try {
-      // Читаем заказ
       final orderResp = await _apiClient.dio.get(
         '/items/orders/$orderId',
         queryParameters: {
           'fields': 'cashback_amount,time_of_delivery,courierId',
         },
       );
-
       final order = orderResp.data['data'];
       final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
-      final String? timeOfDelivery = order['time_of_delivery'];
-
       if (cashback <= 0) return;
 
-      // Проверяем не просрочен ли заказ
+      final String? tod = order['time_of_delivery'];
       bool isOnTime = true;
-      if (timeOfDelivery != null && timeOfDelivery.isNotEmpty) {
-        final DateTime deadline = DateTime.parse(timeOfDelivery).toLocal();
-        final DateTime now = DateTime.now();
-        isOnTime = now.isBefore(deadline);
+      if (tod != null && tod.isNotEmpty) {
+        isOnTime = DateTime.now().isBefore(DateTime.parse(tod).toLocal());
       }
-
       if (!isOnTime) {
-        print("⏰ Заказ просрочен — кэшбек не начисляется");
+        print('⏰ Просрочен — кэшбек не начислен');
         return;
       }
 
-      // Читаем текущий баланс курьера
       final courierResp = await _apiClient.dio.get(
         '/items/customers/$courierId',
         queryParameters: {'fields': 'balance_points'},
       );
-
-      final int currentPoints =
+      final int current =
           (courierResp.data['data']['balance_points'] ?? 0) as int;
-      final int newPoints = currentPoints + cashback.toInt();
-
-      // Начисляем кэшбек
       await _apiClient.dio.patch(
         '/items/customers/$courierId',
-        data: {'balance_points': newPoints},
+        data: {'balance_points': current + cashback.toInt()},
       );
-
-      print(
-        "✅ Кэшбек начислен: +${cashback.toInt()} жетонов курьеру $courierId",
-      );
+      print('✅ Кэшбек +${cashback.toInt()} → курьер $courierId');
     } catch (e) {
-      print("Ошибка начисления кэшбека: $e");
+      print('Ошибка applyCashback: $e');
     }
   }
 
-  // Хелпер для парсинга ответа Flow
-  Map<String, dynamic> _parseFlowResponse(dynamic raw) {
+  // ─── 5. ГЕНЕРАЦИЯ КОДА ДОСТАВКИ ──────────────────────────────────────────
+
+  Map<String, dynamic> _parseFlow(dynamic raw) {
     if (raw is Map) return Map<String, dynamic>.from(raw);
     if (raw is String && raw.isNotEmpty) {
       try {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        final d = jsonDecode(raw);
+        if (d is Map) return Map<String, dynamic>.from(d);
       } catch (_) {}
     }
     return {};
@@ -262,30 +249,25 @@ class OrderService {
           'client_phone': clientPhone,
         },
       );
-
-      final data = _parseFlowResponse(response.data);
-      print("generateDeliveryCode data: $data");
+      final data = _parseFlow(response.data);
+      print('generateDeliveryCode: $data');
 
       if (data['delivery_code'] != null) {
         return {'success': true, 'code': data['delivery_code'].toString()};
       }
-
-      for (final key in data.keys) {
-        final value = data[key];
-        if (value is Map) {
-          final inner = Map<String, dynamic>.from(value);
-          if (inner['delivery_code'] != null) {
-            return {'success': true, 'code': inner['delivery_code'].toString()};
-          }
+      for (final v in data.values) {
+        if (v is Map && v['delivery_code'] != null) {
+          return {'success': true, 'code': v['delivery_code'].toString()};
         }
       }
-
       return {'success': false};
     } catch (e) {
-      print("Ошибка генерации кода: $e");
+      print('Ошибка generateDeliveryCode: $e');
       return {'success': false};
     }
   }
+
+  // ─── 6. ВЕРИФИКАЦИЯ КОДА ДОСТАВКИ ────────────────────────────────────────
 
   Future<Map<String, dynamic>> verifyDeliveryCode({
     required String orderId,
@@ -296,23 +278,17 @@ class OrderService {
         '/flows/trigger/6074ab32-630b-406b-9cb5-936c33f8bc42',
         data: {'order_id': orderId, 'code': code},
       );
-
-      final data = _parseFlowResponse(response.data);
-      print("verifyDeliveryCode data: $data");
+      final data = _parseFlow(response.data);
+      print('verifyDeliveryCode: $data');
 
       Map<String, dynamic>? found;
-
       if (data['success'] != null) {
         found = data;
       } else {
-        for (final key in data.keys) {
-          final value = data[key];
-          if (value is Map) {
-            final inner = Map<String, dynamic>.from(value);
-            if (inner['success'] != null) {
-              found = inner;
-              break;
-            }
+        for (final v in data.values) {
+          if (v is Map && v['success'] != null) {
+            found = Map<String, dynamic>.from(v);
+            break;
           }
         }
       }
@@ -321,15 +297,24 @@ class OrderService {
         return {
           'success': found['success'] == 'yes' || found['success'] == true,
           'message': found['message'] ?? '',
-          'xp_earned': found['xp_earned'] ?? 0, // 👈
-          'level_up': found['level_up'] ?? false, // 👈
+          'xp_earned': found['xp_earned'] ?? 0,
+          'level_up': found['level_up'] ?? false,
         };
       }
-
-      return {'success': false, 'message': 'Ошибка', 'xp_earned': 0};
+      return {
+        'success': false,
+        'message': 'Ошибка',
+        'xp_earned': 0,
+        'level_up': false,
+      };
     } catch (e) {
-      print("Ошибка верификации кода: $e");
-      return {'success': false, 'message': 'Ошибка сети', 'xp_earned': 0};
+      print('Ошибка verifyDeliveryCode: $e');
+      return {
+        'success': false,
+        'message': 'Ошибка сети',
+        'xp_earned': 0,
+        'level_up': false,
+      };
     }
   }
 }
