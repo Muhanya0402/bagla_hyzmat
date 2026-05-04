@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -212,77 +211,6 @@ class BaglaLogo extends StatelessWidget {
       fit: BoxFit.contain, // важно чтобы не обрезалось
     );
   }
-}
-
-class _LogoPainter extends CustomPainter {
-  static const _green = Color(0xFF1A7A3C);
-  static const _mid = Color(0xFF8B4A20);
-  static const _red = Color(0xFFD32F1E);
-
-  @override
-  void paint(Canvas canvas, Size sz) {
-    final w = sz.width;
-    final h = sz.height;
-    final sw = h * 0.155;
-
-    Shader grad(double x0, double x1) => const LinearGradient(
-      colors: [_green, _mid, _red],
-      stops: [0.0, 0.48, 1.0],
-    ).createShader(Rect.fromLTWH(x0, 0, x1 - x0, h));
-
-    final loopPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = sw
-      ..strokeCap = StrokeCap.round
-      ..shader = grad(0, w);
-
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(w * 0.3, h * 0.5), radius: h * 0.355),
-      -2.9,
-      5.5,
-      false,
-      loopPaint,
-    );
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(w * 0.7, h * 0.5), radius: h * 0.355),
-      0.24,
-      5.5,
-      false,
-      loopPaint,
-    );
-
-    final cy = h * 0.5;
-    final ah = h * 0.27;
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(w * 0.32 + ah * 0.6, cy - ah)
-        ..lineTo(w * 0.32 - ah * 0.3, cy)
-        ..lineTo(w * 0.32 + ah * 0.6, cy + ah),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = sw * 0.88
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..shader = grad(0, w * 0.5),
-    );
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(w * 0.68 - ah * 0.6, cy - ah)
-        ..lineTo(w * 0.68 + ah * 0.3, cy)
-        ..lineTo(w * 0.68 - ah * 0.6, cy + ah),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = sw * 0.88
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..shader = grad(w * 0.5, w),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter _) => false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

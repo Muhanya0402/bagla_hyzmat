@@ -2,6 +2,7 @@ import 'package:bagla/features/auth/onboarding_screen.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
 import 'package:bagla/features/profile/appeals_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
+import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/providers/role_provider.dart';
@@ -126,6 +127,11 @@ class MyApp extends StatelessWidget {
         }
         if (settings.name == '/login') {
           return MaterialPageRoute(builder: (_) => const PhoneScreen());
+        }
+        if (settings.name == '/user_type_selection') {
+          return MaterialPageRoute(
+            builder: (_) => const UserTypeSelectionScreen(),
+          );
         }
         if (settings.name == '/home') {
           return MaterialPageRoute(builder: (_) => const HomeScreen());

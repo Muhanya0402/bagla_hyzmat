@@ -8,9 +8,15 @@ import '../../providers/role_provider.dart';
 class UserTypeSelectionScreen extends StatelessWidget {
   const UserTypeSelectionScreen({super.key});
 
-  static const Color brandBlue = Color(0xFF1B3A6B);
-  static const Color brandGreen = Color(0xFF27AE60);
-  static const Color lightGrey = Color(0xFFF6F6F6);
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const Color surfaceColor = Color(0xFFF5F7FA);
+
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -23,98 +29,128 @@ class UserTypeSelectionScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: brandBlue,
-            size: 22,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: brandGreen.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: brandGreen,
+              size: 18,
+            ),
           ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
         ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-              const _BrandingStrip(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 28),
 
-              Text(
-                words.selectRole,
-                style: AppText.extraBold(fontSize: 28, color: brandBlue),
+              // ── Заголовок ──────────────────────────────────────────────
+              ShaderMask(
+                shaderCallback: (b) => brandGradient.createShader(b),
+                child: Text(
+                  words.selectRole,
+                  style: AppText.extraBold(fontSize: 28, color: Colors.white),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 words.roleSubtitle,
-                style: const TextStyle(fontSize: 16, color: Colors.black45),
+                style: AppText.regular(
+                  fontSize: 14,
+                  color: const Color(0xFF9AA3AF),
+                ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 36),
 
-              // Карточки ролей
+              // ── Карточка: Заказчик ─────────────────────────────────────
               _RoleCard(
                 title: words.roleClient,
                 desc: words.roleClientDesc,
                 roleId: 'shop',
-                icon: Icons.shopping_cart_outlined,
+                icon: Icons.shopping_bag_outlined,
                 isSelected: roleProv.selectedRole == 'shop',
                 onTap: () => roleProv.selectRole('shop'),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
+              // ── Карточка: Курьер ───────────────────────────────────────
               _RoleCard(
                 title: words.roleCourier,
                 desc: words.roleCourierDesc,
                 roleId: 'courier',
-                icon: Icons.delivery_dining_outlined,
+                icon: Icons.electric_bike_outlined,
                 isSelected: roleProv.selectedRole == 'courier',
                 onTap: () => roleProv.selectRole('courier'),
               ),
 
               const Spacer(),
 
-              // Кнопка подтверждения (Dostavista style)
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: brandGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  // ИЗМЕНЕНИЕ ЗДЕСЬ:
-                  onPressed: roleProv.selectedRole == null
-                      ? null // Кнопка не активна, пока роль не выбрана
-                      : () {
-                          // Просто переходим на экран деталей, ничего в Directus пока не шлем
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegistrationDetailsScreen(
-                                role: roleProv.selectedRole!,
-                              ),
+              // ── Кнопка подтверждения ───────────────────────────────────
+              GestureDetector(
+                onTap: roleProv.selectedRole == null
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RegistrationDetailsScreen(
+                            role: roleProv.selectedRole!,
+                          ),
+                        ),
+                      ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: roleProv.selectedRole != null
+                        ? brandGradient
+                        : null,
+                    color: roleProv.selectedRole == null
+                        ? const Color(0xFFF5F7FA)
+                        : null,
+                    borderRadius: BorderRadius.circular(16),
+                    border: roleProv.selectedRole == null
+                        ? Border.all(color: const Color(0xFFEEF0F3))
+                        : null,
+                    boxShadow: roleProv.selectedRole != null
+                        ? [
+                            BoxShadow(
+                              color: brandGreen.withOpacity(0.22),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
                             ),
-                          );
-                        },
+                          ]
+                        : null,
+                  ),
+                  alignment: Alignment.center,
                   child: Text(
                     words.saveBtn.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: AppText.bold(
+                      fontSize: 14,
+                      color: roleProv.selectedRole != null
+                          ? Colors.white
+                          : const Color(0xFF9AA3AF),
+                    ).copyWith(letterSpacing: 0.5),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -123,23 +159,10 @@ class UserTypeSelectionScreen extends StatelessWidget {
   }
 }
 
-// 🔹 ФИРМЕННАЯ ПОЛОСКА
-class _BrandingStrip extends StatelessWidget {
-  const _BrandingStrip();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 6,
-      decoration: BoxDecoration(
-        color: UserTypeSelectionScreen.brandGreen,
-        borderRadius: BorderRadius.circular(3),
-      ),
-    );
-  }
-}
+// ═════════════════════════════════════════════════════════════════════════════
+// Role card
+// ═════════════════════════════════════════════════════════════════════════════
 
-// 🔹 КАРТОЧКА ВЫБОРА РОЛИ
 class _RoleCard extends StatelessWidget {
   final String title;
   final String desc;
@@ -147,6 +170,14 @@ class _RoleCard extends StatelessWidget {
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
+
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   const _RoleCard({
     required this.title,
@@ -163,59 +194,87 @@ class _RoleCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isSelected
-              ? UserTypeSelectionScreen.brandBlue
-              : UserTypeSelectionScreen.lightGrey,
+          color: isSelected ? Colors.white : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? UserTypeSelectionScreen.brandBlue
-                : Colors.transparent,
-            width: 2,
-          ),
+          border: isSelected
+              ? Border.all(color: brandGreen.withOpacity(0.3), width: 1.5)
+              : Border.all(color: const Color(0xFFEEF0F3)),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: brandGreen.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : [],
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: isSelected
-                  ? Colors.white
-                  : UserTypeSelectionScreen.brandBlue,
+            // Icon container
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: isSelected ? brandGradient : null,
+                color: isSelected ? null : const Color(0xFFEEF0F3),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                icon,
+                size: 24,
+                color: isSelected ? Colors.white : const Color(0xFF9AA3AF),
+              ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
+            // Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    style: AppText.bold(
+                      fontSize: 16,
                       color: isSelected
-                          ? Colors.white
-                          : UserTypeSelectionScreen.brandBlue,
+                          ? const Color(0xFF0F1117)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     desc,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isSelected ? Colors.white70 : Colors.black38,
+                    style: AppText.regular(
+                      fontSize: 12,
+                      color: const Color(0xFF9AA3AF),
                     ),
                   ),
                 ],
               ),
             ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: UserTypeSelectionScreen.brandGreen,
+            const SizedBox(width: 12),
+            // Check indicator
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: isSelected ? brandGradient : null,
+                border: isSelected
+                    ? null
+                    : Border.all(color: const Color(0xFFD1D5DB), width: 1.5),
               ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    )
+                  : null,
+            ),
           ],
         ),
       ),

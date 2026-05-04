@@ -258,7 +258,14 @@ class ProfileScreen extends StatelessWidget {
                             icon: Icons.verified_rounded,
                             iconColor: _statusColor(auth.status),
                             actionIcon: Icons.arrow_forward_ios_rounded,
-                            onAction: () {},
+                            onAction: () {
+                              if (auth.status == "published") {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/user_type_selection',
+                                );
+                              }
+                            },
                           ),
                       ],
                     ),
@@ -329,6 +336,8 @@ class ProfileScreen extends StatelessWidget {
         return 'На проверке';
       case 'banned':
         return 'Заблокирован';
+      case 'published':
+        return 'Выберите роль';
       default:
         return status;
     }

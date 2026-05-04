@@ -1,5 +1,4 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
 
@@ -22,6 +21,8 @@ class CancelReasonModal extends StatefulWidget {
 }
 
 class _CancelReasonModalState extends State<CancelReasonModal> {
+  static const Color brandRed = Color(0xFFD32F1E);
+
   String? _selectedReason;
   final TextEditingController _commentController = TextEditingController();
   bool _isLoading = false;
@@ -68,8 +69,8 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
     setState(() => _isLoading = false);
 
-    if (mounted) Navigator.pop(context); // сначала закрываем модалку
-    if (widget.onSuccess != null) widget.onSuccess!(); // потом колбэк
+    if (mounted) Navigator.pop(context);
+    widget.onSuccess?.call();
   }
 
   @override
@@ -93,7 +94,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Drag handle
+            // Handle
             Center(
               child: Container(
                 width: 36,
@@ -106,69 +107,109 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
             ),
             const SizedBox(height: 20),
 
-            Text(
-              "Причина отмены",
-              style: AppText.semiBold(
-                fontSize: 17,
-                color: const Color(0xFF0F1117),
-              ),
+            // Header icon + title
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        brandRed.withValues(alpha: 0.12),
+                        brandRed.withValues(alpha: 0.06),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.cancel_outlined,
+                    color: brandRed,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Причина отмены',
+                      style: AppText.semiBold(
+                        fontSize: 17,
+                        color: const Color(0xFF0F1117),
+                      ),
+                    ),
+                    Text(
+                      'Выберите причину и добавьте комментарий',
+                      style: AppText.regular(
+                        fontSize: 12,
+                        color: const Color(0xFF9AA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              "Выберите причину и добавьте комментарий",
-              style: AppText.regular(
-                fontSize: 13,
-                color: const Color(0xFF9AA3AF),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Варианты причин
-            ..._reasons.map((reason) => _buildReasonTile(reason)),
+            // Reason tiles
+            ..._reasons.map((r) => _buildReasonTile(r)),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Поле комментария
+            // Comment field
             TextField(
               controller: _commentController,
               maxLines: 3,
+              style: AppText.regular(
+                fontSize: 13,
+                color: const Color(0xFF0F1117),
+              ),
               decoration: InputDecoration(
-                hintText: "Дополнительный комментарий (необязательно)...",
+                hintText: 'Дополнительный комментарий (необязательно)...',
                 hintStyle: AppText.regular(
                   fontSize: 13,
                   color: const Color(0xFF9AA3AF),
                 ),
+                filled: true,
+                fillColor: const Color(0xFFF5F7FA),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: HomeScreen.brandRed),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: brandRed.withValues(alpha: 0.35),
+                    width: 1.5,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.all(14),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Кнопки
+            // Buttons
             Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      height: 46,
+                      height: 50,
                       decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: const Color(0xFFEEF0F3)),
-                        borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: Text("Назад", style: AppText.medium(fontSize: 14)),
+                      child: Text(
+                        'Назад',
+                        style: AppText.medium(
+                          fontSize: 14,
+                          color: const Color(0xFF9AA3AF),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -180,12 +221,24 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                         : _submit,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      height: 46,
+                      height: 50,
                       decoration: BoxDecoration(
                         color: _selectedReason == null
-                            ? HomeScreen.brandRed.withOpacity(0.3)
-                            : HomeScreen.brandRed,
-                        borderRadius: BorderRadius.circular(12),
+                            ? const Color(0xFFF5F7FA)
+                            : brandRed,
+                        borderRadius: BorderRadius.circular(14),
+                        border: _selectedReason == null
+                            ? Border.all(color: const Color(0xFFEEF0F3))
+                            : null,
+                        boxShadow: _selectedReason != null
+                            ? [
+                                BoxShadow(
+                                  color: brandRed.withValues(alpha: 0.2),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
                       ),
                       alignment: Alignment.center,
                       child: _isLoading
@@ -198,10 +251,12 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                               ),
                             )
                           : Text(
-                              "Отменить заказ",
+                              'Отменить заказ',
                               style: AppText.medium(
                                 fontSize: 14,
-                                color: Colors.white,
+                                color: _selectedReason == null
+                                    ? const Color(0xFF9AA3AF)
+                                    : Colors.white,
                               ),
                             ),
                     ),
@@ -225,32 +280,36 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? HomeScreen.brandRed.withOpacity(0.05)
+              ? brandRed.withValues(alpha: 0.05)
               : const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
-                ? HomeScreen.brandRed.withOpacity(0.4)
-                : Colors.transparent,
+                ? brandRed.withValues(alpha: 0.3)
+                : const Color(0xFFEEF0F3),
+            width: isSelected ? 1.5 : 1,
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? HomeScreen.brandRed.withOpacity(0.1)
+                    ? brandRed.withValues(alpha: 0.1)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected
+                      ? brandRed.withValues(alpha: 0.2)
+                      : const Color(0xFFEEF0F3),
+                ),
               ),
               child: Icon(
                 reason.icon,
                 size: 18,
-                color: isSelected
-                    ? HomeScreen.brandRed
-                    : const Color(0xFF9AA3AF),
+                color: isSelected ? brandRed : const Color(0xFF9AA3AF),
               ),
             ),
             const SizedBox(width: 12),
@@ -258,19 +317,32 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
               child: Text(
                 reason.label,
                 style: isSelected
-                    ? AppText.semiBold(fontSize: 14, color: HomeScreen.brandRed)
+                    ? AppText.semiBold(fontSize: 14, color: brandRed)
                     : AppText.regular(
                         fontSize: 14,
                         color: const Color(0xFF0F1117),
                       ),
               ),
             ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle_rounded,
-                color: HomeScreen.brandRed,
-                size: 20,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? brandRed : Colors.transparent,
+                border: isSelected
+                    ? null
+                    : Border.all(color: const Color(0xFFD1D5DB), width: 1.5),
               ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    )
+                  : null,
+            ),
           ],
         ),
       ),

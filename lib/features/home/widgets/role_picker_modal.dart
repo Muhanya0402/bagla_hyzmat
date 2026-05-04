@@ -5,6 +5,14 @@ import 'package:flutter/material.dart';
 class RolePickerEmbedded extends StatelessWidget {
   final VoidCallback onClose;
 
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
   const RolePickerEmbedded({super.key, required this.onClose});
 
   @override
@@ -12,21 +20,48 @@ class RolePickerEmbedded extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          "Кто вы?",
-          style: AppText.bold(fontSize: 22, color: const Color(0xFF0F1117)),
+        // Handle
+
+        // Icon
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                brandGreen.withOpacity(0.12),
+                brandRed.withOpacity(0.07),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(
+            Icons.swap_horiz_rounded,
+            color: brandGreen,
+            size: 30,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        ShaderMask(
+          shaderCallback: (b) => brandGradient.createShader(b),
+          child: Text(
+            'Кто вы?',
+            style: AppText.extraBold(fontSize: 22, color: Colors.white),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
-          "Выберите вашу роль чтобы продолжить",
-          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
+          'Выберите вашу роль чтобы продолжить',
+          style: AppText.regular(fontSize: 13, color: const Color(0xFF9AA3AF)),
         ),
         const SizedBox(height: 24),
+
+        // Курьер
         _RoleOption(
-          icon: Icons.directions_bike_rounded,
-          title: "Курьер",
-          description: "Принимаю и доставляю заказы",
-          color: const Color(0xFF27AE60),
+          icon: Icons.electric_bike_outlined,
+          title: 'Курьер',
+          description: 'Принимаю и доставляю заказы',
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -35,11 +70,12 @@ class RolePickerEmbedded extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+
+        // Заказчик
         _RoleOption(
-          icon: Icons.storefront_rounded,
-          title: "Заказчик",
-          description: "Создаю заказы для доставки",
-          color: const Color(0xFF1B3A6B),
+          icon: Icons.shopping_bag_outlined,
+          title: 'Заказчик',
+          description: 'Создаю заказы для доставки',
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -47,7 +83,8 @@ class RolePickerEmbedded extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -57,14 +94,20 @@ class _RoleOption extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
-  final Color color;
   final VoidCallback onTap;
+
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   const _RoleOption({
     required this.icon,
     required this.title,
     required this.description,
-    required this.color,
     required this.onTap,
   });
 
@@ -75,20 +118,21 @@ class _RoleOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2), width: 1),
+          border: Border.all(color: const Color(0xFFEEF0F3)),
         ),
         child: Row(
           children: [
+            // Gradient icon box
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                gradient: brandGradient,
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: Colors.white, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -113,18 +157,10 @@ class _RoleOption extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: color,
-                size: 13,
-              ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 13,
+              color: Color(0xFFD1D5DB),
             ),
           ],
         ),

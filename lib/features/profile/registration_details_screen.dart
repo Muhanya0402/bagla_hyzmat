@@ -1,11 +1,10 @@
 import 'dart:io';
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/app_sizes.dart';
-import '../../core/app_text_styles.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/district.dart';
@@ -32,15 +31,19 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   File? _passportFile;
   File? _addressFile;
 
-  static const Color brandBlue = Color(0xFF1B3A6B);
-  static const Color brandGreen = Color(0xFF27AE60);
-  static const Color brandGrey = Color(0xFFF6F6F6);
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   final _c1 = TextEditingController();
   final _c2 = TextEditingController();
   final _c3 = TextEditingController();
 
-  // Локация
   List<Province> _provinces = [];
   List<Etrap> _etraps = [];
   List<District> _districts = [];
@@ -53,10 +56,8 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   bool _loadingEtraps = false;
   bool _loadingDistricts = false;
 
-  // Текущий шаг выбора локации: 0=велаят, 1=этрап, 2=район
   int _locationStep = 0;
 
-  // Поиск
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -78,7 +79,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     super.dispose();
   }
 
-  // ─── Загрузка данных ───────────────────────────────────────────────────────
+  // ── Data loading ───────────────────────────────────────────────────────────
 
   Future<void> _loadProvinces() async {
     setState(() => _loadingProvinces = true);
@@ -86,7 +87,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       final list = await _authRepo.getProvinces();
       setState(() => _provinces = list);
     } catch (e) {
-      _showSnack("Ошибка загрузки велаятов: $e");
+      _showSnack('Ошибка загрузки велаятов: $e');
     } finally {
       setState(() => _loadingProvinces = false);
     }
@@ -108,7 +109,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       final list = await _authRepo.getEtrapsByProvince(p.id);
       setState(() => _etraps = list);
     } catch (e) {
-      _showSnack("Ошибка загрузки этрапов: $e");
+      _showSnack('Ошибка загрузки этрапов: $e');
     } finally {
       setState(() => _loadingEtraps = false);
     }
@@ -128,7 +129,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       final list = await _authRepo.getDistrictsByEtrap(e.id);
       setState(() => _districts = list);
     } catch (e) {
-      _showSnack("Ошибка загрузки районов: $e");
+      _showSnack('Ошибка загрузки районов: $e');
     } finally {
       setState(() => _loadingDistricts = false);
     }
@@ -158,7 +159,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     });
   }
 
-  // ─── Фото ──────────────────────────────────────────────────────────────────
+  // ── Photo ──────────────────────────────────────────────────────────────────
 
   Future<void> _pickImage(bool isPassport) async {
     final XFile? image = await _picker.pickImage(
@@ -176,32 +177,28 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     }
   }
 
-  // ─── Отправка ──────────────────────────────────────────────────────────────
+  // ── Submit ─────────────────────────────────────────────────────────────────
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-
     if (_selectedDistrict == null) {
-      _showSnack("Пожалуйста, выберите район");
+      _showSnack('Пожалуйста, выберите район');
       return;
     }
-
     if (widget.role == 'courier' &&
         (_passportFile == null || _addressFile == null)) {
-      _showSnack("Пожалуйста, загрузите оба фото паспорта");
+      _showSnack('Пожалуйста, загрузите оба фото паспорта');
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('user_id');
-      if (userId == null) throw "ID пользователя не найден";
+      if (userId == null) throw 'ID пользователя не найден';
 
       String? passportId;
       String? addressId;
-
       if (_passportFile != null) {
         passportId = await _authRepo.uploadFile(_passportFile!.path);
       }
@@ -241,38 +238,41 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
       if (success) {
         if (!mounted) return;
-
         if (widget.role != 'courier') {
           context.read<AuthProvider>().updateShopAddress(_c2.text.trim());
         }
-
         await context.read<AuthProvider>().refreshProfile();
-
         _showSnack(
-          "Данные отправлены. Ожидайте подтверждения",
+          'Данные отправлены. Ожидайте подтверждения',
           color: brandGreen,
         );
-
         Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
       }
     } catch (e) {
-      _showSnack("Ошибка: $e");
+      _showSnack('Ошибка: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showSnack(String msg, {Color? color}) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: AppText.regular(fontSize: 13, color: Colors.white),
+        ),
+        backgroundColor: color ?? brandRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
-  // ─── UI ────────────────────────────────────────────────────────────────────
+  // ── UI ─────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final sizes = AppSizes.of(context);
     final isCourier = widget.role == 'courier';
     final langProvider = context.watch<LanguageProvider>();
     final isRu = langProvider.isRu;
@@ -283,119 +283,175 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: brandBlue,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          words.confirmBtn.toUpperCase(),
-          style: AppText.bold(fontSize: 16),
-        ),
-      ),
-      body: ListView(
-        padding: EdgeInsets.symmetric(horizontal: sizes.spacing(6)),
-        children: [
-          const SizedBox(height: 10),
-          _buildHeader(isCourier),
-          const SizedBox(height: 30),
-          Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Поля ввода ─────────────────────────────────────────────
-                if (!isCourier) ...[
-                  _InputField(
-                    label: "Наименование организации",
-                    controller: _c1,
-                  ),
-                  const SizedBox(height: 20),
-                  _InputField(label: "Юридический адрес", controller: _c2),
-                ],
-                if (isCourier) ...[
-                  _InputField(label: "Имя", controller: _c1),
-                  const SizedBox(height: 20),
-                  _InputField(label: "Фамилия", controller: _c2),
-                  const SizedBox(height: 20),
-                  _InputField(label: "Отчество", controller: _c3),
-                ],
-
-                const SizedBox(height: 28),
-
-                // ── Выбор локации (степпер) ────────────────────────────────
-                _buildLocationStepper(isRu),
-
-                // ── Фото паспорта ──────────────────────────────────────────
-                if (isCourier) ...[
-                  const SizedBox(height: 30),
-                  _buildSectionLabel("ФОТО ПАСПОРТА"),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _PhotoBox(
-                        text: "Главная",
-                        file: _passportFile,
-                        onTap: () => _pickImage(true),
-                      ),
-                      const SizedBox(width: 12),
-                      _PhotoBox(
-                        text: "Прописка",
-                        file: _addressFile,
-                        onTap: () => _pickImage(false),
-                      ),
-                    ],
-                  ),
-                ],
-
-                const SizedBox(height: 40),
-                _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: brandGreen),
-                      )
-                    : _SubmitButton(
-                        text: words.saveBtn,
-                        onPressed: _handleSubmit,
-                      ),
-                const SizedBox(height: 30),
-              ],
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: brandGreen.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: brandGreen,
+              size: 18,
             ),
           ),
-        ],
+        ),
+        title: Text(
+          isCourier ? 'Анкета курьера' : 'Детали профиля',
+          style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+          children: [
+            // ── Роль-бейдж ─────────────────────────────────────────────
+            _RoleBadge(isCourier: isCourier),
+            const SizedBox(height: 28),
+
+            // ── Секция: Личные данные ───────────────────────────────────
+            _SectionLabel(
+              icon: Icons.person_outline_rounded,
+              label: isCourier ? 'ЛИЧНЫЕ ДАННЫЕ' : 'ОБ ОРГАНИЗАЦИИ',
+            ),
+            const SizedBox(height: 14),
+
+            if (!isCourier) ...[
+              _BrandInputField(
+                label: 'Наименование организации',
+                controller: _c1,
+                icon: Icons.business_outlined,
+              ),
+              const SizedBox(height: 14),
+              _BrandInputField(
+                label: 'Юридический адрес',
+                controller: _c2,
+                icon: Icons.location_city_outlined,
+              ),
+            ],
+            if (isCourier) ...[
+              _BrandInputField(
+                label: 'Имя',
+                controller: _c1,
+                icon: Icons.badge_outlined,
+              ),
+              const SizedBox(height: 14),
+              _BrandInputField(
+                label: 'Фамилия',
+                controller: _c2,
+                icon: Icons.badge_outlined,
+              ),
+              const SizedBox(height: 14),
+              _BrandInputField(
+                label: 'Отчество',
+                controller: _c3,
+                icon: Icons.badge_outlined,
+              ),
+            ],
+
+            const SizedBox(height: 28),
+
+            // ── Секция: Местоположение ──────────────────────────────────
+            _SectionLabel(
+              icon: Icons.location_on_outlined,
+              label: 'МЕСТОПОЛОЖЕНИЕ',
+            ),
+            const SizedBox(height: 14),
+            _buildLocationStepper(isRu),
+
+            // ── Секция: Фото паспорта ───────────────────────────────────
+            if (isCourier) ...[
+              const SizedBox(height: 28),
+              _SectionLabel(
+                icon: Icons.document_scanner_outlined,
+                label: 'ФОТО ПАСПОРТА',
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _BrandPhotoBox(
+                    text: 'Главная',
+                    subtitle: 'страница',
+                    file: _passportFile,
+                    onTap: () => _pickImage(true),
+                  ),
+                  const SizedBox(width: 12),
+                  _BrandPhotoBox(
+                    text: 'Прописка',
+                    subtitle: 'страница',
+                    file: _addressFile,
+                    onTap: () => _pickImage(false),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 36),
+
+            // ── Кнопка ─────────────────────────────────────────────────
+            _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: brandGreen,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : GestureDetector(
+                    onTap: _handleSubmit,
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: brandGradient,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: brandGreen.withOpacity(0.22),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        words.saveBtn.toUpperCase(),
+                        style: AppText.bold(
+                          fontSize: 14,
+                          color: Colors.white,
+                        ).copyWith(letterSpacing: 0.5),
+                      ),
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }
 
-  // ─── Степпер локации ───────────────────────────────────────────────────────
+  // ── Location stepper ───────────────────────────────────────────────────────
 
   Widget _buildLocationStepper(bool isRu) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionLabel("МЕСТОПОЛОЖЕНИЕ"),
-        const SizedBox(height: 12),
-
-        // Прогресс-бар шагов
         _buildStepIndicator(),
-        const SizedBox(height: 16),
-
-        // Хлебные крошки выбранных значений
+        const SizedBox(height: 14),
         if (_selectedProvince != null ||
             _selectedEtrap != null ||
             _selectedDistrict != null)
           _buildBreadcrumb(isRu),
-
-        const SizedBox(height: 12),
-
-        // Поиск (только для этрапа и района)
-        if (_locationStep > 0 && _selectedDistrict == null) _buildSearchField(),
-
-        const SizedBox(height: 8),
-
-        // Список текущего шага
+        if (_locationStep > 0 && _selectedDistrict == null) ...[
+          const SizedBox(height: 10),
+          _buildSearchField(),
+        ],
+        const SizedBox(height: 10),
         if (_selectedDistrict == null)
           _buildCurrentStepList(isRu)
         else
@@ -411,11 +467,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         final isDone =
             i < _locationStep || (i == 2 && _selectedDistrict != null);
         final isActive = i == _locationStep && _selectedDistrict == null;
-
         return Expanded(
           child: GestureDetector(
             onTap: () {
-              // Можно тапнуть назад на уже выбранный шаг
               if (i < _locationStep) _resetLocationStep(i);
             },
             child: Row(
@@ -427,21 +481,21 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         duration: const Duration(milliseconds: 300),
                         height: 4,
                         decoration: BoxDecoration(
-                          color: isDone || isActive
-                              ? brandGreen
-                              : const Color(0xFFE0E0E0),
+                          gradient: (isDone || isActive) ? brandGradient : null,
+                          color: (isDone || isActive)
+                              ? null
+                              : const Color(0xFFEEF0F3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         steps[i],
-                        style: TextStyle(
+                        style: AppText.medium(
                           fontSize: 10,
-                          fontWeight: isActive
-                              ? FontWeight.w800
-                              : FontWeight.w500,
-                          color: isDone || isActive ? brandBlue : Colors.grey,
+                          color: isDone || isActive
+                              ? const Color(0xFF0F1117)
+                              : const Color(0xFF9AA3AF),
                         ),
                       ),
                     ],
@@ -457,27 +511,30 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   }
 
   Widget _buildBreadcrumb(bool isRu) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: [
-        if (_selectedProvince != null)
-          _BreadcrumbChip(
-            label: _selectedProvince!.label(isRu),
-            onTap: () => _resetLocationStep(0),
-          ),
-        if (_selectedEtrap != null)
-          _BreadcrumbChip(
-            label: _selectedEtrap!.label(isRu),
-            onTap: () => _resetLocationStep(1),
-          ),
-        if (_selectedDistrict != null)
-          _BreadcrumbChip(
-            label: _selectedDistrict!.label(isRu),
-            isSelected: true,
-            onTap: () => _resetLocationStep(1),
-          ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          if (_selectedProvince != null)
+            _BreadcrumbChip(
+              label: _selectedProvince!.label(isRu),
+              onTap: () => _resetLocationStep(0),
+            ),
+          if (_selectedEtrap != null)
+            _BreadcrumbChip(
+              label: _selectedEtrap!.label(isRu),
+              onTap: () => _resetLocationStep(1),
+            ),
+          if (_selectedDistrict != null)
+            _BreadcrumbChip(
+              label: _selectedDistrict!.label(isRu),
+              isSelected: true,
+              onTap: () => _resetLocationStep(1),
+            ),
+        ],
+      ),
     );
   }
 
@@ -485,20 +542,33 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     final hints = ['', 'Поиск этрапа...', 'Поиск района...'];
     return TextField(
       controller: _searchController,
+      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
       decoration: InputDecoration(
         hintText: hints[_locationStep],
-        prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+        hintStyle: AppText.regular(
+          fontSize: 14,
+          color: const Color(0xFF9AA3AF),
+        ),
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: Color(0xFF9AA3AF),
+          size: 20,
+        ),
         suffixIcon: _searchQuery.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                onPressed: () {
+            ? GestureDetector(
+                onTap: () {
                   _searchController.clear();
                   setState(() => _searchQuery = '');
                 },
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: Color(0xFF9AA3AF),
+                ),
               )
             : null,
         filled: true,
-        fillColor: brandGrey,
+        fillColor: const Color(0xFFF5F7FA),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -522,7 +592,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     return _buildItemGrid(
       items: _provinces,
       labelFn: (p) => p.label(isRu),
-      onTap: (p) => _selectProvince(p),
+      onTap: _selectProvince,
     );
   }
 
@@ -534,7 +604,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     return _buildItemList(
       items: filtered,
       labelFn: (e) => e.label(isRu),
-      onTap: (e) => _selectEtrap(e),
+      onTap: _selectEtrap,
     );
   }
 
@@ -546,11 +616,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     return _buildItemList(
       items: filtered,
       labelFn: (d) => d.label(isRu),
-      onTap: (d) => _selectDistrict(d),
+      onTap: _selectDistrict,
     );
   }
 
-  /// Сетка 2×N — для велаятов (их мало, красиво смотрится)
   Widget _buildItemGrid<T>({
     required List<T> items,
     required String Function(T) labelFn,
@@ -572,19 +641,18 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           onTap: () => onTap(item),
           child: Container(
             decoration: BoxDecoration(
-              color: brandGrey,
+              color: const Color(0xFFF5F7FA),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.transparent),
+              border: Border.all(color: const Color(0xFFEEF0F3)),
             ),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               labelFn(item),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: AppText.semiBold(
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: brandBlue,
+                color: const Color(0xFF0F1117),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -595,7 +663,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     );
   }
 
-  /// Вертикальный список — для этрапов и районов
   Widget _buildItemList<T>({
     required List<T> items,
     required String Function(T) labelFn,
@@ -607,16 +674,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         alignment: Alignment.center,
         child: Text(
           _searchQuery.isEmpty ? 'Нет данных' : 'Ничего не найдено',
-          style: const TextStyle(color: Colors.grey, fontSize: 14),
+          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
         ),
       );
     }
-
     return Container(
       constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
-        color: brandGrey,
+        color: const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEF0F3)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -628,12 +695,14 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             height: 1,
             indent: 16,
             endIndent: 16,
-            color: Color(0xFFEEEEEE),
+            color: Color(0xFFEEF0F3),
           ),
           itemBuilder: (_, i) {
             final item = items[i];
             return InkWell(
               onTap: () => onTap(item),
+              splashColor: brandGreen.withOpacity(0.05),
+              highlightColor: Colors.transparent,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -644,17 +713,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     Expanded(
                       child: Text(
                         labelFn(item),
-                        style: const TextStyle(
+                        style: AppText.medium(
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: brandBlue,
+                          color: const Color(0xFF0F1117),
                         ),
                       ),
                     ),
                     const Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 14,
-                      color: Colors.grey,
+                      size: 13,
+                      color: Color(0xFFD1D5DB),
                     ),
                   ],
                 ),
@@ -674,96 +742,316 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     );
   }
 
-  /// Финальное состояние — район выбран
   Widget _buildLocationDone(bool isRu) {
     return GestureDetector(
       onTap: () => _resetLocationStep(0),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: brandGreen.withOpacity(0.08),
+          color: const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: brandGreen.withOpacity(0.3)),
+          border: Border.all(color: brandGreen.withOpacity(0.25)),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: brandGreen,
-                shape: BoxShape.circle,
+                gradient: brandGradient,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.check, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _selectedDistrict!.label(isRu),
-                    style: const TextStyle(
+                    style: AppText.bold(
                       fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: brandBlue,
+                      color: const Color(0xFF0F1117),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${_selectedProvince?.label(isRu) ?? ''} · ${_selectedEtrap?.label(isRu) ?? ''}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: AppText.regular(
+                      fontSize: 12,
+                      color: const Color(0xFF9AA3AF),
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+            const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF9AA3AF)),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildHeader(bool isCourier) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+// ═════════════════════════════════════════════════════════════════════════════
+// Sub-widgets
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _RoleBadge extends StatelessWidget {
+  final bool isCourier;
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+  );
+
+  const _RoleBadge({required this.isCourier});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
         Container(
-          width: 40,
-          height: 6,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: brandGreen,
-            borderRadius: BorderRadius.circular(3),
+            gradient: brandGradient,
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          isCourier ? "Анкета курьера" : "Детали профиля",
-          style: AppText.bold(fontSize: 24, color: brandBlue),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isCourier
+                    ? Icons.electric_bike_outlined
+                    : Icons.shopping_bag_outlined,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isCourier ? 'Курьер' : 'Заказчик',
+                style: AppText.bold(fontSize: 13, color: Colors.white),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: brandBlue,
-        letterSpacing: 1,
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  static const Color brandGreen = Color(0xFF1A7A3C);
+
+  const _SectionLabel({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: brandGreen.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 15, color: brandGreen),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: AppText.bold(
+            fontSize: 11,
+            color: const Color(0xFF0F1117),
+          ).copyWith(letterSpacing: 1),
+        ),
+      ],
+    );
+  }
+}
+
+class _BrandInputField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final IconData icon;
+
+  static const Color brandGreen = Color(0xFF1A7A3C);
+
+  const _BrandInputField({
+    required this.label,
+    required this.controller,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: AppText.regular(
+          fontSize: 13,
+          color: const Color(0xFF9AA3AF),
+        ),
+        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9AA3AF)),
+        filled: true,
+        fillColor: const Color(0xFFF5F7FA),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: brandGreen.withOpacity(0.4),
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFD32F1E), width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFD32F1E), width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+      ),
+      validator: (v) => (v == null || v.isEmpty) ? 'Заполните поле' : null,
+    );
+  }
+}
+
+class _BrandPhotoBox extends StatelessWidget {
+  final String text;
+  final String subtitle;
+  final File? file;
+  final VoidCallback onTap;
+
+  static const Color brandGreen = Color(0xFF1A7A3C);
+  static const Color brandRed = Color(0xFFD32F1E);
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [brandGreen, brandRed],
+  );
+
+  const _BrandPhotoBox({
+    required this.text,
+    required this.subtitle,
+    this.file,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 150,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: file != null
+                  ? brandGreen.withOpacity(0.4)
+                  : const Color(0xFFEEF0F3),
+              width: file != null ? 1.5 : 1,
+            ),
+            image: file != null
+                ? DecorationImage(image: FileImage(file!), fit: BoxFit.cover)
+                : null,
+          ),
+          child: file == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: brandGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.add_a_photo_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      text,
+                      style: AppText.bold(
+                        fontSize: 13,
+                        color: const Color(0xFF0F1117),
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: AppText.regular(
+                        fontSize: 11,
+                        color: const Color(0xFF9AA3AF),
+                      ),
+                    ),
+                  ],
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.35),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  alignment: Alignment.bottomCenter,
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Загружено',
+                        style: AppText.semiBold(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
       ),
     );
   }
 }
 
-// ─── ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ ───────────────────────────────────────────────
-
 class _BreadcrumbChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool isSelected;
+
+  static const Color brandGreen = Color(0xFF1A7A3C);
 
   const _BreadcrumbChip({
     required this.label,
@@ -779,160 +1067,34 @@ class _BreadcrumbChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF27AE60)
-              : const Color(0xFF1B3A6B).withOpacity(0.08),
+              ? brandGreen.withOpacity(0.1)
+              : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? brandGreen.withOpacity(0.3)
+                : const Color(0xFFEEF0F3),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-              style: TextStyle(
+              style: AppText.semiBold(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : const Color(0xFF1B3A6B),
+                color: isSelected ? brandGreen : const Color(0xFF6B7280),
               ),
             ),
             if (!isSelected) ...[
               const SizedBox(width: 4),
-              const Icon(Icons.close, size: 12, color: Color(0xFF1B3A6B)),
+              const Icon(
+                Icons.close_rounded,
+                size: 12,
+                color: Color(0xFF9AA3AF),
+              ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InputField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  const _InputField({required this.label, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF1B3A6B),
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFFF6F6F6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
-          validator: (v) => (v == null || v.isEmpty) ? "Заполните поле" : null,
-        ),
-      ],
-    );
-  }
-}
-
-class _PhotoBox extends StatelessWidget {
-  final String text;
-  final File? file;
-  final VoidCallback onTap;
-
-  const _PhotoBox({required this.text, this.file, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 140,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF6F6F6),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: file != null
-                  ? Colors.green
-                  : Colors.black.withOpacity(0.05),
-            ),
-            image: file != null
-                ? DecorationImage(image: FileImage(file!), fit: BoxFit.cover)
-                : null,
-          ),
-          child: file == null
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.add_a_photo_rounded,
-                      color: Color(0xFF27AE60),
-                      size: 30,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1B3A6B),
-                      ),
-                    ),
-                  ],
-                )
-              : Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Colors.black26,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SubmitButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  const _SubmitButton({required this.text, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF27AE60),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
         ),
       ),
     );

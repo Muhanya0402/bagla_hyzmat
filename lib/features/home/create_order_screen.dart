@@ -297,7 +297,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withOpacity(0.07),
+              color: _green.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -381,7 +381,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ),
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               child: const Center(
                 child: CircularProgressIndicator(color: _green),
               ),
@@ -406,7 +406,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         border: Border.all(color: const Color(0xFFEEF0F3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.025),
+            color: Colors.black.withValues(alpha: .025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -472,7 +472,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   color: _bg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: _green.withOpacity(0.25),
+                    color: _green.withValues(alpha: 0.25),
                     width: 1.5,
                     style: BorderStyle.solid,
                   ),
@@ -482,7 +482,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   children: [
                     Icon(
                       Icons.add_photo_alternate_outlined,
-                      color: _green.withOpacity(0.5),
+                      color: _green.withValues(alpha: 0.5),
                       size: 26,
                     ),
                     const SizedBox(height: 4),
@@ -538,46 +538,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Fields ─────────────────────────────────────────────────────────────────
 
-  Widget _field({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    required Color iconColor,
-    bool readOnly = false,
-    VoidCallback? onTap,
-  }) {
-    return TextFormField(
-      controller: controller,
-      readOnly: readOnly,
-      onTap: onTap,
-      style: AppText.regular(fontSize: 14, color: _dark),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: AppText.regular(fontSize: 14, color: _grey),
-        prefixIcon: Icon(icon, color: iconColor, size: 18),
-        filled: true,
-        fillColor: _bg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _green.withOpacity(0.4), width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-      ),
-      validator: (v) => (v == null || v.isEmpty) ? 'Заполните поле' : null,
-    );
-  }
-
   Widget _phoneField() {
     return TextFormField(
       controller: _phoneController,
@@ -606,7 +566,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _green.withOpacity(0.4), width: 1.5),
+          borderSide: BorderSide(
+            color: _green.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -679,7 +642,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _green.withOpacity(0.4), width: 1.5),
+          borderSide: BorderSide(
+            color: _green.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -724,7 +690,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _red.withOpacity(0.4), width: 1.5),
+          borderSide: BorderSide(
+            color: _red.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -971,7 +940,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: items.length,
-          separatorBuilder: (_, __) => const Divider(
+          separatorBuilder: (_, _) => const Divider(
             height: 1,
             indent: 16,
             endIndent: 16,
@@ -1015,9 +984,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _green.withOpacity(0.06),
+          color: _green.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _green.withOpacity(0.25)),
+          border: Border.all(color: _green.withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
@@ -1127,13 +1096,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 28),
               decoration: BoxDecoration(
                 gradient: _isLoading ? null : _gradient,
-                color: _isLoading ? _grey.withOpacity(0.3) : null,
+                color: _isLoading ? _grey.withValues(alpha: 0.3) : null,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: _isLoading
                     ? null
                     : [
                         BoxShadow(
-                          color: _green.withOpacity(0.25),
+                          color: _green.withValues(alpha: 0.25),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
