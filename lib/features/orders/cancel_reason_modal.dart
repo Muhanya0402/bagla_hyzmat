@@ -170,7 +170,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: _red.withOpacity(0.4),
+                    color: _red.withValues(alpha: 0.4),
                     width: 1.5,
                   ),
                 ),
@@ -210,7 +210,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: _selectedReason == null
-                            ? _red.withOpacity(0.25)
+                            ? _red.withValues(alpha: 0.25)
                             : _red,
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -268,10 +268,14 @@ class _ReasonTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? _red.withOpacity(0.05) : const Color(0xFFF5F7FA),
+          color: isSelected
+              ? _red.withValues(alpha: 0.05)
+              : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? _red.withOpacity(0.35) : Colors.transparent,
+            color: isSelected
+                ? _red.withValues(alpha: 0.35)
+                : Colors.transparent,
           ),
         ),
         child: Row(
@@ -280,7 +284,7 @@ class _ReasonTile extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: isSelected ? _red.withOpacity(0.1) : Colors.white,
+                color: isSelected ? _red.withValues(alpha: 0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(

@@ -254,7 +254,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                     controller: sc,
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const Divider(
+                    separatorBuilder: (_, _) => const Divider(
                       height: 1,
                       indent: 52,
                       color: Color(0xFFF4F5F7),

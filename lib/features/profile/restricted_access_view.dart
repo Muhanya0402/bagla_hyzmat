@@ -44,7 +44,10 @@ class RestrictedAccessView extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [_kGreen.withOpacity(0.1), _kRed.withOpacity(0.07)],
+              colors: [
+                _kGreen.withValues(alpha: 0.1),
+                _kRed.withValues(alpha: 0.07),
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -92,7 +95,9 @@ class RestrictedAccessView extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFFFF8EE),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE67E22).withOpacity(0.2)),
+            border: Border.all(
+              color: const Color(0xFFE67E22).withValues(alpha: 0.2),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -125,7 +130,7 @@ class RestrictedAccessView extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: _kGreen.withOpacity(0.2),
+                  color: _kGreen.withValues(alpha: 0.2),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -220,7 +225,7 @@ class TopUpFormView extends StatelessWidget {
               'assets/images/point_icon.png',
               width: 28,
               height: 28,
-              errorBuilder: (_, __, ___) =>
+              errorBuilder: (_, _, _) =>
                   const Icon(Icons.toll_rounded, color: _kGreen, size: 26),
             ),
             suffixText: 'жетонов',
@@ -238,7 +243,7 @@ class TopUpFormView extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: _kGreen.withOpacity(0.5),
+                color: _kGreen.withValues(alpha: 0.5),
                 width: 1.5,
               ),
             ),
@@ -275,7 +280,7 @@ class TopUpFormView extends StatelessWidget {
               boxShadow: canSubmit
                   ? [
                       BoxShadow(
-                        color: _kGreen.withOpacity(0.2),
+                        color: _kGreen.withValues(alpha: 0.2),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
