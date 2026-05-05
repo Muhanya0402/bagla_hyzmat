@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
 
@@ -75,11 +76,17 @@ class OrderService {
           response.statusCode == 204;
     } on DioException catch (e) {
       if (e.response != null) {
-        print('ОТВЕТ СЕРВЕРА: ${e.response?.data}');
+        if (kDebugMode) {
+          print('ОТВЕТ СЕРВЕРА: ${e.response?.data}');
+        }
         final errors = e.response?.data['errors'];
         if (errors is List && errors.isNotEmpty) {
-          print('ПРИЧИНА: ${errors[0]['message']}');
-          print('ДЕТАЛИ: ${errors[0]['extensions']}');
+          if (kDebugMode) {
+            print('ПРИЧИНА: ${errors[0]['message']}');
+          }
+          if (kDebugMode) {
+            print('ДЕТАЛИ: ${errors[0]['extensions']}');
+          }
         }
       }
       throw Exception(

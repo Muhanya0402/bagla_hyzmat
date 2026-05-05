@@ -1,5 +1,4 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/phone_screen.dart'; // LangToggle
 import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
@@ -58,7 +57,7 @@ class ProfileScreen extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: brandGreen.withOpacity(0.07),
+              color: brandGreen.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.close, color: brandGreen, size: 20),
@@ -80,7 +79,7 @@ class ProfileScreen extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: brandRed.withOpacity(0.07),
+                color: brandRed.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(

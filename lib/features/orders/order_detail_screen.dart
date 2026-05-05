@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
-import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -230,7 +229,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [_green.withOpacity(0.12), _red.withOpacity(0.08)],
+                    colors: [
+                      _green.withValues(alpha: 0.12),
+                      _red.withValues(alpha: 0.08),
+                    ],
                   ),
                 ),
                 child: const Icon(
@@ -266,9 +268,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: _green.withOpacity(0.07),
+                  color: _green.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _green.withOpacity(0.2)),
+                  border: Border.all(color: _green.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -278,7 +280,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       width: 28,
                       height: 28,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.toll_rounded,
                         color: _green,
                         size: 28,
@@ -303,10 +305,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withOpacity(0.07),
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: const Color(0xFF7C3AED).withOpacity(0.2),
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
                     ),
                   ),
                   child: Row(
@@ -407,7 +409,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withOpacity(0.07),
+              color: _green.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -524,7 +526,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         border: Border.all(color: const Color(0xFFEEF0F3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.025),
+            color: Colors.black.withValues(alpha: 0.025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -593,9 +595,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: s.color.withOpacity(0.06),
+        color: s.color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: s.color.withOpacity(0.2)),
+        border: Border.all(color: s.color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -603,7 +605,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: s.color.withOpacity(0.12),
+              color: s.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(s.icon, color: s.color, size: 22),
@@ -620,7 +622,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 s.description,
                 style: AppText.regular(
                   fontSize: 12,
-                  color: s.color.withOpacity(0.7),
+                  color: s.color.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -635,7 +637,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               color: s.color,
               boxShadow: [
                 BoxShadow(
-                  color: s.color.withOpacity(0.4),
+                  color: s.color.withValues(alpha: 0.4),
                   blurRadius: 6,
                   spreadRadius: 1,
                 ),
@@ -651,14 +653,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _buildCountdownCard() {
     final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
     final Color color = _isExpired ? _red : _green;
-    final Color bgColor = color.withOpacity(0.06);
+    final Color bgColor = color.withValues(alpha: 0.06);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -666,7 +668,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -684,7 +686,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   _isExpired ? 'Время истекло' : 'До истечения кэшбека',
                   style: AppText.regular(
                     fontSize: 12,
-                    color: color.withOpacity(0.7),
+                    color: color.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -715,7 +717,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       width: 20,
                       height: 20,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.toll_rounded,
                         size: 20,
                         color: _green,
@@ -783,7 +785,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: color),
@@ -869,7 +871,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: color),
@@ -980,7 +982,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: pictures.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, i) {
           final String? fileId = pictures[i]['directus_files_id'];
           if (fileId == null) return const SizedBox.shrink();
@@ -992,7 +994,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               width: 110,
               height: 110,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 width: 110,
                 color: const Color(0xFFF1F4F8),
                 child: const Icon(
@@ -1182,8 +1184,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: codeSent
-                          ? [_green.withOpacity(0.1), _green.withOpacity(0.05)]
-                          : [_red.withOpacity(0.1), _red.withOpacity(0.05)],
+                          ? [
+                              _green.withValues(alpha: 0.1),
+                              _green.withValues(alpha: 0.05),
+                            ]
+                          : [
+                              _red.withValues(alpha: 0.1),
+                              _red.withValues(alpha: 0.05),
+                            ],
                     ),
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -1353,8 +1361,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   );
 
                                   Navigator.pop(ctx);
-                                  if (widget.onUpdate != null)
+                                  if (widget.onUpdate != null) {
                                     widget.onUpdate!();
+                                  }
 
                                   if (context.mounted) {
                                     if (cashback > 0 && !_isExpired) {
@@ -1463,11 +1472,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           gradient: filled ? _gradient : null,
           color: filled ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          border: filled ? null : Border.all(color: color.withOpacity(0.4)),
+          border: filled
+              ? null
+              : Border.all(color: color.withValues(alpha: 0.4)),
           boxShadow: filled
               ? [
                   BoxShadow(
-                    color: _green.withOpacity(0.25),
+                    color: _green.withValues(alpha: 0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),

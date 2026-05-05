@@ -39,8 +39,8 @@ class RestrictedAccessView extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                _brandGreen.withOpacity(0.12),
-                _brandRed.withOpacity(0.07),
+                _brandGreen.withValues(alpha: 0.12),
+                _brandRed.withValues(alpha: 0.07),
               ],
             ),
             borderRadius: BorderRadius.circular(22),
@@ -148,7 +148,7 @@ class TopUpFormView extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: _brandGreen.withOpacity(0.4),
+                color: _brandGreen.withValues(alpha: 0.4),
                 width: 1.5,
               ),
             ),
@@ -208,7 +208,7 @@ class _BrandButton extends StatelessWidget {
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: _brandGreen.withOpacity(0.22),
+                    color: _brandGreen.withValues(alpha: 0.22),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
