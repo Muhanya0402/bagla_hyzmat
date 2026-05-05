@@ -107,14 +107,14 @@ class AuthProvider extends ChangeNotifier {
     _walletBalance = (user['wallet_balance'] ?? 0.0).toDouble();
 
     // ── Location (supports both raw ID and expanded Directus object) ────────
-    void _extractId(dynamic raw, void Function(String) setter) {
+    void extractId(dynamic raw, void Function(String) setter) {
       if (raw == null) return;
       setter(raw is Map ? (raw['id']?.toString() ?? '') : raw.toString());
     }
 
-    _extractId(user['district'], (v) => _districtId = v);
-    _extractId(user['etrap'], (v) => _etraptId = v);
-    _extractId(user['province'], (v) => _provinceId = v);
+    extractId(user['district'], (v) => _districtId = v);
+    extractId(user['etrap'], (v) => _etraptId = v);
+    extractId(user['province'], (v) => _provinceId = v);
 
     debugPrint(
       '📡 AuthProvider: ID=$_userId status=$_status role=$_role district=$_districtId',
