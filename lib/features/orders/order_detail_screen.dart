@@ -1360,7 +1360,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     courierId: widget.currentUserId,
                                   );
 
-                                  Navigator.pop(ctx);
+                                  Navigator.pop(context);
                                   if (widget.onUpdate != null) {
                                     widget.onUpdate!();
                                   }
