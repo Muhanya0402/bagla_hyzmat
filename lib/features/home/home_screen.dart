@@ -100,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _initLocationFilter(); // читаем из prefs — без запросов
       _initRealtime();
       _scrollController.addListener(_onScroll);
+      if (!mounted) return;
       final auth = context.read<AuthProvider>();
       if (auth.userId.isNotEmpty && auth.role == 'courier') {
         context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
@@ -408,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _hasMore = true;
     });
     _setupRealtimeCallbacks();
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     final isShop = auth.role == 'shop' || auth.role == 'business';
     await _realtimeService.connect(
@@ -421,6 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _httpOffset = 0;
     _hasMore = true;
     await context.read<AuthProvider>().refreshProfile();
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     if (auth.userId.isNotEmpty && auth.role == 'courier') {
       await context.read<LevelProvider>().loadForUser(auth.userId);
