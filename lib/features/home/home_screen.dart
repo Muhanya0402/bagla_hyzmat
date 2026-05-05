@@ -498,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.toll_rounded,
                     size: 48,
                     color: HomeScreen.brandGreen,
@@ -539,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 32,
                     height: 32,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.toll_rounded,
                       size: 32,
                       color: HomeScreen.brandGreen,
@@ -871,7 +871,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 40,
           height: 40,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const BaglaLogo(width: 48, height: 24),
+          errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
         if (isShop)
@@ -910,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 22,
                   height: 22,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.toll_rounded,
                     size: 20,
                     color: HomeScreen.brandGreen,
@@ -1192,7 +1192,7 @@ class _HomeScreenState extends State<HomeScreen> {
           PageRouteBuilder(
             opaque: false,
             barrierColor: Colors.black54,
-            pageBuilder: (_, __, ___) => _LevelUpOverlay(
+            pageBuilder: (_, _, _) => _LevelUpOverlay(
               provider: provider,
               onDismiss: () {
                 provider.dismissLevelUp(pending.id);
@@ -1366,7 +1366,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                     controller: sc,
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const Divider(
+                    separatorBuilder: (_, _) => const Divider(
                       height: 1,
                       indent: 52,
                       color: Color(0xFFF4F5F7),
