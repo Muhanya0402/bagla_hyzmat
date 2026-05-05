@@ -284,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.toll_rounded,
                     size: 48,
                     color: HomeScreen.brandGreen,
@@ -314,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: const Color(0xFFE8F5EE),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: HomeScreen.brandGreen.withOpacity(0.2),
+                  color: HomeScreen.brandGreen.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -325,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 32,
                     height: 32,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.toll_rounded,
                       size: 32,
                       color: HomeScreen.brandGreen,
@@ -613,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 40,
           height: 40,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const BaglaLogo(width: 48, height: 24),
+          errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
         if (isShop)
@@ -630,7 +630,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: const Color(0xFFE8F5EE),
                 borderRadius: BorderRadius.circular(100),
                 border: Border.all(
-                  color: HomeScreen.brandGreen.withOpacity(0.2),
+                  color: HomeScreen.brandGreen.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -674,7 +674,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: const Color(0xFFE8F5EE),
                 borderRadius: BorderRadius.circular(100),
                 border: Border.all(
-                  color: HomeScreen.brandGreen.withOpacity(0.2),
+                  color: HomeScreen.brandGreen.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -685,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 22,
                     height: 22,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.toll_rounded,
                       size: 20,
                       color: HomeScreen.brandGreen,
@@ -717,7 +717,7 @@ class _HomeScreenState extends State<HomeScreen> {
           PageRouteBuilder(
             opaque: false,
             barrierColor: Colors.black54,
-            pageBuilder: (_, __, ___) => _LevelUpOverlay(
+            pageBuilder: (_, _, _) => _LevelUpOverlay(
               provider: provider,
               onDismiss: () {
                 provider.dismissLevelUp(pending.id);
@@ -793,11 +793,11 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: sel ? f.color.withOpacity(0.1) : Colors.white,
+                color: sel ? f.color.withValues(alpha: 0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: sel
-                      ? f.color.withOpacity(0.4)
+                      ? f.color.withValues(alpha: 0.4)
                       : const Color(0xFFEEF0F3),
                 ),
               ),
@@ -852,10 +852,10 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -867,7 +867,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 17),
@@ -897,7 +897,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: HomeScreen.brandGreen.withOpacity(0.25),
+              color: HomeScreen.brandGreen.withValues(alpha: 0.25),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -950,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(
               icon,
               size: 32,
-              color: HomeScreen.brandGreen.withOpacity(0.25),
+              color: HomeScreen.brandGreen.withValues(alpha: 0.25),
             ),
           ),
         ),
@@ -984,9 +984,11 @@ class _AppBarIcon extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: HomeScreen.brandGreen.withOpacity(0.06),
+          color: HomeScreen.brandGreen.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: HomeScreen.brandGreen.withOpacity(0.12)),
+          border: Border.all(
+            color: HomeScreen.brandGreen.withValues(alpha: 0.12),
+          ),
         ),
         child: Icon(icon, color: HomeScreen.brandGreen, size: 19),
       ),

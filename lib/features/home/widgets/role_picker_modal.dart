@@ -29,8 +29,8 @@ class RolePickerEmbedded extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                brandGreen.withOpacity(0.12),
-                brandRed.withOpacity(0.07),
+                brandGreen.withValues(alpha: 0.12),
+                brandRed.withValues(alpha: 0.07),
               ],
             ),
             borderRadius: BorderRadius.circular(20),

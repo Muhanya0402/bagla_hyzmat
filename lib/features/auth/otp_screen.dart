@@ -65,7 +65,7 @@ class _OtpScreenState extends State<OtpScreen> {
       border: Border.all(color: PhoneScreen.brandGreen, width: 2),
       boxShadow: [
         BoxShadow(
-          color: PhoneScreen.brandGreen.withOpacity(0.15),
+          color: PhoneScreen.brandGreen.withValues(alpha: 0.15),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),

@@ -12,7 +12,7 @@ class ApiClient {
   static const String _baseUrl = BaseUrl.url;
 
   bool _isRefreshing = false;
-  List<Completer<void>> _refreshCompleters = [];
+  final List<Completer<void>> _refreshCompleters = [];
 
   ApiClient._internal() {
     dio = Dio(

@@ -96,7 +96,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: brandBlue.withOpacity(0.06),
+              color: brandBlue.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -155,7 +155,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     child: Icon(
                       Icons.notifications_off_rounded,
                       size: 32,
-                      color: brandBlue.withOpacity(0.2),
+                      color: brandBlue.withValues(alpha: 0.2),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -196,12 +196,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isRead ? Colors.white : color.withOpacity(0.04),
+                      color: isRead
+                          ? Colors.white
+                          : color.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isRead
                             ? const Color(0xFFEEF0F3)
-                            : color.withOpacity(0.2),
+                            : color.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -213,7 +215,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(_typeIcon(type), color: color, size: 20),

@@ -96,7 +96,7 @@ class OrderCard extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: [
                               actionColor,
-                              actionColor.withOpacity(0.75),
+                              actionColor.withValues(alpha: 0.75),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -187,7 +187,7 @@ class OrderCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFEEF0F3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -197,7 +197,7 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: onTap,
-          splashColor: HomeScreen.brandGreen.withOpacity(0.04),
+          splashColor: HomeScreen.brandGreen.withValues(alpha: 0.04),
           highlightColor: Colors.transparent,
           child: Column(
             children: [
@@ -380,7 +380,7 @@ class OrderCard extends StatelessWidget {
           label: 'Откуда',
           address: shopAddress,
           iconColor: HomeScreen.brandRed,
-          iconBg: HomeScreen.brandRed.withOpacity(0.08),
+          iconBg: HomeScreen.brandRed.withValues(alpha: 0.08),
         ),
         const SizedBox(height: 12),
         _buildPoint(
@@ -393,8 +393,8 @@ class OrderCard extends StatelessWidget {
               : fullDeliveryAddress, // 👈
           iconColor: isLocked ? const Color(0xFF9AA3AF) : HomeScreen.brandGreen,
           iconBg: isLocked
-              ? const Color(0xFF9AA3AF).withOpacity(0.08)
-              : HomeScreen.brandGreen.withOpacity(0.08),
+              ? const Color(0xFF9AA3AF).withValues(alpha: 0.08)
+              : HomeScreen.brandGreen.withValues(alpha: 0.08),
           isGrey: isLocked,
         ),
       ],
@@ -496,7 +496,7 @@ class OrderCard extends StatelessWidget {
               'TMT',
               style: AppText.regular(
                 fontSize: 12,
-                color: HomeScreen.brandGreen.withOpacity(0.5),
+                color: HomeScreen.brandGreen.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -547,7 +547,7 @@ class OrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: s.color.withOpacity(0.08),
+        color: s.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -591,7 +591,7 @@ class OrderCard extends StatelessWidget {
               Container(
                 width: 1,
                 height: 14,
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
               ),
               const SizedBox(width: 8),
               Image.asset(
@@ -611,7 +611,7 @@ class OrderCard extends StatelessWidget {
               Container(
                 width: 1,
                 height: 14,
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
               ),
               const SizedBox(width: 8),
               Image.asset(
@@ -643,7 +643,7 @@ class OrderCard extends StatelessWidget {
         height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,

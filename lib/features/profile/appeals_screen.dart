@@ -75,7 +75,7 @@ class _AppealsScreenState extends State<AppealsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withOpacity(0.07),
+              color: _green.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -117,7 +117,7 @@ class _AppealsScreenState extends State<AppealsScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: _green.withOpacity(0.3),
+              color: _green.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -305,7 +305,7 @@ class _AppealCard extends StatelessWidget {
           border: Border.all(color: const Color(0xFFEEF0F3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -349,7 +349,7 @@ class _AppealCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: cfg.color.withOpacity(0.1),
+                          color: cfg.color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -405,7 +405,7 @@ class _AppealCard extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: _green.withOpacity(0.08),
+                            color: _green.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -744,7 +744,7 @@ class _CreateAppealSheetState extends State<_CreateAppealSheet> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
-          color: const Color(0xFF1A7A3C).withOpacity(0.4),
+          color: const Color(0xFF1A7A3C).withValues(alpha: 0.4),
           width: 1.5,
         ),
       ),
@@ -863,9 +863,9 @@ class _AppealDetailSheet extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: _green.withOpacity(0.06),
+                  color: _green.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _green.withOpacity(0.2)),
+                  border: Border.all(color: _green.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -908,7 +908,7 @@ class _AppealDetailSheet extends StatelessWidget {
                   color: const Color(0xFFFFF8EE),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFE67E22).withOpacity(0.2),
+                    color: const Color(0xFFE67E22).withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -989,7 +989,7 @@ class _AppealDetailSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

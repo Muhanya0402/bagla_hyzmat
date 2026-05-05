@@ -288,7 +288,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: brandGreen.withOpacity(0.07),
+              color: brandGreen.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -413,7 +413,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: brandGreen.withOpacity(0.22),
+                            color: brandGreen.withValues(alpha: 0.22),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -691,7 +691,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: items.length,
-          separatorBuilder: (_, __) => const Divider(
+          separatorBuilder: (_, _) => const Divider(
             height: 1,
             indent: 16,
             endIndent: 16,
@@ -701,7 +701,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             final item = items[i];
             return InkWell(
               onTap: () => onTap(item),
-              splashColor: brandGreen.withOpacity(0.05),
+              splashColor: brandGreen.withValues(alpha: 0.05),
               highlightColor: Colors.transparent,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -750,7 +750,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: brandGreen.withOpacity(0.25)),
+          border: Border.all(color: brandGreen.withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
@@ -860,7 +860,7 @@ class _SectionLabel extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: brandGreen.withOpacity(0.08),
+            color: brandGreen.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 15, color: brandGreen),
@@ -912,7 +912,7 @@ class _BrandInputField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: brandGreen.withOpacity(0.4),
+            color: brandGreen.withValues(alpha: 0.4),
             width: 1.5,
           ),
         ),
@@ -965,7 +965,7 @@ class _BrandPhotoBox extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: file != null
-                  ? brandGreen.withOpacity(0.4)
+                  ? brandGreen.withValues(alpha: 0.4)
                   : const Color(0xFFEEF0F3),
               width: file != null ? 1.5 : 1,
             ),
@@ -1013,7 +1013,7 @@ class _BrandPhotoBox extends StatelessWidget {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.35),
+                        Colors.black.withValues(alpha: 0.35),
                       ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -1067,12 +1067,12 @@ class _BreadcrumbChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? brandGreen.withOpacity(0.1)
+              ? brandGreen.withValues(alpha: 0.1)
               : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? brandGreen.withOpacity(0.3)
+                ? brandGreen.withValues(alpha: 0.3)
                 : const Color(0xFFEEF0F3),
           ),
         ),

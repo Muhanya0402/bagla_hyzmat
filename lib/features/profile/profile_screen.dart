@@ -40,7 +40,7 @@ class ProfileScreen extends StatelessWidget {
     final words = lang.words;
 
     final String fullName = (auth.name.isEmpty && auth.surname.isEmpty)
-        ? 'Пользователь'
+        ? words.user
         : '${auth.name} ${auth.surname}'.trim();
 
     final bool isCourier = auth.role == 'courier';
@@ -215,7 +215,7 @@ class ProfileScreen extends StatelessWidget {
                               'assets/images/point_icon.png',
                               width: 26,
                               height: 26,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorBuilder: (_, _, _) => const Icon(
                                 Icons.toll_rounded,
                                 color: brandGreen,
                                 size: 24,
@@ -547,7 +547,7 @@ class _MenuTile extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.1),
+          color: iconColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: iconColor, size: 18),
@@ -647,7 +647,10 @@ class _SupportModal extends StatelessWidget {
             height: 64,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_green.withOpacity(0.12), _red.withOpacity(0.07)],
+                colors: [
+                  _green.withValues(alpha: 0.12),
+                  _red.withValues(alpha: 0.07),
+                ],
               ),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -680,7 +683,7 @@ class _SupportModal extends StatelessWidget {
           _SupportButton(
             icon: Icons.send_rounded,
             iconColor: const Color(0xFF2CA5E0),
-            bgColor: const Color(0xFF2CA5E0).withOpacity(0.08),
+            bgColor: const Color(0xFF2CA5E0).withValues(alpha: 0.08),
             title: 'Telegram',
             subtitle: '@bagla_support',
             onTap: () => _launch('https://t.me/bagla_support'),
@@ -691,7 +694,7 @@ class _SupportModal extends StatelessWidget {
           _SupportButton(
             icon: Icons.chat_bubble_outline_rounded,
             iconColor: const Color(0xFF25D366),
-            bgColor: const Color(0xFF25D366).withOpacity(0.08),
+            bgColor: const Color(0xFF25D366).withValues(alpha: 0.08),
             title: 'WhatsApp',
             subtitle: '+993 ...',
             onTap: () => _launch('https://wa.me/99300000000'),
@@ -751,7 +754,7 @@ class _SupportButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: iconColor.withOpacity(0.15)),
+          border: Border.all(color: iconColor.withValues(alpha: 0.15)),
         ),
         child: Row(
           children: [
@@ -759,7 +762,7 @@ class _SupportButton extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
+                color: iconColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: iconColor, size: 20),
@@ -789,7 +792,7 @@ class _SupportButton extends StatelessWidget {
             Icon(
               Icons.arrow_forward_ios_rounded,
               size: 14,
-              color: iconColor.withOpacity(0.5),
+              color: iconColor.withValues(alpha: 0.5),
             ),
           ],
         ),

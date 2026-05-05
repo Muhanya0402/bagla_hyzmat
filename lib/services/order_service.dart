@@ -93,7 +93,9 @@ class OrderService {
         'Не удалось создать заказ: ${e.response?.data?['errors']?[0]?['message'] ?? e.message}',
       );
     } catch (e) {
-      print('Неизвестная ошибка createOrder: $e');
+      if (kDebugMode) {
+        print('Неизвестная ошибка createOrder: $e');
+      }
       return false;
     }
   }
@@ -129,7 +131,9 @@ class OrderService {
       await _apiClient.dio.patch('/items/orders/$orderId', data: data);
       return true;
     } catch (e) {
-      print('Ошибка updateStatus: $e');
+      if (kDebugMode) {
+        print('Ошибка updateStatus: $e');
+      }
       return false;
     }
   }
@@ -181,7 +185,9 @@ class OrderService {
       }
       return [];
     } catch (e) {
-      print('Ошибка getOrders: $e');
+      if (kDebugMode) {
+        print('Ошибка getOrders: $e');
+      }
       return [];
     }
   }
@@ -209,7 +215,9 @@ class OrderService {
         isOnTime = DateTime.now().isBefore(DateTime.parse(tod).toLocal());
       }
       if (!isOnTime) {
-        print('⏰ Просрочен — кэшбек не начислен');
+        if (kDebugMode) {
+          print('⏰ Просрочен — кэшбек не начислен');
+        }
         return;
       }
 
@@ -223,9 +231,13 @@ class OrderService {
         '/items/customers/$courierId',
         data: {'balance_points': current + cashback.toInt()},
       );
-      print('✅ Кэшбек +${cashback.toInt()} → курьер $courierId');
+      if (kDebugMode) {
+        print('✅ Кэшбек +${cashback.toInt()} → курьер $courierId');
+      }
     } catch (e) {
-      print('Ошибка applyCashback: $e');
+      if (kDebugMode) {
+        print('Ошибка applyCashback: $e');
+      }
     }
   }
 
@@ -257,7 +269,9 @@ class OrderService {
         },
       );
       final data = _parseFlow(response.data);
-      print('generateDeliveryCode: $data');
+      if (kDebugMode) {
+        print('generateDeliveryCode: $data');
+      }
 
       if (data['delivery_code'] != null) {
         return {'success': true, 'code': data['delivery_code'].toString()};
@@ -269,7 +283,9 @@ class OrderService {
       }
       return {'success': false};
     } catch (e) {
-      print('Ошибка generateDeliveryCode: $e');
+      if (kDebugMode) {
+        print('Ошибка generateDeliveryCode: $e');
+      }
       return {'success': false};
     }
   }
@@ -286,7 +302,9 @@ class OrderService {
         data: {'order_id': orderId, 'code': code},
       );
       final data = _parseFlow(response.data);
-      print('verifyDeliveryCode: $data');
+      if (kDebugMode) {
+        print('verifyDeliveryCode: $data');
+      }
 
       Map<String, dynamic>? found;
       if (data['success'] != null) {
@@ -315,7 +333,9 @@ class OrderService {
         'level_up': false,
       };
     } catch (e) {
-      print('Ошибка verifyDeliveryCode: $e');
+      if (kDebugMode) {
+        print('Ошибка verifyDeliveryCode: $e');
+      }
       return {
         'success': false,
         'message': 'Ошибка сети',

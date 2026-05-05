@@ -1,7 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
-import 'package:bagla/features/auth/phone_screen.dart'; // BaglaLogo
 import 'package:flutter/material.dart';
 import '../../features/auth/auth_repository.dart';
 
@@ -175,10 +174,14 @@ class _SummaryPanel extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: active ? _green.withOpacity(0.06) : const Color(0xFFF5F7FA),
+        color: active
+            ? _green.withValues(alpha: 0.06)
+            : const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: active ? _green.withOpacity(0.2) : const Color(0xFFEEF0F3),
+          color: active
+              ? _green.withValues(alpha: 0.2)
+              : const Color(0xFFEEF0F3),
         ),
       ),
       child: Row(

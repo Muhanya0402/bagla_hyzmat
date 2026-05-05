@@ -18,6 +18,7 @@ class AppLocalizations {
 
   // Геттеры для автодополнения в IDE
   String get loginTitle => get('loginTitle');
+  String get user => get('user');
   String get phoneLabel => get('phoneLabel');
   String get otpLabel => get('otpLabel');
   String get getCodeBtn => get('getCodeBtn');

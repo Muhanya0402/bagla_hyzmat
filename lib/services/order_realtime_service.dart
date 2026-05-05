@@ -100,9 +100,6 @@ class OrderRealtimeService {
 
       // Шаг 2: подписка (отправим после auth в _onMessage)
       _pendingFilter = filter;
-      _pendingRole = role;
-      _pendingUserId = userId;
-      _pendingMyOnly = myOrdersOnly;
 
       debugPrint('🔌 WS: подключаемся к $uri');
     } catch (e) {
@@ -117,9 +114,6 @@ class OrderRealtimeService {
 
   // Временные переменные для подписки после auth
   Map<String, dynamic>? _pendingFilter;
-  String? _pendingRole;
-  String? _pendingUserId;
-  bool _pendingMyOnly = false;
 
   // ── Обработка сообщений ───────────────────────────────────────────────────
 

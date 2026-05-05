@@ -34,7 +34,7 @@ class UserTypeSelectionScreen extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: brandGreen.withOpacity(0.07),
+              color: brandGreen.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -102,49 +102,36 @@ class UserTypeSelectionScreen extends StatelessWidget {
 
               // ── Кнопка подтверждения ───────────────────────────────────
               GestureDetector(
-                onTap: roleProv.selectedRole == null
-                    ? null
-                    : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RegistrationDetailsScreen(
-                            role: roleProv.selectedRole!,
-                          ),
-                        ),
-                      ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        RegistrationDetailsScreen(role: roleProv.selectedRole),
+                  ),
+                ),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: double.infinity,
                   height: 56,
                   decoration: BoxDecoration(
-                    gradient: roleProv.selectedRole != null
-                        ? brandGradient
-                        : null,
-                    color: roleProv.selectedRole == null
-                        ? const Color(0xFFF5F7FA)
-                        : null,
+                    gradient: brandGradient,
+                    color: null,
                     borderRadius: BorderRadius.circular(16),
-                    border: roleProv.selectedRole == null
-                        ? Border.all(color: const Color(0xFFEEF0F3))
-                        : null,
-                    boxShadow: roleProv.selectedRole != null
-                        ? [
-                            BoxShadow(
-                              color: brandGreen.withOpacity(0.22),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ]
-                        : null,
+                    border: null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: brandGreen.withValues(alpha: 0.22),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     words.saveBtn.toUpperCase(),
                     style: AppText.bold(
                       fontSize: 14,
-                      color: roleProv.selectedRole != null
-                          ? Colors.white
-                          : const Color(0xFF9AA3AF),
+                      color: Colors.white,
                     ).copyWith(letterSpacing: 0.5),
                   ),
                 ),
@@ -199,12 +186,12 @@ class _RoleCard extends StatelessWidget {
           color: isSelected ? Colors.white : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
           border: isSelected
-              ? Border.all(color: brandGreen.withOpacity(0.3), width: 1.5)
+              ? Border.all(color: brandGreen.withValues(alpha: 0.3), width: 1.5)
               : Border.all(color: const Color(0xFFEEF0F3)),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: brandGreen.withOpacity(0.1),
+                    color: brandGreen.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 6),
                   ),

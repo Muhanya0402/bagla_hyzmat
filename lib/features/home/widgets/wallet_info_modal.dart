@@ -49,7 +49,10 @@ class WalletInfoModal extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [_green.withOpacity(0.15), _red.withOpacity(0.08)],
+                colors: [
+                  _green.withValues(alpha: 0.15),
+                  _red.withValues(alpha: 0.08),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -86,12 +89,15 @@ class WalletInfoModal extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [_green.withOpacity(0.07), _red.withOpacity(0.04)],
+                colors: [
+                  _green.withValues(alpha: 0.07),
+                  _red.withValues(alpha: 0.04),
+                ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _green.withOpacity(0.15)),
+              border: Border.all(color: _green.withValues(alpha: 0.15)),
             ),
             child: Column(
               children: [
@@ -174,7 +180,7 @@ class WalletInfoModal extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: _green.withOpacity(0.25),
+                    color: _green.withValues(alpha: 0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -209,7 +215,7 @@ class WalletInfoModal extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: color, size: 18),

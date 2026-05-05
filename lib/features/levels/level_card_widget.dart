@@ -52,7 +52,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   @override
   Widget build(BuildContext context) {
     return Consumer<LevelProvider>(
-      builder: (_, provider, __) {
+      builder: (_, provider, _) {
         if (provider.pendingLevelUp != null && !_dialogShown) {
           _dialogShown = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -115,7 +115,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: _green.withOpacity(0.22),
+              color: _green.withValues(alpha: 0.22),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -159,7 +159,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
+                      color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -186,7 +186,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -210,7 +210,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                     Text(
                       '(+0.5 за уровень)',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 10,
                       ),
                     ),
@@ -289,7 +289,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
       height: 150,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_green.withOpacity(0.15), _red.withOpacity(0.1)],
+          colors: [_green.withValues(alpha: 0.15), _red.withValues(alpha: 0.1)],
         ),
         borderRadius: BorderRadius.circular(24),
       ),
@@ -310,7 +310,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       builder: (_) => _LevelUpDialog(
         levelNumber: pending.levelAfter,
         levelTitle: levelData?.titleRu ?? 'Уровень ${pending.levelAfter}',
@@ -402,7 +402,7 @@ class _AnimatedProgressBarState extends State<_AnimatedProgressBar>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         height: 8,
         decoration: BoxDecoration(
           color: Colors.white24,
@@ -416,7 +416,10 @@ class _AnimatedProgressBarState extends State<_AnimatedProgressBar>
               color: Colors.white,
               borderRadius: BorderRadius.circular(4),
               boxShadow: [
-                BoxShadow(color: Colors.white.withOpacity(0.5), blurRadius: 4),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  blurRadius: 4,
+                ),
               ],
             ),
           ),
@@ -495,7 +498,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
       children: [
         AnimatedBuilder(
           animation: _confettiCtrl,
-          builder: (_, __) => CustomPaint(
+          builder: (_, _) => CustomPaint(
             painter: _ConfettiPainter(_particles, _confettiCtrl.value),
             size: MediaQuery.of(context).size,
           ),
@@ -511,7 +514,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.levelColor.withOpacity(0.25),
+                    color: widget.levelColor.withValues(alpha: 0.25),
                     blurRadius: 40,
                     offset: const Offset(0, 12),
                   ),
@@ -572,13 +575,13 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF1A7A3C).withOpacity(0.08),
-                          const Color(0xFFD32F1E).withOpacity(0.05),
+                          const Color(0xFF1A7A3C).withValues(alpha: 0.08),
+                          const Color(0xFFD32F1E).withValues(alpha: 0.05),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFF1A7A3C).withOpacity(0.2),
+                        color: const Color(0xFF1A7A3C).withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
@@ -891,7 +894,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                       final isCurrent = l.id == current.id;
                       final isUnlocked = provider.currentXp >= l.xpRequired;
                       return Container(
-                        color: isCurrent ? color.withOpacity(0.05) : null,
+                        color: isCurrent ? color.withValues(alpha: 0.05) : null,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -944,7 +947,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isCurrent
-                                      ? color.withOpacity(0.12)
+                                      ? color.withValues(alpha: 0.12)
                                       : isUnlocked
                                       ? const Color(0xFFE8F5EE)
                                       : const Color(0xFFF0F0F0),
@@ -1048,7 +1051,7 @@ class _ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
       final paint = Paint()
-        ..color = p.color.withOpacity((1 - progress * 0.8).clamp(0, 1));
+        ..color = p.color.withValues(alpha: (1 - progress * 0.8).clamp(0, 1));
       final x = (p.x + p.speedX * progress) * size.width;
       final y = -50 + p.speedY * progress * (size.height + 100);
       canvas.save();
