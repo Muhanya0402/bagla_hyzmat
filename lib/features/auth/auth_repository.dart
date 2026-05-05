@@ -129,7 +129,7 @@ class AuthRepository {
     }
   }
 
-  /// Получение профиля — запрашиваем district, etrap, province вложенно
+  /// Получение профиля — запрашиваем district, etrap, province вложенно с названиями
   Future<Map<String, dynamic>?> fetchProfileFromServer(String phone) async {
     try {
       final response = await _api.dio.get(
@@ -138,7 +138,10 @@ class AuthRepository {
           'filter[phone][_eq]': phone.trim(),
           'fields':
               'id,phone,name,surname,role,status,rating,balance_points,address,'
-              'district.id,etrap.id,province.id,experience_points,wallet_balance',
+              'district.id,district.district_ru,district.district_tk,'
+              'etrap.id,etrap.etrap_ru,etrap.etrap_tk,'
+              'province.id,province.province_ru,province.province_tk,'
+              'experience_points,wallet_balance',
         },
       );
 
@@ -316,7 +319,7 @@ class AuthRepository {
     return prefs.getString('refresh_token');
   }
 
-  /// Вспомогательная функция — достать ID из M2O поля (может прийти как Map или String/int)
+  /// Достать ID из M2O поля (может прийти как Map или String)
   static String _extractId(dynamic field) {
     if (field == null) return '';
     if (field is Map) return field['id']?.toString() ?? '';
@@ -326,12 +329,12 @@ class AuthRepository {
   Future<void> _saveUserToLocal(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_id', user['id'].toString());
-    await prefs.setString('phone', user['phone'] ?? "");
-    await prefs.setString('name', user['name'] ?? "");
-    await prefs.setString('surname', user['surname'] ?? "");
-    await prefs.setString('role', user['role'] ?? "client");
-    await prefs.setString('status', user['status'] ?? "pending");
-    await prefs.setString('shop_address', user['address'] ?? "");
+    await prefs.setString('phone', user['phone'] ?? '');
+    await prefs.setString('name', user['name'] ?? '');
+    await prefs.setString('surname', user['surname'] ?? '');
+    await prefs.setString('role', user['role'] ?? 'client');
+    await prefs.setString('status', user['status'] ?? 'pending');
+    await prefs.setString('shop_address', user['address'] ?? '');
     await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
     await prefs.setDouble(
       'balance_points',
@@ -342,17 +345,38 @@ class AuthRepository {
       (user['wallet_balance'] ?? 0.0).toDouble(),
     );
 
-    // ─── Локация ───────────────────────────────────────────────────────────
-    await prefs.setString('district_id', _extractId(user['district']));
-    await prefs.setString('etrap_id', _extractId(user['etrap']));
-    await prefs.setString('province_id', _extractId(user['province']));
+    // ─── Локация — сохраняем и ID и названия ──────────────────────────────
+    final dist = user['district'];
+    final etr = user['etrap'];
+    final prov = user['province'];
+
+    // District
+    await prefs.setString('district_id', _extractId(dist));
+    if (dist is Map) {
+      await prefs.setString('district_ru', dist['district_ru'] ?? '');
+      await prefs.setString('district_tk', dist['district_tk'] ?? '');
+    }
+
+    // Etrap
+    await prefs.setString('etrap_id', _extractId(etr));
+    if (etr is Map) {
+      await prefs.setString('etrap_ru', etr['etrap_ru'] ?? '');
+      await prefs.setString('etrap_tk', etr['etrap_tk'] ?? '');
+    }
+
+    // Province
+    await prefs.setString('province_id', _extractId(prov));
+    if (prov is Map) {
+      await prefs.setString('province_ru', prov['province_ru'] ?? '');
+      await prefs.setString('province_tk', prov['province_tk'] ?? '');
+    }
 
     await prefs.setBool('is_logged_in', true);
     debugPrint(
       "✅ Локальный кэш обновлен. "
-      "district=${_extractId(user['district'])} "
-      "etrap=${_extractId(user['etrap'])} "
-      "province=${_extractId(user['province'])}",
+      "province=${_extractId(prov)} "
+      "etrap=${_extractId(etr)} "
+      "district=${_extractId(dist)}",
     );
   }
 

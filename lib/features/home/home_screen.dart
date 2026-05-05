@@ -1,6 +1,8 @@
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/create_order_screen.dart';
+import 'package:bagla/features/home/home_app_bar.dart';
+import 'package:bagla/features/home/location_filter.dart';
 import 'package:bagla/features/home/widgets/wallet_info_modal.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
@@ -16,6 +18,7 @@ import 'package:bagla/features/auth/phone_screen.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,18 +43,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedStatus;
 
   // ── Фильтр локации ────────────────────────────────────────────────────────
-  // Велаят — только для отображения, не меняется
   String _provinceLabel = '';
-  // Этрап — из профиля, можно менять
   Etrap? _selectedEtrap;
-  // Район — из профиля, можно менять
   District? _selectedDistrict;
-  // Доступные этрапы/районы загружаем лениво
   List<Etrap> _etraps = [];
   List<District> _districts = [];
   bool _loadingEtraps = false;
   bool _loadingDistricts = false;
-  // ID провинции курьера (для загрузки этрапов)
   String _provinceId = '';
 
   final AuthRepository _authRepo = AuthRepository();
@@ -99,8 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _checkWelcomeBonus();
-      await _initLocationFilter(); // ← сначала грузим локацию
-      _initRealtime(); // ← потом подключаем WS
+      await _initLocationFilter(); // читаем из prefs — без запросов
+      _initRealtime();
       _scrollController.addListener(_onScroll);
       final auth = context.read<AuthProvider>();
       if (auth.userId.isNotEmpty && auth.role == 'courier') {
@@ -119,80 +117,48 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ЛОКАЦИЯ: инициализация из профиля курьера
+  // ЛОКАЦИЯ: читаем из SharedPreferences — без сетевых запросов
+  // Данные сохраняются при логине через fetchProfileFromServer
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _initLocationFilter() async {
     final auth = context.read<AuthProvider>();
-    // Фильтр локации показываем только курьерам
     if (auth.role != 'courier') return;
 
-    final lang = context.read<LanguageProvider>();
-    final isRu = lang.isRu;
+    final isRu = context.read<LanguageProvider>().isRu;
+    final prefs = await SharedPreferences.getInstance();
 
-    try {
-      // Читаем полный профиль с вложенными полями локации
-      final response = await ApiClient().dio.get(
-        '/items/customers/${auth.userId}',
-        queryParameters: {
-          'fields': [
-            'province.id',
-            'province.province_ru',
-            'province.province_tk',
-            'etrap.id',
-            'etrap.etrap_ru',
-            'etrap.etrap_tk',
-            'district.id',
-            'district.district_ru',
-            'district.district_tk',
-          ].join(','),
-        },
+    _provinceId = prefs.getString('province_id') ?? '';
+    _provinceLabel =
+        prefs.getString(isRu ? 'province_ru' : 'province_tk') ?? '';
+
+    final etrapId = prefs.getString('etrap_id') ?? '';
+    final etrapRu = prefs.getString('etrap_ru') ?? '';
+    final etrapTk = prefs.getString('etrap_tk') ?? '';
+
+    final distId = prefs.getString('district_id') ?? '';
+    final distRu = prefs.getString('district_ru') ?? '';
+    final distTk = prefs.getString('district_tk') ?? '';
+
+    if (etrapId.isNotEmpty) {
+      _selectedEtrap = Etrap(
+        id: etrapId,
+        ru: etrapRu,
+        tk: etrapTk,
+        provinceId: _provinceId,
       );
-
-      final data = response.data['data'];
-      if (data == null) return;
-
-      // Велаят — только название, не меняется
-      final prov = data['province'];
-      if (prov is Map) {
-        _provinceId = prov['id']?.toString() ?? '';
-        _provinceLabel = isRu
-            ? (prov['province_ru'] ?? '')
-            : (prov['province_tk'] ?? '');
-      }
-
-      // Этрап — из профиля, можно менять
-      final etr = data['etrap'];
-      if (etr is Map) {
-        _selectedEtrap = Etrap(
-          id: etr['id']?.toString() ?? '',
-          ru: etr['etrap_ru'] ?? '',
-          tk: etr['etrap_tk'] ?? '',
-          provinceId: _provinceId,
-        );
-        // Загружаем районы для выбранного этрапа
-        if (_selectedEtrap != null) {
-          _loadDistricts(_selectedEtrap!.id, silent: true);
-        }
-      }
-
-      // Район — из профиля, можно менять
-      final dist = data['district'];
-      if (dist is Map) {
-        _selectedDistrict = District(
-          id: dist['id']?.toString() ?? '',
-          ru: dist['district_ru'] ?? '',
-          tk: dist['district_tk'] ?? '',
-        );
-      }
-
-      if (mounted) setState(() {});
-    } catch (e) {
-      debugPrint('_initLocationFilter error: $e');
+      // Тихо грузим список районов для выбранного этрапа (для picker'а)
+      _loadDistricts(etrapId, silent: true);
     }
+
+    if (distId.isNotEmpty) {
+      _selectedDistrict = District(id: distId, ru: distRu, tk: distTk);
+    }
+
+    if (mounted) setState(() {});
   }
 
-  // Загрузка этрапов (когда пользователь хочет сменить этрап)
+  // ── Загрузка этрапов (для picker'а, лениво) ───────────────────────────────
   Future<void> _loadEtraps() async {
     if (_provinceId.isEmpty) return;
     setState(() => _loadingEtraps = true);
@@ -206,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Загрузка районов для этрапа
+  // ── Загрузка районов для этрапа ───────────────────────────────────────────
   Future<void> _loadDistricts(String etrapId, {bool silent = false}) async {
     if (!silent) setState(() => _loadingDistricts = true);
     try {
@@ -219,7 +185,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Выбор этрапа пользователем → перезагружаем районы и обновляем список
   Future<void> _onEtrapSelected(Etrap etrap) async {
     setState(() {
       _selectedEtrap = etrap;
@@ -230,25 +195,21 @@ class _HomeScreenState extends State<HomeScreen> {
     _reconnectRealtime();
   }
 
-  // Выбор района → обновляем список заказов
   void _onDistrictSelected(District district) {
     setState(() => _selectedDistrict = district);
     _reconnectRealtime();
   }
 
-  // Сбросить фильтр района (показать все районы этрапа)
   void _clearDistrictFilter() {
     setState(() => _selectedDistrict = null);
     _reconnectRealtime();
   }
 
-  // Показать боттом-шит выбора этрапа
   void _showEtrapPicker() async {
     if (_etraps.isEmpty) await _loadEtraps();
     if (!mounted) return;
 
-    final lang = context.read<LanguageProvider>();
-    final isRu = lang.isRu;
+    final isRu = context.read<LanguageProvider>().isRu;
 
     showModalBottomSheet(
       context: context,
@@ -273,10 +234,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Показать боттом-шит выбора района
   void _showDistrictPicker() {
-    final lang = context.read<LanguageProvider>();
-    final isRu = lang.isRu;
+    final isRu = context.read<LanguageProvider>().isRu;
 
     showModalBottomSheet(
       context: context,
@@ -308,14 +267,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ФИЛЬТР ЗАКАЗОВ (применяется поверх списка)
-  // Фильтрует по selectedEtrap и selectedDistrict локально
+  // ФИЛЬТРАЦИЯ ЗАКАЗОВ
   // ─────────────────────────────────────────────────────────────────────────
 
   List<dynamic> _applyFilters(List<dynamic> orders) {
     var result = orders;
 
-    // Фильтр по статусу
     if (_selectedStatus != null) {
       result = result
           .where(
@@ -326,7 +283,6 @@ class _HomeScreenState extends State<HomeScreen> {
           .toList();
     }
 
-    // Фильтр по этрапу (только для курьеров)
     final auth = context.read<AuthProvider>();
     if (auth.role == 'courier' && _selectedEtrap != null) {
       result = result.where((o) {
@@ -339,7 +295,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }).toList();
     }
 
-    // Фильтр по району
     if (auth.role == 'courier' && _selectedDistrict != null) {
       result = result.where((o) {
         final dist = o['district'];
@@ -543,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
+                  errorBuilder: (_, __, ___) => const Icon(
                     Icons.toll_rounded,
                     size: 48,
                     color: HomeScreen.brandGreen,
@@ -584,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 32,
                     height: 32,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(
+                    errorBuilder: (_, __, ___) => const Icon(
                       Icons.toll_rounded,
                       size: 32,
                       color: HomeScreen.brandGreen,
@@ -661,8 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isActive = currentStatus == 'active';
     final bool isShop = role == 'shop' || role == 'business';
     final bool isCourier = role == 'courier';
-    final bool isBanned =
-        currentStatus == 'archived' || currentStatus == 'banned';
+    final bool isBanned = currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
 
     final List<dynamic> filteredOrders = _applyFilters(_orders);
@@ -688,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
           ),
           actions: [
-            _AppBarIcon(
+            HomeAppBarIcon(
               icon: Icons.notifications_active_outlined,
               onTap: () => Navigator.pushNamed(
                 context,
@@ -697,7 +651,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: _AppBarIcon(
+              child: HomeAppBarIcon(
                 icon: Icons.person_outline_rounded,
                 onTap: () => Navigator.pushNamed(
                   context,
@@ -710,21 +664,18 @@ class _HomeScreenState extends State<HomeScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Сегментный переключатель (только курьеру) ───────────────
             if (isCourier)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _buildSegmentedFilter(),
               ),
 
-            // ── Баннер статуса ──────────────────────────────────────────
             if (isBanned || isPending)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: _buildStatusBanner(isBanned),
               ),
 
-            // ── Заголовок ───────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
               child: _GradientText(
@@ -733,14 +684,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ── ФИЛЬТР ЛОКАЦИИ (только курьерам) ────────────────────────
+            // Фильтр локации — только если провинция загружена из prefs
             if (isCourier && _provinceLabel.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
                 child: _buildLocationFilter(isRu),
               ),
 
-            // ── Фильтры статусов ────────────────────────────────────────
             if (isShop || _selectedFilterIndex == 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 0, 0),
@@ -749,7 +699,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 10),
 
-            // ── Список заказов ──────────────────────────────────────────
             Expanded(
               child: RefreshIndicator(
                 color: HomeScreen.brandGreen,
@@ -787,17 +736,13 @@ class _HomeScreenState extends State<HomeScreen> {
       clipBehavior: Clip.none,
       child: Row(
         children: [
-          // Велаят — не кликабельный, только показывает
-          _LocationChip(
+          LocationChip(
             icon: Icons.map_outlined,
             label: _provinceLabel,
             isFixed: true,
           ),
-
           const SizedBox(width: 6),
-
-          // Этрап — кликабельный
-          _LocationChip(
+          LocationChip(
             icon: Icons.location_city_outlined,
             label: _selectedEtrap != null
                 ? _selectedEtrap!.label(isRu)
@@ -805,12 +750,9 @@ class _HomeScreenState extends State<HomeScreen> {
             isActive: _selectedEtrap != null,
             onTap: _showEtrapPicker,
           ),
-
           const SizedBox(width: 6),
-
-          // Район — кликабельный, только если выбран этрап
           if (_selectedEtrap != null)
-            _LocationChip(
+            LocationChip(
               icon: Icons.pin_drop_outlined,
               label: _selectedDistrict != null
                   ? _selectedDistrict!.label(isRu)
@@ -929,7 +871,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 40,
           height: 40,
           fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
+          errorBuilder: (_, __, ___) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
         if (isShop)
@@ -968,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 22,
                   height: 22,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
+                  errorBuilder: (_, __, ___) => const Icon(
                     Icons.toll_rounded,
                     size: 20,
                     color: HomeScreen.brandGreen,
@@ -1250,7 +1192,7 @@ class _HomeScreenState extends State<HomeScreen> {
           PageRouteBuilder(
             opaque: false,
             barrierColor: Colors.black54,
-            pageBuilder: (_, _, _) => _LevelUpOverlay(
+            pageBuilder: (_, __, ___) => _LevelUpOverlay(
               provider: provider,
               onDismiss: () {
                 provider.dismissLevelUp(pending.id);
@@ -1264,109 +1206,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _LocationChip — чип фильтра локации
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LocationChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isFixed; // велаят — не кликабельный
-  final bool isActive; // выбрано значение
-  final bool isLoading;
-  final VoidCallback? onTap;
-  final VoidCallback? onClear;
-
-  const _LocationChip({
-    required this.icon,
-    required this.label,
-    this.isFixed = false,
-    this.isActive = false,
-    this.isLoading = false,
-    this.onTap,
-    this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const green = HomeScreen.brandGreen;
-    const grey = Color(0xFF9AA3AF);
-
-    final Color bg = isFixed
-        ? const Color(0xFFF0F2F7)
-        : isActive
-        ? green.withValues(alpha: 0.08)
-        : Colors.white;
-    final Color border = isFixed
-        ? const Color(0xFFEEF0F3)
-        : isActive
-        ? green.withValues(alpha: 0.3)
-        : const Color(0xFFEEF0F3);
-    final Color textColor = isFixed
-        ? grey
-        : isActive
-        ? green
-        : const Color(0xFF0F1117);
-
-    return GestureDetector(
-      onTap: isFixed ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: textColor),
-            const SizedBox(width: 5),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 110),
-              child: isLoading
-                  ? SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: textColor,
-                      ),
-                    )
-                  : Text(
-                      label,
-                      style: AppText.semiBold(fontSize: 12, color: textColor),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-            ),
-            if (!isFixed && !isLoading) ...[
-              const SizedBox(width: 4),
-              Icon(
-                isActive
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                size: 14,
-                color: textColor,
-              ),
-            ],
-            // Кнопка сброса района
-            if (onClear != null) ...[
-              const SizedBox(width: 2),
-              GestureDetector(
-                onTap: onClear,
-                child: Icon(Icons.close_rounded, size: 13, color: textColor),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _LocationPickerSheet — боттом-шит с поиском для этрапа/района
+// _LocationPickerSheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PickerItem {
@@ -1420,7 +1260,6 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       builder: (_, sc) => Column(
         children: [
           const SizedBox(height: 10),
-          // Ручка
           Container(
             width: 36,
             height: 4,
@@ -1430,7 +1269,6 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             ),
           ),
           const SizedBox(height: 14),
-          // Заголовок + кнопка сброса
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -1458,7 +1296,6 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          // Поиск
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -1507,7 +1344,6 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
           ),
           const SizedBox(height: 8),
           const Divider(height: 1, color: Color(0xFFEEF0F3)),
-          // Список
           Expanded(
             child: widget.isLoading
                 ? const Center(
@@ -1530,7 +1366,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                     controller: sc,
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(
+                    separatorBuilder: (_, __) => const Divider(
                       height: 1,
                       indent: 52,
                       color: Color(0xFFF4F5F7),
@@ -1606,34 +1442,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Прочие helpers
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _AppBarIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _AppBarIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: HomeScreen.brandGreen.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: HomeScreen.brandGreen.withValues(alpha: 0.12),
-          ),
-        ),
-        child: Icon(icon, color: HomeScreen.brandGreen, size: 19),
-      ),
-    );
-  }
-}
 
 class _GradientText extends StatelessWidget {
   final String text;
