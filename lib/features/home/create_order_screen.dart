@@ -180,7 +180,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         child: child!,
       ),
     );
-    if (date == null) return;
+    if (!mounted || date == null) return;
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
@@ -191,7 +191,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         child: child!,
       ),
     );
-    if (time == null) return;
+    if (!mounted || time == null) return;
     setState(() {
       _selectedDateTime = DateTime(
         date.year,
