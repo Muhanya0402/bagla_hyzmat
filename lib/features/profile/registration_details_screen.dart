@@ -246,6 +246,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           'Данные отправлены. Ожидайте подтверждения',
           color: brandGreen,
         );
+        if (!mounted) return;
         Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
       }
     } catch (e) {
