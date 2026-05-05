@@ -12,8 +12,11 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  static const Color brandBlue = Color(0xFF1B3A6B);
-  static const Color brandGreen = Color(0xFF27AE60);
+  // ── Brand ──────────────────────────────────────────────────────────────────
+  static const _green = Color(0xFF1A7A3C);
+  static const _red = Color(0xFFD32F1E);
+  static const _grey = Color(0xFF9AA3AF);
+  static const _gradient = LinearGradient(colors: [_green, _red]);
 
   final NotificationService _service = NotificationService();
   late Future<List<dynamic>> _future;
@@ -27,9 +30,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() {
-      _future = _service.getNotifications(_userId);
-    });
+    setState(() => _future = _service.getNotifications(_userId));
   }
 
   Future<void> _markAllRead() async {
@@ -41,23 +42,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _service.markAsRead(id);
   }
 
+  // ── Type helpers ───────────────────────────────────────────────────────────
+
   Color _typeColor(String type) {
     switch (type) {
       case 'account_status':
-        return const Color(0xFF5B2D9E);
+        return const Color(0xFF7C3AED);
       case 'new_order':
-        return brandGreen;
+        return _green;
       case 'order_status':
-        return brandBlue;
+        return _red;
       default:
-        return const Color(0xFF9AA3AF);
+        return _grey;
     }
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
       case 'account_status':
-        return Icons.person_rounded;
+        return Icons.verified_user_rounded;
       case 'new_order':
         return Icons.shopping_bag_rounded;
       case 'order_status':
@@ -67,22 +70,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  String _typeLabel(String type) {
+    switch (type) {
+      case 'account_status':
+        return 'Аккаунт';
+      case 'new_order':
+        return 'Новый заказ';
+      case 'order_status':
+        return 'Статус заказа';
+      default:
+        return 'Уведомление';
+    }
+  }
+
   String _formatDate(String? dateStr) {
     if (dateStr == null) return '';
     try {
       final dt = DateTime.parse(dateStr).toLocal();
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-
+      final diff = DateTime.now().difference(dt);
       if (diff.inMinutes < 1) return 'Только что';
       if (diff.inMinutes < 60) return '${diff.inMinutes} мин назад';
       if (diff.inHours < 24) return '${diff.inHours} ч назад';
       if (diff.inDays < 7) return '${diff.inDays} дн назад';
-      return '${dt.day}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
     } catch (_) {
       return '';
     }
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -96,13 +112,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: brandBlue.withValues(alpha: 0.06),
+              color: _green.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
-              Icons.arrow_back_ios_new,
-              color: brandBlue,
-              size: 18,
+              Icons.arrow_back_ios_new_rounded,
+              color: _green,
+              size: 16,
             ),
           ),
         ),
@@ -111,14 +127,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         actions: [
-          TextButton(
-            onPressed: _markAllRead,
-            child: Text(
-              'Прочитать все',
-              style: AppText.medium(fontSize: 13, color: brandGreen),
+          GestureDetector(
+            onTap: _markAllRead,
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _green.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _green.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.done_all_rounded, color: _green, size: 14),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Прочитать все',
+                    style: AppText.semiBold(fontSize: 12, color: _green),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
@@ -127,160 +158,332 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: brandGreen,
-                strokeWidth: 2,
-              ),
+              child: CircularProgressIndicator(color: _green, strokeWidth: 2),
             );
           }
 
-          final notifications = snapshot.data ?? [];
+          final items = snap.data ?? [];
 
-          if (notifications.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFEEF0F3)),
-                    ),
-                    child: Icon(
-                      Icons.notifications_off_rounded,
-                      size: 32,
-                      color: brandBlue.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Уведомлений пока нет',
-                    style: AppText.medium(
-                      fontSize: 14,
-                      color: const Color(0xFF9AA3AF),
-                    ),
-                  ),
-                ],
-              ),
-            );
+          if (items.isEmpty) return _buildEmpty();
+
+          // Group by date
+          final today = <dynamic>[];
+          final earlier = <dynamic>[];
+          final now = DateTime.now();
+          for (final n in items) {
+            try {
+              final dt = DateTime.parse(
+                (n['date_created'] ?? '').toString(),
+              ).toLocal();
+              if (now.difference(dt).inHours < 24) {
+                today.add(n);
+              } else {
+                earlier.add(n);
+              }
+            } catch (_) {
+              earlier.add(n);
+            }
           }
 
           return RefreshIndicator(
-            color: brandGreen,
+            color: _green,
             backgroundColor: Colors.white,
             onRefresh: _refresh,
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              itemCount: notifications.length,
-              itemBuilder: (context, index) {
-                final n = notifications[index];
-                final bool isRead = n['is_read'] == true;
-                final String type = n['type'] ?? '';
-                final Color color = _typeColor(type);
-
-                return GestureDetector(
-                  onTap: () async {
-                    if (!isRead) {
-                      await _markRead(n['id'].toString());
-                      _refresh();
-                    }
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isRead
-                          ? Colors.white
-                          : color.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isRead
-                            ? const Color(0xFFEEF0F3)
-                            : color.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+              children: [
+                if (today.isNotEmpty) ...[
+                  _sectionLabel('СЕГОДНЯ'),
+                  const SizedBox(height: 8),
+                  ...today.map(
+                    (n) => _NotifCard(
+                      notif: n,
+                      color: _typeColor(n['type'] ?? ''),
+                      icon: _typeIcon(n['type'] ?? ''),
+                      label: _typeLabel(n['type'] ?? ''),
+                      dateStr: _formatDate(n['date_created']),
+                      onTap: () async {
+                        if (n['is_read'] != true) {
+                          await _markRead(n['id'].toString());
+                          _refresh();
+                        }
+                      },
                     ),
-                    child: Row(
+                  ),
+                ],
+                if (earlier.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _sectionLabel('РАНЕЕ'),
+                  const SizedBox(height: 8),
+                  ...earlier.map(
+                    (n) => _NotifCard(
+                      notif: n,
+                      color: _typeColor(n['type'] ?? ''),
+                      icon: _typeIcon(n['type'] ?? ''),
+                      label: _typeLabel(n['type'] ?? ''),
+                      dateStr: _formatDate(n['date_created']),
+                      onTap: () async {
+                        if (n['is_read'] != true) {
+                          await _markRead(n['id'].toString());
+                          _refresh();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) => Padding(
+    padding: const EdgeInsets.only(left: 4),
+    child: Row(
+      children: [
+        Container(
+          width: 3,
+          height: 12,
+          decoration: BoxDecoration(
+            gradient: _gradient,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF9AA3AF),
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFEEF0F3)),
+            ),
+            child: Icon(
+              Icons.notifications_off_rounded,
+              size: 32,
+              color: _grey.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Уведомлений пока нет',
+            style: AppText.semiBold(fontSize: 15, color: _grey),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Здесь будут уведомления\nо заказах и статусе аккаунта',
+            textAlign: TextAlign.center,
+            style: AppText.regular(fontSize: 13, color: _grey),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notification card
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NotifCard extends StatelessWidget {
+  final dynamic notif;
+  final Color color;
+  final IconData icon;
+  final String label;
+  final String dateStr;
+  final VoidCallback onTap;
+
+  const _NotifCard({
+    required this.notif,
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.dateStr,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isRead = notif['is_read'] == true;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: isRead ? Colors.white : color.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isRead
+                ? const Color(0xFFEEF0F3)
+                : color.withValues(alpha: 0.2),
+          ),
+          boxShadow: isRead
+              ? null
+              : [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Column(
+          children: [
+            // Top status strip when unread
+            if (!isRead)
+              Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Иконка типа
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(_typeIcon(type), color: color, size: 20),
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      n['title'] ?? '',
-                                      style: isRead
-                                          ? AppText.medium(
-                                              fontSize: 14,
-                                              color: const Color(0xFF0F1117),
-                                            )
-                                          : AppText.bold(
-                                              fontSize: 14,
-                                              color: const Color(0xFF0F1117),
-                                            ),
-                                    ),
-                                  ),
-                                  if (!isRead)
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                ],
+                        Row(
+                          children: [
+                            // Type badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                n['body'] ?? '',
-                                style: AppText.regular(
-                                  fontSize: 13,
-                                  color: const Color(0xFF9AA3AF),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.09),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                            ),
+                            const Spacer(),
+                            // Unread dot
+                            if (!isRead)
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: color.withValues(alpha: 0.4),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          notif['title'] ?? '',
+                          style: isRead
+                              ? AppText.medium(
+                                  fontSize: 14,
+                                  color: const Color(0xFF0F1117),
+                                )
+                              : AppText.bold(
+                                  fontSize: 14,
+                                  color: const Color(0xFF0F1117),
+                                ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          notif['body'] ?? '',
+                          style: AppText.regular(
+                            fontSize: 13,
+                            color: const Color(0xFF9AA3AF),
+                          ).copyWith(height: 1.4),
+                        ),
+                        const SizedBox(height: 7),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              size: 11,
+                              color: Color(0xFFD1D5DB),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              dateStr,
+                              style: AppText.regular(
+                                fontSize: 11,
+                                color: const Color(0xFFD1D5DB),
+                              ),
+                            ),
+                            if (!isRead) ...[
+                              const Spacer(),
                               Text(
-                                _formatDate(n['date_created']),
+                                'Нажмите, чтобы отметить',
                                 style: AppText.regular(
-                                  fontSize: 11,
-                                  color: const Color(0xFFD1D5DB),
+                                  fontSize: 10,
+                                  color: color.withValues(alpha: 0.5),
                                 ),
                               ),
                             ],
-                          ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

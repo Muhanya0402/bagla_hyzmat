@@ -60,7 +60,7 @@ class HomeLogoRow extends StatelessWidget {
           width: 40,
           height: 40,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const BaglaLogo(width: 48, height: 24),
+          errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
         if (isShop)
@@ -99,7 +99,7 @@ class HomeLogoRow extends StatelessWidget {
                   width: 22,
                   height: 22,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.toll_rounded,
                     size: 20,
                     color: HomeColors.green,

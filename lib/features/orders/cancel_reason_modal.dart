@@ -21,13 +21,18 @@ class CancelReasonModal extends StatefulWidget {
 }
 
 class _CancelReasonModalState extends State<CancelReasonModal> {
-  static const Color brandRed = Color(0xFFD32F1E);
+  // ── Brand ──────────────────────────────────────────────────────────────────
+  static const _green = Color(0xFF1A7A3C);
+  static const _red = Color(0xFFD32F1E);
+  static const _grey = Color(0xFF9AA3AF);
+  static const _bg = Color(0xFFF5F7FA);
+  static const _gradient = LinearGradient(colors: [_green, _red]);
 
   String? _selectedReason;
-  final TextEditingController _commentController = TextEditingController();
+  final _commentCtrl = TextEditingController();
   bool _isLoading = false;
 
-  final List<_ReasonOption> _reasons = [
+  static const _reasons = [
     _ReasonOption(
       id: 'client_refused',
       label: 'Клиент отказался',
@@ -39,6 +44,11 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
       icon: Icons.timer_off_outlined,
     ),
     _ReasonOption(
+      id: 'wrong_address',
+      label: 'Неверный адрес',
+      icon: Icons.location_off_outlined,
+    ),
+    _ReasonOption(
       id: 'other',
       label: 'Другая причина',
       icon: Icons.help_outline_rounded,
@@ -47,28 +57,24 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
   @override
   void dispose() {
-    _commentController.dispose();
+    _commentCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (_selectedReason == null) return;
-
-    final comment = _commentController.text.trim();
+    final comment = _commentCtrl.text.trim();
     final fullReason =
         _selectedReason! + (comment.isNotEmpty ? ': $comment' : '');
 
     setState(() => _isLoading = true);
-
     await widget.service.updateStatus(
       widget.orderId,
       'canceled',
       cancelReason: fullReason,
       shopId: widget.currentUserId,
     );
-
     setState(() => _isLoading = false);
-
     if (mounted) Navigator.pop(context);
     widget.onSuccess?.call();
   }
@@ -107,108 +113,88 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
             ),
             const SizedBox(height: 20),
 
-            // Header icon + title
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        brandRed.withValues(alpha: 0.12),
-                        brandRed.withValues(alpha: 0.06),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.cancel_outlined,
-                    color: brandRed,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Причина отмены',
-                      style: AppText.semiBold(
-                        fontSize: 17,
-                        color: const Color(0xFF0F1117),
-                      ),
-                    ),
-                    Text(
-                      'Выберите причину и добавьте комментарий',
-                      style: AppText.regular(
-                        fontSize: 12,
-                        color: const Color(0xFF9AA3AF),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            // Gradient accent bar
+            Container(
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: _gradient,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              'Причина отмены',
+              style: AppText.bold(fontSize: 17, color: const Color(0xFF0F1117)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Выберите причину и добавьте комментарий',
+              style: AppText.regular(fontSize: 13, color: _grey),
+            ),
+            const SizedBox(height: 16),
 
             // Reason tiles
-            ..._reasons.map((r) => _buildReasonTile(r)),
+            ..._reasons.map(
+              (r) => _ReasonTile(
+                reason: r,
+                isSelected: _selectedReason == r.label,
+                onTap: () => setState(() => _selectedReason = r.label),
+              ),
+            ),
 
             const SizedBox(height: 14),
 
             // Comment field
             TextField(
-              controller: _commentController,
+              controller: _commentCtrl,
               maxLines: 3,
               style: AppText.regular(
-                fontSize: 13,
+                fontSize: 14,
                 color: const Color(0xFF0F1117),
               ),
               decoration: InputDecoration(
                 hintText: 'Дополнительный комментарий (необязательно)...',
-                hintStyle: AppText.regular(
-                  fontSize: 13,
-                  color: const Color(0xFF9AA3AF),
-                ),
+                hintStyle: AppText.regular(fontSize: 13, color: _grey),
                 filled: true,
-                fillColor: const Color(0xFFF5F7FA),
+                fillColor: _bg,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
+                ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: brandRed.withValues(alpha: 0.35),
+                    color: _red.withOpacity(0.4),
                     width: 1.5,
                   ),
                 ),
                 contentPadding: const EdgeInsets.all(14),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Buttons
+            // Buttons row
             Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      height: 50,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7FA),
-                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: const Color(0xFFEEF0F3)),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         'Назад',
-                        style: AppText.medium(
-                          fontSize: 14,
-                          color: const Color(0xFF9AA3AF),
-                        ),
+                        style: AppText.medium(fontSize: 14, color: _grey),
                       ),
                     ),
                   ),
@@ -216,29 +202,17 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: GestureDetector(
-                    onTap: _selectedReason == null || _isLoading
+                    onTap: (_selectedReason == null || _isLoading)
                         ? null
                         : _submit,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      height: 50,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: _selectedReason == null
-                            ? const Color(0xFFF5F7FA)
-                            : brandRed,
-                        borderRadius: BorderRadius.circular(14),
-                        border: _selectedReason == null
-                            ? Border.all(color: const Color(0xFFEEF0F3))
-                            : null,
-                        boxShadow: _selectedReason != null
-                            ? [
-                                BoxShadow(
-                                  color: brandRed.withValues(alpha: 0.2),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : null,
+                            ? _red.withOpacity(0.25)
+                            : _red,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
                       child: _isLoading
@@ -252,11 +226,9 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                             )
                           : Text(
                               'Отменить заказ',
-                              style: AppText.medium(
+                              style: AppText.semiBold(
                                 fontSize: 14,
-                                color: _selectedReason == null
-                                    ? const Color(0xFF9AA3AF)
-                                    : Colors.white,
+                                color: Colors.white,
                               ),
                             ),
                     ),
@@ -269,47 +241,52 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
       ),
     );
   }
+}
 
-  Widget _buildReasonTile(_ReasonOption reason) {
-    final bool isSelected = _selectedReason == reason.label;
+// ── Reason tile ───────────────────────────────────────────────────────────────
+
+class _ReasonTile extends StatelessWidget {
+  final _ReasonOption reason;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ReasonTile({
+    required this.reason,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  static const _red = Color(0xFFD32F1E);
+  static const _grey = Color(0xFF9AA3AF);
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedReason = reason.label),
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? brandRed.withValues(alpha: 0.05)
-              : const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(14),
+          color: isSelected ? _red.withOpacity(0.05) : const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? brandRed.withValues(alpha: 0.3)
-                : const Color(0xFFEEF0F3),
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? _red.withOpacity(0.35) : Colors.transparent,
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? brandRed.withValues(alpha: 0.1)
-                    : Colors.white,
+                color: isSelected ? _red.withOpacity(0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected
-                      ? brandRed.withValues(alpha: 0.2)
-                      : const Color(0xFFEEF0F3),
-                ),
               ),
               child: Icon(
                 reason.icon,
                 size: 18,
-                color: isSelected ? brandRed : const Color(0xFF9AA3AF),
+                color: isSelected ? _red : _grey,
               ),
             ),
             const SizedBox(width: 12),
@@ -317,31 +294,23 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
               child: Text(
                 reason.label,
                 style: isSelected
-                    ? AppText.semiBold(fontSize: 14, color: brandRed)
+                    ? AppText.semiBold(fontSize: 14, color: _red)
                     : AppText.regular(
                         fontSize: 14,
                         color: const Color(0xFF0F1117),
                       ),
               ),
             ),
-            AnimatedContainer(
+            AnimatedSwitcher(
               duration: const Duration(milliseconds: 150),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? brandRed : Colors.transparent,
-                border: isSelected
-                    ? null
-                    : Border.all(color: const Color(0xFFD1D5DB), width: 1.5),
-              ),
               child: isSelected
                   ? const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                      size: 13,
+                      Icons.check_circle_rounded,
+                      color: _red,
+                      size: 20,
+                      key: ValueKey('check'),
                     )
-                  : null,
+                  : const SizedBox(width: 20, key: ValueKey('empty')),
             ),
           ],
         ),
@@ -354,7 +323,6 @@ class _ReasonOption {
   final String id;
   final String label;
   final IconData icon;
-
   const _ReasonOption({
     required this.id,
     required this.label,

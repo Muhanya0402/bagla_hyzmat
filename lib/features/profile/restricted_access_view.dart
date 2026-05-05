@@ -2,16 +2,20 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ── Brand constants ────────────────────────────────────────────────────────
-const Color _brandGreen = Color(0xFF1A7A3C);
-const Color _brandRed = Color(0xFFD32F1E);
-const LinearGradient _brandGradient = LinearGradient(
-  colors: [_brandGreen, _brandRed],
-  begin: Alignment.centerLeft,
-  end: Alignment.centerRight,
-);
+// ─────────────────────────────────────────────────────────────────────────────
+// Brand constants (local, no external import needed)
+// ─────────────────────────────────────────────────────────────────────────────
+const _kGreen = Color(0xFF1A7A3C);
+const _kRed = Color(0xFFD32F1E);
+const _kGrey = Color(0xFF9AA3AF);
+const _kBg = Color(0xFFF5F7FA);
+const _kBorder = Color(0xFFEEF0F3);
+const _kGradient = LinearGradient(colors: [_kGreen, _kRed]);
 
-/// ЭКРАН 1: Заглушка для пользователей на модерации
+// ─────────────────────────────────────────────────────────────────────────────
+// RestrictedAccessView — shown when account is under moderation
+// ─────────────────────────────────────────────────────────────────────────────
+
 class RestrictedAccessView extends StatelessWidget {
   final VoidCallback onActionPressed;
   final String title;
@@ -23,7 +27,8 @@ class RestrictedAccessView extends StatelessWidget {
     required this.onActionPressed,
     this.title = 'Модерация аккаунта',
     this.message =
-        'Пополнение баланса станет доступно сразу после подтверждения вашего профиля модератором.',
+        'Пополнение баланса и принятие заказов станут доступны сразу после '
+        'подтверждения вашего профиля модератором.',
     this.buttonText = 'ПОНЯТНО',
   });
 
@@ -32,53 +37,128 @@ class RestrictedAccessView extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Icon with gradient bg
+        // Icon with gradient background
         Container(
-          width: 72,
-          height: 72,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
+            shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [
-                _brandGreen.withValues(alpha: 0.12),
-                _brandRed.withValues(alpha: 0.07),
-              ],
+              colors: [_kGreen.withOpacity(0.1), _kRed.withOpacity(0.07)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(22),
           ),
-          child: const Icon(
-            Icons.lock_clock_rounded,
-            size: 32,
-            color: _brandGreen,
-          ),
+          child: const Icon(Icons.lock_clock_rounded, size: 36, color: _kGrey),
         ),
         const SizedBox(height: 20),
 
-        ShaderMask(
-          shaderCallback: (b) => _brandGradient.createShader(b),
-          child: Text(
-            title,
-            style: AppText.extraBold(fontSize: 20, color: Colors.white),
-            textAlign: TextAlign.center,
+        // Gradient accent bar
+        Container(
+          height: 3,
+          width: 48,
+          decoration: BoxDecoration(
+            gradient: _kGradient,
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
+        const SizedBox(height: 16),
+
+        // Title
+        Text(
+          title,
+          style: AppText.extraBold(
+            fontSize: 20,
+            color: const Color(0xFF0F1117),
+          ),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
+
+        // Message
         Text(
           message,
           textAlign: TextAlign.center,
           style: AppText.regular(
-            fontSize: 14,
-            color: const Color(0xFF9AA3AF),
-          ).copyWith(height: 1.5),
+            fontSize: 13,
+            color: _kGrey,
+          ).copyWith(height: 1.55),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
 
-        _BrandButton(text: buttonText, onTap: onActionPressed, isActive: true),
+        // Info pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF8EE),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE67E22).withOpacity(0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.access_time_rounded,
+                color: Color(0xFFE67E22),
+                size: 15,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Обычно занимает до 24 часов',
+                style: AppText.medium(
+                  fontSize: 12,
+                  color: const Color(0xFFE67E22),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
+
+        // Button
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: _kGradient,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: _kGreen.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: onActionPressed,
+              child: Text(
+                buttonText,
+                style: AppText.bold(
+                  fontSize: 14,
+                  color: Colors.white,
+                ).copyWith(letterSpacing: 0.5),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-/// ЭКРАН 2: Активная форма пополнения
+// ─────────────────────────────────────────────────────────────────────────────
+// TopUpFormView — active top-up form
+// ─────────────────────────────────────────────────────────────────────────────
+
 class TopUpFormView extends StatelessWidget {
   final TextEditingController controller;
   final int points;
@@ -101,138 +181,137 @@ class TopUpFormView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool canSubmit = points > 0 && !isLoading;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 24),
+        const SizedBox(height: 8),
 
-        // Input field
+        // Gradient accent bar
+        Container(
+          height: 3,
+          width: 48,
+          decoration: BoxDecoration(
+            gradient: _kGradient,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Amount field
         TextField(
           controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: AppText.bold(fontSize: 24, color: const Color(0xFF0F1117)),
+          style: AppText.extraBold(
+            fontSize: 28,
+            color: const Color(0xFF0F1117),
+          ),
           textAlign: TextAlign.center,
           decoration: InputDecoration(
             hintText: '0',
-            hintStyle: AppText.bold(
-              fontSize: 24,
+            hintStyle: AppText.regular(
+              fontSize: 28,
               color: const Color(0xFFD1D5DB),
             ),
-            prefixIcon: Container(
-              margin: const EdgeInsets.all(12),
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: _brandGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.toll_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+            prefixIcon: Image.asset(
+              'assets/images/point_icon.png',
+              width: 28,
+              height: 28,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.toll_rounded, color: _kGreen, size: 26),
             ),
-            suffixText: 'баллов',
-            suffixStyle: AppText.regular(
-              fontSize: 14,
-              color: const Color(0xFF9AA3AF),
-            ),
+            suffixText: 'жетонов',
+            suffixStyle: AppText.regular(fontSize: 14, color: _kGrey),
             filled: true,
-            fillColor: const Color(0xFFF5F7FA),
+            fillColor: _kBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _kBorder),
+            ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: _brandGreen.withValues(alpha: 0.4),
+                color: _kGreen.withOpacity(0.5),
                 width: 1.5,
               ),
             ),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 18,
+              horizontal: 14,
+              vertical: 16,
             ),
           ),
           onChanged: onChanged,
         ),
+        const SizedBox(height: 8),
+
+        // Rate hint
+        Text(
+          '1 жетон = $rate TMT',
+          style: AppText.regular(fontSize: 12, color: _kGrey),
+        ),
         const SizedBox(height: 20),
 
+        // Summary panel (passed from parent)
         summaryPanel,
-        const SizedBox(height: 28),
 
-        _BrandButton(
-          text: 'ОТПРАВИТЬ ЗАЯВКУ',
-          onTap: onSubmit,
-          isActive: points > 0 && !isLoading,
-          isLoading: isLoading,
+        const SizedBox(height: 24),
+
+        // Submit button
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: canSubmit ? _kGradient : null,
+              color: canSubmit ? null : _kBg,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: canSubmit
+                  ? [
+                      BoxShadow(
+                        color: _kGreen.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                disabledBackgroundColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: canSubmit ? onSubmit : null,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: _kGreen,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      'ОТПРАВИТЬ ЗАЯВКУ',
+                      style: AppText.bold(
+                        fontSize: 14,
+                        color: canSubmit ? Colors.white : _kGrey,
+                      ).copyWith(letterSpacing: 0.5),
+                    ),
+            ),
+          ),
         ),
       ],
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Shared brand button
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _BrandButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
-  final bool isActive;
-  final bool isLoading;
-
-  const _BrandButton({
-    required this.text,
-    required this.onTap,
-    required this.isActive,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isActive ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: isActive ? _brandGradient : null,
-          color: isActive ? null : const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(16),
-          border: isActive ? null : Border.all(color: const Color(0xFFEEF0F3)),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: _brandGreen.withValues(alpha: 0.22),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
-            : Text(
-                text,
-                style: AppText.bold(
-                  fontSize: 14,
-                  color: isActive ? Colors.white : const Color(0xFF9AA3AF),
-                ).copyWith(letterSpacing: 0.5),
-              ),
-      ),
     );
   }
 }
