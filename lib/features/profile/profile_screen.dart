@@ -526,7 +526,6 @@ class _MenuTile extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String? subtitle;
-  final String? trailing;
   final VoidCallback onTap;
 
   const _MenuTile({
@@ -534,7 +533,6 @@ class _MenuTile extends StatelessWidget {
     required this.iconColor,
     required this.title,
     this.subtitle,
-    this.trailing,
     required this.onTap,
   });
 
@@ -568,22 +566,6 @@ class _MenuTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (trailing != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                gradient: ProfileScreen.brandGradient,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                trailing!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
           const SizedBox(width: 6),
           const Icon(
             Icons.arrow_forward_ios_rounded,
