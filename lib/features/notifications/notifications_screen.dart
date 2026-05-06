@@ -54,6 +54,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return _green;
       case 'order_status':
         return _red;
+      case 'daily_bonus':
+        return const Color(0xFFE67E22);
       default:
         return _grey;
     }
@@ -67,6 +69,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.shopping_bag_rounded;
       case 'order_status':
         return Icons.local_shipping_rounded;
+      case 'daily_bonus':
+        return Icons.bolt_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -80,6 +84,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return 'Новый заказ';
       case 'order_status':
         return 'Статус заказа';
+      case 'daily_bonus':
+        return 'Ежедневный бонус';
       default:
         return 'Уведомление';
     }
@@ -432,7 +438,7 @@ class _NotifCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          notif['title'] ?? '',
+                          notif['title_ru'] ?? notif['title'] ?? '',
                           style: isRead
                               ? AppText.medium(
                                   fontSize: 14,
@@ -445,7 +451,7 @@ class _NotifCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          notif['body'] ?? '',
+                          notif['body_ru'] ?? notif['body'] ?? '',
                           style: AppText.regular(
                             fontSize: 13,
                             color: const Color(0xFF9AA3AF),

@@ -1,5 +1,7 @@
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/notifications/notification_service.dart';
+import 'package:bagla/features/notifications/unread_notifications_modal.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/home/home_app_bar.dart';
 import 'package:bagla/features/home/location_filter.dart';
@@ -107,7 +109,36 @@ class _HomeScreenState extends State<HomeScreen> {
           if (mounted) setState(() {});
         });
       }
+      await _checkUnreadNotifications();
     });
+  }
+
+  Future<void> _checkUnreadNotifications() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.userId.isEmpty) return;
+    try {
+      final service = NotificationService();
+      final unread = await service.getUnread(auth.userId);
+      if (unread.isEmpty || !mounted) return;
+
+      // Небольшая задержка чтобы UI успел отрисоваться
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => UnreadNotificationsModal(
+          notifications: unread,
+          onMarkAllRead: () async {
+            await service.markAllAsRead(auth.userId);
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('checkUnreadNotifications error: $e');
+    }
   }
 
   @override

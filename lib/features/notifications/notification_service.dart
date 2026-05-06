@@ -64,4 +64,18 @@ class NotificationService {
       return 0;
     }
   }
+
+  Future<List<Map<String, dynamic>>> getUnread(String customerId) async {
+    final response = await _api.dio.get(
+      '/items/notifications',
+      queryParameters: {
+        'filter[customer_id][_eq]': customerId,
+        'filter[is_read][_eq]': false,
+        'sort': '-date_created',
+        'limit': 20,
+      },
+    );
+    final items = response.data['data'] as List;
+    return items.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
 }
