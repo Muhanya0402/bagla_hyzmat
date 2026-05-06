@@ -167,7 +167,7 @@ class RestrictedAccessView extends StatelessWidget {
 class TopUpFormView extends StatelessWidget {
   final TextEditingController controller;
   final int points;
-  final int rate;
+  final double rate;
   final bool isLoading;
   final Function(String) onChanged;
   final VoidCallback onSubmit;

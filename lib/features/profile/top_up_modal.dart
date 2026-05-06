@@ -35,7 +35,22 @@ class _TopUpModalState extends State<TopUpModal> {
 
   int _points = 0;
   bool _isLoading = false;
-  static const int rate = 2;
+  double _rate = 2.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRate();
+  }
+
+  Future<void> _loadRate() async {
+    final rate = await _authRepo.fetchTokenRate();
+    if (mounted) {
+      setState(() {
+        _rate = rate ?? 2.0;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -48,7 +63,7 @@ class _TopUpModalState extends State<TopUpModal> {
     final success = await _authRepo.requestTopUp(
       userId: widget.userId,
       points: _points,
-      amountTmt: (_points * rate).toDouble(),
+      amountTmt: (_points * _rate).toDouble(),
     );
     if (mounted) {
       setState(() => _isLoading = false);
@@ -113,7 +128,7 @@ class _TopUpModalState extends State<TopUpModal> {
                       ),
                     ),
                     Text(
-                      '1 жетон = $rate TMT',
+                      '1 жетон = $_rate TMT',
                       style: AppText.regular(
                         fontSize: 13,
                         color: Colors.black45,
@@ -145,12 +160,12 @@ class _TopUpModalState extends State<TopUpModal> {
               : TopUpFormView(
                   controller: _controller,
                   points: _points,
-                  rate: rate,
+                  rate: _rate,
                   isLoading: _isLoading,
                   onChanged: (val) =>
                       setState(() => _points = int.tryParse(val) ?? 0),
                   onSubmit: _submit,
-                  summaryPanel: _SummaryPanel(points: _points, rate: rate),
+                  summaryPanel: _SummaryPanel(points: _points, rate: _rate),
                 ),
         ],
       ),
@@ -164,7 +179,7 @@ class _TopUpModalState extends State<TopUpModal> {
 
 class _SummaryPanel extends StatelessWidget {
   final int points;
-  final int rate;
+  final double rate;
   const _SummaryPanel({required this.points, required this.rate});
 
   @override

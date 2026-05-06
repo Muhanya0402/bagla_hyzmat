@@ -264,6 +264,20 @@ class AuthRepository {
     }
   }
 
+  Future<double?> fetchTokenRate() async {
+    try {
+      final response = await _api.dio.get(
+        '/items/app_settings',
+        queryParameters: {'fields': 'token_rate', 'limit': 1},
+      );
+      final items = response.data['data'] as List;
+      if (items.isEmpty) return null;
+      return (items.first['token_rate'] as num?)?.toDouble();
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<List<District>> getDistricts() async {
     try {
       final res = await _api.dio.get(
