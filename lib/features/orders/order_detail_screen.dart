@@ -929,7 +929,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return Column(
       children: [
         _priceRow(
-          'Товар',
+          'За товар(ы)',
           '${itemPrice.toStringAsFixed(0)} TMT',
           const Color(0xFF0F1117),
         ),

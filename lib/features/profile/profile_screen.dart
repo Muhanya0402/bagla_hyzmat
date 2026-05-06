@@ -297,7 +297,7 @@ class ProfileScreen extends StatelessWidget {
                             icon: Icons.description_rounded,
                             iconColor: const Color(0xFF2CA5E0),
                             title: 'Условия использования',
-                            onTap: () {},
+                            onTap: () => Navigator.pushNamed(context, '/terms'),
                           ),
                           _divider(),
                           // Support
