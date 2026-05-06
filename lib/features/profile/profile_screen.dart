@@ -286,18 +286,25 @@ class ProfileScreen extends StatelessWidget {
                           _MenuTile(
                             icon: Icons.inbox_rounded,
                             iconColor: brandGreen,
-                            title: 'Мои обращения',
+                            title: words.feedbacks,
                             onTap: () =>
                                 Navigator.pushNamed(context, '/appeals'),
                           ),
                           _divider(),
 
+                          // Appeals
+                          _MenuTile(
+                            icon: Icons.description_rounded,
+                            iconColor: const Color(0xFF2CA5E0),
+                            title: 'Условия использования',
+                            onTap: () {},
+                          ),
+                          _divider(),
                           // Support
                           _MenuTile(
                             icon: Icons.support_agent_rounded,
                             iconColor: const Color(0xFFE67E22),
                             title: 'Связаться с поддержкой',
-                            subtitle: 'Telegram / WhatsApp',
                             onTap: () => _showSupportModal(context),
                           ),
                         ],
@@ -589,11 +596,6 @@ class _SupportModal extends StatelessWidget {
   static const _red = Color(0xFFD32F1E);
   static const _gradient = LinearGradient(colors: [_green, _red]);
 
-  Future<void> _launch(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -663,24 +665,24 @@ class _SupportModal extends StatelessWidget {
 
           // Telegram
           _SupportButton(
-            icon: Icons.send_rounded,
+            icon: Icons.phone,
             iconColor: const Color(0xFF2CA5E0),
             bgColor: const Color(0xFF2CA5E0).withValues(alpha: 0.08),
-            title: 'Telegram',
-            subtitle: '@bagla_support',
-            onTap: () => _launch('https://t.me/bagla_support'),
+            title: 'Телефон',
+            subtitle: '+99364012282',
+            onTap: () => _makePhoneCall('+99364012282'),
           ),
-          const SizedBox(height: 10),
+          // const SizedBox(height: 10),
 
-          // WhatsApp
-          _SupportButton(
-            icon: Icons.chat_bubble_outline_rounded,
-            iconColor: const Color(0xFF25D366),
-            bgColor: const Color(0xFF25D366).withValues(alpha: 0.08),
-            title: 'WhatsApp',
-            subtitle: '+993 ...',
-            onTap: () => _launch('https://wa.me/99300000000'),
-          ),
+          // // WhatsApp
+          // _SupportButton(
+          //   icon: Icons.chat_bubble_outline_rounded,
+          //   iconColor: const Color(0xFF25D366),
+          //   bgColor: const Color(0xFF25D366).withValues(alpha: 0.08),
+          //   title: 'WhatsApp',
+          //   subtitle: '+993 ...',
+          //   onTap: () => _launch('https://wa.me/99300000000'),
+          // ),
           const SizedBox(height: 20),
 
           // Close
@@ -708,6 +710,12 @@ class _SupportModal extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _makePhoneCall(String phone) async {
+  final clean = phone.replaceAll(RegExp(r'[^\d+]'), '');
+  final uri = Uri(scheme: 'tel', path: clean);
+  if (await canLaunchUrl(uri)) await launchUrl(uri);
 }
 
 class _SupportButton extends StatelessWidget {

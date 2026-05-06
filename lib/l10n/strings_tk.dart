@@ -1,5 +1,6 @@
 const Map<String, String> stringsTk = {
   'loginTitle': 'Bagla',
+  'feedbacks': 'Meniň ýüzlenmelerim',
   'user': 'Ulanyjy',
   'phoneLabel': 'Telefon',
   'otpLabel': 'SMS kody',
