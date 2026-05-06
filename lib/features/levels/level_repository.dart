@@ -13,14 +13,17 @@ class LevelRepository {
         '/items/level_definitions',
         queryParameters: {
           'fields':
-              'id,level_number,title_ru,title_tk,xp_required,color_hex,description_ru,description_tk',
-
+              'id,level_number,title_ru,title_tk,xp_required,color_hex,'
+              'description_ru,description_tk,'
+              'level_bonuses.bonus_type,level_bonuses.value_number,'
+              'level_bonuses.label_ru,level_bonuses.label_tk',
           'filter[is_active][_eq]': true,
           'sort': 'level_number',
         },
       );
 
       final List data = res.data['data'];
+
       return data.map((e) => LevelDefinition.fromJson(e)).toList();
     } catch (e) {
       if (e is DioException) {

@@ -104,7 +104,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     final level = p.currentLevel!;
     final int levelNum = level.levelNumber;
     // +0.5 жетонов в день за каждый уровень
-    final double dailyBonus = levelNum * 0.5;
+    final double dailyBonus = level.dailyTokens;
 
     return GestureDetector(
       onTap: () => _showDetailsSheet(p),
@@ -318,7 +318,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
         levelColor: levelData != null ? _parseHex(levelData.colorHex) : _green,
         xpEarned: pending.xpAmount,
         bonuses: levelData?.bonuses ?? [],
-        dailyBonus: pending.levelAfter * 0.5,
+        dailyBonus: levelData?.dailyTokens ?? 0.0,
         onDismiss: () {
           provider.dismissLevelUp(pending.id);
           _dialogShown = false;
@@ -606,7 +606,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Каждый уровень даёт +0.5 жетонов в день',
+                    'Жетоны начисляются автоматически каждые 24 часа',
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF9AA3AF),
@@ -890,7 +890,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                     // Level rows
                     ...List.generate(provider.allLevels.length, (i) {
                       final l = provider.allLevels[i];
-                      final bonus = l.levelNumber * 0.5;
+                      final bonus = l.dailyTokens;
                       final isCurrent = l.id == current.id;
                       final isUnlocked = provider.currentXp >= l.xpRequired;
                       return Container(
@@ -998,7 +998,7 @@ class _LevelDetailsSheet extends StatelessWidget {
               ...current.bonuses.map(
                 (b) => ListTile(
                   dense: true,
-                  leading: Text(b.icon, style: const TextStyle(fontSize: 20)),
+                  leading: Text('🪙', style: const TextStyle(fontSize: 20)),
                   title: Text(
                     b.labelRu,
                     style: const TextStyle(

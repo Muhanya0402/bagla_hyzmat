@@ -1,27 +1,23 @@
+import 'package:flutter/material.dart';
+
 class LevelBonus {
   final String bonusType;
   final double valueNumber;
-  final String valueText;
   final String labelRu;
   final String labelTk;
-  final String icon;
 
   LevelBonus({
     required this.bonusType,
     required this.valueNumber,
-    required this.valueText,
     required this.labelRu,
     required this.labelTk,
-    required this.icon,
   });
 
   factory LevelBonus.fromJson(Map<String, dynamic> json) => LevelBonus(
     bonusType: json['bonus_type'] ?? '',
     valueNumber: (json['value_number'] ?? 0).toDouble(),
-    valueText: json['value_text'] ?? '',
     labelRu: json['label_ru'] ?? '',
     labelTk: json['label_tk'] ?? '',
-    icon: json['icon'] ?? '',
   );
 
   String label(bool isRu) => isRu ? labelRu : labelTk;
@@ -53,7 +49,8 @@ class LevelDefinition {
   });
 
   factory LevelDefinition.fromJson(Map<String, dynamic> json) {
-    final rawBonuses = json['bonuses'] as List? ?? [];
+    final rawBonuses =
+        (json['level_bonuses'] ?? json['bonuses']) as List? ?? [];
     return LevelDefinition(
       id: json['id'] ?? 0,
       levelNumber: json['level_number'] ?? 0,
@@ -70,6 +67,11 @@ class LevelDefinition {
 
   String title(bool isRu) => isRu ? titleRu : titleTk;
   String description(bool isRu) => isRu ? descriptionRu : descriptionTk;
+
+  double get dailyTokens {
+    final bonus = bonuses.where((b) => b.bonusType == 'daily_tokens').toList();
+    return bonus.isNotEmpty ? bonus.first.valueNumber : 0.0;
+  }
 }
 
 class XpHistory {
