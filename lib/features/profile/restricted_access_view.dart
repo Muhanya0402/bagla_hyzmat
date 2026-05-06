@@ -259,7 +259,7 @@ class TopUpFormView extends StatelessWidget {
         // Rate hint
         Text(
           '1 жетон = $rate TMT',
-          style: AppText.regular(fontSize: 12, color: _kGrey),
+          style: AppText.regular(fontSize: 18, color: _kGreen),
         ),
         const SizedBox(height: 20),
 

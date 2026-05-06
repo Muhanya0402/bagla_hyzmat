@@ -127,13 +127,6 @@ class _TopUpModalState extends State<TopUpModal> {
                         style: AppText.bold(fontSize: 18, color: Colors.white),
                       ),
                     ),
-                    Text(
-                      '1 жетон = $_rate TMT',
-                      style: AppText.regular(
-                        fontSize: 13,
-                        color: Colors.black45,
-                      ),
-                    ),
                   ],
                 ),
               ],
