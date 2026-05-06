@@ -101,7 +101,7 @@ class _TermsScreenState extends State<TermsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withOpacity(0.07),
+              color: _green.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -205,7 +205,7 @@ class _TermsScreenState extends State<TermsScreen> {
         border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -231,7 +231,10 @@ class _TermsScreenState extends State<TermsScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [_green.withOpacity(0.12), _red.withOpacity(0.07)],
+                    colors: [
+                      _green.withValues(alpha: 0.12),
+                      _red.withValues(alpha: 0.07),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -340,10 +343,10 @@ class _TermsScreenState extends State<TermsScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: canAccept ? _green.withOpacity(0.06) : _bg,
+              color: canAccept ? _green.withValues(alpha: 0.06) : _bg,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: canAccept ? _green.withOpacity(0.25) : _border,
+                color: canAccept ? _green.withValues(alpha: 0.25) : _border,
               ),
             ),
             child: Row(
@@ -353,8 +356,8 @@ class _TermsScreenState extends State<TermsScreen> {
                   height: 36,
                   decoration: BoxDecoration(
                     color: canAccept
-                        ? _green.withOpacity(0.12)
-                        : _grey.withOpacity(0.1),
+                        ? _green.withValues(alpha: 0.12)
+                        : _grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -408,7 +411,7 @@ class _TermsScreenState extends State<TermsScreen> {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: _grey.withOpacity(0.1),
+                            color: _grey.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -436,7 +439,7 @@ class _TermsScreenState extends State<TermsScreen> {
                 boxShadow: canAccept
                     ? [
                         BoxShadow(
-                          color: _green.withOpacity(0.22),
+                          color: _green.withValues(alpha: 0.22),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -529,12 +532,12 @@ class _TermTile extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isExpanded ? _green.withOpacity(0.3) : _border,
+            color: isExpanded ? _green.withValues(alpha: 0.3) : _border,
           ),
           boxShadow: isExpanded
               ? [
                   BoxShadow(
-                    color: _green.withOpacity(0.07),
+                    color: _green.withValues(alpha: 0.07),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),

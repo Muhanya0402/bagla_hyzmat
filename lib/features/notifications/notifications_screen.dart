@@ -30,11 +30,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _service.getNotifications(_userId));
+    _future = _service.getNotifications(_userId);
+    setState(() {});
   }
 
   Future<void> _markAllRead() async {
     await _service.markAllAsRead(_userId);
+    if (!mounted) return;
     _refresh();
   }
 
@@ -208,6 +210,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       onTap: () async {
                         if (n['is_read'] != true) {
                           await _markRead(n['id'].toString());
+                          if (!mounted) return;
                           _refresh();
                         }
                       },

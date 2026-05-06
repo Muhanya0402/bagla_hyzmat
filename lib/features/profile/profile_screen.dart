@@ -291,14 +291,14 @@ class ProfileScreen extends StatelessWidget {
                                 Navigator.pushNamed(context, '/appeals'),
                           ),
                           _divider(),
-
-                          // Appeals
-                          _MenuTile(
-                            icon: Icons.description_rounded,
-                            iconColor: const Color(0xFF2CA5E0),
-                            title: 'Условия использования',
-                            onTap: () => Navigator.pushNamed(context, '/terms'),
-                          ),
+                          if (isShop || isCourier && auth.status != "published")
+                            _MenuTile(
+                              icon: Icons.description_rounded,
+                              iconColor: const Color(0xFF2CA5E0),
+                              title: 'Условия использования',
+                              onTap: () =>
+                                  Navigator.pushNamed(context, '/terms'),
+                            ),
                           _divider(),
                           // Support
                           _MenuTile(
@@ -532,14 +532,12 @@ class _MenuTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
-  final String? subtitle;
   final VoidCallback onTap;
 
   const _MenuTile({
     required this.icon,
     required this.iconColor,
     required this.title,
-    this.subtitle,
     required this.onTap,
   });
 
@@ -561,15 +559,7 @@ class _MenuTile extends StatelessWidget {
         title,
         style: AppText.semiBold(fontSize: 14, color: const Color(0xFF0F1117)),
       ),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle!,
-              style: AppText.regular(
-                fontSize: 12,
-                color: const Color(0xFF9AA3AF),
-              ),
-            )
-          : null,
+
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
