@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class LevelBonus {
   final String bonusType;
   final double valueNumber;
