@@ -240,32 +240,23 @@ class ProfileScreen extends StatelessWidget {
                             ).then((_) => auth.refreshProfile()),
                           ),
                         const SizedBox(width: 12),
+
                         // Daily bonus info card
-                        if (isCourier)
-                          _StatCard(
-                            label: 'В день',
-                            value: _dailyBonus(auth),
-                            icon: Icons.bolt_rounded,
-                            iconColor: const Color(0xFFE67E22),
-                            actionIcon: Icons.arrow_forward_ios_rounded,
-                            onAction: () {},
-                          )
-                        else
-                          _StatCard(
-                            label: 'Статус',
-                            value: _statusLabel(auth.status),
-                            icon: Icons.verified_rounded,
-                            iconColor: _statusColor(auth.status),
-                            actionIcon: Icons.arrow_forward_ios_rounded,
-                            onAction: () {
-                              if (auth.status == "published") {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/user_type_selection',
-                                );
-                              }
-                            },
-                          ),
+                        _StatCard(
+                          label: 'Статус',
+                          value: _statusLabel(auth.status),
+                          icon: Icons.verified_rounded,
+                          iconColor: _statusColor(auth.status),
+                          actionIcon: Icons.arrow_forward_ios_rounded,
+                          onAction: () {
+                            if (auth.status == "published") {
+                              Navigator.pushNamed(
+                                context,
+                                '/user_type_selection',
+                              );
+                            }
+                          },
+                        ),
                       ],
                     ),
 
