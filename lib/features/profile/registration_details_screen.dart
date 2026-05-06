@@ -55,6 +55,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   bool _loadingProvinces = false;
   bool _loadingEtraps = false;
   bool _loadingDistricts = false;
+  bool _locationSelected = false;
 
   int _locationStep = 0;
 
@@ -102,12 +103,19 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       _districts = [];
       _locationStep = 1;
       _searchQuery = '';
-      _searchController.clear();
       _loadingEtraps = true;
+      _locationSelected = false; // сбрасываем
     });
     try {
       final list = await _authRepo.getEtrapsByProvince(p.id);
-      setState(() => _etraps = list);
+      setState(() {
+        _etraps = list;
+        // Если этрапов нет — велаят уже достаточно
+        if (list.isEmpty) {
+          _locationSelected = true;
+          _locationStep = 0;
+        }
+      });
     } catch (e) {
       _showSnack('Ошибка загрузки этрапов: $e');
     } finally {
@@ -122,12 +130,19 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       _districts = [];
       _locationStep = 2;
       _searchQuery = '';
-      _searchController.clear();
       _loadingDistricts = true;
+      _locationSelected = false;
     });
     try {
       final list = await _authRepo.getDistrictsByEtrap(e.id);
-      setState(() => _districts = list);
+      setState(() {
+        _districts = list;
+        // Если районов нет — этрап уже достаточно
+        if (list.isEmpty) {
+          _locationSelected = true;
+          _locationStep = 1;
+        }
+      });
     } catch (e) {
       _showSnack('Ошибка загрузки районов: $e');
     } finally {
@@ -139,7 +154,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     setState(() {
       _selectedDistrict = d;
       _searchQuery = '';
-      _searchController.clear();
+      _locationSelected = true; // район выбран
     });
   }
 
@@ -147,7 +162,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     setState(() {
       _locationStep = step;
       _searchQuery = '';
-      _searchController.clear();
+      _locationSelected = false; // сбрасываем при возврате
       if (step == 0) {
         _selectedProvince = null;
         _selectedEtrap = null;
@@ -181,7 +196,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedDistrict == null) {
+    if (!_locationSelected) {
       _showSnack('Пожалуйста, выберите район');
       return;
     }
@@ -444,19 +459,21 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       children: [
         _buildStepIndicator(),
         const SizedBox(height: 14),
+
         if (_selectedProvince != null ||
             _selectedEtrap != null ||
             _selectedDistrict != null)
           _buildBreadcrumb(isRu),
-        if (_locationStep > 0 && _selectedDistrict == null) ...[
+
+        if (_locationStep > 0 && !_locationSelected) ...[
           const SizedBox(height: 10),
           _buildSearchField(),
         ],
         const SizedBox(height: 10),
-        if (_selectedDistrict == null)
-          _buildCurrentStepList(isRu)
-        else
-          _buildLocationDone(isRu),
+
+        _locationSelected
+            ? _buildLocationDone(isRu)
+            : _buildCurrentStepList(isRu),
       ],
     );
   }
@@ -774,7 +791,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedDistrict!.label(isRu),
+                    _selectedDistrict?.label(isRu) ??
+                        _selectedEtrap?.label(isRu) ??
+                        _selectedProvince?.label(isRu) ??
+                        '',
                     style: AppText.bold(
                       fontSize: 15,
                       color: const Color(0xFF0F1117),
@@ -782,7 +802,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${_selectedProvince?.label(isRu) ?? ''} · ${_selectedEtrap?.label(isRu) ?? ''}',
+                    [
+                      _selectedProvince?.label(isRu),
+                      if (_selectedEtrap != null) _selectedEtrap!.label(isRu),
+                    ].whereType<String>().join(' · '),
                     style: AppText.regular(
                       fontSize: 12,
                       color: const Color(0xFF9AA3AF),

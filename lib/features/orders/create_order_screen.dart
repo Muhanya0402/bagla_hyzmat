@@ -24,6 +24,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _authRepo = AuthRepository();
   bool _isLoading = false;
+  bool _locationSelected = false;
 
   // ── Controllers ────────────────────────────────────────────────────────────
   final _descController = TextEditingController();
@@ -109,11 +110,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _locationStep = 1;
       _searchQuery = '';
       _loadingEtraps = true;
+      _locationSelected = false; // сбрасываем
     });
     _searchCtrl.clear();
     try {
       final list = await _authRepo.getEtrapsByProvince(p.id);
-      setState(() => _etraps = list);
+      setState(() {
+        _etraps = list;
+        // Если этрапов нет — велаят уже достаточно
+        if (list.isEmpty) {
+          _locationSelected = true;
+          _locationStep = 0;
+        }
+      });
     } catch (e) {
       _msg('Ошибка загрузки этрапов: $e', _red);
     } finally {
@@ -129,11 +138,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _locationStep = 2;
       _searchQuery = '';
       _loadingDistricts = true;
+      _locationSelected = false;
     });
     _searchCtrl.clear();
     try {
       final list = await _authRepo.getDistrictsByEtrap(e.id);
-      setState(() => _districts = list);
+      setState(() {
+        _districts = list;
+        // Если районов нет — этрап уже достаточно
+        if (list.isEmpty) {
+          _locationSelected = true;
+          _locationStep = 1;
+        }
+      });
     } catch (e) {
       _msg('Ошибка загрузки районов: $e', _red);
     } finally {
@@ -145,6 +162,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     setState(() {
       _selectedDistrict = d;
       _searchQuery = '';
+      _locationSelected = true; // район выбран
     });
     _searchCtrl.clear();
   }
@@ -154,6 +172,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _locationStep = step;
       _searchQuery = '';
       _searchCtrl.clear();
+      _locationSelected = false; // сбрасываем при возврате
       if (step == 0) {
         _selectedProvince = null;
         _selectedEtrap = null;
@@ -225,8 +244,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _msg('Добавьте фото товара', _red);
       return;
     }
-    if (_selectedDistrict == null) {
+    if (!_locationSelected) {
       _msg('Выберите район доставки', _red);
+      return;
+    }
+    if (_selectedDateTime == null) {
+      _msg('Выберите время доставки', _red);
       return;
     }
 
@@ -238,9 +261,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       final double deliveryFee = double.parse(_deliveryController.text);
 
       await OrderService().createOrder(
-        address: "${_selectedEtrap!.ru} - ${_selectedDistrict!.ru}",
-        addresstk:
-            "${_selectedEtrap!.tk} - ${_selectedDistrict!.tk}", // адрес доставки (поле куда)
+        address: _selectedDistrict != null
+            ? "${_selectedEtrap!.ru} - ${_selectedDistrict!.ru}"
+            : _selectedEtrap != null
+            ? _selectedEtrap!.ru
+            : _selectedProvince!.ru,
+        addresstk: _selectedDistrict != null
+            ? "${_selectedEtrap!.tk} - ${_selectedDistrict!.tk}"
+            : _selectedEtrap != null
+            ? _selectedEtrap!.tk
+            : _selectedProvince!.tk,
         shopAddress: auth.address,
         phone: _phoneController.text,
         comment: '',
@@ -251,8 +281,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         images: _images,
         userId: auth.userId,
         shopPhone: auth.phone,
-        districtId: _selectedDistrict!.id,
-        etrapId: _selectedEtrap!.id,
+        districtId: _selectedDistrict?.id, // ← убрал !
+        etrapId: _selectedEtrap?.id, // ← убрал !
         provinceId: _selectedProvince!.id,
       );
 
@@ -715,16 +745,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         _buildStepIndicator(),
         const SizedBox(height: 14),
 
-        if (_selectedProvince != null || _selectedDistrict != null)
+        if (_selectedProvince != null ||
+            _selectedEtrap != null ||
+            _selectedDistrict != null)
           _buildBreadcrumb(isRu),
 
-        if (_locationStep > 0 && _selectedDistrict == null) ...[
+        if (_locationStep > 0 && !_locationSelected) ...[
           const SizedBox(height: 10),
           _buildSearchField(),
         ],
         const SizedBox(height: 10),
 
-        _selectedDistrict != null
+        _locationSelected
             ? _buildLocationDone(isRu)
             : _buildCurrentStepList(isRu),
       ],
@@ -794,12 +826,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               label: _selectedProvince!.label(isRu),
               onTap: () => _resetLocationStep(0),
             ),
-          if (_selectedEtrap != null)
+          if (_selectedEtrap != null && !_locationSelected)
             _BreadcrumbChip(
               label: _selectedEtrap!.label(isRu),
               onTap: () => _resetLocationStep(1),
             ),
-          if (_selectedDistrict != null)
+          if (_selectedDistrict != null && !_locationSelected)
             _BreadcrumbChip(
               label: _selectedDistrict!.label(isRu),
               isSelected: true,
@@ -1005,12 +1037,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedDistrict!.label(isRu),
+                    _selectedDistrict?.label(isRu) ??
+                        _selectedEtrap?.label(isRu) ??
+                        _selectedProvince?.label(isRu) ??
+                        '',
                     style: AppText.semiBold(fontSize: 14, color: _dark),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${_selectedProvince?.label(isRu) ?? ''} · ${_selectedEtrap?.label(isRu) ?? ''}',
+                    [
+                      _selectedProvince?.label(isRu),
+                      if (_selectedEtrap != null) _selectedEtrap!.label(isRu),
+                    ].whereType<String>().join(' · '),
                     style: AppText.regular(fontSize: 12, color: _grey),
                   ),
                 ],

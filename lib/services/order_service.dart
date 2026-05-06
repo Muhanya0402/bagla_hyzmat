@@ -24,8 +24,8 @@ class OrderService {
     required List<XFile> images,
     required String userId,
     required String shopPhone,
-    required String districtId,
-    required String etrapId,
+    required String? districtId,
+    required String? etrapId,
     required String provinceId,
   }) async {
     try {
@@ -54,8 +54,8 @@ class OrderService {
         'shop_phone': shopPhone,
         'adress_of_delivery': address,
         'adress_of_deliverytk': addresstk,
-        'district': tryParse(districtId),
-        'etrap': tryParse(etrapId),
+        'district': districtId != null ? tryParse(districtId) : null,
+        'etrap': etrapId != null ? tryParse(etrapId) : null,
         'province': tryParse(provinceId),
         'client_phone': phone.contains('+993') ? phone : '+993 $phone',
         'comment': comment,
