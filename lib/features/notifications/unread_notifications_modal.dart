@@ -1,5 +1,4 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:flutter/material.dart';
 
 class UnreadNotificationsModal extends StatelessWidget {
@@ -127,7 +126,7 @@ class UnreadNotificationsModal extends StatelessWidget {
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: notifications.length,
-              separatorBuilder: (_, __) => const Divider(
+              separatorBuilder: (_, _) => const Divider(
                 height: 1,
                 indent: 72,
                 color: Color(0xFFEEF0F3),

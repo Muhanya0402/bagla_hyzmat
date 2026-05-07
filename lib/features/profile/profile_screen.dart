@@ -317,14 +317,6 @@ class ProfileScreen extends StatelessWidget {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  String _dailyBonus(AuthProvider auth) {
-    // Если уровень хранится в auth — используем его,
-    // иначе показываем минимум
-    // Формула: level * 0.5 жетонов в день
-    // Здесь просто читаем из auth.level если есть, иначе 0
-    return '+0.5 жетона'; // будет обновлено когда LevelProvider даст данные
-  }
-
   String _statusLabel(String status) {
     switch (status.toLowerCase()) {
       case 'active':
