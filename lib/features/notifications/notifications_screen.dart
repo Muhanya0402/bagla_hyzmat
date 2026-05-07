@@ -19,28 +19,51 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   static const _gradient = LinearGradient(colors: [_green, _red]);
 
   final NotificationService _service = NotificationService();
-  late Future<List<dynamic>> _future;
+
+  // Локальный стейт вместо Future — без мерцания при обновлении
+  List<dynamic> _items = [];
+  bool _isLoading = true;
   late String _userId;
 
   @override
   void initState() {
     super.initState();
     _userId = context.read<AuthProvider>().userId;
-    _future = _service.getNotifications(_userId);
+    _loadNotifications();
   }
 
-  Future<void> _refresh() async {
-    _future = _service.getNotifications(_userId);
-    setState(() {});
+  Future<void> _loadNotifications({bool silent = false}) async {
+    if (!silent && mounted) setState(() => _isLoading = true);
+
+    final data = await _service.getNotifications(_userId);
+
+    if (!mounted) return;
+    setState(() {
+      _items = data;
+      _isLoading = false;
+    });
   }
+
+  // При pull-to-refresh обновляем список без показа спиннера (silent)
+  Future<void> _refresh() => _loadNotifications(silent: true);
 
   Future<void> _markAllRead() async {
     await _service.markAllAsRead(_userId);
     if (!mounted) return;
-    _refresh();
+    // Обновляем локально — без сетевого запроса на весь список
+    setState(() {
+      _items = _items.map((n) => {...n, 'is_read': true}).toList();
+    });
   }
 
   Future<void> _markRead(String id) async {
+    // Обновляем локально мгновенно, затем синхронизируем с сервером
+    setState(() {
+      _items = _items.map((n) {
+        if (n['id'].toString() == id) return {...n, 'is_read': true};
+        return n;
+      }).toList();
+    });
     await _service.markAsRead(id);
   }
 
@@ -164,89 +187,86 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
         ),
       ),
-      body: FutureBuilder<List<dynamic>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: _green, strokeWidth: 2),
-            );
-          }
+      body: _buildBody(),
+    );
+  }
 
-          final items = snap.data ?? [];
+  Widget _buildBody() {
+    // Первичная загрузка — показываем спиннер только один раз
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _green, strokeWidth: 2),
+      );
+    }
 
-          if (items.isEmpty) return _buildEmpty();
+    if (_items.isEmpty) return _buildEmpty();
 
-          // Group by date
-          final today = <dynamic>[];
-          final earlier = <dynamic>[];
-          final now = DateTime.now();
-          for (final n in items) {
-            try {
-              final dt = DateTime.parse(
-                (n['date_created'] ?? '').toString(),
-              ).toLocal();
-              if (now.difference(dt).inHours < 24) {
-                today.add(n);
-              } else {
-                earlier.add(n);
-              }
-            } catch (_) {
-              earlier.add(n);
-            }
-          }
+    // Группировка по дате
+    final today = <dynamic>[];
+    final earlier = <dynamic>[];
+    final now = DateTime.now();
+    for (final n in _items) {
+      try {
+        final dt = DateTime.parse(
+          (n['date_created'] ?? '').toString(),
+        ).toLocal();
+        if (now.difference(dt).inHours < 24) {
+          today.add(n);
+        } else {
+          earlier.add(n);
+        }
+      } catch (_) {
+        earlier.add(n);
+      }
+    }
 
-          return RefreshIndicator(
-            color: _green,
-            backgroundColor: Colors.white,
-            onRefresh: _refresh,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-              children: [
-                if (today.isNotEmpty) ...[
-                  _sectionLabel('СЕГОДНЯ'),
-                  const SizedBox(height: 8),
-                  ...today.map(
-                    (n) => _NotifCard(
-                      notif: n,
-                      color: _typeColor(n['type'] ?? ''),
-                      icon: _typeIcon(n['type'] ?? ''),
-                      label: _typeLabel(n['type'] ?? ''),
-                      dateStr: _formatDate(n['date_created']),
-                      onTap: () async {
-                        if (n['is_read'] != true) {
-                          await _markRead(n['id'].toString());
-                          if (!mounted) return;
-                          _refresh();
-                        }
-                      },
-                    ),
-                  ),
-                ],
-                if (earlier.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _sectionLabel('РАНЕЕ'),
-                  const SizedBox(height: 8),
-                  ...earlier.map(
-                    (n) => _NotifCard(
-                      notif: n,
-                      color: _typeColor(n['type'] ?? ''),
-                      icon: _typeIcon(n['type'] ?? ''),
-                      label: _typeLabel(n['type'] ?? ''),
-                      dateStr: _formatDate(n['date_created']),
-                      onTap: () async {
-                        if (n['is_read'] != true) {
-                          await _markRead(n['id'].toString());
-                          _refresh();
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ],
+    return RefreshIndicator(
+      color: _green,
+      backgroundColor: Colors.white,
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        children: [
+          if (today.isNotEmpty) ...[
+            _sectionLabel('СЕГОДНЯ'),
+            const SizedBox(height: 8),
+            ...today.map(
+              (n) => _NotifCard(
+                key: ValueKey(n['id']),
+                notif: n,
+                color: _typeColor(n['type'] ?? ''),
+                icon: _typeIcon(n['type'] ?? ''),
+                label: _typeLabel(n['type'] ?? ''),
+                dateStr: _formatDate(n['date_created']),
+                onTap: () {
+                  if (n['is_read'] != true) {
+                    _markRead(n['id'].toString());
+                  }
+                },
+              ),
             ),
-          );
-        },
+          ],
+          if (earlier.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _sectionLabel('РАНЕЕ'),
+            const SizedBox(height: 8),
+            ...earlier.map(
+              (n) => _NotifCard(
+                key: ValueKey(n['id']),
+                notif: n,
+                color: _typeColor(n['type'] ?? ''),
+                icon: _typeIcon(n['type'] ?? ''),
+                label: _typeLabel(n['type'] ?? ''),
+                dateStr: _formatDate(n['date_created']),
+                onTap: () {
+                  if (n['is_read'] != true) {
+                    _markRead(n['id'].toString());
+                  }
+                },
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -326,6 +346,7 @@ class _NotifCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NotifCard({
+    super.key,
     required this.notif,
     required this.color,
     required this.icon,
@@ -363,7 +384,6 @@ class _NotifCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Top status strip when unread
             if (!isRead)
               Container(
                 height: 2,
@@ -379,7 +399,6 @@ class _NotifCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon
                   Container(
                     width: 42,
                     height: 42,
@@ -396,7 +415,6 @@ class _NotifCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            // Type badge
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 7,
@@ -417,7 +435,6 @@ class _NotifCard extends StatelessWidget {
                               ),
                             ),
                             const Spacer(),
-                            // Unread dot
                             if (!isRead)
                               Container(
                                 width: 7,
