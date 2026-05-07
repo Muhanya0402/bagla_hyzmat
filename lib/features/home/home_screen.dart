@@ -9,6 +9,7 @@ import 'package:bagla/features/home/widgets/wallet_info_modal.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:bagla/providers/auth_provider.dart';
@@ -713,7 +714,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (isCourier)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _buildSegmentedFilter(),
+                child: _buildSegmentedFilter(words),
               ),
 
             if (isBanned || isPending)
@@ -728,7 +729,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   _GradientText(
-                    text: isShop ? 'Мои заказы' : 'Доступные заказы',
+                    text: isShop ? words.myOrders : words.availiblorders,
                     style: AppText.semiBold(fontSize: 20, color: Colors.black),
                   ),
                   const Spacer(),
@@ -1010,7 +1011,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSegmentedFilter() {
+  Widget _buildSegmentedFilter(AppLocalizations words) {
     return Container(
       height: 46,
       padding: const EdgeInsets.all(4),
@@ -1021,8 +1022,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          _filterItem(0, 'Доступные заказы'),
-          _filterItem(1, 'Мои заказы'),
+          _filterItem(0, words.availiblorders),
+          _filterItem(1, words.myOrders),
         ],
       ),
     );
