@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
+import 'package:bagla/features/profile/bank_picker.dart'; // <-- новый файл
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:flutter/material.dart';
 import '../../features/auth/auth_repository.dart';
@@ -17,12 +18,14 @@ class TopUpModal extends StatefulWidget {
   final String userId;
   final String role;
   final String status;
+  final bool isRu; // передайте из LanguageProvider снаружи
 
   const TopUpModal({
     super.key,
     required this.userId,
     required this.role,
     required this.status,
+    this.isRu = true,
   });
 
   @override
@@ -37,6 +40,9 @@ class _TopUpModalState extends State<TopUpModal> {
   bool _isLoading = false;
   double _rate = 2.0;
 
+  // ── Bank selection ────────────────────────────────────────────────────────
+  BankOption? _selectedBank;
+
   @override
   void initState() {
     super.initState();
@@ -45,11 +51,7 @@ class _TopUpModalState extends State<TopUpModal> {
 
   Future<void> _loadRate() async {
     final rate = await _authRepo.fetchTokenRate();
-    if (mounted) {
-      setState(() {
-        _rate = rate ?? 2.0;
-      });
-    }
+    if (mounted) setState(() => _rate = rate ?? 2.0);
   }
 
   @override
@@ -59,6 +61,7 @@ class _TopUpModalState extends State<TopUpModal> {
   }
 
   Future<void> _submit() async {
+    if (_selectedBank == null) return;
     setState(() => _isLoading = true);
     final success = await _authRepo.requestTopUp(
       userId: widget.userId,
@@ -98,11 +101,10 @@ class _TopUpModalState extends State<TopUpModal> {
           _SheetHandle(),
           const SizedBox(height: 20),
 
-          // ── Header ──────────────────────────────────────────────────────
+          // ── Header ────────────────────────────────────────────────────
           if (!isClient && !isRestricted) ...[
             Row(
               children: [
-                // Gradient icon circle
                 Container(
                   width: 44,
                   height: 44,
@@ -117,22 +119,16 @@ class _TopUpModalState extends State<TopUpModal> {
                   ),
                 ),
                 const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (b) => _brandGradient.createShader(b),
-                      child: Text(
-                        'Пополнить баланс',
-                        style: AppText.bold(fontSize: 18, color: Colors.white),
-                      ),
-                    ),
-                  ],
+                ShaderMask(
+                  shaderCallback: (b) => _brandGradient.createShader(b),
+                  child: Text(
+                    widget.isRu ? 'Пополнить баланс' : 'Balans doldur',
+                    style: AppText.bold(fontSize: 18, color: Colors.white),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            // Thin gradient divider
             Container(
               height: 1.5,
               decoration: BoxDecoration(
@@ -143,23 +139,53 @@ class _TopUpModalState extends State<TopUpModal> {
             const SizedBox(height: 20),
           ],
 
-          // ── Body ────────────────────────────────────────────────────────
-          isClient
-              ? RolePickerEmbedded(onClose: () => Navigator.pop(context))
-              : isRestricted
-              ? RestrictedAccessView(
-                  onActionPressed: () => Navigator.pop(context),
-                )
-              : TopUpFormView(
-                  controller: _controller,
-                  points: _points,
-                  rate: _rate,
-                  isLoading: _isLoading,
-                  onChanged: (val) =>
-                      setState(() => _points = int.tryParse(val) ?? 0),
-                  onSubmit: _submit,
-                  summaryPanel: _SummaryPanel(points: _points, rate: _rate),
+          // ── Body ──────────────────────────────────────────────────────
+          if (isClient)
+            RolePickerEmbedded(onClose: () => Navigator.pop(context))
+          else if (isRestricted)
+            RestrictedAccessView(onActionPressed: () => Navigator.pop(context))
+          else ...[
+            // ── Выбор банка ────────────────────────────────────────────
+            BankPickerSection(
+              isRu: widget.isRu,
+              selected: _selectedBank,
+              onSelected: (bank) => setState(() => _selectedBank = bank),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ── Форма пополнения (показываем только когда банк выбран) ─
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.06),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
                 ),
+              ),
+              child: _selectedBank == null
+                  ? _NoBankHint(isRu: widget.isRu, key: const ValueKey('hint'))
+                  : TopUpFormView(
+                      key: ValueKey(_selectedBank!.id),
+                      controller: _controller,
+                      points: _points,
+                      rate: _rate,
+                      isLoading: _isLoading,
+                      onChanged: (val) =>
+                          setState(() => _points = int.tryParse(val) ?? 0),
+                      onSubmit: _submit,
+                      summaryPanel: _SummaryPanel(
+                        points: _points,
+                        rate: _rate,
+                        isRu: widget.isRu,
+                      ),
+                    ),
+            ),
+          ],
         ],
       ),
     );
@@ -167,13 +193,57 @@ class _TopUpModalState extends State<TopUpModal> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Summary panel (extracted widget so it rebuilds cleanly)
+// Hint when no bank selected yet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NoBankHint extends StatelessWidget {
+  final bool isRu;
+  const _NoBankHint({required this.isRu, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFEEF0F3)),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.touch_app_rounded,
+            color: const Color(0xFF9AA3AF).withValues(alpha: 0.5),
+            size: 28,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isRu ? 'Выберите банк для оплаты' : 'Töleg üçin bank saýlaň',
+            style: AppText.regular(
+              fontSize: 13,
+              color: const Color(0xFF9AA3AF),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summary panel
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SummaryPanel extends StatelessWidget {
   final int points;
   final double rate;
-  const _SummaryPanel({required this.points, required this.rate});
+  final bool isRu;
+  const _SummaryPanel({
+    required this.points,
+    required this.rate,
+    required this.isRu,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -183,12 +253,12 @@ class _SummaryPanel extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: active
-            ? _green.withValues(alpha: 0.06)
+            ? const Color(0xFF1A7A3C).withValues(alpha: 0.06)
             : const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: active
-              ? _green.withValues(alpha: 0.2)
+              ? const Color(0xFF1A7A3C).withValues(alpha: 0.2)
               : const Color(0xFFEEF0F3),
         ),
       ),
@@ -196,7 +266,7 @@ class _SummaryPanel extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Итого к оплате',
+            isRu ? 'Итого к оплате' : 'Jemi töleg',
             style: AppText.regular(fontSize: 15, color: Colors.black54),
           ),
           ShaderMask(
@@ -219,7 +289,7 @@ class _SummaryPanel extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared small helpers
+// Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SheetHandle extends StatelessWidget {

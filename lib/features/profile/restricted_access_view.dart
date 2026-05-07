@@ -307,7 +307,7 @@ class TopUpFormView extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      'ОТПРАВИТЬ ЗАЯВКУ',
+                      'ПОПОЛНИТЬ',
                       style: AppText.bold(
                         fontSize: 14,
                         color: canSubmit ? Colors.white : _kGrey,
