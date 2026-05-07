@@ -628,7 +628,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
           const Spacer(),
-          // Gradient accent dot
           Container(
             width: 8,
             height: 8,
@@ -739,7 +738,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // ── Route block ────────────────────────────────────────────────────────────
   Widget _buildRouteBlock(bool isLocked) {
-    // Формируем адрес с районом
     final dynamic district = widget.order['district'];
     String districtName = '';
     if (district is Map) {
@@ -764,7 +762,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ? Icons.lock_outline_rounded
               : Icons.location_on_outlined,
           label: 'Куда',
-          value: isLocked ? 'Адрес скрыт' : fullDeliveryAddress, // 👈
+          value: isLocked ? 'Адрес скрыт' : fullDeliveryAddress,
           color: isLocked ? const Color(0xFF9AA3AF) : _green,
           isGrey: isLocked,
         ),
@@ -1046,7 +1044,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           label: 'Взять заказ',
           color: _green,
           filled: true,
-          onTap: () {
+          onTap: () async {
             if (isRestricted) {
               showModalBottomSheet(
                 context: context,
@@ -1076,8 +1074,30 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ],
                   ),
                 ),
-              ).then((_) => widget.onUpdate?.call()); // авто-рефреш
+              ).then((_) => widget.onUpdate?.call());
             } else if (isUserActive) {
+              // ── ПРОВЕРКА ЛИМИТА: не более 3 активных заказов ──────────────
+              final activeCount = await service.getActiveOrdersCount(
+                widget.currentUserId,
+              );
+              if (!context.mounted) return;
+              if (activeCount >= 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Нельзя брать больше 3 заказов одновременно',
+                    ),
+                    backgroundColor: _red,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+                return;
+              }
+              // ─────────────────────────────────────────────────────────────
+
               if (balancePoints >= points) {
                 _confirmAction(
                   context: context,
@@ -1107,7 +1127,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     role: widget.role,
                     status: status,
                   ),
-                ).then((_) => widget.onUpdate?.call()); // авто-рефреш
+                ).then((_) => widget.onUpdate?.call());
               }
             } else if (isClient) {
               showModalBottomSheet(
@@ -1119,7 +1139,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
                 builder: (_) =>
                     RolePickerEmbedded(onClose: () => Navigator.pop(context)),
-              ).then((_) => widget.onUpdate?.call()); // авто-рефреш
+              ).then((_) => widget.onUpdate?.call());
             }
           },
         );
@@ -1177,7 +1197,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               children: [
                 _handle(),
                 const SizedBox(height: 24),
-                // Icon
                 Container(
                   width: 64,
                   height: 64,
@@ -1204,7 +1223,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Gradient title
                 ShaderMask(
                   shaderCallback: (b) => _gradient.createShader(b),
                   child: Text(
@@ -1294,7 +1312,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                   ),
                 ] else ...[
-                  // Code input
                   TextField(
                     controller: codeCtrl,
                     keyboardType: TextInputType.number,
@@ -1354,16 +1371,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                           .toDouble();
                                   final int xpEarned = result['xp_earned'] ?? 0;
 
-                                  // Кэшбек начисляем без await — не блокируем UI
                                   service.applyCashbackIfOnTime(
                                     orderId: orderId,
                                     courierId: widget.currentUserId,
                                   );
 
+                                  if (!context.mounted) return;
                                   Navigator.pop(context);
-                                  if (widget.onUpdate != null) {
-                                    widget.onUpdate!();
-                                  }
+                                  widget.onUpdate?.call();
 
                                   if (context.mounted) {
                                     if (cashback > 0 && !_isExpired) {
@@ -1371,7 +1386,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                         context,
                                         cashback,
                                         xpEarned,
-                                      ); // 👈
+                                      );
                                     } else {
                                       Navigator.pop(context);
                                     }
@@ -1455,7 +1470,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         service: service,
         onSuccess: () => widget.onUpdate?.call(),
       ),
-    ).then((_) => widget.onUpdate?.call()); // авто-рефреш
+    ).then((_) => widget.onUpdate?.call());
   }
 
   Widget _actionBtn({

@@ -344,4 +344,27 @@ class OrderService {
       };
     }
   }
+
+  // ─── 7. КОЛИЧЕСТВО АКТИВНЫХ ЗАКАЗОВ КУРЬЕРА ──────────────────────────────
+
+  Future<int> getActiveOrdersCount(String courierId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/items/orders',
+        queryParameters: {
+          'filter[courierId][item:customers][id][_eq]': courierId,
+          'filter[order_status][_eq]': 'active',
+          'aggregate[count]': 'id',
+        },
+      );
+      final data = response.data?['data'];
+      if (data is List && data.isNotEmpty) {
+        return int.tryParse(data[0]['count']?['id']?.toString() ?? '0') ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      if (kDebugMode) print('Ошибка getActiveOrdersCount: $e');
+      return 0;
+    }
+  }
 }

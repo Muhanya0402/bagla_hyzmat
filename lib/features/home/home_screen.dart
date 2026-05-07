@@ -69,6 +69,10 @@ class _HomeScreenState extends State<HomeScreen> {
   static const int _pageSize = 6;
   final ScrollController _scrollController = ScrollController();
 
+  // ── Счётчик активных заказов курьера ──────────────────────────────────────
+  int _activeOrdersCount = 0;
+  static const int _maxActiveOrders = 3;
+
   static const List<_StatusFilter> _statusFilters = [
     _StatusFilter(label: 'Все', value: null, color: Color(0xFF9AA3AF)),
     _StatusFilter(
@@ -99,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _checkWelcomeBonus();
-      await _initLocationFilter(); // читаем из prefs — без запросов
+      await _initLocationFilter();
       _initRealtime();
       _scrollController.addListener(_onScroll);
       if (!mounted) return;
@@ -108,9 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
         context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
           if (mounted) setState(() {});
         });
+        _loadActiveOrdersCount(auth.userId); // ← загружаем счётчик
       }
       await _checkUnreadNotifications();
     });
+  }
+
+  // ── Загрузка счётчика активных заказов ────────────────────────────────────
+  Future<void> _loadActiveOrdersCount(String userId) async {
+    final count = await _orderService.getActiveOrdersCount(userId);
+    if (mounted) setState(() => _activeOrdersCount = count);
   }
 
   Future<void> _checkUnreadNotifications() async {
@@ -121,7 +132,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final unread = await service.getUnread(auth.userId);
       if (unread.isEmpty || !mounted) return;
 
-      // Небольшая задержка чтобы UI успел отрисоваться
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
 
@@ -149,8 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ЛОКАЦИЯ: читаем из SharedPreferences — без сетевых запросов
-  // Данные сохраняются при логине через fetchProfileFromServer
+  // ЛОКАЦИЯ
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _initLocationFilter() async {
@@ -179,7 +188,6 @@ class _HomeScreenState extends State<HomeScreen> {
         tk: etrapTk,
         provinceId: _provinceId,
       );
-      // Тихо грузим список районов для выбранного этрапа (для picker'а)
       _loadDistricts(etrapId, silent: true);
     }
 
@@ -190,7 +198,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
-  // ── Загрузка этрапов (для picker'а, лениво) ───────────────────────────────
   Future<void> _loadEtraps() async {
     if (_provinceId.isEmpty) return;
     setState(() => _loadingEtraps = true);
@@ -204,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Загрузка районов для этрапа ───────────────────────────────────────────
   Future<void> _loadDistricts(String etrapId, {bool silent = false}) async {
     if (!silent) setState(() => _loadingDistricts = true);
     try {
@@ -423,6 +429,11 @@ class _HomeScreenState extends State<HomeScreen> {
           } else {
             _orders.insert(0, order);
           }
+          // Обновляем счётчик при изменении заказа
+          final auth = context.read<AuthProvider>();
+          if (auth.role == 'courier') {
+            _loadActiveOrdersCount(auth.userId);
+          }
         } else if (event == 'delete') {
           _orders.removeWhere((o) => o['id'].toString() == id);
         }
@@ -458,6 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.userId.isNotEmpty && auth.role == 'courier') {
       await context.read<LevelProvider>().loadForUser(auth.userId);
+      _loadActiveOrdersCount(auth.userId); // ← обновляем счётчик при рефреше
     }
     try {
       final isShop = auth.role == 'shop' || auth.role == 'business';
@@ -710,15 +722,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildStatusBanner(isBanned),
               ),
 
+            // ── Заголовок + счётчик ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: _GradientText(
-                text: isShop ? 'Мои заказы' : 'Доступные заказы',
-                style: AppText.semiBold(fontSize: 20, color: Colors.black),
+              child: Row(
+                children: [
+                  _GradientText(
+                    text: isShop ? 'Мои заказы' : 'Доступные заказы',
+                    style: AppText.semiBold(fontSize: 20, color: Colors.black),
+                  ),
+                  const Spacer(),
+                  // Показываем счётчик только курьеру
+                  if (isCourier)
+                    _ActiveOrdersCounter(
+                      current: _activeOrdersCount,
+                      max: _maxActiveOrders,
+                    ),
+                ],
               ),
             ),
 
-            // Фильтр локации — только если провинция загружена из prefs
             if (isCourier && _provinceLabel.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
@@ -1236,6 +1259,58 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         )
         .then((_) => _handleRefresh());
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Счётчик активных заказов "2/3"
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActiveOrdersCounter extends StatelessWidget {
+  final int current;
+  final int max;
+
+  const _ActiveOrdersCounter({required this.current, required this.max});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isFull = current >= max;
+    final Color activeColor = isFull
+        ? HomeScreen.brandRed
+        : HomeScreen.brandGreen;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: activeColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: activeColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.local_shipping_outlined, size: 13, color: activeColor),
+          const SizedBox(width: 5),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '$current',
+                  style: AppText.bold(fontSize: 13, color: activeColor),
+                ),
+                TextSpan(
+                  text: '/$max',
+                  style: AppText.regular(
+                    fontSize: 13,
+                    color: activeColor.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

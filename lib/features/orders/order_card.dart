@@ -166,7 +166,7 @@ class OrderCard extends StatelessWidget {
           ],
         ),
       ),
-    ).then((_) => onUpdate?.call()); // ← авто-рефреш
+    ).then((_) => onUpdate?.call());
   }
 
   // ── Main build ─────────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ class OrderCard extends StatelessWidget {
                       shopAddress: order['shop_adress'] ?? 'Адрес магазина',
                       deliveryAddress:
                           order['adress_of_delivery'] ?? 'Адрес доставки',
-                      district: order['district'], // 👈 добавить
+                      district: order['district'],
                       isLocked: isDataLocked,
                     ),
                   ],
@@ -254,7 +254,7 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  // ── Action buttons (logic preserved exactly) ───────────────────────────────
+  // ── Action buttons ─────────────────────────────────────────────────────────
   Widget _buildActionButtons(
     BuildContext context,
     String status,
@@ -295,10 +295,32 @@ class OrderCard extends StatelessWidget {
         points: points,
         balancePoints: balancePoints,
         color: HomeScreen.brandGreen,
-        onTap: () {
+        onTap: () async {
           if (isRestricted) {
             _showRestrictedModal(context);
           } else if (isUserActive) {
+            // ── ПРОВЕРКА ЛИМИТА: не более 3 активных заказов ───────────────
+            final activeCount = await service.getActiveOrdersCount(
+              currentUserId,
+            );
+            if (!context.mounted) return;
+            if (activeCount >= 3) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'Нельзя брать больше 3 заказов одновременно',
+                  ),
+                  backgroundColor: HomeScreen.brandRed,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+              return;
+            }
+            // ──────────────────────────────────────────────────────────────
+
             if (balancePoints >= points) {
               _confirmAction(
                 context: context,
@@ -324,7 +346,7 @@ class OrderCard extends StatelessWidget {
                 ),
                 builder: (_) =>
                     TopUpModal(userId: userId, role: role, status: status),
-              ).then((_) => onUpdate?.call()); // ← авто-рефреш
+              ).then((_) => onUpdate?.call());
             }
           } else if (isClient) {
             showModalBottomSheet(
@@ -336,7 +358,7 @@ class OrderCard extends StatelessWidget {
               ),
               builder: (_) =>
                   RolePickerEmbedded(onClose: () => Navigator.pop(context)),
-            ).then((_) => onUpdate?.call()); // ← авто-рефреш
+            ).then((_) => onUpdate?.call());
           }
         },
       );
@@ -361,10 +383,9 @@ class OrderCard extends StatelessWidget {
   Widget _buildRouteTimeline({
     required String shopAddress,
     required String deliveryAddress,
-    required dynamic district, // 👈 добавить
+    required dynamic district,
     required bool isLocked,
   }) {
-    // Формируем итоговый адрес "Куда"
     String districtName = '';
     if (district is Map) {
       districtName = district['district_ru']?.toString() ?? '';
@@ -388,9 +409,7 @@ class OrderCard extends StatelessWidget {
               ? Icons.lock_outline_rounded
               : Icons.location_on_outlined,
           label: 'Куда',
-          address: isLocked
-              ? 'Адрес скрыт до принятия'
-              : fullDeliveryAddress, // 👈
+          address: isLocked ? 'Адрес скрыт до принятия' : fullDeliveryAddress,
           iconColor: isLocked ? const Color(0xFF9AA3AF) : HomeScreen.brandGreen,
           iconBg: isLocked
               ? const Color(0xFF9AA3AF).withValues(alpha: 0.08)
@@ -416,7 +435,7 @@ class OrderCard extends StatelessWidget {
         service: service,
         onSuccess: () => onUpdate?.call(),
       ),
-    ).then((_) => onUpdate?.call()); // ← авто-рефреш
+    ).then((_) => onUpdate?.call());
   }
 
   Widget _buildPoint({
@@ -458,7 +477,7 @@ class OrderCard extends StatelessWidget {
                       ? const Color(0xFF9AA3AF)
                       : const Color(0xFF0F1117),
                 ),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -564,7 +583,7 @@ class OrderCard extends StatelessWidget {
   Widget _buildFilledButton({
     required String label,
     required Color color,
-    required VoidCallback onTap,
+    required void Function() onTap,
     int points = 0,
     double balancePoints = 0,
     double cashback = 0,
