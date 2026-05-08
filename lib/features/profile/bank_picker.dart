@@ -160,7 +160,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
                   scrollDirection: Axis.horizontal,
                   itemCount: 4,
                   separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (_, __) => const _BankSkeleton(),
+                  itemBuilder: (_, _) => const _BankSkeleton(),
                 ),
               );
             }

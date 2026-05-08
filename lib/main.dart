@@ -7,6 +7,10 @@ import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/providers/role_provider.dart';
+import 'package:bagla/services/push_notification_service.dart'; // ← НОВЫЙ ИМПОРТ
+import 'package:firebase_core/firebase_core.dart'; // ← НОВЫЙ ИМПОРТ
+import 'package:firebase_messaging/firebase_messaging.dart'; // ← НОВЫЙ ИМПОРТ
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'features/profile/registration_details_screen.dart';
@@ -18,8 +22,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+// ← НОВОЕ: обработчик фоновых сообщений (обязательно top-level функция)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp();
+    if (kDebugMode) {
+      print('✅ Firebase инициализирован');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('❌ Ошибка Firebase.initializeApp: $e');
+    }
+  }
+  if (kDebugMode) {
+    print('Фоновое сообщение: ${message.messageId}');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ← НОВОЕ: инициализация Firebase
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   final langProvider = LanguageProvider();
   await langProvider.loadSavedLanguage();
@@ -32,12 +58,17 @@ void main() async {
   final bool showOnboarding =
       loggedIn && !onboardingDone && status == 'pending';
 
+  // ← НОВОЕ: если уже залогинен — сразу инициализируем пуши
+  if (loggedIn) {
+    await PushNotificationService().initialize();
+  }
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),
-        ChangeNotifierProvider(create: (_) => LevelProvider()), // 👈 ВОТ ЭТО
+        ChangeNotifierProvider(create: (_) => LevelProvider()),
         ChangeNotifierProvider.value(value: langProvider),
       ],
       child: MyApp(isLoggedIn: loggedIn, showOnboarding: showOnboarding),
@@ -72,13 +103,12 @@ class MyApp extends StatelessWidget {
       title: 'Bagla',
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Nunito', // — глобальный шрифт
+        fontFamily: 'Nunito',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1B3A6B),
           primary: const Color(0xFF1B3A6B),
         ),
         scaffoldBackgroundColor: Colors.white,
-        // Глобальные стили текста
         textTheme: const TextTheme(
           bodyLarge: TextStyle(fontFamily: 'Nunito'),
           bodyMedium: TextStyle(fontFamily: 'Nunito'),
@@ -90,7 +120,6 @@ class MyApp extends StatelessWidget {
           labelMedium: TextStyle(fontFamily: 'Nunito'),
           labelSmall: TextStyle(fontFamily: 'Nunito'),
         ),
-        // Глобальный стиль AppBar
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -101,7 +130,6 @@ class MyApp extends StatelessWidget {
             color: Color(0xFF0F1117),
           ),
         ),
-        // Глобальный стиль ElevatedButton
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             textStyle: const TextStyle(
@@ -110,7 +138,6 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        // Глобальный стиль TextField
         inputDecorationTheme: InputDecorationTheme(
           hintStyle: TextStyle(
             fontFamily: 'Nunito',

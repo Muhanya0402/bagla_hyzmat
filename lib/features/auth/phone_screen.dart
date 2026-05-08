@@ -108,10 +108,7 @@ class _PhoneScreenState extends State<PhoneScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _GradientUnderlineTitle(
-                      accentWord: lang.isRu ? 'Войдите' : 'Giriň',
-                      rest: lang.isRu ? ' в\nприложение' : ' programmä',
-                    ),
+                    _GradientUnderlineTitle(accentWord: words.welcomeToApp),
                     const SizedBox(height: 8),
                     Text(
                       lang.isRu
@@ -219,8 +216,7 @@ class BaglaLogo extends StatelessWidget {
 
 class _GradientUnderlineTitle extends StatelessWidget {
   final String accentWord;
-  final String rest;
-  const _GradientUnderlineTitle({required this.accentWord, required this.rest});
+  const _GradientUnderlineTitle({required this.accentWord});
 
   @override
   Widget build(BuildContext context) {
@@ -231,10 +227,6 @@ class _GradientUnderlineTitle extends StatelessWidget {
             children: [
               TextSpan(
                 text: accentWord,
-                style: AppText.bold(fontSize: 26, color: Colors.black),
-              ),
-              TextSpan(
-                text: rest,
                 style: AppText.bold(fontSize: 26, color: Colors.black),
               ),
             ],

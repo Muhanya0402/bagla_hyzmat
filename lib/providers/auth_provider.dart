@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../features/auth/auth_repository.dart';
+import 'package:bagla/services/push_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepo = AuthRepository();
@@ -174,6 +175,8 @@ class AuthProvider extends ChangeNotifier {
       if (user != null) {
         await setUserData(user);
         // Check mounted AFTER every await
+
+        await PushNotificationService().initialize();
         if (!context.mounted) return true;
         await _navigate(context);
         return true;

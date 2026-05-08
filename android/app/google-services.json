@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "479685148193",
+    "project_id": "bagla-d7cf9",
+    "storage_bucket": "bagla-d7cf9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479685148193:android:6d9245b89ba9b723462d60",
+        "android_client_info": {
+          "package_name": "com.example.bagla"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCODR_iPJOoyAxB5Uv5c8tPLEZsTNjqCkE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

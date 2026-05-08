@@ -1,5 +1,6 @@
 const Map<String, String> stringsRu = {
   'loginTitle': 'Bagla',
+  'welcomeToApp': 'Добро пожаловать',
   'availiblorders': 'Доступные заказы',
   'feedbacks': 'Мои обращения',
   'user': 'Пользователь',

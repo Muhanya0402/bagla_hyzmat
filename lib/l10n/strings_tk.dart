@@ -1,5 +1,6 @@
 const Map<String, String> stringsTk = {
   'loginTitle': 'Bagla',
+  'welcomeToApp': 'Hoş geldiňiz',
   'availiblorders': 'Elýeterli sargytlar',
   'feedbacks': 'Meniň ýüzlenmelerim',
   'user': 'Ulanyjy',
