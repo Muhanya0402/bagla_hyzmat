@@ -17,9 +17,11 @@ class AuthRepository {
       await prefs.remove('auth_token');
       await prefs.remove('refresh_token');
 
+      final cleanPhone = phone.trim();
+
       final response = await _api.dio.post(
         '/items/otp_codes',
-        data: {'identifier': phone.trim()},
+        data: {'identifier': cleanPhone},
         options: Options(
           headers: {'Authorization': 'Bearer 8TYMndErscy0GgMcVcO1u_jLD-6GaqMD'},
         ),
