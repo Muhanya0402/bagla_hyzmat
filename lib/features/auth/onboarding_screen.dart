@@ -160,7 +160,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _BaglaLogo(width: 52, height: 26),
+                  BaglaLogo(width: 52, height: 26),
                   AnimatedOpacity(
                     opacity: isLast ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 200),
@@ -1059,89 +1059,21 @@ class _Arrow extends StatelessWidget {
 // Logo drawn via CustomPainter (same as phone_screen)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BaglaLogo extends StatelessWidget {
+class BaglaLogo extends StatelessWidget {
   final double width;
   final double height;
-  const _BaglaLogo({required this.width, required this.height});
+
+  const BaglaLogo({super.key, required this.width, required this.height});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: width,
-    height: height,
-    child: CustomPaint(painter: _LogoPainter()),
-  );
-}
-
-class _LogoPainter extends CustomPainter {
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _mid = Color(0xFF8B4A20);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final stroke = h * 0.16;
-
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..shader = LinearGradient(
-        colors: const [_green, _mid, _red],
-        stops: const [0.0, 0.48, 1.0],
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(w * 0.3, h * 0.5), radius: h * 0.36),
-      -2.9,
-      5.5,
-      false,
-      paint,
-    );
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(w * 0.7, h * 0.5), radius: h * 0.36),
-      0.24,
-      5.5,
-      false,
-      paint,
-    );
-
-    final cy = h * 0.5;
-    final ah = h * 0.28;
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(w * 0.32 + ah * 0.6, cy - ah)
-        ..lineTo(w * 0.32 - ah * 0.3, cy)
-        ..lineTo(w * 0.32 + ah * 0.6, cy + ah),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke * 0.85
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..shader = const LinearGradient(
-          colors: [_green, _mid],
-        ).createShader(Rect.fromLTWH(0, 0, w * 0.5, h)),
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(w * 0.68 - ah * 0.6, cy - ah)
-        ..lineTo(w * 0.68 + ah * 0.3, cy)
-        ..lineTo(w * 0.68 - ah * 0.6, cy + ah),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke * 0.85
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..shader = const LinearGradient(
-          colors: [_mid, _red],
-        ).createShader(Rect.fromLTWH(w * 0.5, 0, w * 0.5, h)),
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/bagla_logo.png',
+      width: width,
+      height: height,
+      fit: BoxFit.contain, // важно чтобы не обрезалось
     );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

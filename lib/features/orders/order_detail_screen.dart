@@ -36,6 +36,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Duration _timeLeft = Duration.zero;
   bool _isExpired = false;
 
+  String _transportLabel(String? type) {
+    switch (type) {
+      case 'car':
+        return 'Легковой авто';
+      case 'truck':
+        return 'Грузовой авто';
+      default:
+        return 'Авто необязательно';
+    }
+  }
+
+  IconData _transportIcon(String? type) {
+    switch (type) {
+      case 'car':
+        return Icons.directions_car_rounded;
+      case 'truck':
+        return Icons.local_shipping_rounded;
+      default:
+        return Icons.directions_run_rounded;
+    }
+  }
+
   // ── Brand ─────────────────────────────────────────────────────────────────
   static const _green = Color(0xFF1A7A3C);
   static const _red = Color(0xFFD32F1E);
@@ -465,6 +487,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           const SizedBox(height: 12),
 
           _buildSection(
+            title: 'Вид транспортировки',
+            child: _buildTransportBlock(),
+          ),
+          const SizedBox(height: 12),
+
+          _buildSection(
             title: 'Получатель (Клиент)',
             child: _buildRecipientBlock(isDataLocked),
           ),
@@ -811,6 +839,47 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransportBlock() {
+    final String? type = widget.order['transport_type']?.toString();
+    final label = _transportLabel(type);
+    final icon = _transportIcon(type);
+    final Color color = type == 'truck' ? _red : _green;
+
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.09),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Требование к транспорту',
+              style: AppText.regular(
+                fontSize: 11,
+                color: const Color(0xFF9AA3AF),
+              ),
+            ),
+            Text(
+              label,
+              style: AppText.semiBold(
+                fontSize: 14,
+                color: const Color(0xFF0F1117),
+              ),
+            ),
+          ],
         ),
       ],
     );

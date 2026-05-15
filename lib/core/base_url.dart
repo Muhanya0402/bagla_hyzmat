@@ -1,4 +1,4 @@
 class BaseUrl {
   static const String url =
-      'https://constitute-content-chip-due.trycloudflare.com';
+      'https://enrolled-stud-reid-harbour.trycloudflare.com';
 }

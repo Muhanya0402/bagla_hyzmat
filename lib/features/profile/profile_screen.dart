@@ -2,7 +2,6 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
-import 'package:bagla/features/home/widgets/wallet_info_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -45,6 +44,9 @@ class ProfileScreen extends StatelessWidget {
 
     final bool isCourier = auth.role == 'courier';
     final bool isShop = auth.role == 'shop' || auth.role == 'business';
+    final bool isClient = auth.role == 'client';
+    final bool needsRoleSelection =
+        isClient && auth.status.toLowerCase() == 'published';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -68,10 +70,8 @@ class ProfileScreen extends StatelessWidget {
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         actions: [
-          // Language toggle
           const LangToggle(),
           const SizedBox(width: 8),
-          // Logout
           GestureDetector(
             onTap: () => _showLogoutConfirm(context),
             child: Container(
@@ -107,7 +107,6 @@ class ProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Row(
                   children: [
-                    // Avatar circle with gradient
                     Container(
                       width: 58,
                       height: 58,
@@ -164,7 +163,9 @@ class ProfileScreen extends StatelessWidget {
                             ? 'Курьер'
                             : isShop
                             ? 'Заказчик'
-                            : 'Наблюдатель',
+                            : isClient
+                            ? 'Наблюдатель'
+                            : 'Ошибка',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -180,32 +181,29 @@ class ProfileScreen extends StatelessWidget {
             // ── Level card (couriers only) ───────────────────────────────────
             if (isCourier) const SliverToBoxAdapter(child: LevelCardWidget()),
 
+            // ── Баннер выбора роли (client + published) ──────────────────────
+            if (needsRoleSelection)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _RoleSelectionCard(
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/user_type_selection'),
+                  ),
+                ),
+              ),
+
             // ── Content ─────────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
                   children: [
-                    // ── Balance cards ────────────────────────────────────────
+                    // ── Balance / Status cards ────────────────────────────────
                     Row(
                       children: [
-                        if (isShop)
-                          _StatCard(
-                            label: 'Кошелёк',
-                            value:
-                                '${auth.walletBalance.toStringAsFixed(2)} TMT',
-                            icon: Icons.account_balance_wallet_rounded,
-                            iconColor: brandGreen,
-                            actionIcon: Icons.info_outline_rounded,
-                            onAction: () => showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) =>
-                                  WalletInfoModal(balance: auth.walletBalance),
-                            ).then((_) => auth.refreshProfile()),
-                          )
-                        else
+                        // Жетоны — только для курьера
+                        if (isCourier)
                           _StatCard(
                             label: 'Мои жетоны',
                             value: auth.balancePoints
@@ -239,24 +237,25 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ).then((_) => auth.refreshProfile()),
                           ),
-                        const SizedBox(width: 12),
 
-                        // Daily bonus info card
-                        _StatCard(
-                          label: 'Статус',
-                          value: _statusLabel(auth.status),
-                          icon: Icons.verified_rounded,
-                          iconColor: _statusColor(auth.status),
-                          actionIcon: Icons.arrow_forward_ios_rounded,
-                          onAction: () {
-                            if (auth.status == "published") {
-                              Navigator.pushNamed(
-                                context,
-                                '/user_type_selection',
-                              );
-                            }
-                          },
-                        ),
+                        if (isCourier) const SizedBox(width: 12),
+
+                        if (!needsRoleSelection)
+                          _StatCard(
+                            label: 'Статус',
+                            value: _statusLabel(auth.status),
+                            icon: Icons.verified_rounded,
+                            iconColor: _statusColor(auth.status),
+                            actionIcon: Icons.arrow_forward_ios_rounded,
+                            onAction: () {
+                              if (auth.status == 'published') {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/user_type_selection',
+                                );
+                              }
+                            },
+                          ),
                       ],
                     ),
 
@@ -282,7 +281,7 @@ class ProfileScreen extends StatelessWidget {
                                 Navigator.pushNamed(context, '/appeals'),
                           ),
                           _divider(),
-                          if (isShop || isCourier && auth.status != "published")
+                          if (isShop || isCourier && auth.status != 'published')
                             _MenuTile(
                               icon: Icons.description_rounded,
                               iconColor: const Color(0xFF2CA5E0),
@@ -436,6 +435,89 @@ class ProfileScreen extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Карточка выбора роли (для client + published)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _RoleSelectionCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RoleSelectionCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE8F5EE), Color(0xFFFFF0EE)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: ProfileScreen.brandGreen.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: ProfileScreen.brandGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.person_add_alt_1_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Выберите вашу роль',
+                    style: AppText.bold(
+                      fontSize: 14,
+                      color: const Color(0xFF0F1117),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Станьте курьером или заказчиком',
+                    style: AppText.regular(
+                      fontSize: 12,
+                      color: const Color(0xFF9AA3AF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: ProfileScreen.brandGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 13,
+                color: ProfileScreen.brandGreen,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Stat card
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -542,7 +624,6 @@ class _MenuTile extends StatelessWidget {
         title,
         style: AppText.semiBold(fontSize: 14, color: const Color(0xFF0F1117)),
       ),
-
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -585,7 +666,6 @@ class _SupportModal extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
           Center(
             child: Container(
               width: 36,
@@ -597,8 +677,6 @@ class _SupportModal extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-
-          // Icon
           Container(
             width: 64,
             height: 64,
@@ -618,7 +696,6 @@ class _SupportModal extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
           ShaderMask(
             shaderCallback: (b) => _gradient.createShader(b),
             child: Text(
@@ -635,8 +712,6 @@ class _SupportModal extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-
-          // Telegram
           _SupportButton(
             icon: Icons.phone,
             iconColor: const Color(0xFF2CA5E0),
@@ -645,20 +720,7 @@ class _SupportModal extends StatelessWidget {
             subtitle: '+99364012282',
             onTap: () => _makePhoneCall('+99364012282'),
           ),
-          // const SizedBox(height: 10),
-
-          // // WhatsApp
-          // _SupportButton(
-          //   icon: Icons.chat_bubble_outline_rounded,
-          //   iconColor: const Color(0xFF25D366),
-          //   bgColor: const Color(0xFF25D366).withValues(alpha: 0.08),
-          //   title: 'WhatsApp',
-          //   subtitle: '+993 ...',
-          //   onTap: () => _launch('https://wa.me/99300000000'),
-          // ),
           const SizedBox(height: 20),
-
-          // Close
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
@@ -787,7 +849,6 @@ class _FooterSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          // Gradient logo text
           ShaderMask(
             shaderCallback: (b) => ProfileScreen.brandGradient.createShader(b),
             child: Text(

@@ -35,6 +35,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   DateTime? _selectedDateTime;
   List<XFile> _images = [];
+  String _transportType = 'any';
+  static const _transportOptions = [
+    ('any', 'Авто необязательно', Icons.directions_run_rounded),
+    ('car', 'Легковой авто', Icons.directions_car_rounded),
+    ('truck', 'Грузовой авто', Icons.local_shipping_rounded),
+  ];
   final _picker = ImagePicker();
 
   // ── Location (same pattern as RegistrationDetailsScreen) ──────────────────
@@ -272,6 +278,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ? _selectedEtrap!.tk
             : _selectedProvince!.tk,
         shopAddress: auth.address,
+        transportType: _transportType,
         phone: _phoneController.text,
         comment: '',
         deliveryTime: _selectedDateTime,
@@ -393,6 +400,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      _section(
+                        icon: Icons.local_shipping_outlined,
+                        title: 'Вид транспортировки',
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 4),
+                            _transportField(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       // ── Delivery address (stepper) ──────────────────────
                       _section(
                         icon: Icons.map_outlined,
@@ -612,32 +630,76 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   Widget _dateField() {
-    return TextFormField(
-      controller: _dateTimeController,
-      readOnly: true,
+    return GestureDetector(
       onTap: _pickDateTime,
-      style: AppText.regular(fontSize: 14, color: _dark),
-      decoration: InputDecoration(
-        hintText: 'Время доставки (необязательно)',
-        hintStyle: AppText.regular(fontSize: 14, color: _grey),
-        prefixIcon: const Icon(
-          Icons.calendar_today_outlined,
-          color: _grey,
-          size: 18,
-        ),
-        filled: true,
-        fillColor: _bg,
-        border: OutlineInputBorder(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: _bg,
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          border: Border.all(color: const Color(0xFFEEF0F3)),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: _selectedDateTime != null
+                    ? _green.withValues(alpha: 0.1)
+                    : _grey.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.calendar_today_outlined,
+                size: 17,
+                color: _selectedDateTime != null ? _green : _grey,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Время доставки',
+                    style: AppText.regular(fontSize: 11, color: _grey),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _selectedDateTime != null
+                        ? DateFormat(
+                            'dd MMMM, HH:mm',
+                            'ru',
+                          ).format(_selectedDateTime!)
+                        : 'Не указано',
+                    style: AppText.semiBold(
+                      fontSize: 14,
+                      color: _selectedDateTime != null ? _dark : _grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_selectedDateTime != null)
+              GestureDetector(
+                onTap: () => setState(() {
+                  _selectedDateTime = null;
+                  _dateTimeController.clear();
+                }),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: _red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.close_rounded, size: 15, color: _red),
+                ),
+              )
+            else
+              const Icon(Icons.chevron_right_rounded, color: _grey, size: 20),
+          ],
         ),
       ),
     );
@@ -733,6 +795,85 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       validator: (v) => (v == null || v.isEmpty || v == '0')
           ? 'Укажите сумму доставки'
           : null,
+    );
+  }
+
+  Widget _transportField() {
+    return Column(
+      children: _transportOptions.map((opt) {
+        final (value, label, icon) = opt;
+        final isSelected = _transportType == value;
+        return GestureDetector(
+          onTap: () => setState(() => _transportType = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: isSelected ? _green.withValues(alpha: 0.06) : _bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected
+                    ? _green.withValues(alpha: 0.4)
+                    : const Color(0xFFEEF0F3),
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? _green.withValues(alpha: 0.12)
+                        : const Color(0xFFEEF0F3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: isSelected ? _green : _grey,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppText.medium(
+                      fontSize: 14,
+                      color: isSelected ? _dark : _grey,
+                    ),
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: isSelected ? _gradient : null,
+                    color: isSelected ? null : Colors.transparent,
+                    border: isSelected
+                        ? null
+                        : Border.all(
+                            color: const Color(0xFFDDE1E7),
+                            width: 1.5,
+                          ),
+                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 12,
+                        )
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

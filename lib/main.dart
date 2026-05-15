@@ -7,44 +7,38 @@ import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/providers/role_provider.dart';
-import 'package:bagla/services/push_notification_service.dart'; // ← НОВЫЙ ИМПОРТ
-import 'package:firebase_core/firebase_core.dart'; // ← НОВЫЙ ИМПОРТ
-import 'package:firebase_messaging/firebase_messaging.dart'; // ← НОВЫЙ ИМПОРТ
+import 'package:bagla/services/push_notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'features/profile/registration_details_screen.dart';
 import 'providers/language_provider.dart';
 import 'features/auth/auth_repository.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-// ← НОВОЕ: обработчик фоновых сообщений (обязательно top-level функция)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
-    if (kDebugMode) {
-      print('✅ Firebase инициализирован');
-    }
   } catch (e) {
-    if (kDebugMode) {
-      print('❌ Ошибка Firebase.initializeApp: $e');
-    }
+    if (kDebugMode) print('❌ Ошибка Firebase.initializeApp: $e');
   }
-  if (kDebugMode) {
-    print('Фоновое сообщение: ${message.messageId}');
-  }
+  if (kDebugMode) print('Фоновое сообщение: ${message.messageId}');
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ru', null); // ← локаль для дат
 
-  // ← НОВОЕ: инициализация Firebase
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(); // ← только один раз
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   final langProvider = LanguageProvider();
@@ -54,11 +48,9 @@ void main() async {
   final bool loggedIn = await AuthRepository.checkAuthStatus();
   final bool onboardingDone = prefs.getBool('onboarding_done') ?? false;
   final String status = prefs.getString('status') ?? 'pending';
-
   final bool showOnboarding =
       loggedIn && !onboardingDone && status == 'pending';
 
-  // ← НОВОЕ: если уже залогинен — сразу инициализируем пуши
   if (loggedIn) {
     await PushNotificationService().initialize();
   }
@@ -101,6 +93,16 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Bagla',
+
+      // ── Локализации ──────────────────────────────────────────────────────
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('ru'), Locale('tk'), Locale('en')],
+
+      // ─────────────────────────────────────────────────────────────────────
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Nunito',

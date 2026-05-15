@@ -5,7 +5,6 @@ import 'package:bagla/features/notifications/unread_notifications_modal.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/home/home_app_bar.dart';
 import 'package:bagla/features/home/location_filter.dart';
-import 'package:bagla/features/home/widgets/wallet_info_modal.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
@@ -103,7 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _checkWelcomeBonus();
       await _initLocationFilter();
       _initRealtime();
       _scrollController.addListener(_onScroll);
@@ -113,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
           if (mounted) setState(() {});
         });
-        _loadActiveOrdersCount(auth.userId); // ← загружаем счётчик
+        _loadActiveOrdersCount(auth.userId);
       }
       await _checkUnreadNotifications();
     });
@@ -178,10 +176,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final etrapRu = prefs.getString('etrap_ru') ?? '';
     final etrapTk = prefs.getString('etrap_tk') ?? '';
 
-    final distId = prefs.getString('district_id') ?? '';
-    final distRu = prefs.getString('district_ru') ?? '';
-    final distTk = prefs.getString('district_tk') ?? '';
-
     if (etrapId.isNotEmpty) {
       _selectedEtrap = Etrap(
         id: etrapId,
@@ -189,12 +183,12 @@ class _HomeScreenState extends State<HomeScreen> {
         tk: etrapTk,
         provinceId: _provinceId,
       );
+      // Загружаем список районов, но НЕ выбираем ни один по умолчанию
       _loadDistricts(etrapId, silent: true);
     }
 
-    if (distId.isNotEmpty) {
-      _selectedDistrict = District(id: distId, ru: distRu, tk: distTk);
-    }
+    // Район намеренно не восстанавливаем — курьер выбирает сам
+    _selectedDistrict = null;
 
     if (mounted) setState(() {});
   }
@@ -334,6 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }).toList();
     }
 
+    // Фильтр по району — только если курьер явно выбрал район
     if (auth.role == 'courier' && _selectedDistrict != null) {
       result = result.where((o) {
         final dist = o['district'];
@@ -430,7 +425,6 @@ class _HomeScreenState extends State<HomeScreen> {
           } else {
             _orders.insert(0, order);
           }
-          // Обновляем счётчик при изменении заказа
           final auth = context.read<AuthProvider>();
           if (auth.role == 'courier') {
             _loadActiveOrdersCount(auth.userId);
@@ -470,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.userId.isNotEmpty && auth.role == 'courier') {
       await context.read<LevelProvider>().loadForUser(auth.userId);
-      _loadActiveOrdersCount(auth.userId); // ← обновляем счётчик при рефреше
+      _loadActiveOrdersCount(auth.userId);
     }
     try {
       final isShop = auth.role == 'shop' || auth.role == 'business';
@@ -492,161 +486,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // WELCOME BONUS
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<void> _checkWelcomeBonus() async {
-    final authProv = context.read<AuthProvider>();
-    try {
-      final response = await ApiClient().dio.get(
-        '/items/customers/${authProv.userId}',
-        queryParameters: {'fields': 'welcome_bonus_shown'},
-      );
-      final bool shown = response.data['data']['welcome_bonus_shown'] ?? false;
-      if (!shown && mounted) {
-        await ApiClient().dio.patch(
-          '/items/customers/${authProv.userId}',
-          data: {'welcome_bonus_shown': true},
-        );
-        _showWelcomeBonusModal();
-      }
-    } catch (e) {
-      debugPrint('welcome bonus error: $e');
-    }
-  }
-
-  void _showWelcomeBonusModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE8F5EE), Color(0xFFFFF0EE)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/point_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.toll_rounded,
-                    size: 48,
-                    color: HomeScreen.brandGreen,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ShaderMask(
-              shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
-              child: Text(
-                '🎁 Подарок за первый вход!',
-                style: AppText.extraBold(fontSize: 20, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Мы начислили вам',
-              style: AppText.regular(fontSize: 15, color: Colors.black45),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5EE),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: HomeScreen.brandGreen.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/point_icon.png',
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Icons.toll_rounded,
-                      size: 32,
-                      color: HomeScreen.brandGreen,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '3 жетона',
-                    style: AppText.extraBold(
-                      fontSize: 28,
-                      color: HomeScreen.brandGreen,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Используйте жетоны для выполнения заказов внутри приложения',
-              style: AppText.regular(
-                fontSize: 13,
-                color: Colors.black38,
-              ).copyWith(height: 1.5),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: HomeScreen.brandGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'ОТЛИЧНО!',
-                    style: AppText.bold(
-                      fontSize: 15,
-                      color: Colors.white,
-                    ).copyWith(letterSpacing: .5),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).then((_) => _handleRefresh());
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   // BUILD
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -663,8 +502,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isActive = currentStatus == 'active';
     final bool isShop = role == 'shop' || role == 'business';
     final bool isCourier = role == 'courier';
+    final bool isClient = role == 'client';
     final bool isBanned = currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
+    // Клиент без роли — нужно направить на выбор роли
+    final bool needsRoleSelection = isClient && currentStatus == 'published';
 
     final List<dynamic> filteredOrders = _applyFilters(_orders);
 
@@ -711,6 +553,18 @@ class _HomeScreenState extends State<HomeScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Баннер выбора роли (клиент без роли) ──────────────────────
+            if (needsRoleSelection)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _RoleSelectionBanner(
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    '/user_type_selection',
+                  ).then((_) => _handleRefresh()),
+                ),
+              ),
+
             if (isCourier)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -733,7 +587,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: AppText.semiBold(fontSize: 20, color: Colors.black),
                   ),
                   const Spacer(),
-                  // Показываем счётчик только курьеру
                   if (isCourier)
                     _ActiveOrdersCounter(
                       current: _activeOrdersCount,
@@ -812,9 +665,10 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_selectedEtrap != null)
             LocationChip(
               icon: Icons.pin_drop_outlined,
+              // Если район не выбран — показываем "Все районы"
               label: _selectedDistrict != null
                   ? _selectedDistrict!.label(isRu)
-                  : 'Район',
+                  : 'Все районы',
               isActive: _selectedDistrict != null,
               onTap: _districts.isEmpty && !_loadingDistricts
                   ? null
@@ -918,7 +772,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildLogoRow(AuthProvider authProv) {
-    final bool isShop = authProv.role == 'shop' || authProv.role == 'business';
+    final String role = authProv.role.toLowerCase().trim();
+    final String status = authProv.status.toLowerCase().trim();
+    final bool isClient = role == 'client';
+    final bool needsRoleSelection = isClient && status == 'published';
+    final bool isCourier = role == 'courier';
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -932,20 +791,17 @@ class _HomeScreenState extends State<HomeScreen> {
           errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
-        if (isShop)
+        // Клиент без роли: показываем кнопку выбора роли вместо баланса
+        if (needsRoleSelection)
           GestureDetector(
-            onTap: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => WalletInfoModal(balance: authProv.walletBalance),
+            onTap: () => Navigator.pushNamed(
+              context,
+              '/user_type_selection',
             ).then((_) => _handleRefresh()),
-            child: _balanceChip(
-              icon: Icons.account_balance_wallet_rounded,
-              label: '${authProv.walletBalance.toStringAsFixed(2)} TMT',
-            ),
+            child: SizedBox(),
           )
-        else
+        // Курьер: жетоны
+        else if (isCourier)
           GestureDetector(
             onTap: () => showModalBottomSheet(
               context: context,
@@ -985,26 +841,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+        // Shop / business: ничего не показываем (кошелёк убран)
       ],
     );
   }
 
-  Widget _balanceChip({required IconData icon, required String label}) {
+  /// Чип «Выберите роль» для AppBar
+  Widget _roleSelectionChip() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5EE),
+        gradient: HomeScreen.brandGradient,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: HomeScreen.brandGreen.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: HomeScreen.brandGreen),
-          const SizedBox(width: 5),
+          const Icon(
+            Icons.person_add_alt_1_rounded,
+            size: 15,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 6),
           Text(
-            label,
-            style: AppText.semiBold(fontSize: 13, color: HomeScreen.brandGreen),
+            'Выберите роль',
+            style: AppText.semiBold(fontSize: 12, color: Colors.white),
           ),
         ],
       ),
@@ -1260,6 +1121,90 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         )
         .then((_) => _handleRefresh());
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Баннер выбора роли (role == client && status == published)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RoleSelectionBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RoleSelectionBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE8F5EE), Color(0xFFFFF0EE)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: HomeScreen.brandGreen.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: HomeScreen.brandGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.person_add_alt_1_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Выберите вашу роль',
+                    style: AppText.bold(
+                      fontSize: 14,
+                      color: const Color(0xFF0F1117),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Курьер или заказчик — нажмите чтобы продолжить',
+                    style: AppText.regular(
+                      fontSize: 12,
+                      color: const Color(0xFF9AA3AF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: HomeScreen.brandGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 13,
+                color: HomeScreen.brandGreen,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

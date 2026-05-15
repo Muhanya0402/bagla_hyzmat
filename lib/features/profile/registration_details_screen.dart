@@ -56,6 +56,13 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   bool _loadingEtraps = false;
   bool _loadingDistricts = false;
   bool _locationSelected = false;
+  String _transportType = 'any';
+
+  static const _transportOptions = [
+    ('any', 'Пешком / Любой', Icons.directions_walk_rounded),
+    ('car', 'Легковой авто', Icons.directions_car_rounded),
+    ('truck', 'Грузовой авто', Icons.local_shipping_rounded),
+  ];
 
   int _locationStep = 0;
 
@@ -174,6 +181,89 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     });
   }
 
+  Widget _buildTransportPicker() {
+    return Column(
+      children: _transportOptions.map((opt) {
+        final (value, label, icon) = opt;
+        final isSelected = _transportType == value;
+        return GestureDetector(
+          onTap: () => setState(() => _transportType = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? brandGreen.withValues(alpha: 0.06)
+                  : const Color(0xFFF5F7FA),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected
+                    ? brandGreen.withValues(alpha: 0.4)
+                    : const Color(0xFFEEF0F3),
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? brandGreen.withValues(alpha: 0.12)
+                        : const Color(0xFFEEF0F3),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: isSelected ? brandGreen : const Color(0xFF9AA3AF),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppText.medium(
+                      fontSize: 14,
+                      color: isSelected
+                          ? const Color(0xFF0F1117)
+                          : const Color(0xFF9AA3AF),
+                    ),
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: isSelected ? brandGradient : null,
+                    color: isSelected ? null : Colors.transparent,
+                    border: isSelected
+                        ? null
+                        : Border.all(
+                            color: const Color(0xFFDDE1E7),
+                            width: 1.5,
+                          ),
+                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 13,
+                        )
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   // ── Photo ──────────────────────────────────────────────────────────────────
 
   Future<void> _pickImage(bool isPassport) async {
@@ -200,6 +290,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       _showSnack('Пожалуйста, выберите район');
       return;
     }
+
     if (widget.role == 'courier' &&
         (_passportFile == null || _addressFile == null)) {
       _showSnack('Пожалуйста, загрузите оба фото паспорта');
@@ -236,6 +327,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           'surname': _c2.text.trim(),
           'lastname': _c3.text.trim(),
           'status': 'pending',
+          'transport_type': _transportType,
         });
       } else {
         updateData.addAll({
@@ -384,6 +476,14 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
             // ── Секция: Фото паспорта ───────────────────────────────────
             if (isCourier) ...[
+              const SizedBox(height: 28), // ← ДОБАВИТЬ
+              _SectionLabel(
+                // ← ДОБАВИТЬ
+                icon: Icons.local_shipping_outlined,
+                label: 'ВИД ТРАНСПОРТА',
+              ),
+              const SizedBox(height: 14), // ← ДОБАВИТЬ
+              _buildTransportPicker(),
               const SizedBox(height: 28),
               _SectionLabel(
                 icon: Icons.document_scanner_outlined,
