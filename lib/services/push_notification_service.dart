@@ -131,7 +131,6 @@ class PushNotificationService {
   }
 
   void _handleNotificationTap(Map<String, dynamic> data) {
-    final String? type = data['type'];
     final String? orderId = data['order_id'];
 
     if (orderId != null) {

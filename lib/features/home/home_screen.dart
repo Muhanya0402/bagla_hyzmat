@@ -1,4 +1,3 @@
-import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/unread_notifications_modal.dart';
@@ -843,32 +842,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         // Shop / business: ничего не показываем (кошелёк убран)
       ],
-    );
-  }
-
-  /// Чип «Выберите роль» для AppBar
-  Widget _roleSelectionChip() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        gradient: HomeScreen.brandGradient,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.person_add_alt_1_rounded,
-            size: 15,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Выберите роль',
-            style: AppText.semiBold(fontSize: 12, color: Colors.white),
-          ),
-        ],
-      ),
     );
   }
 
