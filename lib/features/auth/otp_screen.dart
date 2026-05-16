@@ -15,14 +15,47 @@ class OtpScreen extends StatefulWidget {
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> {
+class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   int _seconds = 30;
   Timer? _timer;
+  DateTime? _backgroundTime;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startTimer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // Уходим в фон — запоминаем время и останавливаем таймер
+      _backgroundTime = DateTime.now();
+      _timer?.cancel();
+    } else if (state == AppLifecycleState.resumed) {
+      // Возвращаемся — считаем сколько прошло времени
+      if (_backgroundTime != null && _seconds > 0) {
+        final elapsed = DateTime.now().difference(_backgroundTime!).inSeconds;
+        final remaining = _seconds - elapsed;
+        setState(() => _seconds = remaining > 0 ? remaining : 0);
+        _backgroundTime = null;
+
+        if (_seconds > 0) {
+          // Продолжаем отсчёт
+          _timer?.cancel();
+          _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+            if (_seconds == 0) {
+              _timer?.cancel();
+            } else {
+              setState(() => _seconds--);
+            }
+          });
+        }
+        // Если _seconds == 0 — таймер закончился пока были в фоне,
+        // кнопка "Отправить снова" появится автоматически
+      }
+    }
   }
 
   void _startTimer() {
@@ -39,6 +72,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     super.dispose();
   }

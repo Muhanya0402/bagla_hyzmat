@@ -52,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loadingEtraps = false;
   bool _loadingDistricts = false;
   String _provinceId = '';
+  String _transportFilter = 'any';
 
   final AuthRepository _authRepo = AuthRepository();
 
@@ -170,6 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _provinceId = prefs.getString('province_id') ?? '';
     _provinceLabel =
         prefs.getString(isRu ? 'province_ru' : 'province_tk') ?? '';
+
+    _transportFilter = prefs.getString('transport_type') ?? 'any';
 
     final etrapId = prefs.getString('etrap_id') ?? '';
     final etrapRu = prefs.getString('etrap_ru') ?? '';
@@ -334,6 +337,18 @@ class _HomeScreenState extends State<HomeScreen> {
         if (dist == null) return false;
         final distId = dist is Map ? dist['id']?.toString() : dist.toString();
         return distId == _selectedDistrict!.id;
+      }).toList();
+    }
+
+    if (auth.role == 'courier' && _transportFilter != 'any') {
+      result = result.where((o) {
+        final raw = o['transport_type'];
+        if (raw == null ||
+            raw.toString().trim().isEmpty ||
+            raw.toString() == 'any') {
+          return true;
+        }
+        return raw.toString() == _transportFilter;
       }).toList();
     }
 
@@ -586,11 +601,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: AppText.semiBold(fontSize: 20, color: Colors.black),
                   ),
                   const Spacer(),
-                  if (isCourier)
+                  if (isCourier) ...[
+                    _buildTransportIconPicker(), // ← иконка дропдауна
+                    const SizedBox(width: 8),
                     _ActiveOrdersCounter(
                       current: _activeOrdersCount,
                       max: _maxActiveOrders,
                     ),
+                  ],
                 ],
               ),
             ),
@@ -636,6 +654,155 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  static const _transportFilterOptions = [
+    ('any', Icons.directions_run_rounded, 'Любой'),
+    ('car', Icons.directions_car_rounded, 'Легковой'),
+    ('truck', Icons.local_shipping_rounded, 'Грузовой'),
+  ];
+
+  Widget _buildTransportIconPicker() {
+    final current = _transportFilterOptions.firstWhere(
+      (o) => o.$1 == _transportFilter,
+      orElse: () => _transportFilterOptions[0],
+    );
+
+    return GestureDetector(
+      onTap: () => _showTransportPopup(),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _transportFilter == 'any'
+              ? Colors.white
+              : HomeScreen.brandGreen.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _transportFilter == 'any'
+                ? const Color(0xFFEEF0F3)
+                : HomeScreen.brandGreen.withValues(alpha: 0.35),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              current.$2,
+              size: 20,
+              color: _transportFilter == 'any'
+                  ? const Color(0xFF9AA3AF)
+                  : HomeScreen.brandGreen,
+            ),
+            if (_transportFilter != 'any')
+              Positioned(
+                top: 5,
+                right: 5,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: HomeScreen.brandGreen,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTransportPopup() async {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+
+    // Показываем попап под счётчиком (правый верхний угол списка)
+    await showMenu<String>(
+      context: context,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 8,
+      position: RelativeRect.fromLTRB(
+        MediaQuery.of(context).size.width - 180,
+        kToolbarHeight + 180,
+        16,
+        0,
+      ),
+      items: _transportFilterOptions.map((opt) {
+        final isSelected = _transportFilter == opt.$1;
+        return PopupMenuItem<String>(
+          value: opt.$1,
+          padding: EdgeInsets.zero,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? HomeScreen.brandGreen.withValues(alpha: 0.07)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? HomeScreen.brandGreen.withValues(alpha: 0.12)
+                        : const Color(0xFFF5F7FA),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    opt.$2,
+                    size: 18,
+                    color: isSelected
+                        ? HomeScreen.brandGreen
+                        : const Color(0xFF9AA3AF),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    opt.$3,
+                    style: isSelected
+                        ? AppText.semiBold(
+                            fontSize: 14,
+                            color: HomeScreen.brandGreen,
+                          )
+                        : AppText.regular(
+                            fontSize: 14,
+                            color: const Color(0xFF0F1117),
+                          ),
+                  ),
+                ),
+                if (isSelected)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: HomeScreen.brandGreen,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    ).then((value) {
+      if (value != null && value != _transportFilter) {
+        setState(() => _transportFilter = value);
+      }
+    });
+  }
   // ─────────────────────────────────────────────────────────────────────────
   // ВИДЖЕТ ФИЛЬТРА ЛОКАЦИИ
   // ─────────────────────────────────────────────────────────────────────────

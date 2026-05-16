@@ -366,9 +366,10 @@ class OrderCard extends StatelessWidget {
 
     // Courier: delivered button
     if (status == 'active' && role == 'courier') {
-      final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
+      // final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
+      final double cashback = 0.0;
       return _buildFilledButton(
-        label: 'Доставлено',
+        label: 'Завершить',
         color: HomeScreen.brandGreen,
         cashback: cashback,
         onTap: () => onTap?.call(),
@@ -405,16 +406,12 @@ class OrderCard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _buildPoint(
-          icon: isLocked
-              ? Icons.lock_outline_rounded
-              : Icons.location_on_outlined,
+          icon: Icons.location_on_outlined,
           label: 'Куда',
-          address: isLocked ? 'Адрес скрыт до принятия' : fullDeliveryAddress,
-          iconColor: isLocked ? const Color(0xFF9AA3AF) : HomeScreen.brandGreen,
-          iconBg: isLocked
-              ? const Color(0xFF9AA3AF).withValues(alpha: 0.08)
-              : HomeScreen.brandGreen.withValues(alpha: 0.08),
-          isGrey: isLocked,
+          address: fullDeliveryAddress,
+          iconColor: HomeScreen.brandGreen,
+          iconBg: HomeScreen.brandGreen.withValues(alpha: 0.08),
+          isGrey: false,
         ),
       ],
     );
@@ -524,17 +521,53 @@ class OrderCard extends StatelessWidget {
     );
   }
 
+  // СТАЛО:
   Widget _buildOrderId() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
-        style: AppText.medium(fontSize: 11, color: const Color(0xFF9AA3AF)),
-      ),
+    final String? transportType = order['transport_type']?.toString();
+
+    IconData transportIcon;
+    Color transportColor;
+    switch (transportType) {
+      case 'car':
+        transportIcon = Icons.directions_car_rounded;
+        transportColor = HomeScreen.brandGreen;
+        break;
+      case 'truck':
+        transportIcon = Icons.local_shipping_rounded;
+        transportColor = HomeScreen.brandRed;
+        break;
+      default:
+        transportIcon = Icons.directions_run_rounded;
+        transportColor = const Color(0xFF9AA3AF);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Иконка транспорта ──
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: transportColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(transportIcon, size: 15, color: transportColor),
+        ),
+        const SizedBox(width: 6),
+        // ── ID ──
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
+            style: AppText.medium(fontSize: 11, color: const Color(0xFF9AA3AF)),
+          ),
+        ),
+      ],
     );
   }
 

@@ -143,7 +143,7 @@ class AuthRepository {
               'district.id,district.district_ru,district.district_tk,'
               'etrap.id,etrap.etrap_ru,etrap.etrap_tk,'
               'province.id,province.province_ru,province.province_tk,'
-              'experience_points,wallet_balance',
+              'experience_points,wallet_balance,transport_type',
         },
       );
 

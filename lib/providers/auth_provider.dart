@@ -26,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   double _rating = 0.0;
   double _balancePoints = 0.0;
   double _walletBalance = 0.0;
+  String _transportType = 'any';
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ class AuthProvider extends ChangeNotifier {
   // int cast so widgets can do "${auth.balancePoints}" without ".0"
   double get balancePoints => _balancePoints;
   double get walletBalance => _walletBalance;
+  String get transportType => _transportType;
 
   AuthProvider() {
     loadUserData();
@@ -69,6 +71,7 @@ class AuthProvider extends ChangeNotifier {
     _rating = prefs.getDouble('rating') ?? 0.0;
     _balancePoints = prefs.getDouble('balance_points') ?? 0.0;
     _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
+    _transportType = prefs.getString('transport_type') ?? 'any';
 
     if (_phone.isNotEmpty) phoneController.text = _phone;
     notifyListeners();
@@ -106,6 +109,7 @@ class AuthProvider extends ChangeNotifier {
     _rating = (user['rating'] ?? 0.0).toDouble();
     _balancePoints = (user['balance_points'] ?? 0.0).toDouble();
     _walletBalance = (user['wallet_balance'] ?? 0.0).toDouble();
+    _transportType = user['transport_type']?.toString() ?? 'any';
 
     // ── Location (supports both raw ID and expanded Directus object) ────────
     void extractId(dynamic raw, void Function(String) setter) {
@@ -136,6 +140,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setDouble('rating', _rating);
     await prefs.setDouble('balance_points', _balancePoints);
     await prefs.setDouble('wallet_balance', _walletBalance);
+    await prefs.setString('transport_type', _transportType);
     await prefs.setBool('is_logged_in', true);
 
     notifyListeners();

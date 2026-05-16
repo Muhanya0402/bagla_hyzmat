@@ -152,8 +152,8 @@ class OrderService {
     required String role,
     required String userId,
     bool myOrdersOnly = false,
-    int offset = 0, // ← новый параметр
-    int limit = pageSize, // ← новый параметр
+    int offset = 0,
+    int limit = pageSize,
   }) async {
     try {
       final filters = <String>[];
@@ -178,18 +178,71 @@ class OrderService {
           '?$filterQuery'
           '&sort=-date_created'
           '&fields=*,pictures.directus_files_id'
+          ',district.id,district.district_ru,district.district_tk'
+          ',etrap.id,etrap.etrap_ru,etrap.etrap_tk'
+          ',province.id,province.province_ru,province.province_tk'
+          ',courierId.*'
           '&limit=$limit'
           '&offset=$offset';
 
       final response = await _apiClient.dio.get(url);
-      if (response.data?['data'] != null) {
-        return response.data['data'] as List<dynamic>;
+      if (response.data?['data'] == null) return [];
+
+      final List<dynamic> orders = response.data['data'] as List<dynamic>;
+
+      // Собираем уникальные ID курьеров
+      final Set<String> courierIds = {};
+      for (final order in orders) {
+        final courierId = order['courierId'];
+        if (courierId is List && courierId.isNotEmpty) {
+          final first = courierId[0];
+          if (first is Map) {
+            final id = first['item']?.toString();
+            if (id != null) courierIds.add(id);
+          }
+        }
       }
-      return [];
+
+      // Один запрос за всеми курьерами сразу
+      final Map<String, Map<String, dynamic>> courierMap = {};
+      if (courierIds.isNotEmpty) {
+        try {
+          final courierResp = await _apiClient.dio.get(
+            '/items/customers',
+            queryParameters: {
+              'filter[id][_in]': courierIds.join(','),
+              'fields': 'id,name,surname',
+            },
+          );
+          final courierData = courierResp.data?['data'];
+          if (courierData is List) {
+            for (final c in courierData) {
+              final id = c['id']?.toString();
+              if (id != null) courierMap[id] = Map<String, dynamic>.from(c);
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Добавляем имя курьера в каждый заказ
+      for (final order in orders) {
+        final courierId = order['courierId'];
+        if (courierId is List && courierId.isNotEmpty) {
+          final first = courierId[0];
+          if (first is Map) {
+            final id = first['item']?.toString();
+            if (id != null && courierMap.containsKey(id)) {
+              final c = courierMap[id]!;
+              order['courier_name'] = '${c['name'] ?? ''} ${c['surname'] ?? ''}'
+                  .trim();
+            }
+          }
+        }
+      }
+
+      return orders;
     } catch (e) {
-      if (kDebugMode) {
-        print('Ошибка getOrders: $e');
-      }
+      if (kDebugMode) print('Ошибка getOrders: $e');
       return [];
     }
   }
