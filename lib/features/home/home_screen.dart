@@ -720,10 +720,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showTransportPopup() async {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-
     // Показываем попап под счётчиком (правый верхний угол списка)
     await showMenu<String>(
       context: context,

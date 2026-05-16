@@ -1054,7 +1054,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         itemBuilder: (context, i) {
           final String? fileId = pictures[i]['directus_files_id'];
           if (fileId == null) return const SizedBox.shrink();
-          final url = '$_baseUrl/assets/$fileId?width=600&quality=90';
           return GestureDetector(
             onTap: () => _openPhotoViewer(context, pictures, i),
             child: Hero(
@@ -1089,7 +1088,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black,
-        pageBuilder: (_, __, ___) => _PhotoViewerScreen(
+        pageBuilder: (_, _, _) => _PhotoViewerScreen(
           pictures: pictures,
           initialIndex: initialIndex,
           baseUrl: _baseUrl,
@@ -1651,7 +1650,6 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
   late int _current;
 
   static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
 
   @override
   void initState() {
