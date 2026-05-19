@@ -123,7 +123,6 @@ class OrderRealtimeService {
       final type = msg['type'] as String? ?? '';
 
       switch (type) {
-        // Авторизация прошла — подписываемся
         case 'auth':
           if (msg['status'] == 'ok') {
             _connected = true;
@@ -136,13 +135,16 @@ class OrderRealtimeService {
           }
           break;
 
-        // Первоначальные данные после подписки
         case 'subscription':
           final event = msg['event'] as String? ?? '';
+
           if (event == 'init') {
+            // ИГНОРИРУЕМ событие init, чтобы сокеты не затирали данные от HTTP.
+            // Первичные данные у нас гарантированно и красиво приходят из getOrders().
             final data = msg['data'] as List<dynamic>? ?? [];
-            debugPrint('🔌 WS: init ${data.length} заказов');
-            onOrdersUpdate?.call(data);
+            debugPrint(
+              '🔌 WS: Пропущено init-событие для ${data.length} заказов (используется HTTP-кэш)',
+            );
           } else if (event == 'create') {
             final data = msg['data'] as List<dynamic>? ?? [];
             for (final order in data) {
@@ -187,16 +189,39 @@ class OrderRealtimeService {
       'collection': 'orders',
       'uid': _subId,
       'query': {
-        'fields': ['*', 'pictures.directus_files_id'],
+        // Разворачиваем все связанные объекты, иначе фильтры HomeScreen скроют заказы
+        'fields': [
+          '*',
+          'pictures.directus_files_id',
+          'district.id',
+          'district.district_ru',
+          'district.district_tk',
+          'etrap.id',
+          'etrap.etrap_ru',
+          'etrap.etrap_tk',
+          'province.id',
+          'province.province_ru',
+          'province.province_tk',
+          'shop_district.id',
+          'shop_district.district_ru',
+          'shop_district.district_tk',
+          'shop_etrap.id',
+          'shop_etrap.etrap_ru',
+          'shop_etrap.etrap_tk',
+          'shop_province.id',
+          'shop_province.province_ru',
+          'shop_province.province_tk',
+          'courierId.*',
+        ],
         'sort': ['-date_created'],
-        'limit': 100, // live query — грузим все актуальные
+        'limit': 100,
         if (_pendingFilter != null && _pendingFilter!.isNotEmpty)
           'filter': _pendingFilter,
       },
     };
 
     _send(payload);
-    debugPrint('🔌 WS: подписка отправлена uid=$_subId');
+    debugPrint('🔌 WS: подписка отправлена с глубокими полями uid=$_subId');
   }
 
   // ── Фильтр (дублирует логику getOrders) ──────────────────────────────────
