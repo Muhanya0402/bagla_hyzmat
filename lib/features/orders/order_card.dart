@@ -3,7 +3,9 @@ import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -172,6 +174,8 @@ class OrderCard extends StatelessWidget {
   // ── Main build ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final langProvider = context.watch<LanguageProvider>();
+    final words = langProvider.words;
     final status = (order['status'] ?? order['order_status'] ?? 'published')
         .toString()
         .toLowerCase();
@@ -211,7 +215,10 @@ class OrderCard extends StatelessWidget {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [_buildOrderId(), _buildStatusBadge(status)],
+                      children: [
+                        _buildOrderId(),
+                        _buildStatusBadge(status, words),
+                      ],
                     ),
                     const SizedBox(height: 18),
                     _buildRouteTimeline(
@@ -220,6 +227,7 @@ class OrderCard extends StatelessWidget {
                           order['adress_of_delivery'] ?? 'Адрес доставки',
                       district: order['district'],
                       isLocked: isDataLocked,
+                      words: words,
                     ),
                   ],
                 ),
@@ -235,7 +243,7 @@ class OrderCard extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildPriceSection(isShop, order),
+                    _buildPriceSection(isShop, order, words),
                     _buildActionButtons(
                       context,
                       status,
@@ -386,20 +394,13 @@ class OrderCard extends StatelessWidget {
     required String deliveryAddress,
     required dynamic district,
     required bool isLocked,
+    required AppLocalizations words,
   }) {
-    String districtName = '';
-    if (district is Map) {
-      districtName = district['district_ru']?.toString() ?? '';
-    }
-    final String fullDeliveryAddress = districtName.isNotEmpty
-        ? '$districtName, $deliveryAddress'
-        : deliveryAddress;
-
     return Column(
       children: [
         _buildPoint(
           icon: Icons.inventory_2_outlined,
-          label: 'Откуда',
+          label: words.orderFrom,
           address: shopAddress,
           iconColor: HomeScreen.brandRed,
           iconBg: HomeScreen.brandRed.withValues(alpha: 0.08),
@@ -407,8 +408,8 @@ class OrderCard extends StatelessWidget {
         const SizedBox(height: 12),
         _buildPoint(
           icon: Icons.location_on_outlined,
-          label: 'Куда',
-          address: fullDeliveryAddress,
+          label: words.orderTo,
+          address: deliveryAddress,
           iconColor: HomeScreen.brandGreen,
           iconBg: HomeScreen.brandGreen.withValues(alpha: 0.08),
           isGrey: false,
@@ -484,7 +485,11 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPriceSection(bool isShop, dynamic order) {
+  Widget _buildPriceSection(
+    bool isShop,
+    dynamic order,
+    AppLocalizations words,
+  ) {
     final double total = (order['total_amount'] ?? 0.0).toDouble();
     final double delivery = (order['delivery_amount'] ?? 0.0).toDouble();
     final double amount = isShop ? (total - delivery) : delivery;
@@ -493,7 +498,7 @@ class OrderCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isShop ? 'К получению' : 'За доставку',
+          isShop ? words.toReceive : words.deliveryFee,
           style: AppText.regular(fontSize: 11, color: const Color(0xFF9AA3AF)),
         ),
         Row(
@@ -571,26 +576,26 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
-    const styles = {
+  Widget _buildStatusBadge(String status, AppLocalizations words) {
+    final styles = {
       'published': _BadgeStyle(
         color: HomeScreen.brandRed,
-        label: 'Свободный',
+        label: words.statusFree,
         icon: Icons.search_rounded,
       ),
       'active': _BadgeStyle(
         color: HomeScreen.brandGreen,
-        label: 'В работе',
+        label: words.statusActive,
         icon: Icons.local_shipping_outlined,
       ),
       'canceled': _BadgeStyle(
-        color: Color(0xFF9AA3AF),
-        label: 'Отменён',
+        color: const Color(0xFF9AA3AF),
+        label: words.statusCanceled,
         icon: Icons.cancel_outlined,
       ),
       'completed': _BadgeStyle(
         color: HomeScreen.brandGreen,
-        label: 'Доставлен',
+        label: words.statusDone,
         icon: Icons.check_circle_outline_rounded,
       ),
     };

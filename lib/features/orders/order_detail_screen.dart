@@ -415,11 +415,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final List pictures = widget.order['pictures'] is List
         ? widget.order['pictures']
         : [];
-    final showCountdown =
-        !isShop &&
-        status == 'active' &&
-        widget.order['time_of_delivery'] != null &&
-        widget.order['time_of_delivery'].toString().isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -475,10 +470,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _buildStatusCard(status),
           const SizedBox(height: 12),
 
-          if (showCountdown) ...[
-            _buildCountdownCard(),
-            const SizedBox(height: 12),
-          ],
+          _buildCountdownCard(),
+          const SizedBox(height: 12),
 
           _buildSection(
             title: 'Маршрут',

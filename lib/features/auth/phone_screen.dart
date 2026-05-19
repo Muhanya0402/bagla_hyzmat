@@ -293,7 +293,7 @@ class _PhoneField extends StatelessWidget {
               inputFormatters: [formatter],
               style: AppText.semiBold(fontSize: 17),
               decoration: const InputDecoration(
-                hintText: '6_ ___ ___',
+                hintText: '__ ___ ___',
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 14),
               ),

@@ -278,6 +278,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ? _selectedEtrap!.tk
             : _selectedProvince!.tk,
         shopAddress: auth.address,
+        shopAddressTk: auth.address, // ← TK версии нет, используем тот же
         transportType: _transportType,
         phone: _phoneController.text,
         comment: '',
@@ -288,9 +289,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         images: _images,
         userId: auth.userId,
         shopPhone: auth.phone,
-        districtId: _selectedDistrict?.id, // ← убрал !
-        etrapId: _selectedEtrap?.id, // ← убрал !
+        districtId: _selectedDistrict?.id,
+        etrapId: _selectedEtrap?.id,
         provinceId: _selectedProvince!.id,
+        shopDistrictId: auth.districtId.isNotEmpty ? auth.districtId : null,
+        shopEtrapId: auth.etraptId.isNotEmpty ? auth.etraptId : null,
+        shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
       );
 
       _msg('Заказ успешно создан!', _green);

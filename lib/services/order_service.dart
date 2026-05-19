@@ -7,14 +7,15 @@ import '../core/api_client.dart';
 class OrderService {
   final ApiClient _apiClient = ApiClient();
 
-  static const int pageSize = 5; // заказов за один запрос
+  static const int pageSize = 5;
 
   // ─── 1. СОЗДАНИЕ ЗАКАЗА ───────────────────────────────────────────────────
 
   Future<bool> createOrder({
-    required String address,
-    required String addresstk,
-    required String shopAddress,
+    required String address, // адрес доставки (ru)
+    required String addresstk, // адрес доставки (tk)
+    required String shopAddress, // адрес магазина (ru)
+    required String shopAddressTk, // адрес магазина (tk)  ← новый
     required String transportType,
     required String phone,
     required String comment,
@@ -28,6 +29,10 @@ class OrderService {
     required String? districtId,
     required String? etrapId,
     required String provinceId,
+    // ── Локация магазина (откуда забирать) ────────────────────────────────
+    required String? shopDistrictId,
+    required String? shopEtrapId,
+    required String? shopProvinceId,
   }) async {
     try {
       List<String> fileIds = [];
@@ -51,14 +56,32 @@ class OrderService {
         'shopId': [
           {'item': userId, 'collection': 'customers'},
         ],
+
+        // ── Адрес магазина (откуда) ────────────────────────────────────────
         'shop_adress': shopAddress,
+        'shop_adresstk': shopAddressTk,
+
+        // ── Локация магазина ───────────────────────────────────────────────
+        'shop_district': shopDistrictId != null
+            ? tryParse(shopDistrictId)
+            : null,
+        'shop_etrap': shopEtrapId != null ? tryParse(shopEtrapId) : null,
+        'shop_province': shopProvinceId != null && shopProvinceId.isNotEmpty
+            ? tryParse(shopProvinceId)
+            : null,
+
         'transport_type': transportType,
         'shop_phone': shopPhone,
+
+        // ── Адрес доставки (куда) ──────────────────────────────────────────
         'adress_of_delivery': address,
         'adress_of_deliverytk': addresstk,
+
+        // ── Локация доставки ───────────────────────────────────────────────
         'district': districtId != null ? tryParse(districtId) : null,
         'etrap': etrapId != null ? tryParse(etrapId) : null,
         'province': tryParse(provinceId),
+
         'client_phone': phone.contains('+993') ? phone : '+993 $phone',
         'comment': comment,
         'time_of_delivery': deliveryTime?.toIso8601String(),
@@ -78,26 +101,18 @@ class OrderService {
           response.statusCode == 204;
     } on DioException catch (e) {
       if (e.response != null) {
-        if (kDebugMode) {
-          print('ОТВЕТ СЕРВЕРА: ${e.response?.data}');
-        }
+        if (kDebugMode) print('ОТВЕТ СЕРВЕРА: ${e.response?.data}');
         final errors = e.response?.data['errors'];
         if (errors is List && errors.isNotEmpty) {
-          if (kDebugMode) {
-            print('ПРИЧИНА: ${errors[0]['message']}');
-          }
-          if (kDebugMode) {
-            print('ДЕТАЛИ: ${errors[0]['extensions']}');
-          }
+          if (kDebugMode) print('ПРИЧИНА: ${errors[0]['message']}');
+          if (kDebugMode) print('ДЕТАЛИ: ${errors[0]['extensions']}');
         }
       }
       throw Exception(
         'Не удалось создать заказ: ${e.response?.data?['errors']?[0]?['message'] ?? e.message}',
       );
     } catch (e) {
-      if (kDebugMode) {
-        print('Неизвестная ошибка createOrder: $e');
-      }
+      if (kDebugMode) print('Неизвестная ошибка createOrder: $e');
       return false;
     }
   }
@@ -133,20 +148,12 @@ class OrderService {
       await _apiClient.dio.patch('/items/orders/$orderId', data: data);
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Ошибка updateStatus: $e');
-      }
+      if (kDebugMode) print('Ошибка updateStatus: $e');
       return false;
     }
   }
 
   // ─── 3. ПОЛУЧЕНИЕ ЗАКАЗОВ С ПАГИНАЦИЕЙ ───────────────────────────────────
-  //
-  // offset = 0  → первые 5 заказов
-  // offset = 5  → следующие 5
-  // offset = 10 → ещё 5
-  // ...
-  // Возвращает пустой список когда заказы кончились.
 
   Future<List<dynamic>> getOrders({
     required String role,
@@ -181,6 +188,9 @@ class OrderService {
           ',district.id,district.district_ru,district.district_tk'
           ',etrap.id,etrap.etrap_ru,etrap.etrap_tk'
           ',province.id,province.province_ru,province.province_tk'
+          ',shop_district.id,shop_district.district_ru,shop_district.district_tk'
+          ',shop_etrap.id,shop_etrap.etrap_ru,shop_etrap.etrap_tk'
+          ',shop_province.id,shop_province.province_ru,shop_province.province_tk'
           ',courierId.*'
           '&limit=$limit'
           '&offset=$offset';
@@ -190,7 +200,6 @@ class OrderService {
 
       final List<dynamic> orders = response.data['data'] as List<dynamic>;
 
-      // Собираем уникальные ID курьеров
       final Set<String> courierIds = {};
       for (final order in orders) {
         final courierId = order['courierId'];
@@ -203,7 +212,6 @@ class OrderService {
         }
       }
 
-      // Один запрос за всеми курьерами сразу
       final Map<String, Map<String, dynamic>> courierMap = {};
       if (courierIds.isNotEmpty) {
         try {
@@ -224,7 +232,6 @@ class OrderService {
         } catch (_) {}
       }
 
-      // Добавляем имя курьера в каждый заказ
       for (final order in orders) {
         final courierId = order['courierId'];
         if (courierId is List && courierId.isNotEmpty) {
@@ -270,9 +277,7 @@ class OrderService {
         isOnTime = DateTime.now().isBefore(DateTime.parse(tod).toLocal());
       }
       if (!isOnTime) {
-        if (kDebugMode) {
-          print('⏰ Просрочен — кэшбек не начислен');
-        }
+        if (kDebugMode) print('⏰ Просрочен — кэшбек не начислен');
         return;
       }
 
@@ -290,9 +295,7 @@ class OrderService {
         print('✅ Кэшбек +${cashback.toInt()} → курьер $courierId');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Ошибка applyCashback: $e');
-      }
+      if (kDebugMode) print('Ошибка applyCashback: $e');
     }
   }
 
@@ -324,9 +327,7 @@ class OrderService {
         },
       );
       final data = _parseFlow(response.data);
-      if (kDebugMode) {
-        print('generateDeliveryCode: $data');
-      }
+      if (kDebugMode) print('generateDeliveryCode: $data');
 
       if (data['delivery_code'] != null) {
         return {'success': true, 'code': data['delivery_code'].toString()};
@@ -338,9 +339,7 @@ class OrderService {
       }
       return {'success': false};
     } catch (e) {
-      if (kDebugMode) {
-        print('Ошибка generateDeliveryCode: $e');
-      }
+      if (kDebugMode) print('Ошибка generateDeliveryCode: $e');
       return {'success': false};
     }
   }
@@ -357,9 +356,7 @@ class OrderService {
         data: {'order_id': orderId, 'code': code},
       );
       final data = _parseFlow(response.data);
-      if (kDebugMode) {
-        print('verifyDeliveryCode: $data');
-      }
+      if (kDebugMode) print('verifyDeliveryCode: $data');
 
       Map<String, dynamic>? found;
       if (data['success'] != null) {
@@ -388,9 +385,7 @@ class OrderService {
         'level_up': false,
       };
     } catch (e) {
-      if (kDebugMode) {
-        print('Ошибка verifyDeliveryCode: $e');
-      }
+      if (kDebugMode) print('Ошибка verifyDeliveryCode: $e');
       return {
         'success': false,
         'message': 'Ошибка сети',

@@ -330,12 +330,27 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           'transport_type': _transportType,
         });
       } else {
+        // Формируем адрес из выбранной локации
+        final shopAddress = _selectedDistrict != null
+            ? "${_selectedEtrap!.ru}, ${_selectedDistrict!.ru}"
+            : _selectedEtrap != null
+            ? _selectedEtrap!.ru
+            : _selectedProvince!.ru;
+
         updateData.addAll({
           'organization_name': _c1.text.trim(),
-          'address': _c2.text.trim(),
+          'address': shopAddress, // ← адрес из локации
           'name': _c1.text.trim(),
           'status': 'pending',
+          'district': _selectedDistrict?.id,
+          'etrap': _selectedEtrap?.id,
+          'province': _selectedProvince!.id,
         });
+
+        // Обновляем адрес в провайдере
+        if (mounted) {
+          context.read<AuthProvider>().updateShopAddress(shopAddress);
+        }
       }
 
       final success = await _authRepo.updateProfile(
@@ -407,7 +422,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           ),
         ),
         title: Text(
-          isCourier ? 'Анкета курьера' : 'Детали профиля',
+          isCourier ? words.courierFormTitle : words.profileDetailsTitle,
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         bottom: PreferredSize(
@@ -436,12 +451,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                 label: 'Наименование организации',
                 controller: _c1,
                 icon: Icons.business_outlined,
-              ),
-              const SizedBox(height: 14),
-              _BrandInputField(
-                label: 'Юридический адрес',
-                controller: _c2,
-                icon: Icons.location_city_outlined,
               ),
             ],
             if (isCourier) ...[

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_text_styles.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/language_provider.dart'; // adjust import path
+import '../../l10n/app_localizations.dart'; // adjust import path
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -36,41 +38,43 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late AnimationController _slideCtrl;
   late Animation<Offset> _slideAnim;
 
-  // ── Pages data ─────────────────────────────────────────────────────────────
-  static const _pages = [
+  // ── Build pages dynamically from localization ──────────────────────────────
+  List<_PageData> _buildPages(AppLocalizations l) => [
     _PageData(
-      tag: 'Добро пожаловать',
-      title: 'Быстрая доставка\nпо городу',
-      subtitle:
-          'Bagla соединяет магазины и курьеров — заказы доставляются быстро и надёжно.',
+      tag: l.onboardingTag1,
+      title: l.onboardingTitle1,
+      subtitle: l.onboardingSubtitle1,
       pills: [
-        _Pill('Быстро', true),
-        _Pill('Надёжно', true),
-        _Pill('По всему городу', false),
+        _Pill(l.onboardingPill1_1, true),
+        _Pill(l.onboardingPill1_2, true),
+        _Pill(l.onboardingPill1_3, false),
       ],
     ),
     _PageData(
-      tag: 'Роли в системе',
-      title: 'Магазин или\nкурьер — решаешь ты',
-      subtitle:
-          'Магазины создают заказы и платят за доставку. Курьеры берут заказы и зарабатывают.',
-      pills: [_Pill('Магазин', true), _Pill('Курьер', false)],
-    ),
-    _PageData(
-      tag: 'Жетоны и уровни',
-      title: 'Зарабатывай жетоны\nи расти в уровнях',
-      subtitle:
-          'Жетоны нужны для принятия заказов. Каждый уровень даёт +0.5 жетонов в день автоматически.',
-      pills: [_Pill('+0.5/день за уровень', true), _Pill('10 уровней', false)],
-    ),
-    _PageData(
-      tag: 'Как это работает',
-      title: '3 шага до\nвыполненного заказа',
-      subtitle:
-          'Магазин публикует заказ → курьер принимает → доставляет и получает кэшбек за скорость.',
+      tag: l.onboardingTag2,
+      title: l.onboardingTitle2,
+      subtitle: l.onboardingSubtitle2,
       pills: [
-        _Pill('SMS-подтверждение', true),
-        _Pill('Кэшбек за скорость', false),
+        _Pill(l.onboardingPill2_1, true),
+        _Pill(l.onboardingPill2_2, false),
+      ],
+    ),
+    _PageData(
+      tag: l.onboardingTag3,
+      title: l.onboardingTitle3,
+      subtitle: l.onboardingSubtitle3,
+      pills: [
+        _Pill(l.onboardingPill3_1, true),
+        _Pill(l.onboardingPill3_2, false),
+      ],
+    ),
+    _PageData(
+      tag: l.onboardingTag4,
+      title: l.onboardingTitle4,
+      subtitle: l.onboardingSubtitle4,
+      pills: [
+        _Pill(l.onboardingPill4_1, true),
+        _Pill(l.onboardingPill4_2, false),
       ],
     ),
   ];
@@ -123,9 +127,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     });
   }
 
-  void _next() {
+  void _next(int pageCount) {
     if (!_canNext) return;
-    if (_page < _pages.length - 1) {
+    if (_page < pageCount - 1) {
       _fadeCtrl.reset();
       _slideCtrl.reset();
       _pageCtrl.nextPage(
@@ -147,7 +151,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isLast = _page == _pages.length - 1;
+    // Watch the language provider so the UI rebuilds on locale change
+    final lang = context.watch<LanguageProvider>();
+    final words = lang.words;
+    final pages = _buildPages(words);
+    final isLast = _page == pages.length - 1;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -177,7 +185,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           border: Border.all(color: const Color(0xFFEEF0F3)),
                         ),
                         child: Text(
-                          'Пропустить',
+                          words.skip,
                           style: AppText.semiBold(
                             fontSize: 12,
                             color: const Color(0xFF9AA3AF),
@@ -195,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             // ── Dots ──────────────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_pages.length, (i) {
+              children: List.generate(pages.length, (i) {
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -224,8 +232,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   _fadeCtrl.forward(from: 0);
                   _slideCtrl.forward(from: 0);
                 },
-                itemCount: _pages.length,
-                itemBuilder: (_, i) => _illustrations[i],
+                itemCount: pages.length,
+                itemBuilder: (_, i) => _buildIllustration(i, words),
               ),
             ),
 
@@ -252,7 +260,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            _pages[_page].tag,
+                            pages[_page].tag,
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
@@ -265,7 +273,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
                         // Title
                         Text(
-                          _pages[_page].title,
+                          pages[_page].title,
                           style: AppText.extraBold(
                             fontSize: 22,
                             color: const Color(0xFF0F1117),
@@ -275,7 +283,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
                         // Subtitle
                         Text(
-                          _pages[_page].subtitle,
+                          pages[_page].subtitle,
                           style: AppText.regular(
                             fontSize: 13,
                             color: const Color(0xFF9AA3AF),
@@ -287,7 +295,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: _pages[_page].pills
+                          children: pages[_page].pills
                               .map((p) => _PillWidget(pill: p))
                               .toList(),
                         ),
@@ -303,12 +311,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               duration: const Duration(milliseconds: 200),
               child: _canNext
                   ? Text(
-                      'Можно продолжить ✓',
+                      words.canContinue,
                       key: const ValueKey('ok'),
                       style: AppText.regular(fontSize: 11, color: _green),
                     )
                   : Text(
-                      'Подождите $_seconds сек',
+                      '${words.waitSeconds} $_seconds ${words.sec}',
                       key: const ValueKey('wait'),
                       style: AppText.regular(
                         fontSize: 11,
@@ -323,7 +331,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
               child: GestureDetector(
-                onTap: _canNext ? _next : null,
+                onTap: _canNext ? () => _next(pages.length) : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: double.infinity,
@@ -346,7 +354,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isLast ? 'НАЧАТЬ' : 'ДАЛЕЕ',
+                        isLast ? words.start : words.next,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -384,17 +392,37 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   // ── Illustrations ──────────────────────────────────────────────────────────
-
-  List<Widget> get _illustrations => [
-    _DeliveryIllus(),
-    _RolesIllus(),
-    _TokensIllus(),
-    _StepsIllus(),
-  ];
+  Widget _buildIllustration(int index, AppLocalizations l) {
+    switch (index) {
+      case 0:
+        return _DeliveryIllus();
+      case 1:
+        return _RolesIllus(
+          shopLabel: l.get('onboardingPill2_1'),
+          shopDesc: l.get('shopDesc'),
+          courierLabel: l.get('onboardingPill2_2'),
+          courierDesc: l.get('courierDesc'),
+        );
+      case 2:
+        return _TokensIllus();
+      case 3:
+        return _StepsIllus(
+          shopLabel: l.get('onboardingPill2_1'),
+          shopSub: l.get('shopCreatesOrder'),
+          courierLabel: l.get('onboardingPill2_2'),
+          courierSub: l.get('courierTakesOrder'),
+          deliveryLabel: l.get('delivery'),
+          deliverySub: l.get('deliveryConfirmed'),
+          badge: l.get('cashback'),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Illustration 1 — delivery van
+// Illustration 1 — delivery van  (no text, unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DeliveryIllus extends StatefulWidget {
@@ -451,14 +479,12 @@ class _VanPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height * 0.48;
 
-    // Background circle
     canvas.drawCircle(
       Offset(cx, cy),
       size.width * 0.34,
       Paint()..color = _green.withValues(alpha: 0.07),
     );
 
-    // Road
     final road = Paint()..color = const Color(0xFFEEF0F3);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -472,7 +498,6 @@ class _VanPainter extends CustomPainter {
       road,
     );
 
-    // Van body
     final bodyP = Paint()..color = _green;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -482,7 +507,6 @@ class _VanPainter extends CustomPainter {
       bodyP,
     );
 
-    // Cab
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(cx + 28, cy - 6, 54, 50),
@@ -491,7 +515,6 @@ class _VanPainter extends CustomPainter {
       Paint()..color = const Color(0xFF22963F),
     );
 
-    // Window
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(cx + 36, cy + 2, 38, 26),
@@ -500,7 +523,6 @@ class _VanPainter extends CustomPainter {
       Paint()..color = const Color(0xFFE8F5EE),
     );
 
-    // Wheels
     void wheel(double x) {
       canvas.drawCircle(
         Offset(x, cy + 66),
@@ -513,7 +535,6 @@ class _VanPainter extends CustomPainter {
     wheel(cx - 50);
     wheel(cx + 30);
 
-    // Package on van
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(cx - 78, cy - 12, 56, 42),
@@ -535,7 +556,6 @@ class _VanPainter extends CustomPainter {
       linePaint,
     );
 
-    // Bow on box
     final bow = Paint()
       ..color = Colors.white
       ..strokeWidth = 2
@@ -546,7 +566,6 @@ class _VanPainter extends CustomPainter {
       ..quadraticBezierTo(cx - 50, cy - 20, cx - 44, cy - 12);
     canvas.drawPath(bowPath, bow);
 
-    // Speed lines
     final lineP = Paint()..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final y = cy + 20 + i * 12.0;
@@ -556,7 +575,6 @@ class _VanPainter extends CustomPainter {
       canvas.drawLine(Offset(cx - 130, y), Offset(cx - 102, y), lineP);
     }
 
-    // Location pin
     canvas.drawCircle(Offset(cx + 72, cy - 42), 13, Paint()..color = _red);
     canvas.drawCircle(
       Offset(cx + 72, cy - 46),
@@ -578,12 +596,24 @@ class _VanPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Illustration 2 — roles (shop vs courier cards)
+// Illustration 2 — roles  (labels now come from l10n)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RolesIllus extends StatelessWidget {
   static const _green = Color(0xFF1A7A3C);
   static const _red = Color(0xFFD32F1E);
+
+  final String shopLabel;
+  final String shopDesc;
+  final String courierLabel;
+  final String courierDesc;
+
+  const _RolesIllus({
+    required this.shopLabel,
+    required this.shopDesc,
+    required this.courierLabel,
+    required this.courierDesc,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -596,16 +626,16 @@ class _RolesIllus extends StatelessWidget {
             color: _green,
             bg: const Color(0xFFE8F5EE),
             icon: Icons.storefront_outlined,
-            title: 'Магазин',
-            desc: 'Создавайте\nзаказы',
+            title: shopLabel,
+            desc: shopDesc,
           ),
           const SizedBox(width: 14),
           _RoleCard(
             color: _red,
             bg: const Color(0xFFFFF0EE),
             icon: Icons.delivery_dining_outlined,
-            title: 'Курьер',
-            desc: 'Берите заказы\nи зарабатывайте',
+            title: courierLabel,
+            desc: courierDesc,
           ),
         ],
       ),
@@ -678,7 +708,6 @@ class _RoleCardState extends State<_RoleCard>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Top accent
             Container(
               height: 3,
               decoration: BoxDecoration(
@@ -699,10 +728,10 @@ class _RoleCardState extends State<_RoleCard>
             const SizedBox(height: 12),
             Text(
               widget.title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF0F1117),
+                color: Color(0xFF0F1117),
               ),
             ),
             const SizedBox(height: 4),
@@ -723,7 +752,7 @@ class _RoleCardState extends State<_RoleCard>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Illustration 3 — tokens & levels
+// Illustration 3 — tokens & levels  (no user-visible text to localize)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TokensIllus extends StatefulWidget {
@@ -780,7 +809,6 @@ class _TokensPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height * 0.44;
 
-    // Outer glow rings
     for (int i = 3; i >= 1; i--) {
       canvas.drawCircle(
         Offset(cx, cy),
@@ -789,10 +817,8 @@ class _TokensPainter extends CustomPainter {
       );
     }
 
-    // Token coin
     canvas.drawCircle(Offset(cx, cy), 36 * pulse, Paint()..color = _orange);
 
-    // "T" label
     final tp = TextPainter(
       text: const TextSpan(
         text: 'T',
@@ -806,7 +832,6 @@ class _TokensPainter extends CustomPainter {
     )..layout();
     tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
 
-    // +1 badge
     final b1 = RRect.fromRectAndRadius(
       Rect.fromCenter(center: Offset(cx + 64, cy - 36), width: 36, height: 22),
       const Radius.circular(11),
@@ -814,7 +839,6 @@ class _TokensPainter extends CustomPainter {
     canvas.drawRRect(b1, Paint()..color = _green);
     _drawText(canvas, '+1', cx + 64, cy - 36, Colors.white, 12);
 
-    // +2 badge
     final b2 = RRect.fromRectAndRadius(
       Rect.fromCenter(center: Offset(cx - 60, cy - 34), width: 36, height: 22),
       const Radius.circular(11),
@@ -822,23 +846,16 @@ class _TokensPainter extends CustomPainter {
     canvas.drawRRect(b2, Paint()..color = const Color(0xFFD32F1E));
     _drawText(canvas, '+2', cx - 60, cy - 34, Colors.white, 12);
 
-    // Daily bonus pill
+    // Daily bonus pill — localized inline via passed text would require
+    // refactoring _TokensPainter to accept a string; keeping as-is since
+    // "+0.5" is a numeric label understood across both locales.
     final bonusRect = RRect.fromRectAndRadius(
       Rect.fromCenter(center: Offset(cx, cy + 58), width: 170, height: 24),
       const Radius.circular(12),
     );
     canvas.drawRRect(bonusRect, Paint()..color = _green.withValues(alpha: 0.1));
-    _drawText(
-      canvas,
-      '+0.5 жетонов в день',
-      cx,
-      cy + 58,
-      _green,
-      10,
-      bold: true,
-    );
+    _drawText(canvas, '+0.5 / day', cx, cy + 58, _green, 10, bold: true);
 
-    // XP progress bar
     final barY = cy + 88.0;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -858,10 +875,10 @@ class _TokensPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(cx - 90, barY, 180, 8)),
     );
 
-    // Level labels
-    _drawText(canvas, 'Ур.1', cx - 86, barY + 20, const Color(0xFF9AA3AF), 9);
-    _drawText(canvas, 'Ур.3 ★', cx, barY + 20, _green, 9, bold: true);
-    _drawText(canvas, 'Ур.10', cx + 82, barY + 20, const Color(0xFF9AA3AF), 9);
+    // Level labels use "Ур." / numeric — keep neutral
+    _drawText(canvas, 'Lv.1', cx - 86, barY + 20, const Color(0xFF9AA3AF), 9);
+    _drawText(canvas, 'Lv.3 ★', cx, barY + 20, _green, 9, bold: true);
+    _drawText(canvas, 'Lv.10', cx + 82, barY + 20, const Color(0xFF9AA3AF), 9);
   }
 
   void _drawText(
@@ -892,12 +909,30 @@ class _TokensPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Illustration 4 — 3 steps flow
+// Illustration 4 — 3 steps flow  (labels now come from l10n)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StepsIllus extends StatelessWidget {
   static const _green = Color(0xFF1A7A3C);
   static const _red = Color(0xFFD32F1E);
+
+  final String shopLabel;
+  final String shopSub;
+  final String courierLabel;
+  final String courierSub;
+  final String deliveryLabel;
+  final String deliverySub;
+  final String badge;
+
+  const _StepsIllus({
+    required this.shopLabel,
+    required this.shopSub,
+    required this.courierLabel,
+    required this.courierSub,
+    required this.deliveryLabel,
+    required this.deliverySub,
+    required this.badge,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -910,25 +945,25 @@ class _StepsIllus extends StatelessWidget {
             bg: const Color(0xFFE8F5EE),
             color: _green,
             icon: Icons.storefront_outlined,
-            label: 'Магазин',
-            sub: 'создаёт\nзаказ',
+            label: shopLabel,
+            sub: shopSub,
           ),
           _Arrow(),
           _StepBox(
             bg: const Color(0xFFFFF0EE),
             color: _red,
             icon: Icons.delivery_dining_outlined,
-            label: 'Курьер',
-            sub: 'берёт\nзаказ',
+            label: courierLabel,
+            sub: courierSub,
           ),
           _Arrow(),
           _StepBox(
             bg: const Color(0xFFE8F5EE),
             color: _green,
             icon: Icons.check_circle_outline_rounded,
-            label: 'Доставка',
-            sub: 'подтверждена',
-            badge: '+ кэшбек',
+            label: deliveryLabel,
+            sub: deliverySub,
+            badge: badge,
           ),
         ],
       ),
@@ -1056,7 +1091,7 @@ class _Arrow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Logo drawn via CustomPainter (same as phone_screen)
+// Logo
 // ─────────────────────────────────────────────────────────────────────────────
 
 class BaglaLogo extends StatelessWidget {
@@ -1071,7 +1106,7 @@ class BaglaLogo extends StatelessWidget {
       'assets/images/bagla_logo.png',
       width: width,
       height: height,
-      fit: BoxFit.contain, // важно чтобы не обрезалось
+      fit: BoxFit.contain,
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/home/courier_filter_modal.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/unread_notifications_modal.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/home/home_app_bar.dart';
-import 'package:bagla/features/home/location_filter.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
@@ -39,24 +39,27 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ── Фильтры статуса ───────────────────────────────────────────────────────
+  // ── Сегментный фильтр ─────────────────────────────────────────────────────
   int _selectedFilterIndex = 0;
   String? _selectedStatus;
 
-  // ── Фильтр локации ────────────────────────────────────────────────────────
+  // ── Локация курьера (сохранённая из профиля) ──────────────────────────────
+  String _provinceId = '';
   String _provinceLabel = '';
+  String _etrapId = '';
+  String _etrapLabel = '';
+
   Etrap? _selectedEtrap;
   District? _selectedDistrict;
-  List<Etrap> _etraps = [];
   List<District> _districts = [];
   bool _loadingEtraps = false;
   bool _loadingDistricts = false;
-  String _provinceId = '';
-  String _transportFilter = 'any';
+
+  // ── Фильтры ───────────────────────────────────────────────────────────────
+  CourierFilters _filters = const CourierFilters();
+  final _cache = ClassifierCache();
 
   final AuthRepository _authRepo = AuthRepository();
-
-  // ── Заказы / пагинация ────────────────────────────────────────────────────
   final OrderService _orderService = OrderService();
   final OrderRealtimeService _realtimeService = OrderRealtimeService();
 
@@ -69,7 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
   static const int _pageSize = 6;
   final ScrollController _scrollController = ScrollController();
 
-  // ── Счётчик активных заказов курьера ──────────────────────────────────────
   int _activeOrdersCount = 0;
   static const int _maxActiveOrders = 3;
 
@@ -97,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
-  // ── Init ──────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -117,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ── Загрузка счётчика активных заказов ────────────────────────────────────
   Future<void> _loadActiveOrdersCount(String userId) async {
     final count = await _orderService.getActiveOrdersCount(userId);
     if (mounted) setState(() => _activeOrdersCount = count);
@@ -130,19 +130,15 @@ class _HomeScreenState extends State<HomeScreen> {
       final service = NotificationService();
       final unread = await service.getUnread(auth.userId);
       if (unread.isEmpty || !mounted) return;
-
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
-
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => UnreadNotificationsModal(
           notifications: unread,
-          onMarkAllRead: () async {
-            await service.markAllAsRead(auth.userId);
-          },
+          onMarkAllRead: () async => service.markAllAsRead(auth.userId),
         ),
       );
     } catch (e) {
@@ -171,41 +167,23 @@ class _HomeScreenState extends State<HomeScreen> {
     _provinceId = prefs.getString('province_id') ?? '';
     _provinceLabel =
         prefs.getString(isRu ? 'province_ru' : 'province_tk') ?? '';
+    _etrapId = prefs.getString('etrap_id') ?? '';
+    _etrapLabel = prefs.getString(isRu ? 'etrap_ru' : 'etrap_tk') ?? '';
 
-    _transportFilter = prefs.getString('transport_type') ?? 'any';
+    final savedTransport = prefs.getString('transport_type') ?? 'any';
+    _filters = _filters.copyWith(transportFilter: savedTransport);
 
-    final etrapId = prefs.getString('etrap_id') ?? '';
-    final etrapRu = prefs.getString('etrap_ru') ?? '';
-    final etrapTk = prefs.getString('etrap_tk') ?? '';
-
-    if (etrapId.isNotEmpty) {
+    if (_etrapId.isNotEmpty) {
       _selectedEtrap = Etrap(
-        id: etrapId,
-        ru: etrapRu,
-        tk: etrapTk,
+        id: _etrapId,
+        ru: prefs.getString('etrap_ru') ?? '',
+        tk: prefs.getString('etrap_tk') ?? '',
         provinceId: _provinceId,
       );
-      // Загружаем список районов, но НЕ выбираем ни один по умолчанию
-      _loadDistricts(etrapId, silent: true);
+      _loadDistricts(_etrapId, silent: true);
     }
-
-    // Район намеренно не восстанавливаем — курьер выбирает сам
     _selectedDistrict = null;
-
     if (mounted) setState(() {});
-  }
-
-  Future<void> _loadEtraps() async {
-    if (_provinceId.isEmpty) return;
-    setState(() => _loadingEtraps = true);
-    try {
-      final list = await _authRepo.getEtrapsByProvince(_provinceId);
-      if (mounted) setState(() => _etraps = list);
-    } catch (e) {
-      debugPrint('_loadEtraps error: $e');
-    } finally {
-      if (mounted) setState(() => _loadingEtraps = false);
-    }
   }
 
   Future<void> _loadDistricts(String etrapId, {bool silent = false}) async {
@@ -220,85 +198,28 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _onEtrapSelected(Etrap etrap) async {
-    setState(() {
-      _selectedEtrap = etrap;
-      _selectedDistrict = null;
-      _districts = [];
-    });
-    await _loadDistricts(etrap.id);
-    _reconnectRealtime();
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // ЗАДАЧА 3: список заказчиков с именем
+  // id = shop_phone, label = "Имя (телефон)" или просто телефон
+  // ─────────────────────────────────────────────────────────────────────────
 
-  void _onDistrictSelected(District district) {
-    setState(() => _selectedDistrict = district);
-    _reconnectRealtime();
-  }
+  List<CourierFilterItem> _buildShopItems() {
+    // Собираем уникальных заказчиков.
+    // В заказе может быть поле shop_name (имя магазина) — используем его если есть.
+    final seen = <String>{};
+    final result = <CourierFilterItem>[];
+    for (final o in _orders) {
+      final phone = (o['shop_phone'] ?? '').toString().trim();
+      if (phone.isEmpty || !seen.add(phone)) continue;
 
-  void _clearDistrictFilter() {
-    setState(() => _selectedDistrict = null);
-    _reconnectRealtime();
-  }
+      // ЗАДАЧА 3: имя берём из shop_name или из данных shopId
+      final name = (o['shop_name'] ?? o['shop_title'] ?? '').toString().trim();
+      final label = name.isNotEmpty ? '$name ($phone)' : phone;
 
-  void _showEtrapPicker() async {
-    if (_etraps.isEmpty) await _loadEtraps();
-    if (!mounted) return;
-
-    final isRu = context.read<LanguageProvider>().isRu;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _LocationPickerSheet(
-        title: 'Выберите этрап',
-        isLoading: _loadingEtraps,
-        items: _etraps
-            .map((e) => _PickerItem(id: e.id, label: e.label(isRu)))
-            .toList(),
-        selectedId: _selectedEtrap?.id,
-        onSelect: (id) {
-          Navigator.pop(context);
-          final etrap = _etraps.firstWhere((e) => e.id == id);
-          _onEtrapSelected(etrap);
-        },
-      ),
-    );
-  }
-
-  void _showDistrictPicker() {
-    final isRu = context.read<LanguageProvider>().isRu;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _LocationPickerSheet(
-        title: 'Выберите район',
-        isLoading: _loadingDistricts,
-        items: _districts
-            .map((d) => _PickerItem(id: d.id, label: d.label(isRu)))
-            .toList(),
-        selectedId: _selectedDistrict?.id,
-        onSelect: (id) {
-          Navigator.pop(context);
-          final dist = _districts.firstWhere((d) => d.id == id);
-          _onDistrictSelected(dist);
-        },
-        onClear: _selectedDistrict != null
-            ? () {
-                Navigator.pop(context);
-                _clearDistrictFilter();
-              }
-            : null,
-      ),
-    );
+      result.add(CourierFilterItem(id: phone, label: label));
+    }
+    result.sort((a, b) => a.label.compareTo(b.label));
+    return result;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -306,10 +227,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   List<dynamic> _applyFilters(List<dynamic> orders) {
-    var result = orders;
+    var r = orders;
 
     if (_selectedStatus != null) {
-      result = result
+      r = r
           .where(
             (o) =>
                 (o['order_status'] ?? '').toString().toLowerCase() ==
@@ -318,41 +239,82 @@ class _HomeScreenState extends State<HomeScreen> {
           .toList();
     }
 
-    final auth = context.read<AuthProvider>();
-    if (auth.role == 'courier' && _selectedEtrap != null) {
-      result = result.where((o) {
-        final etrap = o['etrap'];
-        if (etrap == null) return false;
-        final etrapId = etrap is Map
-            ? etrap['id']?.toString()
-            : etrap.toString();
-        return etrapId == _selectedEtrap!.id;
+    final role = context.read<AuthProvider>().role;
+
+    if (role == 'courier' && _selectedEtrap != null) {
+      r = r.where((o) {
+        final e = o['etrap'];
+        return e is Map && e['id']?.toString() == _selectedEtrap!.id;
+      }).toList();
+    }
+    if (role == 'courier' && _selectedDistrict != null) {
+      r = r.where((o) {
+        final d = o['district'];
+        return d is Map && d['id']?.toString() == _selectedDistrict!.id;
       }).toList();
     }
 
-    // Фильтр по району — только если курьер явно выбрал район
-    if (auth.role == 'courier' && _selectedDistrict != null) {
-      result = result.where((o) {
-        final dist = o['district'];
-        if (dist == null) return false;
-        final distId = dist is Map ? dist['id']?.toString() : dist.toString();
-        return distId == _selectedDistrict!.id;
-      }).toList();
+    if (role == 'courier') {
+      if (_filters.transportFilter != 'any') {
+        r = r.where((o) {
+          final t = o['transport_type']?.toString() ?? '';
+          return t.isEmpty || t == 'any' || t == _filters.transportFilter;
+        }).toList();
+      }
+
+      if (_filters.shopProvince != null) {
+        r = r.where((o) {
+          final p = o['shop_province'];
+          return p is Map && p['id']?.toString() == _filters.shopProvince!.id;
+        }).toList();
+      }
+      if (_filters.shopEtrap != null) {
+        r = r.where((o) {
+          final e = o['shop_etrap'];
+          return e is Map && e['id']?.toString() == _filters.shopEtrap!.id;
+        }).toList();
+      }
+      if (_filters.shopDistrict != null) {
+        r = r.where((o) {
+          final d = o['shop_district'];
+          return d is Map && d['id']?.toString() == _filters.shopDistrict!.id;
+        }).toList();
+      }
+
+      if (_filters.deliveryProvince != null) {
+        r = r.where((o) {
+          final p = o['province'];
+          return p is Map &&
+              p['id']?.toString() == _filters.deliveryProvince!.id;
+        }).toList();
+      }
+      if (_filters.deliveryEtrap != null) {
+        r = r.where((o) {
+          final e = o['etrap'];
+          return e is Map && e['id']?.toString() == _filters.deliveryEtrap!.id;
+        }).toList();
+      }
+      if (_filters.deliveryDistrict != null) {
+        r = r.where((o) {
+          final d = o['district'];
+          return d is Map &&
+              d['id']?.toString() == _filters.deliveryDistrict!.id;
+        }).toList();
+      }
+
+      // ЗАДАЧА 3: фильтр по shop_phone (id элемента = phone)
+      if (_filters.shop != null) {
+        r = r
+            .where(
+              (o) =>
+                  (o['shop_phone'] ?? '').toString().trim() ==
+                  _filters.shop!.id,
+            )
+            .toList();
+      }
     }
 
-    if (auth.role == 'courier' && _transportFilter != 'any') {
-      result = result.where((o) {
-        final raw = o['transport_type'];
-        if (raw == null ||
-            raw.toString().trim().isEmpty ||
-            raw.toString() == 'any') {
-          return true;
-        }
-        return raw.toString() == _transportFilter;
-      }).toList();
-    }
-
-    return result;
+    return r;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -376,8 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           for (final o in more) {
             final id = o['id'].toString();
-            final exists = _orders.any((e) => e['id'].toString() == id);
-            if (!exists) _orders.add(o);
+            if (!_orders.any((e) => e['id'].toString() == id)) _orders.add(o);
           }
           _httpOffset += more.length;
           _hasMore = more.length == _pageSize;
@@ -413,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _setupRealtimeCallbacks() {
-    _realtimeService.onConnectionChanged = (isConnected) {
+    _realtimeService.onConnectionChanged = (_) {
       if (mounted) setState(() {});
     };
     _realtimeService.onOrdersUpdate = (orders) {
@@ -434,15 +395,9 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         } else if (event == 'update') {
           final idx = _orders.indexWhere((o) => o['id'].toString() == id);
-          if (idx != -1) {
-            _orders[idx] = order;
-          } else {
-            _orders.insert(0, order);
-          }
+          idx != -1 ? _orders[idx] = order : _orders.insert(0, order);
           final auth = context.read<AuthProvider>();
-          if (auth.role == 'courier') {
-            _loadActiveOrdersCount(auth.userId);
-          }
+          if (auth.role == 'courier') _loadActiveOrdersCount(auth.userId);
         } else if (event == 'delete') {
           _orders.removeWhere((o) => o['id'].toString() == id);
         }
@@ -500,6 +455,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // ОТКРЫТИЕ МОДАЛКИ ФИЛЬТРОВ
+  // ЗАДАЧА 1: модалка в отдельном файле
+  // ЗАДАЧА 2: defaultProvince/defaultEtrap из сохранённых prefs
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _showFilterModal() {
+    final isRu = context.read<LanguageProvider>().isRu;
+
+    // ЗАДАЧА 2: дефолт из профиля курьера
+    final defaultProvince = _provinceId.isNotEmpty
+        ? CourierFilterItem(id: _provinceId, label: _provinceLabel)
+        : null;
+    final defaultEtrap = _etrapId.isNotEmpty
+        ? CourierFilterItem(id: _etrapId, label: _etrapLabel)
+        : null;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) => CourierFilterModal(
+        initial: _filters,
+        isRu: isRu,
+        cache: _cache,
+        authRepo: _authRepo,
+        shopItems: _buildShopItems(),
+        defaultProvince: defaultProvince,
+        defaultEtrap: defaultEtrap,
+        onApply: (newFilters) {
+          setState(() => _filters = newFilters);
+          Navigator.pop(modalCtx);
+        },
+        onClear: () {
+          setState(() => _filters = const CourierFilters());
+          Navigator.pop(modalCtx);
+        },
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // BUILD
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -508,7 +504,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProv = context.watch<AuthProvider>();
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
-    final isRu = lang.isRu;
 
     final String currentStatus = authProv.status.toLowerCase().trim();
     final String role = authProv.role.toLowerCase().trim();
@@ -519,7 +514,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isClient = role == 'client';
     final bool isBanned = currentStatus == 'banned';
     final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
-    // Клиент без роли — нужно направить на выбор роли
     final bool needsRoleSelection = isClient && currentStatus == 'published';
 
     final List<dynamic> filteredOrders = _applyFilters(_orders);
@@ -567,7 +561,6 @@ class _HomeScreenState extends State<HomeScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Баннер выбора роли (клиент без роли) ──────────────────────
             if (needsRoleSelection)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -591,7 +584,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildStatusBanner(isBanned),
               ),
 
-            // ── Заголовок + счётчик ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
               child: Row(
@@ -602,7 +594,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const Spacer(),
                   if (isCourier) ...[
-                    _buildTransportIconPicker(), // ← иконка дропдауна
+                    _FilterButton(
+                      activeCount: _filters.activeCount,
+                      onTap: _showFilterModal,
+                    ),
                     const SizedBox(width: 8),
                     _ActiveOrdersCounter(
                       current: _activeOrdersCount,
@@ -612,12 +607,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            if (isCourier && _provinceLabel.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
-                child: _buildLocationFilter(isRu),
-              ),
 
             if (isShop || _selectedFilterIndex == 1)
               Padding(
@@ -646,199 +635,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ? SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: _buildCreateButton(context),
+                  child: _buildCreateButton(context, words),
                 ),
               )
             : null,
-      ),
-    );
-  }
-
-  static const _transportFilterOptions = [
-    ('any', Icons.directions_run_rounded, 'Любой'),
-    ('car', Icons.directions_car_rounded, 'Легковой'),
-    ('truck', Icons.local_shipping_rounded, 'Грузовой'),
-  ];
-
-  Widget _buildTransportIconPicker() {
-    final current = _transportFilterOptions.firstWhere(
-      (o) => o.$1 == _transportFilter,
-      orElse: () => _transportFilterOptions[0],
-    );
-
-    return GestureDetector(
-      onTap: () => _showTransportPopup(),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: _transportFilter == 'any'
-              ? Colors.white
-              : HomeScreen.brandGreen.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _transportFilter == 'any'
-                ? const Color(0xFFEEF0F3)
-                : HomeScreen.brandGreen.withValues(alpha: 0.35),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              current.$2,
-              size: 20,
-              color: _transportFilter == 'any'
-                  ? const Color(0xFF9AA3AF)
-                  : HomeScreen.brandGreen,
-            ),
-            if (_transportFilter != 'any')
-              Positioned(
-                top: 5,
-                right: 5,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: HomeScreen.brandGreen,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTransportPopup() async {
-    // Показываем попап под счётчиком (правый верхний угол списка)
-    await showMenu<String>(
-      context: context,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 8,
-      position: RelativeRect.fromLTRB(
-        MediaQuery.of(context).size.width - 180,
-        kToolbarHeight + 180,
-        16,
-        0,
-      ),
-      items: _transportFilterOptions.map((opt) {
-        final isSelected = _transportFilter == opt.$1;
-        return PopupMenuItem<String>(
-          value: opt.$1,
-          padding: EdgeInsets.zero,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? HomeScreen.brandGreen.withValues(alpha: 0.07)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? HomeScreen.brandGreen.withValues(alpha: 0.12)
-                        : const Color(0xFFF5F7FA),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    opt.$2,
-                    size: 18,
-                    color: isSelected
-                        ? HomeScreen.brandGreen
-                        : const Color(0xFF9AA3AF),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    opt.$3,
-                    style: isSelected
-                        ? AppText.semiBold(
-                            fontSize: 14,
-                            color: HomeScreen.brandGreen,
-                          )
-                        : AppText.regular(
-                            fontSize: 14,
-                            color: const Color(0xFF0F1117),
-                          ),
-                  ),
-                ),
-                if (isSelected)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: HomeScreen.brandGreen,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    ).then((value) {
-      if (value != null && value != _transportFilter) {
-        setState(() => _transportFilter = value);
-      }
-    });
-  }
-  // ─────────────────────────────────────────────────────────────────────────
-  // ВИДЖЕТ ФИЛЬТРА ЛОКАЦИИ
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Widget _buildLocationFilter(bool isRu) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          LocationChip(
-            icon: Icons.map_outlined,
-            label: _provinceLabel,
-            isFixed: true,
-          ),
-          const SizedBox(width: 6),
-          LocationChip(
-            icon: Icons.location_city_outlined,
-            label: _selectedEtrap != null
-                ? _selectedEtrap!.label(isRu)
-                : 'Этрап',
-            isActive: _selectedEtrap != null,
-            onTap: _showEtrapPicker,
-          ),
-          const SizedBox(width: 6),
-          if (_selectedEtrap != null)
-            LocationChip(
-              icon: Icons.pin_drop_outlined,
-              // Если район не выбран — показываем "Все районы"
-              label: _selectedDistrict != null
-                  ? _selectedDistrict!.label(isRu)
-                  : 'Все районы',
-              isActive: _selectedDistrict != null,
-              onTap: _districts.isEmpty && !_loadingDistricts
-                  ? null
-                  : _showDistrictPicker,
-              isLoading: _loadingDistricts,
-              onClear: _selectedDistrict != null ? _clearDistrictFilter : null,
-            ),
-        ],
       ),
     );
   }
@@ -953,16 +753,14 @@ class _HomeScreenState extends State<HomeScreen> {
           errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
         ),
         const SizedBox(width: 8),
-        // Клиент без роли: показываем кнопку выбора роли вместо баланса
         if (needsRoleSelection)
           GestureDetector(
             onTap: () => Navigator.pushNamed(
               context,
               '/user_type_selection',
             ).then((_) => _handleRefresh()),
-            child: SizedBox(),
+            child: const SizedBox(),
           )
-        // Курьер: жетоны
         else if (isCourier)
           GestureDetector(
             onTap: () => showModalBottomSheet(
@@ -1003,7 +801,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-        // Shop / business: ничего не показываем (кошелёк убран)
       ],
     );
   }
@@ -1158,7 +955,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCreateButton(BuildContext context) {
+  Widget _buildCreateButton(BuildContext context, AppLocalizations words) {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -1195,7 +992,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Создать заказ',
+              words.createOrder,
               style: AppText.medium(
                 fontSize: 15,
                 color: Colors.white,
@@ -1239,10 +1036,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showLevelUpOnHomeScreen(BuildContext context, LevelProvider provider) {
+  void _showLevelUpOnHomeScreen(BuildContext ctx, LevelProvider provider) {
     final pending = provider.pendingLevelUp;
     if (pending == null) return;
-    Navigator.of(context)
+    Navigator.of(ctx)
         .push(
           PageRouteBuilder(
             opaque: false,
@@ -1251,7 +1048,7 @@ class _HomeScreenState extends State<HomeScreen> {
               provider: provider,
               onDismiss: () {
                 provider.dismissLevelUp(pending.id);
-                Navigator.of(context).pop();
+                Navigator.of(ctx).pop();
               },
             ),
           ),
@@ -1261,8 +1058,77 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Баннер выбора роли (role == client && status == published)
+// Вспомогательные виджеты (остаются в home_screen.dart)
 // ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterButton extends StatelessWidget {
+  final int activeCount;
+  final VoidCallback onTap;
+  const _FilterButton({required this.activeCount, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool has = activeCount > 0;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: has
+              ? HomeScreen.brandGreen.withValues(alpha: 0.1)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: has
+                ? HomeScreen.brandGreen.withValues(alpha: 0.35)
+                : const Color(0xFFEEF0F3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.tune_rounded,
+              size: 20,
+              color: has ? HomeScreen.brandGreen : const Color(0xFF9AA3AF),
+            ),
+            if (has)
+              Positioned(
+                top: 5,
+                right: 5,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    color: HomeScreen.brandGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$activeCount',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _RoleSelectionBanner extends StatelessWidget {
   final VoidCallback onTap;
@@ -1270,6 +1136,7 @@ class _RoleSelectionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1306,7 +1173,7 @@ class _RoleSelectionBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Выберите вашу роль',
+                    words.roleSelectionTitle,
                     style: AppText.bold(
                       fontSize: 14,
                       color: const Color(0xFF0F1117),
@@ -1314,7 +1181,7 @@ class _RoleSelectionBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Курьер или заказчик — нажмите чтобы продолжить',
+                    words.roleActionPrompt,
                     style: AppText.regular(
                       fontSize: 12,
                       color: const Color(0xFF9AA3AF),
@@ -1344,47 +1211,39 @@ class _RoleSelectionBanner extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Счётчик активных заказов "2/3"
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _ActiveOrdersCounter extends StatelessWidget {
   final int current;
   final int max;
-
   const _ActiveOrdersCounter({required this.current, required this.max});
 
   @override
   Widget build(BuildContext context) {
     final bool isFull = current >= max;
-    final Color activeColor = isFull
-        ? HomeScreen.brandRed
-        : HomeScreen.brandGreen;
-
+    final Color c = isFull ? HomeScreen.brandRed : HomeScreen.brandGreen;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: activeColor.withValues(alpha: 0.08),
+        color: c.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: activeColor.withValues(alpha: 0.2)),
+        border: Border.all(color: c.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.local_shipping_outlined, size: 13, color: activeColor),
+          Icon(Icons.local_shipping_outlined, size: 13, color: c),
           const SizedBox(width: 5),
           RichText(
             text: TextSpan(
               children: [
                 TextSpan(
                   text: '$current',
-                  style: AppText.bold(fontSize: 13, color: activeColor),
+                  style: AppText.bold(fontSize: 13, color: c),
                 ),
                 TextSpan(
                   text: '/$max',
                   style: AppText.regular(
                     fontSize: 13,
-                    color: activeColor.withValues(alpha: 0.5),
+                    color: c.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -1395,246 +1254,6 @@ class _ActiveOrdersCounter extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _LocationPickerSheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PickerItem {
-  final String id;
-  final String label;
-  const _PickerItem({required this.id, required this.label});
-}
-
-class _LocationPickerSheet extends StatefulWidget {
-  final String title;
-  final bool isLoading;
-  final List<_PickerItem> items;
-  final String? selectedId;
-  final void Function(String id) onSelect;
-  final VoidCallback? onClear;
-
-  const _LocationPickerSheet({
-    required this.title,
-    required this.isLoading,
-    required this.items,
-    required this.onSelect,
-    this.selectedId,
-    this.onClear,
-  });
-
-  @override
-  State<_LocationPickerSheet> createState() => _LocationPickerSheetState();
-}
-
-class _LocationPickerSheetState extends State<_LocationPickerSheet> {
-  final _searchCtrl = TextEditingController();
-  String _q = '';
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = widget.items
-        .where((i) => i.label.toLowerCase().contains(_q))
-        .toList();
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.55,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (_, sc) => Column(
-        children: [
-          const SizedBox(height: 10),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF0F3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Text(
-                  widget.title,
-                  style: AppText.bold(
-                    fontSize: 16,
-                    color: const Color(0xFF0F1117),
-                  ),
-                ),
-                const Spacer(),
-                if (widget.onClear != null)
-                  GestureDetector(
-                    onTap: widget.onClear,
-                    child: Text(
-                      'Сбросить',
-                      style: AppText.medium(
-                        fontSize: 13,
-                        color: HomeScreen.brandRed,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => setState(() => _q = v.toLowerCase()),
-              style: AppText.regular(
-                fontSize: 14,
-                color: const Color(0xFF0F1117),
-              ),
-              decoration: InputDecoration(
-                hintText: 'Поиск...',
-                hintStyle: AppText.regular(
-                  fontSize: 14,
-                  color: const Color(0xFF9AA3AF),
-                ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF9AA3AF),
-                  size: 20,
-                ),
-                suffixIcon: _q.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchCtrl.clear();
-                          setState(() => _q = '');
-                        },
-                        child: const Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: Color(0xFF9AA3AF),
-                        ),
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF5F7FA),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: Color(0xFFEEF0F3)),
-          Expanded(
-            child: widget.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: HomeScreen.brandGreen,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      'Ничего не найдено',
-                      style: AppText.regular(
-                        fontSize: 14,
-                        color: const Color(0xFF9AA3AF),
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    controller: sc,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(
-                      height: 1,
-                      indent: 52,
-                      color: Color(0xFFF4F5F7),
-                    ),
-                    itemBuilder: (_, i) {
-                      final item = filtered[i];
-                      final isActive = item.id == widget.selectedId;
-                      return InkWell(
-                        onTap: () => widget.onSelect(item.id),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? HomeScreen.brandGreen.withValues(
-                                          alpha: 0.08,
-                                        )
-                                      : const Color(0xFFF5F7FA),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  isActive
-                                      ? Icons.check_rounded
-                                      : Icons.location_on_outlined,
-                                  size: 16,
-                                  color: isActive
-                                      ? HomeScreen.brandGreen
-                                      : const Color(0xFF9AA3AF),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  item.label,
-                                  style: isActive
-                                      ? AppText.semiBold(
-                                          fontSize: 14,
-                                          color: const Color(0xFF0F1117),
-                                        )
-                                      : AppText.regular(
-                                          fontSize: 14,
-                                          color: const Color(0xFF0F1117),
-                                        ),
-                                ),
-                              ),
-                              if (isActive)
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: const BoxDecoration(
-                                    color: HomeScreen.brandGreen,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _GradientText extends StatelessWidget {
   final String text;
@@ -1642,12 +1261,10 @@ class _GradientText extends StatelessWidget {
   const _GradientText({required this.text, required this.style});
 
   @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
-      child: Text(text, style: style.copyWith(color: Colors.white)),
-    );
-  }
+  Widget build(BuildContext context) => ShaderMask(
+    shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
+    child: Text(text, style: style.copyWith(color: Colors.white)),
+  );
 }
 
 class _LevelUpOverlay extends StatelessWidget {
