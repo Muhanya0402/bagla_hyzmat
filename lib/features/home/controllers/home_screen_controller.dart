@@ -71,8 +71,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> changeFilterIndex(int index) async {
-    if (selectedFilterIndex == index)
+    if (selectedFilterIndex == index) {
       return; // Если нажали на ту же вкладку — ничего не делаем
+    }
 
     setState(() {
       selectedFilterIndex = index;

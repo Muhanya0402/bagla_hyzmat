@@ -54,17 +54,8 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: brandGreen.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.close, color: brandGreen, size: 20),
-          ),
-        ),
+        // ✅ leading убран — профиль теперь таб в BottomNavigationBar, не пуш-экран
+        automaticallyImplyLeading: false,
         title: Text(
           'Профиль',
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),

@@ -48,7 +48,6 @@ class OrderCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Gradient accent bar
               Container(
                 height: 3,
                 decoration: BoxDecoration(
@@ -69,7 +68,6 @@ class OrderCard extends StatelessWidget {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  // Cancel
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(ctx, false),
@@ -88,7 +86,6 @@ class OrderCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  // Confirm
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(ctx, true),
@@ -181,76 +178,87 @@ class OrderCard extends StatelessWidget {
         .toLowerCase();
     final isShop = role == 'shop';
     final String orderId = order['id'].toString();
-    final bool isDataLocked = !isShop && status == 'published';
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFEEF0F3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
           splashColor: HomeScreen.brandGreen.withValues(alpha: 0.04),
           highlightColor: Colors.transparent,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Top gradient strip (status-coloured) ────────────────────
+              // ── Status strip ───────────────────────────────────────────
               _StatusStrip(status: status),
 
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // ── Row 1: transport icon + ID + status badge ──────
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildOrderId(),
+                        _buildTransportIcon(),
+                        const SizedBox(width: 6),
+                        _buildIdPill(),
+                        const Spacer(),
                         _buildStatusBadge(status, words),
                       ],
                     ),
-                    const SizedBox(height: 18),
-                    _buildRouteTimeline(
-                      shopAddress: order['shop_adress'] ?? 'Адрес магазина',
-                      deliveryAddress:
-                          order['adress_of_delivery'] ?? 'Адрес доставки',
-                      district: order['district'],
-                      isLocked: isDataLocked,
-                      words: words,
+
+                    const SizedBox(height: 8),
+
+                    // ── Row 2-3: addresses ─────────────────────────────
+                    _buildAddressRow(
+                      icon: Icons.inventory_2_outlined,
+                      iconColor: HomeScreen.brandRed,
+                      address: order['shop_adress'] ?? 'Адрес магазина',
                     ),
-                  ],
-                ),
-              ),
+                    const SizedBox(height: 4),
+                    _buildAddressRow(
+                      icon: Icons.location_on_outlined,
+                      iconColor: HomeScreen.brandGreen,
+                      address: order['adress_of_delivery'] ?? 'Адрес доставки',
+                    ),
 
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 14),
-                child: Divider(color: Color(0xFFF1F4F8), height: 1),
-              ),
+                    const SizedBox(height: 8),
 
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildPriceSection(isShop, order, words),
-                    _buildActionButtons(
-                      context,
-                      status,
-                      orderId,
-                      isShop,
-                      currentUserId,
-                      userPhone,
+                    // ── Row 4: price + action button ───────────────────
+                    const Divider(
+                      color: Color(0xFFF1F4F8),
+                      height: 1,
+                      thickness: 1,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildPriceSection(isShop, order, words),
+                        _buildActionButtons(
+                          context,
+                          status,
+                          orderId,
+                          isShop,
+                          currentUserId,
+                          userPhone,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -259,6 +267,155 @@ class OrderCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // ── Address row ────────────────────────────────────────────────────────────
+  Widget _buildAddressRow({
+    required IconData icon,
+    required Color iconColor,
+    required String address,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, size: 13, color: iconColor),
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            address,
+            style: AppText.regular(
+              fontSize: 12,
+              color: const Color(0xFF0F1117),
+            ).copyWith(height: 1.4),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Transport icon (no background container) ───────────────────────────────
+  Widget _buildTransportIcon() {
+    final String? transportType = order['transport_type']?.toString();
+    IconData icon;
+    Color color;
+    switch (transportType) {
+      case 'car':
+        icon = Icons.directions_car_rounded;
+        color = HomeScreen.brandGreen;
+        break;
+      case 'truck':
+        icon = Icons.local_shipping_rounded;
+        color = HomeScreen.brandRed;
+        break;
+      default:
+        icon = Icons.directions_run_rounded;
+        color = const Color(0xFF9AA3AF);
+    }
+    return Icon(icon, size: 15, color: color);
+  }
+
+  // ── ID pill ────────────────────────────────────────────────────────────────
+  Widget _buildIdPill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
+        style: AppText.medium(fontSize: 10, color: const Color(0xFF9AA3AF)),
+      ),
+    );
+  }
+
+  // ── Status badge ───────────────────────────────────────────────────────────
+  Widget _buildStatusBadge(String status, AppLocalizations words) {
+    final styles = {
+      'published': _BadgeStyle(
+        color: HomeScreen.brandRed,
+        label: words.statusFree,
+        icon: Icons.search_rounded,
+      ),
+      'active': _BadgeStyle(
+        color: HomeScreen.brandGreen,
+        label: words.statusActive,
+        icon: Icons.local_shipping_outlined,
+      ),
+      'canceled': _BadgeStyle(
+        color: const Color(0xFF9AA3AF),
+        label: words.statusCanceled,
+        icon: Icons.cancel_outlined,
+      ),
+      'completed': _BadgeStyle(
+        color: HomeScreen.brandGreen,
+        label: words.statusDone,
+        icon: Icons.check_circle_outline_rounded,
+      ),
+    };
+    final s = styles[status] ?? styles['canceled']!;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: s.color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(s.icon, size: 10, color: s.color),
+          const SizedBox(width: 4),
+          Text(s.label, style: AppText.semiBold(fontSize: 10, color: s.color)),
+        ],
+      ),
+    );
+  }
+
+  // ── Price section ──────────────────────────────────────────────────────────
+  Widget _buildPriceSection(
+    bool isShop,
+    dynamic order,
+    AppLocalizations words,
+  ) {
+    final double total = (order['total_amount'] ?? 0.0).toDouble();
+    final double delivery = (order['delivery_amount'] ?? 0.0).toDouble();
+    final double amount = isShop ? (total - delivery) : delivery;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          isShop ? words.toReceive : words.deliveryFee,
+          style: AppText.regular(fontSize: 10, color: const Color(0xFF9AA3AF)),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            ShaderMask(
+              shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
+              child: Text(
+                amount.toStringAsFixed(0),
+                style: AppText.semiBold(fontSize: 20, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              'TMT',
+              style: AppText.regular(
+                fontSize: 10,
+                color: HomeScreen.brandGreen.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -277,7 +434,6 @@ class OrderCard extends StatelessWidget {
       return const SizedBox();
     }
 
-    // Shop: cancel button
     if (isShop && (status == 'published' || status == 'active')) {
       return _buildOutlineButton(
         label: 'Отменить',
@@ -286,12 +442,10 @@ class OrderCard extends StatelessWidget {
       );
     }
 
-    // Courier: take order
     if (!isShop && status == 'published') {
       final int points = order['points_amount'] ?? 0;
       final authProv = context.watch<AuthProvider>();
       final double balancePoints = authProv.balancePoints;
-
       final bool isRestricted =
           authProv.role == 'courier' && authProv.status == 'pending';
       final bool isUserActive =
@@ -307,7 +461,6 @@ class OrderCard extends StatelessWidget {
           if (isRestricted) {
             _showRestrictedModal(context);
           } else if (isUserActive) {
-            // ── ПРОВЕРКА ЛИМИТА: не более 3 активных заказов ───────────────
             final activeCount = await service.getActiveOrdersCount(
               currentUserId,
             );
@@ -327,8 +480,6 @@ class OrderCard extends StatelessWidget {
               );
               return;
             }
-            // ──────────────────────────────────────────────────────────────
-
             if (balancePoints >= points) {
               _confirmAction(
                 context: context,
@@ -372,10 +523,8 @@ class OrderCard extends StatelessWidget {
       );
     }
 
-    // Courier: delivered button
     if (status == 'active' && role == 'courier') {
-      // final double cashback = (order['cashback_amount'] ?? 0.0).toDouble();
-      final double cashback = 0.0;
+      const double cashback = 0.0;
       return _buildFilledButton(
         label: 'Завершить',
         color: HomeScreen.brandGreen,
@@ -387,34 +536,96 @@ class OrderCard extends StatelessWidget {
     return const SizedBox();
   }
 
-  // ── Sub-widgets ────────────────────────────────────────────────────────────
-
-  Widget _buildRouteTimeline({
-    required String shopAddress,
-    required String deliveryAddress,
-    required dynamic district,
-    required bool isLocked,
-    required AppLocalizations words,
+  // ── Filled button ──────────────────────────────────────────────────────────
+  Widget _buildFilledButton({
+    required String label,
+    required Color color,
+    required void Function() onTap,
+    int points = 0,
+    double balancePoints = 0,
+    double cashback = 0,
   }) {
-    return Column(
-      children: [
-        _buildPoint(
-          icon: Icons.inventory_2_outlined,
-          label: words.orderFrom,
-          address: shopAddress,
-          iconColor: HomeScreen.brandRed,
-          iconBg: HomeScreen.brandRed.withValues(alpha: 0.08),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
         ),
-        const SizedBox(height: 12),
-        _buildPoint(
-          icon: Icons.location_on_outlined,
-          label: words.orderTo,
-          address: deliveryAddress,
-          iconColor: HomeScreen.brandGreen,
-          iconBg: HomeScreen.brandGreen.withValues(alpha: 0.08),
-          isGrey: false,
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AppText.semiBold(fontSize: 12, color: Colors.white),
+            ),
+            if (points > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 1,
+                height: 12,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+              const SizedBox(width: 6),
+              Image.asset(
+                'assets/images/point_icon.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                '$points',
+                style: AppText.regular(fontSize: 12, color: Colors.white),
+              ),
+            ],
+            if (cashback > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 1,
+                height: 12,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+              const SizedBox(width: 6),
+              Image.asset(
+                'assets/images/point_icon.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                '+${cashback.toDouble()}',
+                style: AppText.regular(fontSize: 12, color: Colors.white),
+              ),
+            ],
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  // ── Outline button ─────────────────────────────────────────────────────────
+  Widget _buildOutlineButton({
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Text(label, style: AppText.medium(fontSize: 12, color: color)),
+      ),
     );
   }
 
@@ -436,279 +647,6 @@ class OrderCard extends StatelessWidget {
     ).then((_) => onUpdate?.call());
   }
 
-  Widget _buildPoint({
-    required IconData icon,
-    required String label,
-    required String address,
-    required Color iconColor,
-    required Color iconBg,
-    bool isGrey = false,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 17, color: iconColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppText.regular(
-                  fontSize: 11,
-                  color: const Color(0xFF9AA3AF),
-                ),
-              ),
-              Text(
-                address,
-                style: AppText.medium(
-                  fontSize: 14,
-                  color: isGrey
-                      ? const Color(0xFF9AA3AF)
-                      : const Color(0xFF0F1117),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPriceSection(
-    bool isShop,
-    dynamic order,
-    AppLocalizations words,
-  ) {
-    final double total = (order['total_amount'] ?? 0.0).toDouble();
-    final double delivery = (order['delivery_amount'] ?? 0.0).toDouble();
-    final double amount = isShop ? (total - delivery) : delivery;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          isShop ? words.toReceive : words.deliveryFee,
-          style: AppText.regular(fontSize: 11, color: const Color(0xFF9AA3AF)),
-        ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            ShaderMask(
-              shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
-              child: Text(
-                amount.toStringAsFixed(0),
-                style: AppText.semiBold(fontSize: 24, color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'TMT',
-              style: AppText.regular(
-                fontSize: 12,
-                color: HomeScreen.brandGreen.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // СТАЛО:
-  Widget _buildOrderId() {
-    final String? transportType = order['transport_type']?.toString();
-
-    IconData transportIcon;
-    Color transportColor;
-    switch (transportType) {
-      case 'car':
-        transportIcon = Icons.directions_car_rounded;
-        transportColor = HomeScreen.brandGreen;
-        break;
-      case 'truck':
-        transportIcon = Icons.local_shipping_rounded;
-        transportColor = HomeScreen.brandRed;
-        break;
-      default:
-        transportIcon = Icons.directions_run_rounded;
-        transportColor = const Color(0xFF9AA3AF);
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── Иконка транспорта ──
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: transportColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(transportIcon, size: 15, color: transportColor),
-        ),
-        const SizedBox(width: 6),
-        // ── ID ──
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FA),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
-            style: AppText.medium(fontSize: 11, color: const Color(0xFF9AA3AF)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusBadge(String status, AppLocalizations words) {
-    final styles = {
-      'published': _BadgeStyle(
-        color: HomeScreen.brandRed,
-        label: words.statusFree,
-        icon: Icons.search_rounded,
-      ),
-      'active': _BadgeStyle(
-        color: HomeScreen.brandGreen,
-        label: words.statusActive,
-        icon: Icons.local_shipping_outlined,
-      ),
-      'canceled': _BadgeStyle(
-        color: const Color(0xFF9AA3AF),
-        label: words.statusCanceled,
-        icon: Icons.cancel_outlined,
-      ),
-      'completed': _BadgeStyle(
-        color: HomeScreen.brandGreen,
-        label: words.statusDone,
-        icon: Icons.check_circle_outline_rounded,
-      ),
-    };
-    final s = styles[status] ?? styles['canceled']!;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: s.color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(s.icon, size: 12, color: s.color),
-          const SizedBox(width: 5),
-          Text(s.label, style: AppText.semiBold(fontSize: 11, color: s.color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilledButton({
-    required String label,
-    required Color color,
-    required void Function() onTap,
-    int points = 0,
-    double balancePoints = 0,
-    double cashback = 0,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppText.semiBold(fontSize: 13, color: Colors.white),
-            ),
-            if (points > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                width: 1,
-                height: 14,
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-              const SizedBox(width: 8),
-              Image.asset(
-                'assets/images/point_icon.png',
-                width: 22,
-                height: 22,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$points',
-                style: AppText.regular(fontSize: 13, color: Colors.white),
-              ),
-            ],
-            if (cashback > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                width: 1,
-                height: 14,
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-              const SizedBox(width: 8),
-              Image.asset(
-                'assets/images/point_icon.png',
-                width: 20,
-                height: 20,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '+${cashback.toDouble()}',
-                style: AppText.regular(fontSize: 13, color: Colors.white),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOutlineButton({
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        child: Text(label, style: AppText.medium(fontSize: 13, color: color)),
-      ),
-    );
-  }
-
   Widget _sheetHandle() => Container(
     width: 36,
     height: 4,
@@ -719,7 +657,7 @@ class OrderCard extends StatelessWidget {
   );
 }
 
-// ── Thin gradient strip at top of card ───────────────────────────────────────
+// ── Status strip ──────────────────────────────────────────────────────────────
 class _StatusStrip extends StatelessWidget {
   final String status;
   const _StatusStrip({required this.status});
@@ -737,7 +675,7 @@ class _StatusStrip extends StatelessWidget {
       case 'completed':
         left = right = HomeScreen.brandGreen;
         break;
-      default: // published
+      default:
         left = HomeScreen.brandGreen;
         right = HomeScreen.brandRed;
     }
@@ -745,7 +683,7 @@ class _StatusStrip extends StatelessWidget {
       height: 3,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [left, right]),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
     );
   }

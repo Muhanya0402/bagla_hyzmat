@@ -1,7 +1,6 @@
 import 'package:bagla/features/auth/onboarding_screen.dart';
-import 'package:bagla/features/notifications/notifications_screen.dart';
+import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/features/profile/appeals_screen.dart';
-import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/providers/auth_provider.dart';
@@ -20,7 +19,8 @@ import 'features/profile/registration_details_screen.dart';
 import 'providers/language_provider.dart';
 import 'features/auth/auth_repository.dart';
 import 'features/auth/phone_screen.dart';
-import 'features/home/home_screen.dart';
+
+// ✅ Новый импорт — главная обёртка с BottomNavigationBar
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -36,9 +36,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ru', null); // ← локаль для дат
+  await initializeDateFormatting('ru', null);
 
-  await Firebase.initializeApp(); // ← только один раз
+  await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   final langProvider = LanguageProvider();
@@ -80,13 +80,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Главная обёртка теперь MainShell (содержит Home + Notifications + Profile)
     Widget home;
     if (!isLoggedIn) {
       home = const PhoneScreen();
     } else if (showOnboarding) {
       home = const OnboardingScreen();
     } else {
-      home = const HomeScreen();
+      home = const MainShell(); // ← было HomeScreen()
     }
 
     return MaterialApp(
@@ -164,16 +165,20 @@ class MyApp extends StatelessWidget {
           );
         }
         if (settings.name == '/home') {
-          return MaterialPageRoute(builder: (_) => const HomeScreen());
+          return MaterialPageRoute(builder: (_) => const MainShell());
         }
         if (settings.name == '/profile') {
-          return MaterialPageRoute(builder: (_) => const ProfileScreen());
+          return MaterialPageRoute(
+            builder: (_) => const MainShell(initialIndex: 2),
+          );
         }
         if (settings.name == '/onboarding') {
           return MaterialPageRoute(builder: (_) => const OnboardingScreen());
         }
         if (settings.name == '/notifications') {
-          return MaterialPageRoute(builder: (_) => const NotificationsScreen());
+          return MaterialPageRoute(
+            builder: (_) => const MainShell(initialIndex: 1),
+          );
         }
         if (settings.name == '/appeals') {
           return MaterialPageRoute(builder: (_) => const AppealsScreen());

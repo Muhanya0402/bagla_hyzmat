@@ -3,7 +3,6 @@ import 'package:bagla/features/home/controllers/home_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_app_bar.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
@@ -94,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen>
     final authProv = context.watch<AuthProvider>();
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
+    final levelProvider = context.watch<LevelProvider>();
 
     final String currentStatus = authProv.status.toLowerCase().trim();
     final String role = authProv.role.toLowerCase().trim();
@@ -108,131 +108,112 @@ class _HomeScreenState extends State<HomeScreen>
 
     final List<dynamic> filteredOrders = applyFilters(orders);
 
-    return Consumer<LevelProvider>(
-      builder: (context, levelProvider, child) {
-        if (isCourier && levelProvider.pendingLevelUp != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _showLevelUpOnHomeScreen(context, levelProvider);
-          });
-        }
-        return child!;
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: false,
-          title: _buildLogoRow(authProv),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(0.5),
-            child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
-          ),
-          actions: [
-            HomeAppBarIcon(
-              icon: Icons.notifications_active_outlined,
-              onTap: () => Navigator.pushNamed(
-                context,
-                '/notifications',
-              ).then((_) => handleRefresh()),
-            ),
+    if (isCourier && levelProvider.pendingLevelUp != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showLevelUpOnHomeScreen(context, levelProvider);
+      });
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        title: _buildLogoRow(authProv, levelProvider),
+        actions: [
+          // ── Счётчик активных заказов в AppBar (только для курьера) ────────
+          if (isCourier)
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: HomeAppBarIcon(
-                icon: Icons.person_outline_rounded,
+              child: _ActiveOrdersBadge(current: activeOrdersCount, max: 3),
+            ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
+        ),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (needsRoleSelection)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: RoleSelectionBanner(
                 onTap: () => Navigator.pushNamed(
                   context,
-                  '/profile',
+                  '/user_type_selection',
                 ).then((_) => handleRefresh()),
               ),
             ),
-          ],
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (needsRoleSelection)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: RoleSelectionBanner(
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/user_type_selection',
-                  ).then((_) => handleRefresh()),
-                ),
-              ),
-            if (isCourier)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _buildSegmentedFilter(words),
-              ),
-            if (isBanned || isPending)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: _buildStatusBanner(isBanned),
-              ),
+
+          // ── Сегментный фильтр + кнопка фильтра в одной строке ─────────────
+          if (isCourier)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _buildSegmentedFilterWithButton(words),
+            ),
+
+          // ── Полоса уровня (только для курьера) ────────────────────────────
+          if (isBanned || isPending)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _buildStatusBanner(isBanned),
+            ),
+          if (isShop)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
               child: Row(
                 children: [
-                  GradientText(
-                    text: isShop ? words.myOrders : words.availiblorders,
-                    style: AppText.semiBold(fontSize: 20, color: Colors.black),
+                  // Фильтр для магазина остаётся здесь (курьерский — уже в сегменте)
+                  HomeFilterButton(
+                    activeCount: filters.activeCount,
+                    onTap: showFilterModal,
                   ),
-                  const Spacer(),
-                  if (isCourier) ...[
-                    HomeFilterButton(
-                      activeCount: filters.activeCount,
-                      onTap: showFilterModal,
-                    ),
-                    const SizedBox(width: 8),
-                    ActiveOrdersCounter(current: activeOrdersCount, max: 3),
-                  ],
                 ],
               ),
             ),
-            if (isShop || selectedFilterIndex == 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 0, 0),
-                child: _buildStatusFilterRow(),
-              ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: RefreshIndicator(
-                color: HomeScreen.brandGreen,
-                backgroundColor: Colors.white,
-                onRefresh: handleRefresh,
-                child: _buildOrdersList(
-                  filteredOrders,
-                  isShop,
-                  authProv,
-                  words,
-                ),
-              ),
+
+          if (isShop || selectedFilterIndex == 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 0, 0),
+              child: _buildStatusFilterRow(),
             ),
-          ],
-        ),
-        bottomNavigationBar: (isShop && isActive)
-            ? SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: _buildCreateButton(context, words),
-                ),
-              )
-            : null,
+
+          const SizedBox(height: 10),
+
+          Expanded(
+            child: RefreshIndicator(
+              color: HomeScreen.brandGreen,
+              backgroundColor: Colors.white,
+              onRefresh: handleRefresh,
+              child: _buildOrdersList(filteredOrders, isShop, authProv, words),
+            ),
+          ),
+        ],
       ),
+      bottomNavigationBar: (isShop && isActive)
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: _buildCreateButton(context, words),
+              ),
+            )
+          : null,
     );
   }
 
-  Widget _buildLogoRow(AuthProvider authProv) {
+  // ── AppBar logo row ────────────────────────────────────────────────────────
+  Widget _buildLogoRow(AuthProvider authProv, LevelProvider levelProvider) {
     final String role = authProv.role.toLowerCase().trim();
     final String status = authProv.status.toLowerCase().trim();
+
     final bool isClient = role == 'client';
     final bool needsRoleSelection = isClient && status == 'published';
     final bool isCourier = role == 'courier';
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
           realtimeService.isConnected
@@ -243,10 +224,16 @@ class _HomeScreenState extends State<HomeScreen>
           fit: BoxFit.contain,
           errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
         ),
-        const SizedBox(width: 8),
-        if (needsRoleSelection)
-          const SizedBox.shrink()
-        else if (isCourier)
+
+        if (!needsRoleSelection && isCourier) ...[
+          const SizedBox(width: 10),
+
+          // ─── Progress bar ───
+          Expanded(child: _CompactLevelProgressBar(provider: levelProvider)),
+
+          const SizedBox(width: 10),
+
+          // ─── Balance ───
           GestureDetector(
             onTap: () => showModalBottomSheet(
               context: context,
@@ -266,45 +253,62 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Image.asset(
                   'assets/images/point_icon.png',
-                  width: 22,
-                  height: 22,
+                  width: 20,
+                  height: 20,
                   fit: BoxFit.contain,
                   errorBuilder: (_, _, _) => const Icon(
                     Icons.toll_rounded,
-                    size: 20,
+                    size: 18,
                     color: HomeScreen.brandGreen,
                   ),
                 ),
-                const SizedBox(width: 5),
+
+                const SizedBox(width: 4),
+
                 Text(
                   authProv.balancePoints.toDouble().toStringAsFixed(2),
                   style: AppText.semiBold(
-                    fontSize: 15,
+                    fontSize: 14,
                     color: HomeScreen.brandGreen,
                   ),
                 ),
               ],
             ),
           ),
+        ],
       ],
     );
   }
 
-  Widget _buildSegmentedFilter(AppLocalizations words) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
-      ),
-      child: Row(
-        children: [
-          _filterItem(0, words.availiblorders),
-          _filterItem(1, words.myOrders),
-        ],
-      ),
+  // ── Сегментный фильтр + кнопка фильтра ────────────────────────────────────
+  Widget _buildSegmentedFilterWithButton(AppLocalizations words) {
+    return Row(
+      children: [
+        // Сегментный переключатель
+        Expanded(
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFEEF0F3)),
+            ),
+            child: Row(
+              children: [
+                _filterItem(0, words.availiblorders),
+                _filterItem(1, words.myOrders),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Кнопка фильтра
+        _FilterIconButton(
+          activeCount: filters.activeCount,
+          onTap: showFilterModal,
+        ),
+      ],
     );
   }
 
@@ -340,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ── Status filter chips ────────────────────────────────────────────────────
   Widget _buildStatusFilterRow() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -502,6 +507,7 @@ class _HomeScreenState extends State<HomeScreen>
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
+              settings: const RouteSettings(name: '/order_detail'),
               builder: (_) => OrderDetailScreen(
                 order: ordersList[index],
                 role: isShop ? 'shop' : 'courier',
@@ -561,6 +567,303 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Счётчик активных заказов в AppBar
+// ═════════════════════════════════════════════════════════════════════════════
+class _ActiveOrdersBadge extends StatelessWidget {
+  final int current;
+  final int max;
+
+  const _ActiveOrdersBadge({required this.current, required this.max});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isFull = current >= max;
+    final Color color = isFull ? HomeScreen.brandRed : HomeScreen.brandGreen;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.local_shipping_outlined, size: 14, color: color),
+          const SizedBox(width: 5),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '$current',
+                  style: AppText.bold(fontSize: 13, color: color),
+                ),
+                TextSpan(
+                  text: '/$max',
+                  style: AppText.regular(
+                    fontSize: 12,
+                    color: color.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Кнопка фильтра (иконка с бейджем)
+// ═════════════════════════════════════════════════════════════════════════════
+class _FilterIconButton extends StatelessWidget {
+  final int activeCount;
+  final VoidCallback onTap;
+
+  const _FilterIconButton({required this.activeCount, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: activeCount > 0
+                    ? HomeScreen.brandGreen.withValues(alpha: 0.4)
+                    : const Color(0xFFEEF0F3),
+              ),
+            ),
+            child: Icon(
+              Icons.tune_rounded,
+              size: 20,
+              color: activeCount > 0
+                  ? HomeScreen.brandGreen
+                  : const Color(0xFF9AA3AF),
+            ),
+          ),
+          if (activeCount > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: HomeScreen.brandGreen,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$activeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Полоса прогресса уровня
+// ═════════════════════════════════════════════════════════════════════════════
+class _CompactLevelProgressBar extends StatelessWidget {
+  final LevelProvider provider;
+
+  const _CompactLevelProgressBar({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final int level = provider.currentLevel?.levelNumber ?? 1;
+    final int xp = provider.currentXp;
+    final int xpNeeded = provider.xpToNextLevel;
+
+    final double progress = xpNeeded > 0
+        ? (xp / xpNeeded).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Container(
+      height: 24,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F4F7),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          // ─── Progress ───
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+            width: MediaQuery.of(context).size.width * 0.42 * progress,
+            height: 24,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [HomeScreen.brandGreen, const Color(0xFF2BBE63)],
+              ),
+              borderRadius: BorderRadius.circular(100),
+              boxShadow: [
+                BoxShadow(
+                  color: HomeScreen.brandGreen.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+          ),
+
+          // ─── Content ───
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                // Current level
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$level',
+                    style: AppText.extraBold(
+                      fontSize: 9,
+                      color: HomeScreen.brandGreen,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 6),
+
+                // XP
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$xp/$xpNeeded XP',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.semiBold(
+                        fontSize: 9,
+                        color: progress > 0.55
+                            ? Colors.white
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 4),
+
+                // next level
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: progress > 0.88
+                        ? Colors.white.withValues(alpha: 0.16)
+                        : HomeScreen.brandGreen.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        size: 10,
+                        color: progress > 0.88
+                            ? Colors.white
+                            : HomeScreen.brandGreen,
+                      ),
+                      Text(
+                        '${level + 1}',
+                        style: AppText.extraBold(
+                          fontSize: 8,
+                          color: progress > 0.88
+                              ? Colors.white
+                              : HomeScreen.brandGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressTrack extends StatelessWidget {
+  final double progress;
+  const _ProgressTrack({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double totalWidth = constraints.maxWidth;
+        final double filledWidth = (totalWidth * progress).clamp(
+          0.0,
+          totalWidth,
+        );
+
+        return Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F4F8),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                width: filledWidth,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [HomeScreen.brandGreen, Color(0xFF34D46A)],
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: HomeScreen.brandGreen.withValues(alpha: 0.35),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

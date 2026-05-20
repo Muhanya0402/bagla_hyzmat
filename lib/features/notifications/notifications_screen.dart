@@ -20,7 +20,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   final NotificationService _service = NotificationService();
 
-  // Локальный стейт вместо Future — без мерцания при обновлении
   List<dynamic> _items = [];
   bool _isLoading = true;
   late String _userId;
@@ -44,20 +43,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
-  // При pull-to-refresh обновляем список без показа спиннера (silent)
   Future<void> _refresh() => _loadNotifications(silent: true);
 
   Future<void> _markAllRead() async {
     await _service.markAllAsRead(_userId);
     if (!mounted) return;
-    // Обновляем локально — без сетевого запроса на весь список
     setState(() {
       _items = _items.map((n) => {...n, 'is_read': true}).toList();
     });
   }
 
   Future<void> _markRead(String id) async {
-    // Обновляем локально мгновенно, затем синхронизируем с сервером
     setState(() {
       _items = _items.map((n) {
         if (n['id'].toString() == id) return {...n, 'is_read': true};
@@ -138,21 +134,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _green.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: _green,
-              size: 16,
-            ),
-          ),
-        ),
+        // ✅ leading убран — уведомления теперь таб в BottomNavigationBar
+        automaticallyImplyLeading: false,
         title: Text(
           'Уведомления',
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
@@ -192,7 +175,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildBody() {
-    // Первичная загрузка — показываем спиннер только один раз
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: _green, strokeWidth: 2),
@@ -201,7 +183,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (_items.isEmpty) return _buildEmpty();
 
-    // Группировка по дате
     final today = <dynamic>[];
     final earlier = <dynamic>[];
     final now = DateTime.now();
