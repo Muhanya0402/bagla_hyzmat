@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:bagla/models/points_rule.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -416,5 +417,35 @@ class OrderService {
       if (kDebugMode) print('Ошибка getActiveOrdersCount: $e');
       return 0;
     }
+  }
+
+  // ─── 8. ПРАВИЛА НАЧИСЛЕНИЯ БАЛЛОВ ────────────────────────────────────────
+
+  Future<List<PointsRule>> fetchPointsRules() async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/items/points_rules',
+        queryParameters: {'sort': '-min_amount'},
+      );
+      final List data = response.data['data'] as List;
+      return data.map((e) => PointsRule.fromJson(e)).toList();
+    } catch (e) {
+      if (kDebugMode) print('Ошибка fetchPointsRules: $e');
+      // fallback — старая логика, если Directus недоступен
+      return [
+        PointsRule(minAmount: 2000, points: 5),
+        PointsRule(minAmount: 1000, points: 4),
+        PointsRule(minAmount: 500, points: 3),
+        PointsRule(minAmount: 100, points: 2),
+        PointsRule(minAmount: 0, points: 0),
+      ];
+    }
+  }
+
+  int calculatePoints(double orderSum, List<PointsRule> rules) {
+    for (final rule in rules) {
+      if (orderSum >= rule.minAmount) return rule.points;
+    }
+    return 0;
   }
 }

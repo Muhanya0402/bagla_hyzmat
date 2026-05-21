@@ -3,6 +3,7 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/etrap.dart';
+import 'package:bagla/models/points_rule.dart';
 import 'package:bagla/models/province.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
@@ -72,12 +73,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     end: Alignment.centerRight,
   );
 
+  List<PointsRule> _pointsRules = [];
+  final _orderService = OrderService();
+
   @override
   void initState() {
     super.initState();
     _loadProvinces();
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text.toLowerCase());
+    });
+    _orderService.fetchPointsRules().then((rules) {
+      setState(() => _pointsRules = rules);
     });
   }
 
@@ -233,14 +240,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Points calculation (preserved from original) ───────────────────────────
 
-  int _calculatePoints(double orderSum) {
-    if (orderSum >= 2000) return 5;
-    if (orderSum >= 1000) return 4;
-    if (orderSum >= 500) return 3;
-    if (orderSum >= 100) return 2;
-    return 0;
-  }
-
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   Future<void> _submitOrder() async {
@@ -285,7 +284,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         deliveryTime: _selectedDateTime,
         itemPrice: itemPrice,
         deliveryFee: deliveryFee,
-        pointsAmount: _calculatePoints(itemPrice),
+        pointsAmount: _orderService.calculatePoints(deliveryFee, _pointsRules),
         images: _images,
         userId: auth.userId,
         shopPhone: auth.phone,
