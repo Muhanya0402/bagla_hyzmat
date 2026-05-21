@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_text_styles.dart';
 import 'auth_provider.dart';
-import '../../providers/language_provider.dart'; // adjust import path
+import '../../l10n/language_provider.dart'; // adjust import path
 import '../../l10n/app_localizations.dart'; // adjust import path
 
 class OnboardingScreen extends StatefulWidget {

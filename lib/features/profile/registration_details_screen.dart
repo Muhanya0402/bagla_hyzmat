@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../providers/language_provider.dart';
+import '../../l10n/language_provider.dart';
 import '../../models/district.dart';
 import '../../models/province.dart';
 import '../../models/etrap.dart';

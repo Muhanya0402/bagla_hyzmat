@@ -25,9 +25,7 @@ class NotificationService {
         '/items/notifications/$notificationId',
         data: {'is_read': true},
       );
-    } catch (e) {
-      return;
-    }
+    } catch (_) {}
   }
 
   Future<void> markAllAsRead(String customerId) async {
@@ -44,9 +42,7 @@ class NotificationService {
         '/items/notifications',
         data: unread.map((id) => {'id': id, 'is_read': true}).toList(),
       );
-    } catch (e) {
-      return;
-    }
+    } catch (_) {}
   }
 
   Future<int> getUnreadCount(String customerId) async {
@@ -59,23 +55,32 @@ class NotificationService {
           'aggregate[count]': 'id',
         },
       );
-      return response.data['data'][0]['count']['id'] ?? 0;
-    } catch (e) {
+      final data = response.data['data'];
+      if (data is List && data.isNotEmpty) {
+        return int.tryParse(data[0]['count']?['id']?.toString() ?? '0') ?? 0;
+      }
+      return 0;
+    } catch (_) {
       return 0;
     }
   }
 
+  // исправлен: добавлен try/catch
   Future<List<Map<String, dynamic>>> getUnread(String customerId) async {
-    final response = await _api.dio.get(
-      '/items/notifications',
-      queryParameters: {
-        'filter[customer_id][_eq]': customerId,
-        'filter[is_read][_eq]': false,
-        'sort': '-date_created',
-        'limit': 20,
-      },
-    );
-    final items = response.data['data'] as List;
-    return items.map((e) => Map<String, dynamic>.from(e)).toList();
+    try {
+      final response = await _api.dio.get(
+        '/items/notifications',
+        queryParameters: {
+          'filter[customer_id][_eq]': customerId,
+          'filter[is_read][_eq]': false,
+          'sort': '-date_created',
+          'limit': 20,
+        },
+      );
+      final items = response.data['data'] as List;
+      return items.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 }

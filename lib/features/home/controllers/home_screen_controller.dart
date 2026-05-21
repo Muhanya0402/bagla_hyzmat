@@ -7,10 +7,10 @@ import 'package:bagla/models/etrap.dart';
 import 'package:bagla/features/home/widgets/courier_filter_modal.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/unread_notifications_modal.dart';
-import 'package:bagla/providers/language_provider.dart';
-import 'package:bagla/providers/level_provider.dart';
-import 'package:bagla/services/order_realtime_service.dart';
-import 'package:bagla/services/order_service.dart';
+import 'package:bagla/l10n/language_provider.dart';
+import 'package:bagla/features/levels/level_provider.dart';
+import 'package:bagla/features/orders/order_realtime_service.dart';
+import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 
 mixin HomeScreenController<T extends StatefulWidget> on State<T> {

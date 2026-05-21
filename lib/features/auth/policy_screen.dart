@@ -3,7 +3,7 @@ import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:bagla/providers/language_provider.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
 
 class PolicyScreen extends StatefulWidget {

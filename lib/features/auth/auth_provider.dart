@@ -1,7 +1,7 @@
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bagla/services/push_notification_service.dart';
+import 'package:bagla/features/notifications/push_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepo = AuthRepository();

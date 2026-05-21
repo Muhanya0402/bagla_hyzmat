@@ -7,7 +7,7 @@ import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bagla/features/auth/auth_provider.dart';
-import 'package:bagla/providers/language_provider.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/otp_screen.dart';
 import 'package:bagla/features/auth/policy_screen.dart';

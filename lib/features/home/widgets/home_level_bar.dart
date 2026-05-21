@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_constants.dart';
-import 'package:bagla/providers/level_provider.dart';
+import 'package:bagla/features/levels/level_provider.dart';
 
 class HomeLevelBar extends StatelessWidget {
   final LevelProvider provider;

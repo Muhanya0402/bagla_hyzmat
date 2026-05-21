@@ -6,7 +6,7 @@ import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bagla/features/auth/auth_provider.dart';
-import 'package:bagla/providers/language_provider.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
 
 class OtpScreen extends StatefulWidget {

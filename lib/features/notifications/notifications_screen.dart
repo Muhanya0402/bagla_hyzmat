@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
+import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,12 +13,6 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _gradient = LinearGradient(colors: [_green, _red]);
-
   final NotificationService _service = NotificationService();
 
   List<dynamic> _items = [];
@@ -33,9 +28,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _loadNotifications({bool silent = false}) async {
     if (!silent && mounted) setState(() => _isLoading = true);
-
     final data = await _service.getNotifications(_userId);
-
     if (!mounted) return;
     setState(() {
       _items = data;
@@ -63,70 +56,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _service.markAsRead(id);
   }
 
-  // ── Type helpers ───────────────────────────────────────────────────────────
-
-  Color _typeColor(String type) {
-    switch (type) {
-      case 'account_status':
-        return const Color(0xFF7C3AED);
-      case 'new_order':
-        return _green;
-      case 'order_status':
-        return _red;
-      case 'daily_bonus':
-        return const Color(0xFFE67E22);
-      default:
-        return _grey;
-    }
-  }
-
-  IconData _typeIcon(String type) {
-    switch (type) {
-      case 'account_status':
-        return Icons.verified_user_rounded;
-      case 'new_order':
-        return Icons.shopping_bag_rounded;
-      case 'order_status':
-        return Icons.local_shipping_rounded;
-      case 'daily_bonus':
-        return Icons.bolt_rounded;
-      default:
-        return Icons.notifications_rounded;
-    }
-  }
-
-  String _typeLabel(String type) {
-    switch (type) {
-      case 'account_status':
-        return 'Аккаунт';
-      case 'new_order':
-        return 'Новый заказ';
-      case 'order_status':
-        return 'Статус заказа';
-      case 'daily_bonus':
-        return 'Ежедневный бонус';
-      default:
-        return 'Уведомление';
-    }
-  }
-
-  String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final dt = DateTime.parse(dateStr).toLocal();
-      final diff = DateTime.now().difference(dt);
-      if (diff.inMinutes < 1) return 'Только что';
-      if (diff.inMinutes < 60) return '${diff.inMinutes} мин назад';
-      if (diff.inHours < 24) return '${diff.inHours} ч назад';
-      if (diff.inDays < 7) return '${diff.inDays} дн назад';
-      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
-    } catch (_) {
-      return '';
-    }
-  }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,7 +63,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // ✅ leading убран — уведомления теперь таб в BottomNavigationBar
         automaticallyImplyLeading: false,
         title: Text(
           'Уведомления',
@@ -147,18 +75,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               margin: const EdgeInsets.only(right: 16),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _green.withValues(alpha: 0.07),
+                color: kNotifGreen.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _green.withValues(alpha: 0.15)),
+                border: Border.all(color: kNotifGreen.withValues(alpha: 0.15)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.done_all_rounded, color: _green, size: 14),
+                  const Icon(
+                    Icons.done_all_rounded,
+                    color: kNotifGreen,
+                    size: 14,
+                  ),
                   const SizedBox(width: 5),
                   Text(
                     'Прочитать все',
-                    style: AppText.semiBold(fontSize: 12, color: _green),
+                    style: AppText.semiBold(fontSize: 12, color: kNotifGreen),
                   ),
                 ],
               ),
@@ -177,15 +109,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: _green, strokeWidth: 2),
+        child: CircularProgressIndicator(color: kNotifGreen, strokeWidth: 2),
       );
     }
-
     if (_items.isEmpty) return _buildEmpty();
 
     final today = <dynamic>[];
     final earlier = <dynamic>[];
     final now = DateTime.now();
+
     for (final n in _items) {
       try {
         final dt = DateTime.parse(
@@ -202,7 +134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return RefreshIndicator(
-      color: _green,
+      color: kNotifGreen,
       backgroundColor: Colors.white,
       onRefresh: _refresh,
       child: ListView(
@@ -215,14 +147,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               (n) => _NotifCard(
                 key: ValueKey(n['id']),
                 notif: n,
-                color: _typeColor(n['type'] ?? ''),
-                icon: _typeIcon(n['type'] ?? ''),
-                label: _typeLabel(n['type'] ?? ''),
-                dateStr: _formatDate(n['date_created']),
                 onTap: () {
-                  if (n['is_read'] != true) {
-                    _markRead(n['id'].toString());
-                  }
+                  if (n['is_read'] != true) _markRead(n['id'].toString());
                 },
               ),
             ),
@@ -235,14 +161,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               (n) => _NotifCard(
                 key: ValueKey(n['id']),
                 notif: n,
-                color: _typeColor(n['type'] ?? ''),
-                icon: _typeIcon(n['type'] ?? ''),
-                label: _typeLabel(n['type'] ?? ''),
-                dateStr: _formatDate(n['date_created']),
                 onTap: () {
-                  if (n['is_read'] != true) {
-                    _markRead(n['id'].toString());
-                  }
+                  if (n['is_read'] != true) _markRead(n['id'].toString());
                 },
               ),
             ),
@@ -260,7 +180,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            gradient: _gradient,
+            gradient: kNotifGradient,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -270,7 +190,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF9AA3AF),
+            color: kNotifGrey,
             letterSpacing: 0.8,
           ),
         ),
@@ -294,19 +214,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Icon(
               Icons.notifications_off_rounded,
               size: 32,
-              color: _grey.withValues(alpha: 0.5),
+              color: kNotifGrey.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Уведомлений пока нет',
-            style: AppText.semiBold(fontSize: 15, color: _grey),
+            style: AppText.semiBold(fontSize: 15, color: kNotifGrey),
           ),
           const SizedBox(height: 6),
           Text(
             'Здесь будут уведомления\nо заказах и статусе аккаунта',
             textAlign: TextAlign.center,
-            style: AppText.regular(fontSize: 13, color: _grey),
+            style: AppText.regular(fontSize: 13, color: kNotifGrey),
           ),
         ],
       ),
@@ -314,31 +234,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Notification card
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Карточка уведомления ──────────────────────────────────────────────────────
 
 class _NotifCard extends StatelessWidget {
   final dynamic notif;
-  final Color color;
-  final IconData icon;
-  final String label;
-  final String dateStr;
   final VoidCallback onTap;
 
-  const _NotifCard({
-    super.key,
-    required this.notif,
-    required this.color,
-    required this.icon,
-    required this.label,
-    required this.dateStr,
-    required this.onTap,
-  });
+  const _NotifCard({super.key, required this.notif, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final bool isRead = notif['is_read'] == true;
+    final String type = notif['type'] ?? '';
+    final Color color = notifTypeColor(type);
 
     return GestureDetector(
       onTap: onTap,
@@ -387,7 +295,7 @@ class _NotifCard extends StatelessWidget {
                       color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(icon, color: color, size: 20),
+                    child: Icon(notifTypeIcon(type), color: color, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -406,7 +314,7 @@ class _NotifCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                label,
+                                notifTypeLabel(type),
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -452,7 +360,7 @@ class _NotifCard extends StatelessWidget {
                           notif['body_ru'] ?? notif['body'] ?? '',
                           style: AppText.regular(
                             fontSize: 13,
-                            color: const Color(0xFF9AA3AF),
+                            color: kNotifGrey,
                           ).copyWith(height: 1.4),
                         ),
                         const SizedBox(height: 7),
@@ -465,7 +373,7 @@ class _NotifCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              dateStr,
+                              notifFormatDate(notif['date_created']),
                               style: AppText.regular(
                                 fontSize: 11,
                                 color: const Color(0xFFD1D5DB),

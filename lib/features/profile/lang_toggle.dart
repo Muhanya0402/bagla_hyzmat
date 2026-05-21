@@ -2,7 +2,7 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../providers/language_provider.dart';
+import '../../l10n/language_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LangToggle — animated RU | TK pill, usable from any screen.

@@ -6,7 +6,7 @@ import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
-import 'package:bagla/services/order_service.dart';
+import 'package:bagla/features/orders/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';

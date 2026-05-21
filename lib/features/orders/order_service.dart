@@ -3,7 +3,7 @@ import 'package:bagla/models/points_rule.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import '../core/api_client.dart';
+import '../../core/api_client.dart';
 
 class OrderService {
   final ApiClient _apiClient = ApiClient();

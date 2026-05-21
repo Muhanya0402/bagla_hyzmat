@@ -11,8 +11,8 @@ import 'package:bagla/features/home/widgets/home_widgets.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
-import 'package:bagla/providers/language_provider.dart';
-import 'package:bagla/providers/level_provider.dart';
+import 'package:bagla/l10n/language_provider.dart';
+import 'package:bagla/features/levels/level_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
