@@ -1,3 +1,5 @@
+import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -12,14 +14,6 @@ import 'package:bagla/features/auth/policy_screen.dart';
 
 class PhoneScreen extends StatefulWidget {
   const PhoneScreen({super.key});
-
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandGreen, brandRed],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
 
   @override
   State<PhoneScreen> createState() => _PhoneScreenState();
@@ -94,7 +88,7 @@ class _PhoneScreenState extends State<PhoneScreen>
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const BaglaLogo(width: 72, height: 36),
+                  BaglaLogo(width: 72, height: 36),
                   const Spacer(),
                   const LangToggle(),
                 ],
@@ -152,7 +146,7 @@ class _PhoneScreenState extends State<PhoneScreen>
               const SizedBox(height: 22),
 
               // ── Submit button ────────────────────────────────────────────
-              _GradientButton(
+              AuthGradientButton(
                 label: words.getCodeBtn.toUpperCase(),
                 isLoading: isLoading,
                 onPressed: () async {
@@ -185,35 +179,6 @@ class _PhoneScreenState extends State<PhoneScreen>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Language Switcher
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  BaglaLogo — exported, reused in OtpScreen & PolicyScreen
-// ─────────────────────────────────────────────────────────────────────────────
-
-class BaglaLogo extends StatelessWidget {
-  final double width;
-  final double height;
-
-  const BaglaLogo({super.key, required this.width, required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/bagla_logo.png',
-      width: width,
-      height: height,
-      fit: BoxFit.contain, // важно чтобы не обрезалось
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Private helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _GradientUnderlineTitle extends StatelessWidget {
   final String accentWord;
   const _GradientUnderlineTitle({required this.accentWord});
@@ -236,7 +201,7 @@ class _GradientUnderlineTitle extends StatelessWidget {
           bottom: 0,
           left: 0,
           child: ShaderMask(
-            shaderCallback: (b) => PhoneScreen.brandGradient.createShader(
+            shaderCallback: (b) => AuthColors.gradient.createShader(
               Rect.fromLTWH(0, 0, b.width, 3),
             ),
             child: Container(
@@ -263,7 +228,7 @@ class _PhoneField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: PhoneScreen.brandGreen, width: 1.5),
+        border: Border.all(color: AuthColors.green, width: 1.5),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -328,7 +293,7 @@ class _PolicyCheckbox extends StatelessWidget {
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
         border: const Border(
-          left: BorderSide(color: PhoneScreen.brandGreen, width: 3),
+          left: BorderSide(color: AuthColors.green, width: 3),
         ),
       ),
       child: Row(
@@ -341,10 +306,10 @@ class _PolicyCheckbox extends StatelessWidget {
               width: 22,
               height: 22,
               decoration: BoxDecoration(
-                color: accepted ? PhoneScreen.brandGreen : Colors.white,
+                color: accepted ? AuthColors.green : Colors.white,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: accepted ? PhoneScreen.brandGreen : Colors.black26,
+                  color: accepted ? AuthColors.green : Colors.black26,
                   width: 1.5,
                 ),
               ),
@@ -367,7 +332,7 @@ class _PolicyCheckbox extends StatelessWidget {
                   TextSpan(
                     text: isRu ? 'Условиями использования' : 'Ulanyş şertleri',
                     style: const TextStyle(
-                      color: PhoneScreen.brandGreen,
+                      color: AuthColors.green,
                       fontWeight: FontWeight.w800,
                       decoration: TextDecoration.underline,
                     ),
@@ -379,7 +344,7 @@ class _PolicyCheckbox extends StatelessWidget {
                         ? 'Политикой конфиденциальности'
                         : 'Gizlinlik syýasaty',
                     style: const TextStyle(
-                      color: PhoneScreen.brandRed,
+                      color: AuthColors.red,
                       fontWeight: FontWeight.w800,
                       decoration: TextDecoration.underline,
                     ),
@@ -390,80 +355,6 @@ class _PolicyCheckbox extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  final String label;
-  final bool isLoading;
-  final VoidCallback onPressed;
-  const _GradientButton({
-    required this.label,
-    required this.isLoading,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: isLoading ? null : PhoneScreen.brandGradient,
-          color: isLoading ? Colors.black12 : null,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: ElevatedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            disabledBackgroundColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          child: isLoading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        color: Colors.white24,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_forward,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
       ),
     );
   }

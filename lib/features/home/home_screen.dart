@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/phone_screen.dart';
+import 'package:bagla/features/auth/onboarding_screen.dart';
+import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:bagla/features/home/controllers/home_screen_controller.dart';
 import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/home/widgets/home_create_button.dart';

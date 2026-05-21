@@ -1,3 +1,5 @@
+import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -87,7 +89,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                       isRu ? 'Документ' : 'Resminama',
                       style: AppText.semiBold(
                         fontSize: 11,
-                        color: PhoneScreen.brandGreen,
+                        color: AuthColors.green,
                       ),
                     ),
                   ),
@@ -108,7 +110,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                   Container(
                     height: 2,
                     decoration: BoxDecoration(
-                      gradient: PhoneScreen.brandGradient,
+                      gradient: AuthColors.gradient,
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),
@@ -198,7 +200,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: _hasScrolledToBottom
-                            ? PhoneScreen.brandGradient
+                            ? AuthColors.gradient
                             : null,
                         color: _hasScrolledToBottom
                             ? null
@@ -329,7 +331,7 @@ class _LangTab extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        gradient: active ? PhoneScreen.brandGradient : null,
+        gradient: active ? AuthColors.gradient : null,
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
@@ -378,7 +380,7 @@ class _PolicySection extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: PhoneScreen.brandGreen,
+                  color: AuthColors.green,
                 ),
               ),
             ),

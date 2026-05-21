@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/phone_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -96,10 +97,10 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: PhoneScreen.brandGreen, width: 2),
+      border: Border.all(color: AuthColors.green, width: 2),
       boxShadow: [
         BoxShadow(
-          color: PhoneScreen.brandGreen.withValues(alpha: 0.15),
+          color: AuthColors.green.withValues(alpha: 0.15),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
@@ -111,7 +112,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: PhoneScreen.brandRed, width: 2),
+      border: Border.all(color: AuthColors.red, width: 2),
     ),
   );
 
@@ -119,7 +120,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
     decoration: BoxDecoration(
       color: const Color(0xFFFFF0EE),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: PhoneScreen.brandRed, width: 2),
+      border: Border.all(color: AuthColors.red, width: 2),
     ),
   );
 
@@ -141,11 +142,14 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  _BackButton(),
+                  AuthBackButton(),
                   const Spacer(),
                   const BaglaLogo(width: 56, height: 28),
                   const Spacer(),
-                  _LangSwitcher(isRu: lang.isRu, onToggle: lang.toggleLanguage),
+                  AuthLangSwitcher(
+                    isRu: lang.isRu,
+                    onToggle: lang.toggleLanguage,
+                  ),
                 ],
               ),
 
@@ -159,7 +163,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
                       text: 'SMS',
                       style: AppText.bold(
                         fontSize: 26,
-                        color: PhoneScreen.brandGreen,
+                        color: AuthColors.green,
                       ),
                     ),
                     TextSpan(
@@ -210,7 +214,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
                     width: 2,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: PhoneScreen.brandGreen,
+                      color: AuthColors.green,
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),
@@ -250,7 +254,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
               if (isLoading)
                 const Center(child: CircularProgressIndicator())
               else
-                _GradientButton(
+                AuthGradientButton(
                   label: lang.isRu ? 'ПОДТВЕРДИТЬ' : 'TASSYKLAMAK',
                   onPressed: () async {
                     if (auth.otpController.text.length < 4) return;
@@ -271,56 +275,6 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
 //  Private widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BackButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(
-          Icons.arrow_back_ios_new,
-          size: 16,
-          color: Colors.black87,
-        ),
-      ),
-    );
-  }
-}
-
-class _LangSwitcher extends StatelessWidget {
-  final bool isRu;
-  final VoidCallback onToggle;
-  const _LangSwitcher({required this.isRu, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onToggle,
-      child: Container(
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: Colors.black12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _LangTab(label: 'RU', active: isRu),
-            _LangTab(label: 'TK', active: !isRu),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _LangTab extends StatelessWidget {
   final String label;
   final bool active;
@@ -332,7 +286,7 @@ class _LangTab extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        gradient: active ? PhoneScreen.brandGradient : null,
+        gradient: active ? AuthColors.gradient : null,
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
@@ -373,7 +327,7 @@ class _TimerPill extends StatelessWidget {
           ),
           Text(
             '0:${seconds.toString().padLeft(2, '0')}',
-            style: AppText.bold(fontSize: 13, color: PhoneScreen.brandGreen),
+            style: AppText.bold(fontSize: 13, color: AuthColors.green),
           ),
         ],
       ),
@@ -390,68 +344,10 @@ class _ResendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: onPressed,
-      icon: const Icon(Icons.refresh, size: 16, color: PhoneScreen.brandGreen),
+      icon: const Icon(Icons.refresh, size: 16, color: AuthColors.green),
       label: Text(
         isRu ? 'Отправить снова' : 'Täzeden ibermek',
-        style: AppText.semiBold(fontSize: 14, color: PhoneScreen.brandGreen),
-      ),
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  const _GradientButton({required this.label, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: PhoneScreen.brandGradient,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: Colors.white24,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white,
-                  size: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
+        style: AppText.semiBold(fontSize: 14, color: AuthColors.green),
       ),
     );
   }

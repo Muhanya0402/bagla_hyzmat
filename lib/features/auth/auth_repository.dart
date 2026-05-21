@@ -1,3 +1,4 @@
+import 'package:bagla/core/app_config.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/province.dart';
 import 'package:bagla/models/etrap.dart';
@@ -23,7 +24,7 @@ class AuthRepository {
         '/items/otp_codes',
         data: {'identifier': cleanPhone},
         options: Options(
-          headers: {'Authorization': 'Bearer 8TYMndErscy0GgMcVcO1u_jLD-6GaqMD'},
+          headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
         ),
       );
       return response.statusCode == 200 || response.statusCode == 204;
@@ -39,7 +40,7 @@ class AuthRepository {
         '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73',
         data: {'identifier': phone.trim(), 'code': code.trim()},
         options: Options(
-          headers: {'Authorization': 'Bearer 8TYMndErscy0GgMcVcO1u_jLD-6GaqMD'},
+          headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
         ),
       );
 
@@ -83,6 +84,9 @@ class AuthRepository {
       final response = await _api.dio.post(
         '/flows/trigger/ВАШ_REFRESH_FLOW_ID',
         data: {'refresh_token': refreshToken},
+        options: Options(
+          headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
+        ),
       );
 
       final data = response.data;

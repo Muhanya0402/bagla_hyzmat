@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,15 +18,6 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _gradient = LinearGradient(
-    colors: [_green, _red],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
   // ── State ──────────────────────────────────────────────────────────────────
   final _pageCtrl = PageController();
   int _page = 0;
@@ -210,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   width: _page == i ? 20 : 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    gradient: _page == i ? _gradient : null,
+                    gradient: _page == i ? AuthColors.gradient : null,
                     color: _page == i ? null : const Color(0xFFEEF0F3),
                     borderRadius: BorderRadius.circular(3),
                   ),
@@ -256,7 +249,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _green.withValues(alpha: 0.08),
+                            color: AuthColors.green.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -264,7 +257,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
-                              color: _green,
+                              color: AuthColors.green,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -313,7 +306,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ? Text(
                       words.canContinue,
                       key: const ValueKey('ok'),
-                      style: AppText.regular(fontSize: 11, color: _green),
+                      style: AppText.regular(
+                        fontSize: 11,
+                        color: AuthColors.green,
+                      ),
                     )
                   : Text(
                       '${words.waitSeconds} $_seconds ${words.sec}',
@@ -337,13 +333,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   width: double.infinity,
                   height: 56,
                   decoration: BoxDecoration(
-                    gradient: _canNext ? _gradient : null,
+                    gradient: _canNext ? AuthColors.gradient : null,
                     color: _canNext ? null : const Color(0xFFF0F0F0),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: _canNext
                         ? [
                             BoxShadow(
-                              color: _green.withValues(alpha: 0.25),
+                              color: AuthColors.green.withValues(alpha: 0.25),
                               blurRadius: 14,
                               offset: const Offset(0, 5),
                             ),
@@ -471,9 +467,6 @@ class _DeliveryIllusState extends State<_DeliveryIllus>
 }
 
 class _VanPainter extends CustomPainter {
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
@@ -482,7 +475,7 @@ class _VanPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx, cy),
       size.width * 0.34,
-      Paint()..color = _green.withValues(alpha: 0.07),
+      Paint()..color = AuthColors.green.withValues(alpha: 0.07),
     );
 
     final road = Paint()..color = const Color(0xFFEEF0F3);
@@ -498,7 +491,7 @@ class _VanPainter extends CustomPainter {
       road,
     );
 
-    final bodyP = Paint()..color = _green;
+    final bodyP = Paint()..color = AuthColors.green;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(cx - 90, cy + 10, 130, 56),
@@ -540,7 +533,7 @@ class _VanPainter extends CustomPainter {
         Rect.fromLTWH(cx - 78, cy - 12, 56, 42),
         const Radius.circular(7),
       ),
-      Paint()..color = _red.withValues(alpha: 0.9),
+      Paint()..color = AuthColors.red.withValues(alpha: 0.9),
     );
     final linePaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.35)
@@ -570,12 +563,16 @@ class _VanPainter extends CustomPainter {
     for (int i = 0; i < 3; i++) {
       final y = cy + 20 + i * 12.0;
       lineP
-        ..color = _green.withValues(alpha: 0.4 - i * 0.1)
+        ..color = AuthColors.green.withValues(alpha: 0.4 - i * 0.1)
         ..strokeWidth = 2.5 - i * 0.5;
       canvas.drawLine(Offset(cx - 130, y), Offset(cx - 102, y), lineP);
     }
 
-    canvas.drawCircle(Offset(cx + 72, cy - 42), 13, Paint()..color = _red);
+    canvas.drawCircle(
+      Offset(cx + 72, cy - 42),
+      13,
+      Paint()..color = AuthColors.red,
+    );
     canvas.drawCircle(
       Offset(cx + 72, cy - 46),
       5,
@@ -585,7 +582,7 @@ class _VanPainter extends CustomPainter {
       Offset(cx + 72, cy - 29),
       Offset(cx + 72, cy - 22),
       Paint()
-        ..color = _red
+        ..color = AuthColors.red
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round,
     );
@@ -600,9 +597,6 @@ class _VanPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RolesIllus extends StatelessWidget {
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-
   final String shopLabel;
   final String shopDesc;
   final String courierLabel;
@@ -623,7 +617,7 @@ class _RolesIllus extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _RoleCard(
-            color: _green,
+            color: AuthColors.green,
             bg: const Color(0xFFE8F5EE),
             icon: Icons.storefront_outlined,
             title: shopLabel,
@@ -631,7 +625,7 @@ class _RolesIllus extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           _RoleCard(
-            color: _red,
+            color: AuthColors.red,
             bg: const Color(0xFFFFF0EE),
             icon: Icons.delivery_dining_outlined,
             title: courierLabel,
@@ -913,9 +907,6 @@ class _TokensPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StepsIllus extends StatelessWidget {
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-
   final String shopLabel;
   final String shopSub;
   final String courierLabel;
@@ -943,7 +934,7 @@ class _StepsIllus extends StatelessWidget {
         children: [
           _StepBox(
             bg: const Color(0xFFE8F5EE),
-            color: _green,
+            color: AuthColors.green,
             icon: Icons.storefront_outlined,
             label: shopLabel,
             sub: shopSub,
@@ -951,7 +942,7 @@ class _StepsIllus extends StatelessWidget {
           _Arrow(),
           _StepBox(
             bg: const Color(0xFFFFF0EE),
-            color: _red,
+            color: AuthColors.red,
             icon: Icons.delivery_dining_outlined,
             label: courierLabel,
             sub: courierSub,
@@ -959,7 +950,7 @@ class _StepsIllus extends StatelessWidget {
           _Arrow(),
           _StepBox(
             bg: const Color(0xFFE8F5EE),
-            color: _green,
+            color: AuthColors.green,
             icon: Icons.check_circle_outline_rounded,
             label: deliveryLabel,
             sub: deliverySub,
@@ -1094,23 +1085,6 @@ class _Arrow extends StatelessWidget {
 // Logo
 // ─────────────────────────────────────────────────────────────────────────────
 
-class BaglaLogo extends StatelessWidget {
-  final double width;
-  final double height;
-
-  const BaglaLogo({super.key, required this.width, required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/bagla_logo.png',
-      width: width,
-      height: height,
-      fit: BoxFit.contain,
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Data models
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1138,20 +1112,18 @@ class _PillWidget extends StatelessWidget {
   final _Pill pill;
   const _PillWidget({required this.pill});
 
-  static const _green = Color(0xFF1A7A3C);
-
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
         color: pill.isGreen
-            ? _green.withValues(alpha: 0.08)
+            ? AuthColors.green.withValues(alpha: 0.08)
             : const Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: pill.isGreen
-              ? _green.withValues(alpha: 0.2)
+              ? AuthColors.green.withValues(alpha: 0.2)
               : const Color(0xFFEEF0F3),
         ),
       ),
@@ -1160,7 +1132,7 @@ class _PillWidget extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: pill.isGreen ? _green : const Color(0xFF9AA3AF),
+          color: pill.isGreen ? AuthColors.green : const Color(0xFF9AA3AF),
         ),
       ),
     );
