@@ -19,8 +19,6 @@ class HomeOrdersList extends StatelessWidget {
   final AppLocalizations words;
   final VoidCallback onRefresh;
 
-  static const int _pageSize = 6;
-
   const HomeOrdersList({
     super.key,
     required this.orders,

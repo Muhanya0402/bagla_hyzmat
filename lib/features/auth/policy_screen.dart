@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/phone_screen.dart';
 
 class PolicyScreen extends StatefulWidget {
   final VoidCallback? onAccepted;

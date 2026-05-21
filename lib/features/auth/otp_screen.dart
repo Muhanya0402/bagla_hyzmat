@@ -275,33 +275,6 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
 //  Private widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LangTab extends StatelessWidget {
-  final String label;
-  final bool active;
-  const _LangTab({required this.label, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: active ? AuthColors.gradient : null,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          color: active ? Colors.white : Colors.black38,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
 class _TimerPill extends StatelessWidget {
   final int seconds;
   final bool isRu;
