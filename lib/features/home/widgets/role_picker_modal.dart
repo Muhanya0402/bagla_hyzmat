@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -96,13 +97,7 @@ class _RoleOption extends StatelessWidget {
   final String description;
   final VoidCallback onTap;
 
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandGreen, brandRed],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
+  static const LinearGradient brandGradient = HomeColors.gradient;
 
   const _RoleOption({
     required this.icon,

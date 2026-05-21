@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Бренд-цвета и градиент — единственный источник правды для home-модуля
 class HomeColors {
   static const Color green = Color(0xFF1A7A3C);
   static const Color red = Color(0xFFD32F1E);
@@ -16,27 +15,33 @@ class HomeColors {
   );
 }
 
-/// Модель фильтра статуса заказа
-class StatusFilter {
+class StatusFilterItem {
   final String label;
   final String? value;
   final Color color;
-
-  const StatusFilter({
+  const StatusFilterItem({
     required this.label,
     required this.value,
     required this.color,
   });
 }
 
-const List<StatusFilter> kStatusFilters = [
-  StatusFilter(label: 'Все', value: null, color: HomeColors.grey),
-  StatusFilter(label: 'Свободные', value: 'published', color: HomeColors.red),
-  StatusFilter(label: 'В работе', value: 'active', color: HomeColors.green),
-  StatusFilter(
+const List<StatusFilterItem> kStatusFilters = [
+  StatusFilterItem(label: 'Все', value: null, color: HomeColors.grey),
+  StatusFilterItem(
+    label: 'Свободные',
+    value: 'published',
+    color: HomeColors.red,
+  ),
+  StatusFilterItem(label: 'В работе', value: 'active', color: HomeColors.green),
+  StatusFilterItem(
     label: 'Доставлены',
     value: 'completed',
     color: HomeColors.green,
   ),
-  StatusFilter(label: 'Отменены', value: 'canceled', color: HomeColors.grey),
+  StatusFilterItem(
+    label: 'Отменены',
+    value: 'canceled',
+    color: HomeColors.grey,
+  ),
 ];

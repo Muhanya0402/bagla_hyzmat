@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/providers/language_provider.dart';
-import '../home_screen.dart';
 
 class HomeFilterButton extends StatelessWidget {
   final int activeCount;
@@ -23,14 +23,12 @@ class HomeFilterButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: has
-              ? HomeScreen.brandGreen.withValues(alpha: 0.1)
-              : Colors.white,
+          color: has ? HomeColors.green.withValues(alpha: 0.1) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: has
-                ? HomeScreen.brandGreen.withValues(alpha: 0.35)
-                : const Color(0xFFEEF0F3),
+                ? HomeColors.green.withValues(alpha: 0.35)
+                : HomeColors.border,
           ),
           boxShadow: [
             BoxShadow(
@@ -46,7 +44,7 @@ class HomeFilterButton extends StatelessWidget {
             Icon(
               Icons.tune_rounded,
               size: 20,
-              color: has ? HomeScreen.brandGreen : const Color(0xFF9AA3AF),
+              color: has ? HomeColors.green : HomeColors.grey,
             ),
             if (has)
               Positioned(
@@ -56,7 +54,7 @@ class HomeFilterButton extends StatelessWidget {
                   width: 14,
                   height: 14,
                   decoration: const BoxDecoration(
-                    color: HomeScreen.brandGreen,
+                    color: HomeColors.green,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
@@ -95,9 +93,7 @@ class RoleSelectionBanner extends StatelessWidget {
             end: Alignment.centerRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: HomeScreen.brandGreen.withValues(alpha: 0.2),
-          ),
+          border: Border.all(color: HomeColors.green.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
@@ -105,7 +101,7 @@ class RoleSelectionBanner extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: HomeScreen.brandGradient,
+                gradient: HomeColors.gradient,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -121,17 +117,14 @@ class RoleSelectionBanner extends StatelessWidget {
                 children: [
                   Text(
                     words.roleSelectionTitle,
-                    style: AppText.bold(
-                      fontSize: 14,
-                      color: const Color(0xFF0F1117),
-                    ),
+                    style: AppText.bold(fontSize: 14, color: HomeColors.dark),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     words.roleActionPrompt,
                     style: AppText.regular(
                       fontSize: 12,
-                      color: const Color(0xFF9AA3AF),
+                      color: HomeColors.grey,
                     ),
                   ),
                 ],
@@ -142,13 +135,13 @@ class RoleSelectionBanner extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: HomeScreen.brandGreen.withValues(alpha: 0.1),
+                color: HomeColors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 13,
-                color: HomeScreen.brandGreen,
+                color: HomeColors.green,
               ),
             ),
           ],
@@ -170,7 +163,7 @@ class ActiveOrdersCounter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isFull = current >= max;
-    final Color c = isFull ? HomeScreen.brandRed : HomeScreen.brandGreen;
+    final Color c = isFull ? HomeColors.red : HomeColors.green;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -213,7 +206,7 @@ class GradientText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ShaderMask(
-    shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
+    shaderCallback: (b) => HomeColors.gradient.createShader(b),
     child: Text(text, style: style.copyWith(color: Colors.white)),
   );
 }
@@ -236,12 +229,12 @@ class HomeEmptyState extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFEEF0F3)),
+              border: Border.all(color: HomeColors.border),
             ),
             child: Icon(
               icon,
               size: 32,
-              color: HomeScreen.brandGreen.withValues(alpha: 0.25),
+              color: HomeColors.green.withValues(alpha: 0.25),
             ),
           ),
         ),
@@ -249,7 +242,7 @@ class HomeEmptyState extends StatelessWidget {
         Center(
           child: Text(
             text,
-            style: AppText.medium(fontSize: 14, color: const Color(0xFF9AA3AF)),
+            style: AppText.medium(fontSize: 14, color: HomeColors.grey),
           ),
         ),
       ],
@@ -268,15 +261,4 @@ class LevelUpOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
-}
-
-class StatusFilterItem {
-  final String label;
-  final String? value;
-  final Color color;
-  const StatusFilterItem({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
 }

@@ -759,15 +759,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // ── Route block ────────────────────────────────────────────────────────────
   Widget _buildRouteBlock(bool isLocked) {
-    final dynamic district = widget.order['district'];
-    String districtName = '';
-    if (district is Map) {
-      districtName = district['district_ru']?.toString() ?? '';
-    }
     final String deliveryAddress = widget.order['adress_of_delivery'] ?? '—';
-    final String fullDeliveryAddress = districtName.isNotEmpty
-        ? '$districtName, $deliveryAddress'
-        : deliveryAddress;
 
     return Column(
       children: [
@@ -781,7 +773,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _buildRoutePoint(
           icon: Icons.location_on_outlined,
           label: 'Куда',
-          value: fullDeliveryAddress,
+          value: deliveryAddress,
           color: _green,
           isGrey: false,
         ),

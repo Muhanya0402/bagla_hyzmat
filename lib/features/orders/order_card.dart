@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -9,7 +10,6 @@ import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../home/home_screen.dart';
 
 class OrderCard extends StatelessWidget {
   final dynamic order;
@@ -51,7 +51,7 @@ class OrderCard extends StatelessWidget {
               Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  gradient: HomeScreen.brandGradient,
+                  gradient: HomeColors.gradient,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -80,7 +80,7 @@ class OrderCard extends StatelessWidget {
                         alignment: Alignment.center,
                         child: Text(
                           'Назад',
-                          style: AppText.medium(color: Colors.black87),
+                          style: AppText.medium(color: HomeColors.grey),
                         ),
                       ),
                     ),
@@ -128,7 +128,7 @@ class OrderCard extends StatelessWidget {
                 'Ошибка сети. Попробуйте позже.',
                 style: AppText.regular(fontSize: 13, color: Colors.white),
               ),
-              backgroundColor: HomeScreen.brandRed,
+              backgroundColor: HomeColors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -197,7 +197,7 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          splashColor: HomeScreen.brandGreen.withValues(alpha: 0.04),
+          splashColor: HomeColors.green.withValues(alpha: 0.04),
           highlightColor: Colors.transparent,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -227,13 +227,13 @@ class OrderCard extends StatelessWidget {
                     // ── Row 2-3: addresses ─────────────────────────────
                     _buildAddressRow(
                       icon: Icons.inventory_2_outlined,
-                      iconColor: HomeScreen.brandRed,
+                      iconColor: HomeColors.red,
                       address: order['shop_adress'] ?? 'Адрес магазина',
                     ),
                     const SizedBox(height: 4),
                     _buildAddressRow(
                       icon: Icons.location_on_outlined,
-                      iconColor: HomeScreen.brandGreen,
+                      iconColor: HomeColors.green,
                       address: order['adress_of_delivery'] ?? 'Адрес доставки',
                     ),
 
@@ -305,11 +305,11 @@ class OrderCard extends StatelessWidget {
     switch (transportType) {
       case 'car':
         icon = Icons.directions_car_rounded;
-        color = HomeScreen.brandGreen;
+        color = HomeColors.green;
         break;
       case 'truck':
         icon = Icons.local_shipping_rounded;
-        color = HomeScreen.brandRed;
+        color = HomeColors.red;
         break;
       default:
         icon = Icons.directions_run_rounded;
@@ -337,12 +337,12 @@ class OrderCard extends StatelessWidget {
   Widget _buildStatusBadge(String status, AppLocalizations words) {
     final styles = {
       'published': _BadgeStyle(
-        color: HomeScreen.brandRed,
+        color: HomeColors.red,
         label: words.statusFree,
         icon: Icons.search_rounded,
       ),
       'active': _BadgeStyle(
-        color: HomeScreen.brandGreen,
+        color: HomeColors.green,
         label: words.statusActive,
         icon: Icons.local_shipping_outlined,
       ),
@@ -352,7 +352,7 @@ class OrderCard extends StatelessWidget {
         icon: Icons.cancel_outlined,
       ),
       'completed': _BadgeStyle(
-        color: HomeScreen.brandGreen,
+        color: HomeColors.green,
         label: words.statusDone,
         icon: Icons.check_circle_outline_rounded,
       ),
@@ -399,7 +399,7 @@ class OrderCard extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           children: [
             ShaderMask(
-              shaderCallback: (b) => HomeScreen.brandGradient.createShader(b),
+              shaderCallback: (b) => HomeColors.gradient.createShader(b),
               child: Text(
                 amount.toStringAsFixed(0),
                 style: AppText.semiBold(fontSize: 20, color: Colors.white),
@@ -410,7 +410,7 @@ class OrderCard extends StatelessWidget {
               'TMT',
               style: AppText.regular(
                 fontSize: 10,
-                color: HomeScreen.brandGreen.withValues(alpha: 0.5),
+                color: HomeColors.green.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -437,7 +437,7 @@ class OrderCard extends StatelessWidget {
     if (isShop && (status == 'published' || status == 'active')) {
       return _buildOutlineButton(
         label: 'Отменить',
-        color: HomeScreen.brandRed,
+        color: HomeColors.red,
         onTap: () => _showCancelReasonModal(context, orderId, service),
       );
     }
@@ -456,7 +456,7 @@ class OrderCard extends StatelessWidget {
         label: 'Взять',
         points: points,
         balancePoints: balancePoints,
-        color: HomeScreen.brandGreen,
+        color: HomeColors.green,
         onTap: () async {
           if (isRestricted) {
             _showRestrictedModal(context);
@@ -471,7 +471,7 @@ class OrderCard extends StatelessWidget {
                   content: const Text(
                     'Нельзя брать больше 3 заказов одновременно',
                   ),
-                  backgroundColor: HomeScreen.brandRed,
+                  backgroundColor: HomeColors.red,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -487,7 +487,7 @@ class OrderCard extends StatelessWidget {
                 message: points > 0
                     ? 'С вашего баланса будет списано $points баллов. Приступить?'
                     : 'Заказ будет закреплён за вами. Приступить?',
-                actionColor: HomeScreen.brandGreen,
+                actionColor: HomeColors.green,
                 action: () => service.updateStatus(
                   orderId,
                   'active',
@@ -527,7 +527,7 @@ class OrderCard extends StatelessWidget {
       const double cashback = 0.0;
       return _buildFilledButton(
         label: 'Завершить',
-        color: HomeScreen.brandGreen,
+        color: HomeColors.green,
         cashback: cashback,
         onTap: () => onTap?.call(),
       );
@@ -667,17 +667,17 @@ class _StatusStrip extends StatelessWidget {
     Color left, right;
     switch (status) {
       case 'active':
-        left = right = HomeScreen.brandGreen;
+        left = right = HomeColors.green;
         break;
       case 'canceled':
-        left = right = const Color(0xFF9AA3AF);
+        left = right = HomeColors.grey;
         break;
       case 'completed':
-        left = right = HomeScreen.brandGreen;
+        left = right = HomeColors.green;
         break;
       default:
-        left = HomeScreen.brandGreen;
-        right = HomeScreen.brandRed;
+        left = HomeColors.green;
+        right = HomeColors.red;
     }
     return Container(
       height: 3,
