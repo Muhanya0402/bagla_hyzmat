@@ -1,11 +1,11 @@
 import 'package:bagla/features/home/widgets/home_widgets.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/l10n/app_localizations.dart';
-import 'package:bagla/providers/auth_provider.dart';
 
 class HomeOrdersList extends StatelessWidget {
   final List<dynamic> orders;

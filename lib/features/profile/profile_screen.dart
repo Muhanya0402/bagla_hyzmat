@@ -2,6 +2,7 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/language_provider.dart';
-import '../../providers/auth_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});

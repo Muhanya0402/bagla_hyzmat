@@ -4,7 +4,7 @@ import 'package:bagla/features/profile/appeals_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
-import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

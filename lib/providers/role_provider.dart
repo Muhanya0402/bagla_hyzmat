@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import 'auth_provider.dart';
+import '../features/auth/auth_provider.dart';
 
 class RoleProvider extends ChangeNotifier {
   String _selectedRole = 'client';

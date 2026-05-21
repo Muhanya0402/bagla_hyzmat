@@ -5,7 +5,7 @@ import 'package:bagla/models/district.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:bagla/models/points_rule.dart';
 import 'package:bagla/models/province.dart';
-import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/services/order_service.dart';
 import 'package:flutter/material.dart';

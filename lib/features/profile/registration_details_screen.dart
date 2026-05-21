@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/language_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../models/district.dart';
 import '../../models/province.dart';
 import '../../models/etrap.dart';

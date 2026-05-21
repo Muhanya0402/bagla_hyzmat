@@ -3,7 +3,7 @@ import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/home/widgets/wallet_info_modal.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
-import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/services/order_realtime_service.dart';
 import 'package:flutter/material.dart';
 

@@ -3,7 +3,7 @@ import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/features/profile/appeals_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
-import 'package:bagla/providers/auth_provider.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/providers/role_provider.dart';
 import 'package:bagla/services/push_notification_service.dart';

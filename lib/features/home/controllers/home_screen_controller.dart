@@ -1,12 +1,12 @@
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/etrap.dart';
-import 'package:bagla/features/home/courier_filter_modal.dart';
+import 'package:bagla/features/home/widgets/courier_filter_modal.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/unread_notifications_modal.dart';
-import 'package:bagla/providers/auth_provider.dart';
 import 'package:bagla/providers/language_provider.dart';
 import 'package:bagla/providers/level_provider.dart';
 import 'package:bagla/services/order_realtime_service.dart';
