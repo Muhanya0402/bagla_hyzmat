@@ -1,3 +1,4 @@
+import 'package:bagla/core/app_settings_provider.dart';
 import 'package:bagla/features/auth/onboarding_screen.dart';
 import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/features/profile/appeals_screen.dart';
@@ -61,6 +62,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),
         ChangeNotifierProvider(create: (_) => LevelProvider()),
+        ChangeNotifierProvider(create: (_) => AppSettingsProvider()),
         ChangeNotifierProvider.value(value: langProvider),
       ],
       child: MyApp(isLoggedIn: loggedIn, showOnboarding: showOnboarding),
