@@ -5,11 +5,13 @@ import 'package:bagla/features/home/home_constants.dart';
 class HomeStatusFilter extends StatelessWidget {
   final String? selectedStatus;
   final ValueChanged<String?> onChanged;
+  final Map<String?, int> counts;
 
   const HomeStatusFilter({
     super.key,
     required this.selectedStatus,
     required this.onChanged,
+    this.counts = const {},
   });
 
   @override
@@ -20,6 +22,8 @@ class HomeStatusFilter extends StatelessWidget {
       child: Row(
         children: kStatusFilters.map((f) {
           final bool sel = selectedStatus == f.value;
+          final int? count = counts[f.value];
+
           return GestureDetector(
             onTap: () => onChanged(f.value),
             child: AnimatedContainer(
@@ -55,6 +59,29 @@ class HomeStatusFilter extends StatelessWidget {
                         ? AppText.semiBold(fontSize: 12, color: f.color)
                         : AppText.medium(fontSize: 12, color: HomeColors.grey),
                   ),
+                  // ← счётчик
+                  if (count != null && count > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: sel
+                            ? f.color.withValues(alpha: 0.15)
+                            : HomeColors.border,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: AppText.semiBold(
+                          fontSize: 11,
+                          color: sel ? f.color : HomeColors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

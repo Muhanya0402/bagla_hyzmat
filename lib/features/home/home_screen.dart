@@ -156,6 +156,15 @@ class _HomeScreenState extends State<HomeScreen>
               child: HomeStatusFilter(
                 selectedStatus: selectedStatus,
                 onChanged: (v) => setState(() => selectedStatus = v),
+                counts: {
+                  for (final f in kStatusFilters)
+                    f.value: orders
+                        .where(
+                          (o) =>
+                              f.value == null || o['order_status'] == f.value,
+                        )
+                        .length,
+                },
               ),
             ),
 
