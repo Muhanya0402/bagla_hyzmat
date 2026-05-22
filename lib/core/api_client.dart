@@ -36,7 +36,9 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          if (e.response?.statusCode != 401 ||
+          final statusCode = e.response?.statusCode;
+
+          if ((statusCode != 401 && statusCode != 403) ||
               e.requestOptions.path.contains('/auth/refresh')) {
             return handler.next(e);
           }

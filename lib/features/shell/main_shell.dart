@@ -124,6 +124,17 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     }
     setState(() => _currentIndex = index);
     _navOverlayEntry?.markNeedsBuild();
+
+    // Обновляем уведомления через Navigator
+    if (index == 1) {
+      final context = _navigatorKeys[1].currentContext;
+      if (context != null) {
+        final state = context
+            .findAncestorStateOfType<NotificationsScreenState>();
+        state?.refresh();
+      }
+    }
+
     if (index == 1 && _unreadCount > 0) {
       setState(() => _unreadCount = 0);
     }

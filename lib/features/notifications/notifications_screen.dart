@@ -9,10 +9,10 @@ class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  State<NotificationsScreen> createState() => NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class NotificationsScreenState extends State<NotificationsScreen> {
   final NotificationService _service = NotificationService();
 
   List<dynamic> _items = [];
@@ -22,8 +22,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    _userId = context.read<AuthProvider>().userId;
-    _loadNotifications();
+    final auth = context.read<AuthProvider>();
+    _userId = auth.userId;
+
+    if (_userId.isNotEmpty) {
+      _loadNotifications();
+    } else {
+      // Слушаем пока userId не появится
+      void listener() {
+        final id = auth.userId;
+        if (id.isNotEmpty && _userId.isEmpty) {
+          _userId = id;
+          _loadNotifications();
+          auth.removeListener(listener);
+        }
+      }
+
+      auth.addListener(listener);
+    }
   }
 
   Future<void> _loadNotifications({bool silent = false}) async {
@@ -55,6 +71,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
     await _service.markAsRead(id);
   }
+
+  void refresh() => _loadNotifications(silent: true);
 
   @override
   Widget build(BuildContext context) {
