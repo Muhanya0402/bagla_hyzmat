@@ -21,6 +21,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   String provinceLabel = '';
   String etrapId = '';
   String etrapLabel = '';
+  bool _filtersEverApplied = false;
 
   Etrap? selectedEtrap;
   District? selectedDistrict;
@@ -238,92 +239,14 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
-    var r = targetOrders;
-
-    if (selectedStatus != null) {
-      r = r
-          .where(
-            (o) =>
-                (o['order_status'] ?? '').toString().toLowerCase() ==
-                selectedStatus,
-          )
-          .toList();
-    }
-
-    final role = context.read<AuthProvider>().role;
-
-    if (role == 'courier' && selectedEtrap != null) {
-      r = r.where((o) {
-        final e = o['etrap'];
-        return e is Map && e['id']?.toString() == selectedEtrap!.id;
-      }).toList();
-    }
-    if (role == 'courier' && selectedDistrict != null) {
-      r = r.where((o) {
-        final d = o['district'];
-        return d is Map && d['id']?.toString() == selectedDistrict!.id;
-      }).toList();
-    }
-
-    if (role == 'courier') {
-      if (filters.transportFilter != 'any') {
-        r = r.where((o) {
-          final t = o['transport_type']?.toString() ?? '';
-          return t.isEmpty || t == 'any' || t == filters.transportFilter;
-        }).toList();
-      }
-
-      if (filters.shopProvince != null) {
-        r = r.where((o) {
-          final p = o['shop_province'];
-          return p is Map && p['id']?.toString() == filters.shopProvince!.id;
-        }).toList();
-      }
-      if (filters.shopEtrap != null) {
-        r = r.where((o) {
-          final e = o['shop_etrap'];
-          return e is Map && e['id']?.toString() == filters.shopEtrap!.id;
-        }).toList();
-      }
-      if (filters.shopDistrict != null) {
-        r = r.where((o) {
-          final d = o['shop_district'];
-          return d is Map && d['id']?.toString() == filters.shopDistrict!.id;
-        }).toList();
-      }
-
-      if (filters.deliveryProvince != null) {
-        r = r.where((o) {
-          final p = o['province'];
-          return p is Map &&
-              p['id']?.toString() == filters.deliveryProvince!.id;
-        }).toList();
-      }
-      if (filters.deliveryEtrap != null) {
-        r = r.where((o) {
-          final e = o['etrap'];
-          return e is Map && e['id']?.toString() == filters.deliveryEtrap!.id;
-        }).toList();
-      }
-      if (filters.deliveryDistrict != null) {
-        r = r.where((o) {
-          final d = o['district'];
-          return d is Map &&
-              d['id']?.toString() == filters.deliveryDistrict!.id;
-        }).toList();
-      }
-
-      if (filters.shop != null) {
-        r = r
-            .where(
-              (o) =>
-                  (o['shop_phone'] ?? '').toString().trim() == filters.shop!.id,
-            )
-            .toList();
-      }
-    }
-
-    return r;
+    if (selectedStatus == null) return targetOrders;
+    return targetOrders
+        .where(
+          (o) =>
+              (o['order_status'] ?? '').toString().toLowerCase() ==
+              selectedStatus,
+        )
+        .toList();
   }
 
   Future<void> loadMore() async {
@@ -521,30 +444,36 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         ? CourierFilterItem(id: etrapId, label: etrapLabel)
         : null;
 
+    // Строим shopItems ДО очистки orders
+    final shopItems = buildShopItems();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (modalCtx) => CourierFilterModal(
         initial: filters,
+        applyDefaults: !_filtersEverApplied,
         isRu: isRu,
         cache: classifierCache,
         authRepo: authRepo,
-        shopItems: buildShopItems(),
+        shopItems: shopItems,
         defaultProvince: defaultProvince,
         defaultEtrap: defaultEtrap,
         onApply: (newFilters) {
+          _filtersEverApplied = true; // ← добавить
           setState(() {
             filters = newFilters;
-            orders = []; // очистить старые
+            orders = [];
             ordersLoading = true;
             httpOffset = 0;
             hasMore = true;
           });
           Navigator.pop(modalCtx);
-          handleRefresh(); // ← перезагрузить с новыми фильтрами
+          handleRefresh();
         },
         onClear: () {
+          _filtersEverApplied = true; // ← добавить
           setState(() {
             filters = const CourierFilters();
             selectedStatus = null;
@@ -554,7 +483,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
             hasMore = true;
           });
           Navigator.pop(modalCtx);
-          handleRefresh(); // ← перезагрузить без фильтров
+          handleRefresh();
         },
       ),
     );

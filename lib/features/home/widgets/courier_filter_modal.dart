@@ -126,6 +126,8 @@ class CourierFilterModal extends StatefulWidget {
   /// id = phone, label = "Имя (телефон)" или просто телефон
   final List<CourierFilterItem> shopItems;
 
+  final bool applyDefaults;
+
   final void Function(CourierFilters) onApply;
   final VoidCallback onClear;
 
@@ -136,6 +138,7 @@ class CourierFilterModal extends StatefulWidget {
     required this.cache,
     required this.authRepo,
     required this.shopItems,
+    this.applyDefaults = true,
     this.defaultProvince,
     this.defaultEtrap,
     required this.onApply,
@@ -170,10 +173,10 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
   void _applyDefaults() {
     if (_defaultsApplied) return;
     _defaultsApplied = true;
+    if (!widget.applyDefaults) return;
 
     var d = _draft;
 
-    // Адрес отправки — если велаят не выбран, ставим из профиля
     if (d.shopProvince == null && widget.defaultProvince != null) {
       d = d.copyWith(shopProvince: widget.defaultProvince);
     }
@@ -182,8 +185,6 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
         widget.defaultEtrap != null) {
       d = d.copyWith(shopEtrap: widget.defaultEtrap);
     }
-
-    // Адрес доставки — аналогично
     if (d.deliveryProvince == null && widget.defaultProvince != null) {
       d = d.copyWith(deliveryProvince: widget.defaultProvince);
     }
