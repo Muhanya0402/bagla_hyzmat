@@ -162,6 +162,16 @@ class OrderService {
     bool myOrdersOnly = false,
     int offset = 0,
     int limit = pageSize,
+    // ── Серверные фильтры ──────────────────────────────────────────
+    String? transportFilter,
+    String? shopProvinceId,
+    String? shopEtrapId,
+    String? shopDistrictId,
+    String? deliveryProvinceId,
+    String? deliveryEtrapId,
+    String? deliveryDistrictId,
+    String? shopPhone,
+    String? orderStatus,
   }) async {
     try {
       final filters = <String>[];
@@ -179,6 +189,36 @@ class OrderService {
         filters.add('filter[courierId][_null]=true');
         filters.add('filter[order_status][_nin]=completed,canceled');
       }
+
+      // ── Серверная фильтрация ───────────────────────────────────────
+      if (transportFilter != null && transportFilter != 'any') {
+        filters.add('filter[transport_type][_eq]=$transportFilter');
+      }
+      if (shopProvinceId != null) {
+        filters.add('filter[shop_province][_eq]=$shopProvinceId');
+      }
+      if (shopEtrapId != null) {
+        filters.add('filter[shop_etrap][_eq]=$shopEtrapId');
+      }
+      if (shopDistrictId != null) {
+        filters.add('filter[shop_district][_eq]=$shopDistrictId');
+      }
+      if (deliveryProvinceId != null) {
+        filters.add('filter[province][_eq]=$deliveryProvinceId');
+      }
+      if (deliveryEtrapId != null) {
+        filters.add('filter[etrap][_eq]=$deliveryEtrapId');
+      }
+      if (deliveryDistrictId != null) {
+        filters.add('filter[district][_eq]=$deliveryDistrictId');
+      }
+      if (shopPhone != null) {
+        filters.add('filter[shop_phone][_eq]=$shopPhone');
+      }
+      if (orderStatus != null) {
+        filters.add('filter[order_status][_eq]=$orderStatus');
+      }
+      // ─────────────────────────────────────────────────────────────
 
       final filterQuery = filters.join('&');
       final url =

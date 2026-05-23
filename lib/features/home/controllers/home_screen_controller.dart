@@ -94,6 +94,15 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         role: auth.role,
         userId: auth.userId,
         myOrdersOnly: myOrdersOnlyParam,
+        transportFilter: filters.transportFilter,
+        shopProvinceId: filters.shopProvince?.id,
+        shopEtrapId: filters.shopEtrap?.id,
+        shopDistrictId: filters.shopDistrict?.id,
+        deliveryProvinceId: filters.deliveryProvince?.id,
+        deliveryEtrapId: filters.deliveryEtrap?.id,
+        deliveryDistrictId: filters.deliveryDistrict?.id,
+        shopPhone: filters.shop?.id,
+        orderStatus: selectedStatus,
       );
 
       if (mounted) {
@@ -156,6 +165,20 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     } catch (e) {
       debugPrint('checkUnreadNotifications error: $e');
     }
+  }
+
+  Map<String, String?> _buildOrderParams() {
+    return {
+      'transportFilter': filters.transportFilter,
+      'shopProvinceId': filters.shopProvince?.id,
+      'shopEtrapId': filters.shopEtrap?.id,
+      'shopDistrictId': filters.shopDistrict?.id,
+      'deliveryProvinceId': filters.deliveryProvince?.id,
+      'deliveryEtrapId': filters.deliveryEtrap?.id,
+      'deliveryDistrictId': filters.deliveryDistrict?.id,
+      'shopPhone': filters.shop?.id,
+      'orderStatus': selectedStatus,
+    };
   }
 
   Future<void> initLocationFilter() async {
@@ -320,9 +343,17 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         role: auth.role,
         userId: auth.userId,
         myOrdersOnly: isShop ? true : selectedFilterIndex == 1,
-        offset:
-            currentOffset, // Используем динамический offset вместо жесткого httpOffset
+        offset: orders.length,
         limit: pageSize,
+        transportFilter: filters.transportFilter,
+        shopProvinceId: filters.shopProvince?.id,
+        shopEtrapId: filters.shopEtrap?.id,
+        shopDistrictId: filters.shopDistrict?.id,
+        deliveryProvinceId: filters.deliveryProvince?.id,
+        deliveryEtrapId: filters.deliveryEtrap?.id,
+        deliveryDistrictId: filters.deliveryDistrict?.id,
+        shopPhone: filters.shop?.id,
+        orderStatus: selectedStatus,
       );
 
       if (mounted) {
@@ -458,6 +489,15 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         role: auth.role,
         userId: auth.userId,
         myOrdersOnly: isShop ? true : selectedFilterIndex == 1,
+        transportFilter: filters.transportFilter,
+        shopProvinceId: filters.shopProvince?.id,
+        shopEtrapId: filters.shopEtrap?.id,
+        shopDistrictId: filters.shopDistrict?.id,
+        deliveryProvinceId: filters.deliveryProvince?.id,
+        deliveryEtrapId: filters.deliveryEtrap?.id,
+        deliveryDistrictId: filters.deliveryDistrict?.id,
+        shopPhone: filters.shop?.id,
+        orderStatus: selectedStatus,
       );
       if (mounted) {
         setState(() {
@@ -494,12 +534,27 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         defaultProvince: defaultProvince,
         defaultEtrap: defaultEtrap,
         onApply: (newFilters) {
-          setState(() => filters = newFilters);
+          setState(() {
+            filters = newFilters;
+            orders = []; // очистить старые
+            ordersLoading = true;
+            httpOffset = 0;
+            hasMore = true;
+          });
           Navigator.pop(modalCtx);
+          handleRefresh(); // ← перезагрузить с новыми фильтрами
         },
         onClear: () {
-          setState(() => filters = const CourierFilters());
+          setState(() {
+            filters = const CourierFilters();
+            selectedStatus = null;
+            orders = [];
+            ordersLoading = true;
+            httpOffset = 0;
+            hasMore = true;
+          });
           Navigator.pop(modalCtx);
+          handleRefresh(); // ← перезагрузить без фильтров
         },
       ),
     );
