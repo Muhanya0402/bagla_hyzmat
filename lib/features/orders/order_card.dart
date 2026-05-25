@@ -172,6 +172,7 @@ class OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final langProvider = context.watch<LanguageProvider>();
+
     final words = langProvider.words;
     final status = (order['status'] ?? order['order_status'] ?? 'published')
         .toString()
@@ -228,13 +229,18 @@ class OrderCard extends StatelessWidget {
                     _buildAddressRow(
                       icon: Icons.inventory_2_outlined,
                       iconColor: HomeColors.red,
-                      address: order['shop_adress'] ?? 'Адрес магазина',
+                      address: langProvider.isRu
+                          ? (order['shop_adress'] ?? 'Адрес магазина')
+                          : (order['shop_adresstk'] ?? 'Dükan salgysy'),
                     ),
                     const SizedBox(height: 4),
                     _buildAddressRow(
                       icon: Icons.location_on_outlined,
                       iconColor: HomeColors.green,
-                      address: order['adress_of_delivery'] ?? 'Адрес доставки',
+                      address: langProvider.isRu
+                          ? (order['adress_of_delivery'] ?? 'Адрес доставки')
+                          : (order['adress_of_deliverytk'] ??
+                                'Eltip beriş salgysy'),
                     ),
 
                     const SizedBox(height: 8),
@@ -257,6 +263,7 @@ class OrderCard extends StatelessWidget {
                           isShop,
                           currentUserId,
                           userPhone,
+                          words,
                         ),
                       ],
                     ),
@@ -427,6 +434,7 @@ class OrderCard extends StatelessWidget {
     bool isShop,
     String userId,
     String userPhone,
+    AppLocalizations words,
   ) {
     final OrderService service = OrderService();
 
@@ -436,7 +444,7 @@ class OrderCard extends StatelessWidget {
 
     if (isShop && (status == 'published' || status == 'active')) {
       return _buildOutlineButton(
-        label: 'Отменить',
+        label: words.cancelOrder,
         color: HomeColors.red,
         onTap: () => _showCancelReasonModal(context, orderId, service),
       );
@@ -453,7 +461,7 @@ class OrderCard extends StatelessWidget {
       final bool isClient = authProv.role == 'client';
 
       return _buildFilledButton(
-        label: 'Взять',
+        label: words.takeOrder,
         points: points,
         balancePoints: balancePoints,
         color: HomeColors.green,
@@ -526,7 +534,7 @@ class OrderCard extends StatelessWidget {
     if (status == 'active' && role == 'courier') {
       const double cashback = 0.0;
       return _buildFilledButton(
-        label: 'Завершить',
+        label: words.finishOrder,
         color: HomeColors.green,
         cashback: cashback,
         onTap: () => onTap?.call(),

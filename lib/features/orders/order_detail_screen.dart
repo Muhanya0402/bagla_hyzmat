@@ -7,6 +7,8 @@ import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/orders/order_service.dart';
+import 'package:bagla/l10n/app_localizations.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -36,14 +38,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Duration _timeLeft = Duration.zero;
   bool _isExpired = false;
 
-  String _transportLabel(String? type) {
+  String _transportLabel(String? type, AppLocalizations words) {
     switch (type) {
       case 'car':
-        return 'Легковой авто';
+        return words.transportCar;
       case 'truck':
-        return 'Грузовой авто';
+        return words.transportTruck;
       default:
-        return 'Авто необязательно';
+        return words.transportAny;
     }
   }
 
@@ -125,6 +127,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     required String message,
     required Color actionColor,
     required Future<void> Function() action,
+    required AppLocalizations words,
   }) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -162,7 +165,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: GestureDetector(
                       onTap: () => Navigator.pop(ctx, false),
                       child: _dialogBtn(
-                        'Назад',
+                        words.dialogBack,
                         Colors.transparent,
                         const Color(0xFF9AA3AF),
                         bordered: true,
@@ -174,7 +177,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     child: GestureDetector(
                       onTap: () => Navigator.pop(ctx, true),
                       child: _dialogBtn(
-                        'Подтвердить',
+                        words.dialogConfirm,
                         actionColor,
                         Colors.white,
                       ),
@@ -197,7 +200,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Ошибка сети. Попробуйте позже.'),
+              content: Text(words.error),
               backgroundColor: _red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -233,6 +236,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     BuildContext context,
     double points,
     int xpEarned,
+    AppLocalizations words,
   ) {
     showDialog(
       context: context,
@@ -267,13 +271,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ShaderMask(
                 shaderCallback: (b) => _gradient.createShader(b),
                 child: Text(
-                  'Заказ выполнен!',
+                  words.orderDone,
                   style: AppText.extraBold(fontSize: 20, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 10),
               Text(
-                'Вы доставили заказ вовремя',
+                words.deliveredOnTime,
                 style: AppText.regular(
                   fontSize: 14,
                   color: const Color(0xFF9AA3AF),
@@ -310,7 +314,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '+${points.toDouble()} жетонов',
+                      '+${points.toDouble()} ${words.tokens}',
                       style: AppText.extraBold(fontSize: 22, color: _green),
                     ),
                   ],
@@ -356,7 +360,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
               const SizedBox(height: 8),
               Text(
-                'кэшбек за своевременную доставку',
+                words.deliveryOnTimeSub,
                 style: AppText.regular(
                   fontSize: 12,
                   color: const Color(0xFF9AA3AF),
@@ -385,7 +389,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       Navigator.pop(context);
                     },
                     child: Text(
-                      'ОТЛИЧНО!',
+                      words.great,
                       style: AppText.bold(
                         fontSize: 15,
                         color: Colors.white,
@@ -407,6 +411,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final status = (widget.order['order_status'] ?? 'published')
         .toString()
         .toLowerCase();
+    final langProvider = context.watch<LanguageProvider>();
+
+    final words = langProvider.words;
     final isShop = widget.role == 'shop' || widget.role == 'business';
     final isDataLocked = !isShop && status == 'published';
     final orderId = widget.order['id'].toString();
@@ -442,7 +449,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Заказ',
+                  words.order,
                   style: AppText.semiBold(
                     fontSize: 17,
                     color: const Color(0xFF0F1117),
@@ -467,27 +474,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
-          _buildStatusCard(status),
+          _buildStatusCard(status, words),
           const SizedBox(height: 12),
 
-          _buildCountdownCard(),
+          _buildCountdownCard(words),
           const SizedBox(height: 12),
 
           _buildSection(
-            title: 'Маршрут',
-            child: _buildRouteBlock(isDataLocked),
+            title: words.routeSection,
+            child: _buildRouteBlock(isDataLocked, langProvider),
           ),
           const SizedBox(height: 12),
 
           _buildSection(
-            title: 'Вид транспортировки',
-            child: _buildTransportBlock(),
+            title: words.transportSection,
+            child: _buildTransportBlock(words),
           ),
           const SizedBox(height: 12),
 
           _buildSection(
-            title: 'Получатель (Клиент)',
-            child: _buildRecipientBlock(isDataLocked),
+            title: words.recipientSection,
+            child: _buildRecipientBlock(isDataLocked, words),
           ),
           const SizedBox(height: 12),
 
@@ -495,21 +502,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               (widget.order['courierId'] != null ||
                   widget.order['shopId'] != null)) ...[
             _buildSection(
-              title: isShop ? 'Исполнитель' : 'Отправитель',
-              child: _buildCounterpartyBlock(isShop),
+              title: isShop ? words.executorSection : words.senderSection,
+              child: _buildCounterpartyBlock(isShop, words),
             ),
             const SizedBox(height: 12),
           ],
 
           _buildSection(
-            title: 'Стоимость',
-            child: _buildPriceBlock(isShop, total, delivery),
+            title: words.priceSection,
+            child: _buildPriceBlock(isShop, total, delivery, words),
           ),
           const SizedBox(height: 12),
 
           if (pictures.isNotEmpty) ...[
             _buildSection(
-              title: 'Фото товара',
+              title: words.photoSection,
               child: _buildImagesBlock(pictures),
             ),
             const SizedBox(height: 12),
@@ -517,7 +524,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
           if ((widget.order['comment'] ?? '').toString().isNotEmpty)
             _buildSection(
-              title: 'Комментарий',
+              title: words.commentSection,
               child: Text(
                 widget.order['comment'].toString(),
                 style: AppText.regular(
@@ -531,7 +538,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: _buildActionButton(context, status, orderId, isShop),
+          child: _buildActionButton(context, status, orderId, isShop, words),
         ),
       ),
     );
@@ -584,31 +591,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // ── Status card ────────────────────────────────────────────────────────────
-  Widget _buildStatusCard(String status) {
-    const styles = {
+  Widget _buildStatusCard(String status, AppLocalizations words) {
+    final styles = {
       'published': _StatusStyle(
         color: _red,
-        label: 'Свободный заказ',
+        label: words.statusFree,
         icon: Icons.search_rounded,
-        description: 'Ожидает курьера',
+        description: words.statusWaitCourier,
       ),
       'active': _StatusStyle(
         color: _green,
-        label: 'В работе',
+        label: words.statusActive,
         icon: Icons.local_shipping_outlined,
-        description: 'Курьер в пути',
+        description: words.statusOnWay,
       ),
       'completed': _StatusStyle(
         color: _green,
-        label: 'Доставлен',
+        label: words.statusDone,
         icon: Icons.check_circle_outline_rounded,
-        description: 'Заказ выполнен',
+        description: words.statusOrderDone,
       ),
       'canceled': _StatusStyle(
         color: Color(0xFF9AA3AF),
-        label: 'Отменён',
+        label: words.statusCanceled,
         icon: Icons.cancel_outlined,
-        description: 'Заказ отменён',
+        description: words.statusOrderCanceled,
       ),
     };
     final s = styles[status] ?? styles['published']!;
@@ -670,7 +677,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // ── Countdown card ─────────────────────────────────────────────────────────
-  Widget _buildCountdownCard() {
+  Widget _buildCountdownCard(AppLocalizations words) {
     final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
     final Color color = _isExpired ? _red : _green;
     final Color bgColor = color.withValues(alpha: 0.06);
@@ -703,7 +710,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isExpired ? 'Время истекло' : 'До истечения кэшбека',
+                  _isExpired ? words.timerExpired : words.timerLabel,
                   style: AppText.regular(
                     fontSize: 12,
                     color: color.withValues(alpha: 0.7),
@@ -711,9 +718,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _isExpired
-                      ? 'Кэшбек не будет начислен'
-                      : _formatDuration(_timeLeft),
+                  _isExpired ? words.cashbackNone : _formatDuration(_timeLeft),
                   style: AppText.extraBold(fontSize: 22, color: color),
                 ),
               ],
@@ -724,7 +729,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'Кэшбек',
+                  words.cashbackLabel,
                   style: AppText.regular(
                     fontSize: 11,
                     color: const Color(0xFF9AA3AF),
@@ -758,22 +763,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // ── Route block ────────────────────────────────────────────────────────────
-  Widget _buildRouteBlock(bool isLocked) {
-    final String deliveryAddress = widget.order['adress_of_delivery'] ?? '—';
-
+  Widget _buildRouteBlock(bool isLocked, LanguageProvider langProvider) {
     return Column(
       children: [
         _buildRoutePoint(
           icon: Icons.inventory_2_outlined,
           label: 'Откуда',
-          value: widget.order['shop_adress'] ?? '—',
+          value: langProvider.isRu
+              ? (widget.order['shop_adress'] ?? 'Адрес магазина')
+              : (widget.order['shop_adresstk'] ?? 'Dükan salgysy'),
           color: _red,
         ),
         const SizedBox(height: 12),
         _buildRoutePoint(
           icon: Icons.location_on_outlined,
           label: 'Куда',
-          value: deliveryAddress,
+          value: langProvider.isRu
+              ? (widget.order['adress_of_delivery'] ?? 'Адрес доставки')
+              : (widget.order['adress_of_deliverytk'] ?? 'Eltip beriş salgysy'),
           color: _green,
           isGrey: false,
         ),
@@ -827,9 +834,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildTransportBlock() {
+  Widget _buildTransportBlock(AppLocalizations words) {
     final String? type = widget.order['transport_type']?.toString();
-    final label = _transportLabel(type);
+    final label = _transportLabel(type, words);
     final icon = _transportIcon(type);
     final Color color = type == 'truck' ? _red : _green;
 
@@ -849,7 +856,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Требование к транспорту',
+              words.transportRequirement,
               style: AppText.regular(
                 fontSize: 11,
                 color: const Color(0xFF9AA3AF),
@@ -869,15 +876,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // ── Recipient / counterparty ───────────────────────────────────────────────
-  Widget _buildRecipientBlock(bool isLocked) {
+  Widget _buildRecipientBlock(bool isLocked, AppLocalizations words) {
     final String phone = (widget.order['client_phone'] ?? '').toString();
     return Row(
       children: [
         Expanded(
           child: _buildInfoRow(
             icon: Icons.person_outline,
-            label: isLocked ? 'Телефон скрыт' : 'Клиент',
-            value: isLocked ? '+993 ••• •• ••' : (phone.isEmpty ? '—' : phone),
+            label: isLocked ? words.phoneHidden : words.clientPhone,
+            value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
             color: _green,
           ),
         ),
@@ -886,7 +893,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildCounterpartyBlock(bool isShop) {
+  Widget _buildCounterpartyBlock(bool isShop, AppLocalizations words) {
     final String courierName = widget.order['courier_name']?.toString() ?? '';
     final String? phone = isShop
         ? widget.order['courier_phone']
@@ -901,8 +908,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           child: _buildInfoRow(
             icon: icon,
             label: isShop
-                ? (courierName.isNotEmpty ? 'Курьер — $courierName' : 'Курьер')
-                : 'Заказчик',
+                ? (courierName.isNotEmpty
+                      ? '${words.courier} — $courierName'
+                      : words.courier)
+                : words.orderSender,
             value: phone,
             color: _red,
           ),
@@ -975,22 +984,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // ── Price block ────────────────────────────────────────────────────────────
-  Widget _buildPriceBlock(bool isShop, double total, double delivery) {
+  Widget _buildPriceBlock(
+    bool isShop,
+    double total,
+    double delivery,
+    AppLocalizations words,
+  ) {
     final double itemPrice = total - delivery;
     final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
 
     return Column(
       children: [
         _priceRow(
-          'За товар(ы)',
+          words.itemPrice,
           '${itemPrice.toStringAsFixed(0)} TMT',
           const Color(0xFF0F1117),
         ),
         const SizedBox(height: 10),
-        _priceRow('Доставка', '${delivery.toStringAsFixed(0)} TMT', _green),
+        _priceRow(words.delivery, '${delivery.toStringAsFixed(0)} TMT', _green),
         if (!isShop && cashback > 0) ...[
           const SizedBox(height: 10),
-          _priceRow('Кэшбек (20%)', '+${cashback.toDouble()} жетонов', _green),
+          _priceRow(
+            words.cashbackPercent,
+            '+${cashback.toDouble()} ${words.tokens}',
+            _green,
+          ),
         ],
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 12),
@@ -1000,7 +1018,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              isShop ? 'К получению' : 'Выплата',
+              isShop ? words.toShopReceive : words.courierPayout,
               style: AppText.semiBold(fontSize: 14),
             ),
             ShaderMask(
@@ -1088,6 +1106,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     String status,
     String orderId,
     bool isShop,
+    AppLocalizations words,
   ) {
     final service = OrderService();
     if (status == 'completed' || status == 'canceled') {
@@ -1097,7 +1116,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     // Shop cancel
     if (isShop && (status == 'published' || status == 'active')) {
       return _actionBtn(
-        label: 'Отменить заказ',
+        label: words.cancelOrderBtn,
         color: _red,
         filled: false,
         onTap: () => _showCancelReasonModal(context, orderId, service),
@@ -1116,7 +1135,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         final bool isClient = authProv.role == 'client';
 
         return _actionBtn(
-          label: 'Взять заказ',
+          label: words.takeOrder,
           color: _green,
           filled: true,
           onTap: () async {
@@ -1159,9 +1178,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               if (activeCount >= 3) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text(
-                      'Нельзя брать больше 3 заказов одновременно',
-                    ),
+                    content: Text(words.tooManyOrders),
                     backgroundColor: _red,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
@@ -1176,11 +1193,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               if (balancePoints >= points) {
                 _confirmAction(
                   context: context,
-                  title: 'Принять заказ',
+                  title: words.confirmTitle,
                   message: points > 0
-                      ? 'С вашего баланса будет списано $points баллов. Приступить?'
-                      : 'Заказ будет закреплён за вами. Приступить?',
+                      ? words.confirmWithPoints.replaceAll(
+                          '{points}',
+                          '$points',
+                        )
+                      : words.confirmNoPoints,
                   actionColor: _green,
+                  words: words,
                   action: () => service.updateStatus(
                     orderId,
                     'active',
@@ -1228,11 +1249,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
         return _actionBtn(
           label: cashback > 0
-              ? 'Завершить  •  +${cashback.toDouble()} баллов'
-              : 'Завершить доставку',
+              ? words.finishWithCashback.replaceAll(
+                  '{cashback}',
+                  '${cashback.toDouble()}',
+                )
+              : words.finishOrder,
           color: _green,
           filled: true,
-          onTap: () => _showDeliveryCodeModal(context, orderId, service),
+          onTap: () => _showDeliveryCodeModal(context, orderId, service, words),
         );
       }
     }
@@ -1245,6 +1269,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     BuildContext context,
     String orderId,
     OrderService service,
+    AppLocalizations words,
   ) async {
     final codeCtrl = TextEditingController();
     bool isLoading = false;
@@ -1304,15 +1329,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ShaderMask(
                   shaderCallback: (b) => _gradient.createShader(b),
                   child: Text(
-                    'Подтверждение доставки',
+                    words.confirmDelivery,
                     style: AppText.bold(fontSize: 18, color: Colors.white),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  codeSent
-                      ? 'Введите код который получил клиент по SMS'
-                      : 'Нажмите кнопку — клиент получит код по SMS',
+                  codeSent ? words.enterCodeHint : words.sendCodeHint,
                   style: AppText.regular(
                     fontSize: 13,
                     color: const Color(0xFF9AA3AF),
@@ -1358,9 +1381,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 if (result['success'] != true && ctx.mounted) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
                                     SnackBar(
-                                      content: const Text(
-                                        'Ошибка отправки кода',
-                                      ),
+                                      content: Text(words.codeSendError),
                                       backgroundColor: _red,
                                       behavior: SnackBarBehavior.floating,
                                       shape: RoundedRectangleBorder(
@@ -1380,7 +1401,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 ),
                               )
                             : Text(
-                                'ОТПРАВИТЬ КОД КЛИЕНТУ',
+                                words.sendCodeBtn,
                                 style: AppText.bold(
                                   fontSize: 14,
                                   color: Colors.white,
@@ -1464,6 +1485,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                         context,
                                         cashback,
                                         xpEarned,
+                                        words,
                                       );
                                     } else {
                                       Navigator.pop(context);
@@ -1475,7 +1497,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     ScaffoldMessenger.of(ctx).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          result['message'] ?? 'Неверный код',
+                                          result['message'] ?? words.wrongCode,
                                         ),
                                         backgroundColor: _red,
                                         behavior: SnackBarBehavior.floating,
@@ -1499,7 +1521,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 ),
                               )
                             : Text(
-                                'ПОДТВЕРДИТЬ',
+                                words.confirmBtn2,
                                 style: AppText.bold(
                                   fontSize: 14,
                                   color: Colors.white,
@@ -1517,7 +1539,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             codeCtrl.clear();
                           }),
                     child: Text(
-                      'Отправить код повторно',
+                      words.resendCode,
                       style: AppText.regular(
                         fontSize: 13,
                         color: const Color(0xFF9AA3AF),
