@@ -168,4 +168,11 @@ const Map<String, String> stringsRu = {
   'filterDistrictDelivery': 'Район доставки',
   'filterSearchHint': 'Поиск по названию или номеру...',
   'filterNotFound': 'Ничего не найдено',
+  'cancelReasonTitle': 'Причина отмены',
+  'cancelReasonSubtitle': 'Выберите причину и добавьте комментарий',
+  'cancelReasonComment': 'Дополнительный комментарий (необязательно)...',
+  'cancelReasonClientRefused': 'Клиент отказался',
+  'cancelReasonCourierLate': 'Доставщик не успел',
+  'cancelReasonWrongAddress': 'Неверный адрес',
+  'cancelReasonOther': 'Другая причина',
 };

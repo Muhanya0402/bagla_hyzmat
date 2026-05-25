@@ -446,7 +446,7 @@ class OrderCard extends StatelessWidget {
       return _buildOutlineButton(
         label: words.cancelOrder,
         color: HomeColors.red,
-        onTap: () => _showCancelReasonModal(context, orderId, service),
+        onTap: () => _showCancelReasonModal(context, orderId, service, words),
       );
     }
 
@@ -641,6 +641,7 @@ class OrderCard extends StatelessWidget {
     BuildContext context,
     String orderId,
     OrderService service,
+    AppLocalizations words,
   ) {
     showModalBottomSheet(
       context: context,
@@ -651,6 +652,7 @@ class OrderCard extends StatelessWidget {
         currentUserId: currentUserId,
         service: service,
         onSuccess: () => onUpdate?.call(),
+        words: words,
       ),
     ).then((_) => onUpdate?.call());
   }

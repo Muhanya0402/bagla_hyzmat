@@ -167,4 +167,11 @@ const Map<String, String> stringsTk = {
   'filterDistrictDelivery': 'Eltip beriş etraby',
   'filterSearchHint': 'At ýa-da belgä görä gözleg...',
   'filterNotFound': 'Hiç zat tapylmady',
+  'cancelReasonTitle': 'Ýatyrma sebäbi',
+  'cancelReasonSubtitle': 'Sebäbi saýlaň we teswir goşuň',
+  'cancelReasonComment': 'Goşmaça teswir (hökmany däl)...',
+  'cancelReasonClientRefused': 'Müşderi ret etdi',
+  'cancelReasonCourierLate': 'Eltip beriji ýetişmedi',
+  'cancelReasonWrongAddress': 'Nädogry salgy',
+  'cancelReasonOther': 'Başga sebäp',
 };

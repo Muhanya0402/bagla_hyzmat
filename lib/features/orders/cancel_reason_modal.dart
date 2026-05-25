@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/orders/order_service.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class CancelReasonModal extends StatefulWidget {
@@ -7,6 +8,7 @@ class CancelReasonModal extends StatefulWidget {
   final String currentUserId;
   final OrderService service;
   final VoidCallback? onSuccess;
+  final AppLocalizations words;
 
   const CancelReasonModal({
     super.key,
@@ -14,6 +16,7 @@ class CancelReasonModal extends StatefulWidget {
     required this.currentUserId,
     required this.service,
     this.onSuccess,
+    required this.words,
   });
 
   @override
@@ -32,25 +35,25 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
   final _commentCtrl = TextEditingController();
   bool _isLoading = false;
 
-  static const _reasons = [
+  List<_ReasonOption> _reasons(AppLocalizations w) => [
     _ReasonOption(
       id: 'client_refused',
-      label: 'Клиент отказался',
+      label: w.cancelReasonClientRefused,
       icon: Icons.person_off_outlined,
     ),
     _ReasonOption(
       id: 'courier_late',
-      label: 'Доставщик не успел',
+      label: w.cancelReasonCourierLate,
       icon: Icons.timer_off_outlined,
     ),
     _ReasonOption(
       id: 'wrong_address',
-      label: 'Неверный адрес',
+      label: w.cancelReasonWrongAddress,
       icon: Icons.location_off_outlined,
     ),
     _ReasonOption(
       id: 'other',
-      label: 'Другая причина',
+      label: w.cancelReasonOther,
       icon: Icons.help_outline_rounded,
     ),
   ];
@@ -125,18 +128,18 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
             // Title
             Text(
-              'Причина отмены',
+              widget.words.cancelReasonTitle,
               style: AppText.bold(fontSize: 17, color: const Color(0xFF0F1117)),
             ),
             const SizedBox(height: 4),
             Text(
-              'Выберите причину и добавьте комментарий',
+              widget.words.cancelReasonSubtitle,
               style: AppText.regular(fontSize: 13, color: _grey),
             ),
             const SizedBox(height: 16),
 
             // Reason tiles
-            ..._reasons.map(
+            ..._reasons(widget.words).map(
               (r) => _ReasonTile(
                 reason: r,
                 isSelected: _selectedReason == r.label,
@@ -155,7 +158,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 color: const Color(0xFF0F1117),
               ),
               decoration: InputDecoration(
-                hintText: 'Дополнительный комментарий (необязательно)...',
+                hintText: widget.words.cancelReasonComment,
                 hintStyle: AppText.regular(fontSize: 13, color: _grey),
                 filled: true,
                 fillColor: _bg,
@@ -193,7 +196,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Назад',
+                        widget.words.back,
                         style: AppText.medium(fontSize: 14, color: _grey),
                       ),
                     ),
@@ -225,7 +228,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                               ),
                             )
                           : Text(
-                              'Отменить заказ',
+                              widget.words.cancelOrder,
                               style: AppText.semiBold(
                                 fontSize: 14,
                                 color: Colors.white,

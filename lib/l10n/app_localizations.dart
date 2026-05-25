@@ -183,4 +183,11 @@ class AppLocalizations {
   String get filterDistrictDelivery => get('filterDistrictDelivery');
   String get filterSearchHint => get('filterSearchHint');
   String get filterNotFound => get('filterNotFound');
+  String get cancelReasonTitle => get('cancelReasonTitle');
+  String get cancelReasonSubtitle => get('cancelReasonSubtitle');
+  String get cancelReasonComment => get('cancelReasonComment');
+  String get cancelReasonClientRefused => get('cancelReasonClientRefused');
+  String get cancelReasonCourierLate => get('cancelReasonCourierLate');
+  String get cancelReasonWrongAddress => get('cancelReasonWrongAddress');
+  String get cancelReasonOther => get('cancelReasonOther');
 }

@@ -1119,7 +1119,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         label: words.cancelOrderBtn,
         color: _red,
         filled: false,
-        onTap: () => _showCancelReasonModal(context, orderId, service),
+        onTap: () => _showCancelReasonModal(context, orderId, service, words),
       );
     }
 
@@ -1559,6 +1559,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     BuildContext context,
     String orderId,
     OrderService service,
+    AppLocalizations words,
   ) {
     showModalBottomSheet(
       context: context,
@@ -1569,6 +1570,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         currentUserId: widget.currentUserId,
         service: service,
         onSuccess: () => widget.onUpdate?.call(),
+        words: words,
       ),
     ).then((_) => widget.onUpdate?.call());
   }
