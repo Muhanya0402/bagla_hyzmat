@@ -163,7 +163,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '${p.currentXp + p.xpToNextLevel} XP',
+                      '${p.nextLevel!.xpRequired - p.currentLevel!.xpRequired} XP',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 13,
