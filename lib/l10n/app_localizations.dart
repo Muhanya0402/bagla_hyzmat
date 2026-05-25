@@ -256,4 +256,7 @@ class AppLocalizations {
   String get levelFromXp => get('levelFromXp');
   String get levelPerDay => get('levelPerDay');
   String get levelCurrentBonuses => get('levelCurrentBonuses');
+  String get termsOfUse => get('termsOfUse');
+  String get downloadError => get('downloadError');
+  String get retry => get('retry');
 }

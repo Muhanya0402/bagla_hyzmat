@@ -1,6 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -86,6 +87,7 @@ class _TermsScreenState extends State<TermsScreen> {
     final lang = context.watch<LanguageProvider>();
     final auth = context.watch<AuthProvider>();
     final isRu = lang.isRu;
+    final words = lang.words;
 
     final String fullName = '${auth.name} ${auth.surname}'.trim().isNotEmpty
         ? '${auth.name} ${auth.surname}'.trim()
@@ -112,7 +114,7 @@ class _TermsScreenState extends State<TermsScreen> {
           ),
         ),
         title: Text(
-          isRu ? 'Условия использования' : 'Ulanyş şertleri',
+          words.termsOfUse,
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         bottom: PreferredSize(
@@ -120,11 +122,11 @@ class _TermsScreenState extends State<TermsScreen> {
           child: Container(height: 0.5, color: _border),
         ),
       ),
-      body: _buildBody(isRu, fullName),
+      body: _buildBody(isRu, fullName, words),
     );
   }
 
-  Widget _buildBody(bool isRu, String fullName) {
+  Widget _buildBody(bool isRu, String fullName, AppLocalizations words) {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: _green, strokeWidth: 2),
@@ -139,14 +141,14 @@ class _TermsScreenState extends State<TermsScreen> {
             const Icon(Icons.wifi_off_rounded, color: _grey, size: 40),
             const SizedBox(height: 12),
             Text(
-              isRu ? 'Ошибка загрузки' : 'Ýüklemek ýalňyşlygy',
+              words.downloadError,
               style: AppText.semiBold(fontSize: 15, color: _grey),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: _loadTerms,
               child: Text(
-                isRu ? 'Повторить' : 'Gaýtalaň',
+                words.retry,
                 style: AppText.semiBold(fontSize: 14, color: _green),
               ),
             ),
@@ -164,7 +166,7 @@ class _TermsScreenState extends State<TermsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
               // Header card
-              _buildHeader(isRu),
+              _buildHeader(isRu, words),
               const SizedBox(height: 16),
 
               // Terms items
@@ -196,7 +198,7 @@ class _TermsScreenState extends State<TermsScreen> {
 
   // ── Header card ────────────────────────────────────────────────────────────
 
-  Widget _buildHeader(bool isRu) {
+  Widget _buildHeader(bool isRu, AppLocalizations words) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -252,7 +254,7 @@ class _TermsScreenState extends State<TermsScreen> {
                     ShaderMask(
                       shaderCallback: (b) => _gradient.createShader(b),
                       child: Text(
-                        isRu ? 'Условия использования' : 'Ulanyş şertleri',
+                        words.termsOfUse,
                         style: AppText.extraBold(
                           fontSize: 16,
                           color: Colors.white,

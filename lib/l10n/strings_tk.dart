@@ -241,4 +241,7 @@ const Map<String, String> stringsTk = {
   'levelFromXp': '{n} XP-den',
   'levelPerDay': '+{n}/gün',
   'levelCurrentBonuses': 'HÄZIRKI DEREJE BONUSLARY',
+  'termsOfUse': 'Ulanyş şertleri',
+  'downloadError': 'Ýüklemek ýalňyşlygy',
+  'retry': 'Gaýtalaň',
 };

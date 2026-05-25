@@ -241,4 +241,7 @@ const Map<String, String> stringsRu = {
   'levelFromXp': 'от {n} XP',
   'levelPerDay': '+{n}/день',
   'levelCurrentBonuses': 'БОНУСЫ ТЕКУЩЕГО УРОВНЯ',
+  'termsOfUse': 'Условия использования',
+  'downloadError': 'Ошибка загрузки',
+  'retry': 'Повторить',
 };
