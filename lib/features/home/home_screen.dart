@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           if (isCourier)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: HomeSegmentedFilter(
                 selectedIndex: selectedFilterIndex,
                 onChanged: (i) {
@@ -167,8 +167,6 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
             ),
-
-          const SizedBox(height: 10),
 
           Expanded(
             child: RefreshIndicator(

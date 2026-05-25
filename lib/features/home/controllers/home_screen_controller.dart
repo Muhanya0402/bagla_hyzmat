@@ -260,7 +260,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     try {
       // Корректный offset — это текущее количество элементов.
       // Если сокет добавил новые элементы сверху, httpOffset должен это учитывать.
-      final currentOffset = orders.length;
 
       final more = await orderService.getOrders(
         role: auth.role,
