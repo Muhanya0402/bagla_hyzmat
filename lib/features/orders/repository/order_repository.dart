@@ -3,8 +3,8 @@ import 'package:bagla/models/points_rule.dart';
 
 class OrderRepository {
   Future<List<PointsRule>> fetchPointsRules() async {
-    final ApiClient _api = ApiClient();
-    final response = await _api.dio.get(
+    final ApiClient api = ApiClient();
+    final response = await api.dio.get(
       '/items/points_rules',
       queryParameters: {'sort': '-min_amount'},
     );
