@@ -168,20 +168,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     }
   }
 
-  Map<String, String?> _buildOrderParams() {
-    return {
-      'transportFilter': filters.transportFilter,
-      'shopProvinceId': filters.shopProvince?.id,
-      'shopEtrapId': filters.shopEtrap?.id,
-      'shopDistrictId': filters.shopDistrict?.id,
-      'deliveryProvinceId': filters.deliveryProvince?.id,
-      'deliveryEtrapId': filters.deliveryEtrap?.id,
-      'deliveryDistrictId': filters.deliveryDistrict?.id,
-      'shopPhone': filters.shop?.id,
-      'orderStatus': selectedStatus,
-    };
-  }
-
   Future<void> initLocationFilter() async {
     final auth = context.read<AuthProvider>();
     if (auth.role != 'courier') return;
