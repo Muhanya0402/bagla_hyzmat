@@ -1,10 +1,10 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Публичная модель фильтров курьера
-// Экспортируется — используется в home_screen.dart и courier_filter_modal.dart
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CourierFilterItem {
@@ -31,8 +31,7 @@ class CourierFilters {
   final CourierFilterItem? deliveryEtrap;
   final CourierFilterItem? deliveryDistrict;
 
-  // ЗАДАЧА 3: поиск заказчика по телефону и по имени
-  final CourierFilterItem? shop; // id = phone, label = "Имя (телефон)"
+  final CourierFilterItem? shop;
 
   const CourierFilters({
     this.transportFilter = 'any',
@@ -95,7 +94,6 @@ class CourierFilters {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Синглтон-кэш классификатора
-// Живёт между открытиями модалки — повторных запросов нет
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ClassifierCache {
@@ -115,15 +113,13 @@ class ClassifierCache {
 class CourierFilterModal extends StatefulWidget {
   final CourierFilters initial;
   final bool isRu;
+  final AppLocalizations words; // ← добавлено
   final ClassifierCache cache;
   final AuthRepository authRepo;
 
-  /// ЗАДАЧА 2: дефолтный велаят/этрап из профиля курьера
   final CourierFilterItem? defaultProvince;
   final CourierFilterItem? defaultEtrap;
 
-  /// ЗАДАЧА 3: список заказчиков с именем
-  /// id = phone, label = "Имя (телефон)" или просто телефон
   final List<CourierFilterItem> shopItems;
 
   final bool applyDefaults;
@@ -135,6 +131,7 @@ class CourierFilterModal extends StatefulWidget {
     super.key,
     required this.initial,
     required this.isRu,
+    required this.words, // ← добавлено
     required this.cache,
     required this.authRepo,
     required this.shopItems,
@@ -152,15 +149,14 @@ class CourierFilterModal extends StatefulWidget {
 class _CourierFilterModalState extends State<CourierFilterModal> {
   late CourierFilters _draft;
   bool _loadingAny = false;
-
-  static const _transportOptions = [
-    ('any', Icons.directions_run_rounded, 'Любой'),
-    ('car', Icons.directions_car_rounded, 'Легковой'),
-    ('truck', Icons.local_shipping_rounded, 'Грузовой'),
-  ];
-
-  // Флаг: дефолты уже применены (не применять повторно)
   bool _defaultsApplied = false;
+
+  // transport options теперь строятся из words в build
+  List<(String, IconData, String)> _transportOptions() => [
+    ('any', Icons.directions_run_rounded, widget.words.filterTransportAny),
+    ('car', Icons.directions_car_rounded, widget.words.filterTransportCar),
+    ('truck', Icons.local_shipping_rounded, widget.words.filterTransportTruck),
+  ];
 
   @override
   void initState() {
@@ -169,7 +165,6 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     _applyDefaults();
   }
 
-  // ЗАДАЧА 2: подставить велаят/этрап из профиля если ничего не выбрано
   void _applyDefaults() {
     if (_defaultsApplied) return;
     _defaultsApplied = true;
@@ -266,9 +261,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     }
   }
 
-  // ── Открытие вложенного пикера ───────────────────────────────────────────
-  // Данные грузятся ДО открытия (уже в кэше — мгновенно).
-  // pickerCtx гарантирует что Navigator.pop закроет именно пикер.
+  // ── Пикер ────────────────────────────────────────────────────────────────
 
   Future<CourierFilterItem?> _openPicker({
     required String title,
@@ -289,6 +282,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
         title: title,
         items: items,
         selectedId: selectedId,
+        words: widget.words, // ← передаём words
         onSelect: (id) {
           final item = items.firstWhere((i) => i.id == id);
           Navigator.pop(pickerCtx, item);
@@ -402,6 +396,9 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
   @override
   Widget build(BuildContext context) {
+    final w = widget.words;
+    final transportOptions = _transportOptions();
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -427,13 +424,13 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
             ),
             const SizedBox(height: 20),
 
-            // Заголовок + индикатор загрузки / кнопка сброса
+            // Заголовок + кнопка сброса
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
                   Text(
-                    'Фильтры',
+                    w.filterTitle,
                     style: AppText.bold(
                       fontSize: 18,
                       color: const Color(0xFF0F1117),
@@ -454,7 +451,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
                       onTap: () =>
                           setState(() => _draft = const CourierFilters()),
                       child: Text(
-                        'Сбросить',
+                        w.filterReset,
                         style: AppText.medium(
                           fontSize: 13,
                           color: const Color(0xFFD32F1E),
@@ -468,11 +465,11 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
             const SizedBox(height: 24),
 
             // ── Транспорт ─────────────────────────────────────────────────
-            _sectionLabel('Вид транспортировки'),
+            _sectionLabel(w.transportSection),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                children: _transportOptions.map((opt) {
+                children: transportOptions.map((opt) {
                   final bool sel = _draft.transportFilter == opt.$1;
                   return Expanded(
                     child: GestureDetector(
@@ -530,15 +527,15 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
             const SizedBox(height: 24),
 
             // ── Адрес ОТПРАВКИ ────────────────────────────────────────────
-            _sectionLabel('Адрес отправки'),
+            _sectionLabel(w.filterShopAddress),
 
             _pickerTile(
               icon: Icons.map_outlined,
-              hint: 'Выбрать велаят',
+              hint: w.filterPickProvince,
               selected: _draft.shopProvince,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Велаят отправки',
+                  title: w.filterProvinceShop,
                   itemsFuture: _loadProvinces(),
                   selectedId: _draft.shopProvince?.id,
                 );
@@ -565,12 +562,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
             _pickerTile(
               icon: Icons.location_city_outlined,
-              hint: 'Выбрать этрап',
+              hint: w.filterPickEtrap,
               selected: _draft.shopEtrap,
               disabled: _draft.shopProvince == null,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Этрап отправки',
+                  title: w.filterEtrapShop,
                   itemsFuture: _loadEtraps(_draft.shopProvince!.id),
                   selectedId: _draft.shopEtrap?.id,
                 );
@@ -595,12 +592,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
             _pickerTile(
               icon: Icons.pin_drop_outlined,
-              hint: 'Выбрать район',
+              hint: w.filterPickDistrict,
               selected: _draft.shopDistrict,
               disabled: _draft.shopEtrap == null,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Район отправки',
+                  title: w.filterDistrictShop,
                   itemsFuture: _loadDistricts(_draft.shopEtrap!.id),
                   selectedId: _draft.shopDistrict?.id,
                 );
@@ -621,15 +618,15 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
             const SizedBox(height: 20),
 
             // ── Адрес ДОСТАВКИ ────────────────────────────────────────────
-            _sectionLabel('Адрес доставки'),
+            _sectionLabel(w.filterDeliveryAddress),
 
             _pickerTile(
               icon: Icons.map_outlined,
-              hint: 'Выбрать велаят',
+              hint: w.filterPickProvince,
               selected: _draft.deliveryProvince,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Велаят доставки',
+                  title: w.filterProvinceDelivery,
                   itemsFuture: _loadProvinces(),
                   selectedId: _draft.deliveryProvince?.id,
                 );
@@ -656,12 +653,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
             _pickerTile(
               icon: Icons.location_city_outlined,
-              hint: 'Выбрать этрап',
+              hint: w.filterPickEtrap,
               selected: _draft.deliveryEtrap,
               disabled: _draft.deliveryProvince == null,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Этрап доставки',
+                  title: w.filterEtrapDelivery,
                   itemsFuture: _loadEtraps(_draft.deliveryProvince!.id),
                   selectedId: _draft.deliveryEtrap?.id,
                 );
@@ -686,12 +683,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
             _pickerTile(
               icon: Icons.pin_drop_outlined,
-              hint: 'Выбрать район',
+              hint: w.filterPickDistrict,
               selected: _draft.deliveryDistrict,
               disabled: _draft.deliveryEtrap == null,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Район доставки',
+                  title: w.filterDistrictDelivery,
                   itemsFuture: _loadDistricts(_draft.deliveryEtrap!.id),
                   selectedId: _draft.deliveryDistrict?.id,
                 );
@@ -712,16 +709,15 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
             const SizedBox(height: 20),
 
             // ── Заказчик ──────────────────────────────────────────────────
-            _sectionLabel('Заказчик'),
+            _sectionLabel(w.filterShopLabel),
             _pickerTile(
               icon: Icons.store_outlined,
-              hint: 'Выбрать магазин',
+              hint: w.filterPickShop,
               selected: _draft.shop,
               disabled: widget.shopItems.isEmpty,
               onTap: () async {
                 final res = await _openPicker(
-                  title: 'Заказчик',
-                  // ЗАДАЧА 3: shopItems уже содержит имя + телефон
+                  title: w.filterShopLabel,
                   itemsFuture: Future.value(widget.shopItems),
                   selectedId: _draft.shop?.id,
                 );
@@ -763,7 +759,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    'Применить',
+                    w.filterApply,
                     style: AppText.semiBold(fontSize: 15, color: Colors.white),
                   ),
                 ),
@@ -777,8 +773,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _FilterPickerSheet — пикер внутри модалки фильтров
-// Поиск работает по label, который уже содержит имя + телефон (задача 3)
+// _FilterPickerSheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FilterPickerSheet extends StatefulWidget {
@@ -787,11 +782,13 @@ class _FilterPickerSheet extends StatefulWidget {
   final String? selectedId;
   final void Function(String id) onSelect;
   final VoidCallback? onClear;
+  final AppLocalizations words; // ← добавлено
 
   const _FilterPickerSheet({
     required this.title,
     required this.items,
     required this.onSelect,
+    required this.words, // ← добавлено
     this.selectedId,
     this.onClear,
   });
@@ -812,7 +809,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // ЗАДАЧА 3: поиск по label (содержит имя + телефон)
+    final w = widget.words;
     final filtered = widget.items
         .where((i) => i.label.toLowerCase().contains(_q))
         .toList();
@@ -850,7 +847,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                   GestureDetector(
                     onTap: widget.onClear,
                     child: Text(
-                      'Сбросить',
+                      w.filterReset,
                       style: AppText.medium(
                         fontSize: 13,
                         color: const Color(0xFFD32F1E),
@@ -871,8 +868,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                 color: const Color(0xFF0F1117),
               ),
               decoration: InputDecoration(
-                // ЗАДАЧА 3: подсказка про поиск по имени
-                hintText: 'Поиск по названию или номеру...',
+                hintText: w.filterSearchHint,
                 hintStyle: AppText.regular(
                   fontSize: 13,
                   color: const Color(0xFF9AA3AF),
@@ -914,7 +910,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
             child: filtered.isEmpty
                 ? Center(
                     child: Text(
-                      'Ничего не найдено',
+                      w.filterNotFound,
                       style: AppText.regular(
                         fontSize: 14,
                         color: const Color(0xFF9AA3AF),

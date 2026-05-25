@@ -421,6 +421,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
   void showFilterModal() {
     final isRu = context.read<LanguageProvider>().isRu;
+    final words = context.read<LanguageProvider>().words;
 
     final defaultProvince = provinceId.isNotEmpty
         ? CourierFilterItem(id: provinceId, label: provinceLabel)
@@ -470,6 +471,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           Navigator.pop(modalCtx);
           handleRefresh();
         },
+        words: words,
       ),
     );
   }

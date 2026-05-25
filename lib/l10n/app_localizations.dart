@@ -162,4 +162,25 @@ class AppLocalizations {
   String get finishWithCashback => get('finishWithCashback');
   String get dialogBack => get('dialogBack');
   String get dialogConfirm => get('dialogConfirm');
+  String get filterTitle => get('filterTitle');
+  String get filterReset => get('filterReset');
+  String get filterApply => get('filterApply');
+  String get filterTransportAny => get('filterTransportAny');
+  String get filterTransportCar => get('filterTransportCar');
+  String get filterTransportTruck => get('filterTransportTruck');
+  String get filterShopAddress => get('filterShopAddress');
+  String get filterDeliveryAddress => get('filterDeliveryAddress');
+  String get filterShopLabel => get('filterShopLabel');
+  String get filterPickProvince => get('filterPickProvince');
+  String get filterPickEtrap => get('filterPickEtrap');
+  String get filterPickDistrict => get('filterPickDistrict');
+  String get filterPickShop => get('filterPickShop');
+  String get filterProvinceShop => get('filterProvinceShop');
+  String get filterEtrapShop => get('filterEtrapShop');
+  String get filterDistrictShop => get('filterDistrictShop');
+  String get filterProvinceDelivery => get('filterProvinceDelivery');
+  String get filterEtrapDelivery => get('filterEtrapDelivery');
+  String get filterDistrictDelivery => get('filterDistrictDelivery');
+  String get filterSearchHint => get('filterSearchHint');
+  String get filterNotFound => get('filterNotFound');
 }
