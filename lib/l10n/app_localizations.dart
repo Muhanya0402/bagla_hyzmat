@@ -239,4 +239,21 @@ class AppLocalizations {
   String get notifNewNotifications => get('notifNewNotifications');
   String get notifUnreadCount => get('notifUnreadCount');
   String get notifClose => get('notifClose');
+  String get levelLabel => get('levelLabel');
+  String get levelDailyBonus => get('levelDailyBonus');
+  String get levelToNext => get('levelToNext');
+  String get levelMaxReached => get('levelMaxReached');
+  String get levelMore => get('levelMore');
+  String get levelNewLevel => get('levelNewLevel');
+  String get levelXpEarned => get('levelXpEarned');
+  String get levelNowDaily => get('levelNowDaily');
+  String get levelTokensAuto => get('levelTokensAuto');
+  String get levelNewBonuses => get('levelNewBonuses');
+  String get levelBonusHeader => get('levelBonusHeader');
+  String get levelBonusDesc => get('levelBonusDesc');
+  String get levelToNextShort => get('levelToNextShort');
+  String get levelRow => get('levelRow');
+  String get levelFromXp => get('levelFromXp');
+  String get levelPerDay => get('levelPerDay');
+  String get levelCurrentBonuses => get('levelCurrentBonuses');
 }

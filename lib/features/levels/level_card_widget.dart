@@ -1,4 +1,6 @@
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/l10n/app_localizations.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'level_provider.dart';
@@ -44,25 +46,27 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     if (provider.pendingLevelUp != null) {
       _dialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showLevelUpDialog();
+        if (mounted) _showLevelUpDialog(context.read<LanguageProvider>().isRu);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.read<LanguageProvider>();
+    final words = lang.words;
     return Consumer<LevelProvider>(
       builder: (_, provider, _) {
         if (provider.pendingLevelUp != null && !_dialogShown) {
           _dialogShown = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _showLevelUpDialog();
+            if (mounted) _showLevelUpDialog(lang.isRu);
           });
         }
 
         if (provider.isLoading) return _buildSkeleton();
         if (provider.currentLevel == null) return _buildDebugEmpty(provider);
-        return _buildCard(provider);
+        return _buildCard(provider, words, lang.isRu);
       },
     );
   }
@@ -100,14 +104,14 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   }
 
   // ── Main card ──────────────────────────────────────────────────────────────
-  Widget _buildCard(LevelProvider p) {
+  Widget _buildCard(LevelProvider p, AppLocalizations w, bool isRu) {
     final level = p.currentLevel!;
     final int levelNum = level.levelNumber;
     // +0.5 жетонов в день за каждый уровень
     final double dailyBonus = level.dailyTokens;
 
     return GestureDetector(
-      onTap: () => _showDetailsSheet(p),
+      onTap: () => _showDetailsSheet(p, w, isRu),
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
         decoration: BoxDecoration(
@@ -134,7 +138,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Уровень $levelNum',
+                          w.levelLabel.replaceAll('{n}', '$levelNum'),
                           style: const TextStyle(
                             color: Colors.white60,
                             fontSize: 11,
@@ -142,7 +146,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          level.titleRu,
+                          level.title(isRu),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -199,19 +203,12 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Ежедневный бонус: +$dailyBonus жетонов/день',
+                        w.levelDailyBonus.replaceAll('{n}', '$dailyBonus'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ),
-                    Text(
-                      '(+0.5 за уровень)',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 10,
                       ),
                     ),
                   ],
@@ -231,7 +228,10 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'До уровня ${p.nextLevel!.levelNumber}',
+                              w.levelToNext.replaceAll(
+                                '{n}',
+                                '${p.nextLevel!.levelNumber}',
+                              ),
                               style: const TextStyle(
                                 color: Colors.white60,
                                 fontSize: 11,
@@ -251,20 +251,20 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                         _AnimatedProgressBar(progress: p.progressInLevel),
                       ],
                     )
-                  : const Text(
-                      '🏆 Максимальный уровень достигнут!',
+                  : Text(
+                      w.levelMaxReached,
                       style: TextStyle(color: Colors.white, fontSize: 13),
                     ),
             ),
 
             // ── Tap hint ────────────────────────────────────────────────────
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Подробнее',
+                    w.levelMore,
                     style: TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                   SizedBox(width: 4),
@@ -297,7 +297,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   }
 
   // ── Level up dialog ────────────────────────────────────────────────────────
-  void _showLevelUpDialog() {
+  void _showLevelUpDialog(bool isRu) {
     final provider = context.read<LevelProvider>();
     final pending = provider.pendingLevelUp;
     if (pending == null || !mounted) return;
@@ -313,7 +313,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
       barrierColor: Colors.black.withValues(alpha: 0.75),
       builder: (_) => _LevelUpDialog(
         levelNumber: pending.levelAfter,
-        levelTitle: levelData?.titleRu ?? 'Уровень ${pending.levelAfter}',
+        levelTitle: levelData?.title(isRu) ?? 'Уровень ${pending.levelAfter}',
         levelIcon: levelData?.icon ?? '🏆',
         levelColor: levelData != null ? _parseHex(levelData.colorHex) : _green,
         xpEarned: pending.xpAmount,
@@ -329,12 +329,16 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   }
 
   // ── Details sheet ──────────────────────────────────────────────────────────
-  void _showDetailsSheet(LevelProvider provider) {
+  void _showDetailsSheet(
+    LevelProvider provider,
+    AppLocalizations w,
+    bool isRu,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _LevelDetailsSheet(provider: provider),
+      builder: (_) => _LevelDetailsSheet(provider: provider, w: w, isRu: isRu),
     );
   }
 
@@ -494,6 +498,9 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.read<LanguageProvider>();
+    final w = lang.words;
+
     return Stack(
       children: [
         AnimatedBuilder(
@@ -524,8 +531,8 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Title
-                  const Text(
-                    'НОВЫЙ УРОВЕНЬ!',
+                  Text(
+                    w.levelNewLevel,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -555,7 +562,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '+${widget.xpEarned} XP заработано',
+                      w.levelXpEarned.replaceAll('{n}', '${widget.xpEarned}'),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -594,7 +601,10 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Теперь +${widget.dailyBonus} жетонов/день',
+                          w.levelNowDaily.replaceAll(
+                            '{n}',
+                            '${widget.dailyBonus}',
+                          ),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -606,7 +616,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Жетоны начисляются автоматически каждые 24 часа',
+                    w.levelTokensAuto,
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF9AA3AF),
@@ -618,8 +628,8 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                     const SizedBox(height: 16),
                     const Divider(color: Color(0xFFF0F0F0)),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Новые бонусы',
+                    Text(
+                      w.levelNewBonuses,
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 8),
@@ -671,8 +681,8 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                           ),
                         ),
                         onPressed: widget.onDismiss,
-                        child: const Text(
-                          'ОТЛИЧНО!',
+                        child: Text(
+                          w.great,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -699,7 +709,13 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
 
 class _LevelDetailsSheet extends StatelessWidget {
   final LevelProvider provider;
-  const _LevelDetailsSheet({required this.provider});
+  final AppLocalizations w;
+  final bool isRu;
+  const _LevelDetailsSheet({
+    required this.provider,
+    required this.w,
+    required this.isRu,
+  });
 
   Color _parseHex(String hex) {
     try {
@@ -784,7 +800,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'До следующего уровня',
+                          w.levelToNextShort,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -832,7 +848,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: Row(
-                        children: const [
+                        children: [
                           Icon(
                             Icons.bolt_rounded,
                             color: Color(0xFFE67E22),
@@ -840,7 +856,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                           ),
                           SizedBox(width: 8),
                           Text(
-                            'БОНУС ЗА УРОВЕНЬ',
+                            w.levelBonusHeader,
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
@@ -861,22 +877,13 @@ class _LevelDetailsSheet extends StatelessWidget {
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
-                                  'Каждый уровень даёт +0.5 жетонов в день',
+                                  w.levelTokensAuto,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFF0F1117),
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Жетоны начисляются автоматически каждые 24 часа',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF9AA3AF),
-                                    height: 1.4,
                                   ),
                                 ),
                               ],
@@ -916,7 +923,9 @@ class _LevelDetailsSheet extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Ур. ${l.levelNumber} — ${l.titleRu}',
+                                      w.levelRow
+                                          .replaceAll('{n}', '${l.levelNumber}')
+                                          .replaceAll('{title}', l.title(isRu)),
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: isCurrent
@@ -930,7 +939,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
-                                      'от ${l.xpRequired} XP',
+                                      w.levelFromXp.replaceAll(
+                                        '{n}',
+                                        '${l.xpRequired}',
+                                      ),
                                       style: const TextStyle(
                                         fontSize: 10,
                                         color: Color(0xFF9AA3AF),
@@ -954,7 +966,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  '+$bonus/день',
+                                  w.levelPerDay.replaceAll('{n}', '$bonus'),
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -975,41 +987,6 @@ class _LevelDetailsSheet extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Bonuses of current level
-            if (current.bonuses.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'БОНУСЫ ТЕКУЩЕГО УРОВНЯ',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF9AA3AF),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...current.bonuses.map(
-                (b) => ListTile(
-                  dense: true,
-                  leading: Text('🪙', style: const TextStyle(fontSize: 20)),
-                  title: Text(
-                    b.labelRu,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0F1117),
-                    ),
-                  ),
-                ),
-              ),
-            ],
 
             const SizedBox(height: 32),
           ],
