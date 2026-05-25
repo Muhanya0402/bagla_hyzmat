@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:bagla/models/points_rule.dart';
@@ -37,6 +38,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   DateTime? _selectedDateTime;
   List<XFile> _images = [];
   String _transportType = 'any';
+
   static const _transportOptions = [
     ('any', 'Авто необязательно', Icons.directions_run_rounded),
     ('car', 'Легковой авто', Icons.directions_car_rounded),
@@ -79,7 +81,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProvinces();
+    _loadProvinces(context.read<LanguageProvider>().words);
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text.toLowerCase());
     });
@@ -101,19 +103,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Location loaders ───────────────────────────────────────────────────────
 
-  Future<void> _loadProvinces() async {
+  Future<void> _loadProvinces(AppLocalizations words) async {
     setState(() => _loadingProvinces = true);
     try {
       final list = await _authRepo.getProvinces();
       setState(() => _provinces = list);
     } catch (e) {
-      _msg('Ошибка загрузки велаятов: $e', _red);
+      _msg('${words.errorLoadProvinces}: $e', _red);
     } finally {
       setState(() => _loadingProvinces = false);
     }
   }
 
-  Future<void> _selectProvince(Province p) async {
+  Future<void> _selectProvince(Province p, AppLocalizations words) async {
     setState(() {
       _selectedProvince = p;
       _selectedEtrap = null;
@@ -137,13 +139,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         }
       });
     } catch (e) {
-      _msg('Ошибка загрузки этрапов: $e', _red);
+      _msg('${words.errorLoadEtraps}: $e', _red);
     } finally {
       setState(() => _loadingEtraps = false);
     }
   }
 
-  Future<void> _selectEtrap(Etrap e) async {
+  Future<void> _selectEtrap(Etrap e, AppLocalizations words) async {
     setState(() {
       _selectedEtrap = e;
       _selectedDistrict = null;
@@ -165,7 +167,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         }
       });
     } catch (e) {
-      _msg('Ошибка загрузки районов: $e', _red);
+      _msg('${words.errorLoadDistricts}: $e', _red);
     } finally {
       setState(() => _loadingDistricts = false);
     }
@@ -242,19 +244,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
-  Future<void> _submitOrder() async {
+  Future<void> _submitOrder(AppLocalizations words) async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_images.isEmpty) {
-      _msg('Добавьте фото товара', _red);
+      _msg(words.addPhotoError, _red);
       return;
     }
     if (!_locationSelected) {
-      _msg('Выберите район доставки', _red);
+      _msg(words.selectDistrictError, _red);
       return;
     }
     if (_selectedDateTime == null) {
-      _msg('Выберите время доставки', _red);
+      _msg(words.selectTimeError, _red);
       return;
     }
 
@@ -296,10 +298,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
       );
 
-      _msg('Заказ успешно создан!', _green);
+      _msg(words.orderCreated, _green);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      _msg('Ошибка: $e', _red);
+      _msg('${words.error}: $e', _red);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -321,6 +323,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    final words = lang.words;
     final isRu = lang.isRu;
     final double itemPrice = double.tryParse(_priceController.text) ?? 0;
     final double deliveryFee = double.tryParse(_deliveryController.text) ?? 0;
@@ -348,7 +351,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ),
         ),
         title: Text(
-          'Новый заказ',
+          words.newOrder,
           style: AppText.semiBold(fontSize: 17, color: _dark),
         ),
         bottom: PreferredSize(
@@ -369,21 +372,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       // ── Photos ─────────────────────────────────────────
                       _section(
                         icon: Icons.camera_alt_outlined,
-                        title: 'Фото товара',
-                        child: _imagePickerWidget(),
+                        title: words.orderPhoto,
+                        child: _imagePickerWidget(words),
                       ),
                       const SizedBox(height: 12),
 
                       // ── Recipient ──────────────────────────────────────
                       _section(
                         icon: Icons.person_outline_rounded,
-                        title: 'Получатель',
+                        title: words.orderRecipient,
                         child: Column(
                           children: [
                             const SizedBox(height: 10),
-                            _phoneField(),
+                            _phoneField(words),
                             const SizedBox(height: 10),
-                            _dateField(),
+                            _dateField(words),
                           ],
                         ),
                       ),
@@ -392,12 +395,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       // ── Order details ──────────────────────────────────
                       _section(
                         icon: Icons.inventory_2_outlined,
-                        title: 'Детали заказа',
+                        title: words.orderDetails,
                         child: Column(
                           children: [
-                            _priceField(),
+                            _priceField(
+                              words,
+                            ), // ← добавлено поле для суммы товара
                             const SizedBox(height: 10),
-                            _deliveryField(), // ← ручной ввод суммы доставки
+                            _deliveryField(
+                              words,
+                            ), // ← ручной ввод суммы доставки
                           ],
                         ),
                       ),
@@ -405,7 +412,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
                       _section(
                         icon: Icons.local_shipping_outlined,
-                        title: 'Вид транспортировки',
+                        title: words.transportSection,
                         child: Column(
                           children: [
                             const SizedBox(height: 4),
@@ -417,8 +424,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       // ── Delivery address (stepper) ──────────────────────
                       _section(
                         icon: Icons.map_outlined,
-                        title: 'Район доставки',
-                        child: _buildLocationStepper(isRu),
+                        title: words.orderDeliveryArea,
+                        child: _buildLocationStepper(isRu, words),
                       ),
                       const SizedBox(height: 12),
                     ],
@@ -426,7 +433,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ),
 
                 // ── Bottom panel ───────────────────────────────────────────
-                _buildBottomPanel(deliveryFee, total),
+                _buildBottomPanel(deliveryFee, total, words),
               ],
             ),
           ),
@@ -498,7 +505,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Image picker ───────────────────────────────────────────────────────────
 
-  Widget _imagePickerWidget() {
+  Widget _imagePickerWidget(AppLocalizations words) {
     return SizedBox(
       height: 90,
       child: ListView.builder(
@@ -538,7 +545,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Добавить',
+                      words.addPhoto,
                       style: AppText.regular(fontSize: 10, color: _grey),
                     ),
                   ],
@@ -589,14 +596,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Fields ─────────────────────────────────────────────────────────────────
 
-  Widget _phoneField() {
+  Widget _phoneField(AppLocalizations words) {
     return TextFormField(
       controller: _phoneController,
       keyboardType: TextInputType.phone,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       style: AppText.regular(fontSize: 14, color: _dark),
       decoration: InputDecoration(
-        hintText: 'Телефон клиента',
+        hintText: words.clientPhone,
         hintStyle: AppText.regular(fontSize: 14, color: _grey),
         prefixIcon: const Icon(
           Icons.phone_android_outlined,
@@ -627,12 +634,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           vertical: 14,
         ),
       ),
-      validator: (v) =>
-          (v == null || v.length < 8) ? 'Номер слишком короткий' : null,
+      validator: (v) => (v == null || v.length < 8) ? words.phoneShort : null,
     );
   }
 
-  Widget _dateField() {
+  Widget _dateField(AppLocalizations words) {
     return GestureDetector(
       onTap: _pickDateTime,
       child: Container(
@@ -665,7 +671,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Время доставки',
+                    words.deliveryTime,
                     style: AppText.regular(fontSize: 11, color: _grey),
                   ),
                   const SizedBox(height: 2),
@@ -675,7 +681,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                             'dd MMMM, HH:mm',
                             'ru',
                           ).format(_selectedDateTime!)
-                        : 'Не указано',
+                        : words.deliveryTimeNone,
                     style: AppText.semiBold(
                       fontSize: 14,
                       color: _selectedDateTime != null ? _dark : _grey,
@@ -708,7 +714,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _priceField() {
+  Widget _priceField(AppLocalizations words) {
     return TextFormField(
       controller: _priceController,
       keyboardType: TextInputType.number,
@@ -716,7 +722,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       onChanged: (_) => setState(() {}),
       style: AppText.semiBold(fontSize: 18, color: _dark),
       decoration: InputDecoration(
-        hintText: 'Сумма товара',
+        hintText: words.itemPriceHint,
         hintStyle: AppText.regular(fontSize: 14, color: _grey),
         prefixIcon: const Icon(
           Icons.payments_outlined,
@@ -748,12 +754,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
       ),
       validator: (v) =>
-          (v == null || v.isEmpty || v == '0') ? 'Укажите цену' : null,
+          (v == null || v.isEmpty || v == '0') ? words.specifyPrice : null,
     );
   }
 
   /// ← НОВОЕ: ручной ввод суммы доставки (обязательное поле)
-  Widget _deliveryField() {
+  Widget _deliveryField(AppLocalizations words) {
     return TextFormField(
       controller: _deliveryController,
       keyboardType: TextInputType.number,
@@ -761,7 +767,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       onChanged: (_) => setState(() {}),
       style: AppText.semiBold(fontSize: 18, color: _dark),
       decoration: InputDecoration(
-        hintText: 'Сумма доставки',
+        hintText: words.deliveryPriceHint,
         hintStyle: AppText.regular(fontSize: 14, color: _grey),
         prefixIcon: ShaderMask(
           shaderCallback: (b) => _gradient.createShader(b),
@@ -795,9 +801,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           vertical: 14,
         ),
       ),
-      validator: (v) => (v == null || v.isEmpty || v == '0')
-          ? 'Укажите сумму доставки'
-          : null,
+      validator: (v) =>
+          (v == null || v.isEmpty || v == '0') ? words.specifyDelivery : null,
     );
   }
 
@@ -882,11 +887,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Location stepper ───────────────────────────────────────────────────────
 
-  Widget _buildLocationStepper(bool isRu) {
+  Widget _buildLocationStepper(bool isRu, AppLocalizations words) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepIndicator(),
+        _buildStepIndicator(words),
         const SizedBox(height: 14),
 
         if (_selectedProvince != null ||
@@ -896,19 +901,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
         if (_locationStep > 0 && !_locationSelected) ...[
           const SizedBox(height: 10),
-          _buildSearchField(),
+          _buildSearchField(words),
         ],
         const SizedBox(height: 10),
 
         _locationSelected
             ? _buildLocationDone(isRu)
-            : _buildCurrentStepList(isRu),
+            : _buildCurrentStepList(isRu, words),
       ],
     );
   }
 
-  Widget _buildStepIndicator() {
-    const steps = ['Велаят', 'Этрап', 'Район'];
+  Widget _buildStepIndicator(AppLocalizations words) {
+    final steps = [words.stepProvince, words.stepEtrap, words.stepDistrict];
     return Row(
       children: List.generate(3, (i) {
         final isDone =
@@ -986,8 +991,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildSearchField() {
-    final hints = ['', 'Поиск этрапа...', 'Поиск района...'];
+  Widget _buildSearchField(AppLocalizations words) {
+    final hints = ['', words.searchEtrap, words.searchDistrict];
     return TextField(
       controller: _searchCtrl,
       decoration: InputDecoration(
@@ -1021,13 +1026,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildCurrentStepList(bool isRu) {
-    if (_locationStep == 0) return _buildProvinceGrid(isRu);
-    if (_locationStep == 1) return _buildEtrapList(isRu);
-    return _buildDistrictList(isRu);
+  Widget _buildCurrentStepList(bool isRu, AppLocalizations words) {
+    if (_locationStep == 0) return _buildProvinceGrid(isRu, words);
+    if (_locationStep == 1) return _buildEtrapList(isRu, words);
+    return _buildDistrictList(isRu, words);
   }
 
-  Widget _buildProvinceGrid(bool isRu) {
+  Widget _buildProvinceGrid(bool isRu, AppLocalizations words) {
     if (_loadingProvinces) return _loader();
     return GridView.builder(
       shrinkWrap: true,
@@ -1042,7 +1047,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       itemBuilder: (_, i) {
         final p = _provinces[i];
         return GestureDetector(
-          onTap: () => _selectProvince(p),
+          onTap: () => _selectProvince(p, words),
           child: Container(
             decoration: BoxDecoration(
               color: _bg,
@@ -1064,7 +1069,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildEtrapList(bool isRu) {
+  Widget _buildEtrapList(bool isRu, AppLocalizations words) {
     if (_loadingEtraps) return _loader();
     final filtered = _etraps
         .where((e) => e.label(isRu).toLowerCase().contains(_searchQuery))
@@ -1072,11 +1077,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return _itemList(
       items: filtered,
       labelFn: (e) => e.label(isRu),
-      onTap: (e) => _selectEtrap(e),
+      onTap: (e) => _selectEtrap(e, words),
+      words: words,
     );
   }
 
-  Widget _buildDistrictList(bool isRu) {
+  Widget _buildDistrictList(bool isRu, AppLocalizations words) {
     if (_loadingDistricts) return _loader();
     final filtered = _districts
         .where((d) => d.label(isRu).toLowerCase().contains(_searchQuery))
@@ -1085,6 +1091,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       items: filtered,
       labelFn: (d) => d.label(isRu),
       onTap: (d) => _selectDistrict(d),
+      words: words,
     );
   }
 
@@ -1092,13 +1099,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     required List<T> items,
     required String Function(T) labelFn,
     required void Function(T) onTap,
+    required AppLocalizations words,
   }) {
     if (items.isEmpty) {
       return Container(
         height: 72,
         alignment: Alignment.center,
         child: Text(
-          _searchQuery.isEmpty ? 'Нет данных' : 'Ничего не найдено',
+          _searchQuery.isEmpty ? words.noData : words.filterNotFound,
           style: AppText.regular(fontSize: 14, color: _grey),
         ),
       );
@@ -1215,7 +1223,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Bottom panel ───────────────────────────────────────────────────────────
 
-  Widget _buildBottomPanel(double delivery, double total) {
+  Widget _buildBottomPanel(
+    double delivery,
+    double total,
+    AppLocalizations words,
+  ) {
     final hasValues = total > 0;
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -1236,7 +1248,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Курьеру: ${delivery.toStringAsFixed(0)} TMT',
+                  '${words.courierPays}: ${delivery.toStringAsFixed(0)} TMT',
                   style: AppText.regular(fontSize: 12, color: _grey),
                 ),
                 const SizedBox(height: 2),
@@ -1272,7 +1284,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ),
           GestureDetector(
-            onTap: _isLoading ? null : _submitOrder,
+            onTap: _isLoading ? null : () => _submitOrder(words),
             child: Container(
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -1292,7 +1304,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
               alignment: Alignment.center,
               child: Text(
-                'Оформить',
+                words.placeOrder,
                 style: AppText.semiBold(fontSize: 15, color: Colors.white),
               ),
             ),

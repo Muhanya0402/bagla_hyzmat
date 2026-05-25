@@ -476,9 +476,7 @@ class OrderCard extends StatelessWidget {
             if (activeCount >= 3) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text(
-                    'Нельзя брать больше 3 заказов одновременно',
-                  ),
+                  content: Text(words.tooManyOrders),
                   backgroundColor: HomeColors.red,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
@@ -491,10 +489,10 @@ class OrderCard extends StatelessWidget {
             if (balancePoints >= points) {
               _confirmAction(
                 context: context,
-                title: 'Принять заказ',
+                title: words.confirmTitle,
                 message: points > 0
-                    ? 'С вашего баланса будет списано $points баллов. Приступить?'
-                    : 'Заказ будет закреплён за вами. Приступить?',
+                    ? words.confirmWithPoints.replaceAll('{points}', '$points')
+                    : words.confirmNoPoints,
                 actionColor: HomeColors.green,
                 action: () => service.updateStatus(
                   orderId,
