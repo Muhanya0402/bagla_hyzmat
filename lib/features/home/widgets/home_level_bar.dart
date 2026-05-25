@@ -9,12 +9,23 @@ class HomeLevelBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 currentXp: ${provider.currentXp}');
+    debugPrint(
+      '🔍 currentLevel.xpRequired: ${provider.currentLevel?.xpRequired}',
+    );
+    debugPrint('🔍 nextLevel.xpRequired: ${provider.nextLevel?.xpRequired}');
+    debugPrint('🔍 progressInLevel: ${provider.progressInLevel}');
     final int level = provider.currentLevel?.levelNumber ?? 1;
-    final int xp = provider.currentXp;
-    final int xpNeeded = provider.xpToNextLevel + xp;
-    final double progress = xpNeeded > 0
-        ? (xp / xpNeeded).clamp(0.0, 1.0)
-        : 0.0;
+    final double progress = provider.progressInLevel;
+
+    // XP внутри текущего уровня
+    final int xpEarned =
+        provider.currentXp - (provider.currentLevel?.xpRequired ?? 0);
+    // Сколько нужно для следующего уровня
+    final int xpRange = provider.nextLevel != null
+        ? (provider.nextLevel!.xpRequired -
+              (provider.currentLevel?.xpRequired ?? 0))
+        : 0;
 
     return Container(
       height: 24,
@@ -68,7 +79,7 @@ class HomeLevelBar extends StatelessWidget {
                 Expanded(
                   child: Center(
                     child: Text(
-                      '$xp/$xpNeeded XP',
+                      '$xpEarned/$xpRange XP',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.semiBold(
