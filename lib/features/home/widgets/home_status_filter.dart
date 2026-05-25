@@ -1,6 +1,8 @@
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_constants.dart';
+import 'package:provider/provider.dart';
 
 class HomeStatusFilter extends StatelessWidget {
   final String? selectedStatus;
@@ -16,11 +18,13 @@ class HomeStatusFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
+    final filters = getStatusFilters(words);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.only(right: 16),
       child: Row(
-        children: kStatusFilters.map((f) {
+        children: filters.map((f) {
           final bool sel = selectedStatus == f.value;
           final int? count = counts[f.value];
 

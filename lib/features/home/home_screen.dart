@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen>
                 selectedStatus: selectedStatus,
                 onChanged: (v) => setState(() => selectedStatus = v),
                 counts: {
-                  for (final f in kStatusFilters)
+                  for (final f in getStatusFilters(words))
                     f.value: orders
                         .where(
                           (o) =>

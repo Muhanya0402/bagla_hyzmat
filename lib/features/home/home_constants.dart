@@ -1,3 +1,4 @@
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class HomeColors {
@@ -26,21 +27,29 @@ class StatusFilterItem {
   });
 }
 
-const List<StatusFilterItem> kStatusFilters = [
-  StatusFilterItem(label: 'Все', value: null, color: HomeColors.grey),
+List<StatusFilterItem> getStatusFilters(AppLocalizations words) => [
   StatusFilterItem(
-    label: 'Свободные',
+    label: words.statusAllFilter,
+    value: null,
+    color: HomeColors.grey,
+  ),
+  StatusFilterItem(
+    label: words.statusFreeFilter,
     value: 'published',
     color: HomeColors.red,
   ),
-  StatusFilterItem(label: 'В работе', value: 'active', color: HomeColors.green),
   StatusFilterItem(
-    label: 'Доставлены',
+    label: words.statusActiveFilter,
+    value: 'active',
+    color: HomeColors.green,
+  ),
+  StatusFilterItem(
+    label: words.statusDoneFilter,
     value: 'completed',
     color: HomeColors.green,
   ),
   StatusFilterItem(
-    label: 'Отменены',
+    label: words.statusCanceledFilter,
     value: 'canceled',
     color: HomeColors.grey,
   ),
