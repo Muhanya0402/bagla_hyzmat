@@ -221,4 +221,7 @@ const Map<String, String> stringsRu = {
   'notifEmpty': 'Уведомлений пока нет',
   'notifEmptyDesc': 'Здесь будут уведомления\nо заказах и статусе аккаунта',
   'notifTapToMark': 'Нажмите, чтобы отметить',
+  'notifNewNotifications': 'Новые уведомления',
+  'notifUnreadCount': '{n} непрочитанных',
+  'notifClose': 'Закрыть',
 };

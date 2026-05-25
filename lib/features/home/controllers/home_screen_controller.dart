@@ -147,6 +147,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
   Future<void> checkUnreadNotifications() async {
     final auth = context.read<AuthProvider>();
+    final lang = context.read<LanguageProvider>();
+    final words = lang.words;
+    final isRu = lang.isRu;
     if (auth.userId.isEmpty) return;
     try {
       final service = NotificationService();
@@ -161,6 +164,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         builder: (_) => UnreadNotificationsModal(
           notifications: unread,
           onMarkAllRead: () async => service.markAllAsRead(auth.userId),
+          words: words,
+          isRu: isRu,
         ),
       );
     } catch (e) {

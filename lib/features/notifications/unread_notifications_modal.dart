@@ -1,9 +1,12 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class UnreadNotificationsModal extends StatelessWidget {
   final List<Map<String, dynamic>> notifications;
   final VoidCallback onMarkAllRead;
+  final AppLocalizations words;
+  final bool isRu;
 
   static const _green = Color(0xFF1A7A3C);
   static const _red = Color(0xFFD32F1E);
@@ -13,6 +16,8 @@ class UnreadNotificationsModal extends StatelessWidget {
     super.key,
     required this.notifications,
     required this.onMarkAllRead,
+    required this.words,
+    required this.isRu,
   });
 
   Color _typeColor(String type) {
@@ -97,12 +102,15 @@ class UnreadNotificationsModal extends StatelessWidget {
                     ShaderMask(
                       shaderCallback: (b) => _gradient.createShader(b),
                       child: Text(
-                        'Новые уведомления',
+                        words.notifNewNotifications,
                         style: AppText.bold(fontSize: 16, color: Colors.white),
                       ),
                     ),
                     Text(
-                      '${notifications.length} непрочитанных',
+                      words.notifUnreadCount.replaceFirst(
+                        '{n}',
+                        notifications.length.toString(),
+                      ),
                       style: AppText.regular(
                         fontSize: 12,
                         color: const Color(0xFF9AA3AF),
@@ -158,7 +166,9 @@ class UnreadNotificationsModal extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              n['title_ru'] ?? n['title'] ?? '',
+                              n[isRu ? 'title_ru' : 'title_tk'] ??
+                                  n['title'] ??
+                                  '',
                               style: AppText.semiBold(
                                 fontSize: 14,
                                 color: const Color(0xFF0F1117),
@@ -166,7 +176,9 @@ class UnreadNotificationsModal extends StatelessWidget {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              n['body_ru'] ?? n['body'] ?? '',
+                              n[isRu ? 'body_ru' : 'body_tk'] ??
+                                  n['body'] ??
+                                  '',
                               style: AppText.regular(
                                 fontSize: 12,
                                 color: const Color(0xFF9AA3AF),
@@ -202,7 +214,7 @@ class UnreadNotificationsModal extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Закрыть',
+                        words.notifClose,
                         style: AppText.semiBold(
                           fontSize: 14,
                           color: const Color(0xFF9AA3AF),
@@ -226,7 +238,7 @@ class UnreadNotificationsModal extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Прочитать все',
+                        words.notifMarkAll,
                         style: AppText.semiBold(
                           fontSize: 14,
                           color: Colors.white,

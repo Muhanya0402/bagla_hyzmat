@@ -221,4 +221,7 @@ const Map<String, String> stringsTk = {
   'notifEmptyDesc':
       'Bu ýerde sargytlar we\nhesap ýagdaýy barada habarlar bolar',
   'notifTapToMark': 'Bellemek üçin basyň',
+  'notifNewNotifications': 'Täze habarlar',
+  'notifUnreadCount': '{n} okalmandy',
+  'notifClose': 'Ýapmak',
 };

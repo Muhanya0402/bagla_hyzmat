@@ -236,4 +236,7 @@ class AppLocalizations {
   String get notifEmpty => get('notifEmpty');
   String get notifEmptyDesc => get('notifEmptyDesc');
   String get notifTapToMark => get('notifTapToMark');
+  String get notifNewNotifications => get('notifNewNotifications');
+  String get notifUnreadCount => get('notifUnreadCount');
+  String get notifClose => get('notifClose');
 }
