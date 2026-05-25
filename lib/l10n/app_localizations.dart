@@ -218,4 +218,22 @@ class AppLocalizations {
   String get errorLoadProvinces => get('errorLoadProvinces');
   String get errorLoadEtraps => get('errorLoadEtraps');
   String get errorLoadDistricts => get('errorLoadDistricts');
+  String get notifAccount => get('notifAccount');
+  String get notifNewOrder => get('notifNewOrder');
+  String get notifOrderStatus => get('notifOrderStatus');
+  String get notifDailyBonus => get('notifDailyBonus');
+  String get notifDefault => get('notifDefault');
+  String get notifJustNow => get('notifJustNow');
+  String get notifMinAgo => get('notifMinAgo');
+  String get notifHourAgo => get('notifHourAgo');
+  String get notifDayAgo => get('notifDayAgo');
+  String get accountBanned => get('accountBanned');
+  String get accountPending => get('accountPending');
+  String get notifTitle => get('notifTitle');
+  String get notifMarkAll => get('notifMarkAll');
+  String get notifToday => get('notifToday');
+  String get notifEarlier => get('notifEarlier');
+  String get notifEmpty => get('notifEmpty');
+  String get notifEmptyDesc => get('notifEmptyDesc');
+  String get notifTapToMark => get('notifTapToMark');
 }

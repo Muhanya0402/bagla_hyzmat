@@ -11,6 +11,7 @@ import 'package:bagla/features/home/widgets/home_widgets.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:flutter/material.dart';
@@ -138,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen>
           if (isBanned || isPending)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildStatusBanner(isBanned),
+              child: _buildStatusBanner(isBanned, words),
             ),
 
           if (isShop)
@@ -273,15 +274,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStatusBanner(bool isBanned) {
+  Widget _buildStatusBanner(bool isBanned, AppLocalizations words) {
     final color = isBanned ? HomeColors.red : const Color(0xFFE67E22);
     final bgColor = isBanned
         ? const Color(0xFFFFF0EE)
         : const Color(0xFFFFF8EE);
     final icon = isBanned ? Icons.block_rounded : Icons.access_time_rounded;
-    final text = isBanned
-        ? 'Аккаунт заблокирован'
-        : 'Ожидание проверки модератора';
+    final text = isBanned ? words.accountBanned : words.accountPending;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

@@ -2,6 +2,8 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/l10n/app_localizations.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -76,6 +78,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -83,7 +86,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
-          'Уведомления',
+          words.notifTitle,
           style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
         ),
         actions: [
@@ -107,7 +110,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Прочитать все',
+                    words.notifMarkAll,
                     style: AppText.semiBold(fontSize: 12, color: kNotifGreen),
                   ),
                 ],
@@ -120,17 +123,17 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
         ),
       ),
-      body: _buildBody(),
+      body: _buildBody(words),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(AppLocalizations words) {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: kNotifGreen, strokeWidth: 2),
       );
     }
-    if (_items.isEmpty) return _buildEmpty();
+    if (_items.isEmpty) return _buildEmpty(words);
 
     final today = <dynamic>[];
     final earlier = <dynamic>[];
@@ -159,7 +162,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         children: [
           if (today.isNotEmpty) ...[
-            _sectionLabel('СЕГОДНЯ'),
+            _sectionLabel(words.notifToday),
             const SizedBox(height: 8),
             ...today.map(
               (n) => _NotifCard(
@@ -173,7 +176,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           ],
           if (earlier.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _sectionLabel('РАНЕЕ'),
+            _sectionLabel(words.notifEarlier),
             const SizedBox(height: 8),
             ...earlier.map(
               (n) => _NotifCard(
@@ -216,7 +219,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     ),
   );
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(AppLocalizations words) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -237,12 +240,12 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Уведомлений пока нет',
+            words.notifEmpty,
             style: AppText.semiBold(fontSize: 15, color: kNotifGrey),
           ),
           const SizedBox(height: 6),
           Text(
-            'Здесь будут уведомления\nо заказах и статусе аккаунта',
+            words.notifEmptyDesc,
             textAlign: TextAlign.center,
             style: AppText.regular(fontSize: 13, color: kNotifGrey),
           ),
@@ -262,6 +265,8 @@ class _NotifCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+    final words = lang.words;
     final bool isRead = notif['is_read'] == true;
     final String type = notif['type'] ?? '';
     final Color color = notifTypeColor(type);
@@ -332,7 +337,7 @@ class _NotifCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                notifTypeLabel(type),
+                                notifTypeLabel(type, words),
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -362,7 +367,9 @@ class _NotifCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          notif['title_ru'] ?? notif['title'] ?? '',
+                          notif[lang.isRu ? 'title_ru' : 'title_tk'] ??
+                              notif['title'] ??
+                              '',
                           style: isRead
                               ? AppText.medium(
                                   fontSize: 14,
@@ -375,7 +382,10 @@ class _NotifCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          notif['body_ru'] ?? notif['body'] ?? '',
+                          notif[lang.isRu ? 'body_ru' : 'body_tk'] ??
+                              notif['body'] ??
+                              '',
+
                           style: AppText.regular(
                             fontSize: 13,
                             color: kNotifGrey,
@@ -391,7 +401,7 @@ class _NotifCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              notifFormatDate(notif['date_created']),
+                              notifFormatDate(notif['date_created'], words),
                               style: AppText.regular(
                                 fontSize: 11,
                                 color: const Color(0xFFD1D5DB),
@@ -400,7 +410,7 @@ class _NotifCard extends StatelessWidget {
                             if (!isRead) ...[
                               const Spacer(),
                               Text(
-                                'Нажмите, чтобы отметить',
+                                words.notifTapToMark,
                                 style: AppText.regular(
                                   fontSize: 10,
                                   color: color.withValues(alpha: 0.5),

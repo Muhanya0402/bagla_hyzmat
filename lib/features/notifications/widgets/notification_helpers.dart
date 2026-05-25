@@ -1,3 +1,4 @@
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 const Color kNotifGreen = Color(0xFF1A7A3C);
@@ -40,30 +41,36 @@ IconData notifTypeIcon(String type) {
   }
 }
 
-String notifTypeLabel(String type) {
+String notifTypeLabel(String type, AppLocalizations w) {
   switch (type) {
     case 'account_status':
-      return 'Аккаунт';
+      return w.notifAccount;
     case 'new_order':
-      return 'Новый заказ';
+      return w.notifNewOrder;
     case 'order_status':
-      return 'Статус заказа';
+      return w.notifOrderStatus;
     case 'daily_bonus':
-      return 'Ежедневный бонус';
+      return w.notifDailyBonus;
     default:
-      return 'Уведомление';
+      return w.notifDefault;
   }
 }
 
-String notifFormatDate(String? dateStr) {
+String notifFormatDate(String? dateStr, AppLocalizations w) {
   if (dateStr == null) return '';
   try {
     final dt = DateTime.parse(dateStr).toLocal();
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Только что';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} мин назад';
-    if (diff.inHours < 24) return '${diff.inHours} ч назад';
-    if (diff.inDays < 7) return '${diff.inDays} дн назад';
+    if (diff.inMinutes < 1) return w.notifJustNow;
+    if (diff.inMinutes < 60) {
+      return w.notifMinAgo.replaceAll('{n}', '${diff.inMinutes}');
+    }
+    if (diff.inHours < 24) {
+      return w.notifHourAgo.replaceAll('{n}', '${diff.inHours}');
+    }
+    if (diff.inDays < 7) {
+      return w.notifDayAgo.replaceAll('{n}', '${diff.inDays}');
+    }
     return '${dt.day.toString().padLeft(2, '0')}'
         '.${dt.month.toString().padLeft(2, '0')}'
         '.${dt.year}';
