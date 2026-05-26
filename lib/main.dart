@@ -1,7 +1,7 @@
 import 'package:bagla/core/app_settings_provider.dart';
+import 'package:bagla/features/appeals/appeals_screen.dart';
 import 'package:bagla/features/auth/onboarding_screen.dart';
 import 'package:bagla/features/shell/main_shell.dart';
-import 'package:bagla/features/profile/appeals_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/features/auth/auth_provider.dart';

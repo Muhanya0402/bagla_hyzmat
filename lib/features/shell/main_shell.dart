@@ -1,6 +1,6 @@
+import 'package:bagla/features/appeals/appeals_screen.dart';
 import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
-import 'package:bagla/features/profile/appeals_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
@@ -447,7 +447,7 @@ class _AnimatedPillItemState extends State<_AnimatedPillItem>
                   width: widget.isActive ? 44 : 0,
                   height: widget.isActive ? 36 : 0,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22),
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),

@@ -199,7 +199,7 @@ class ProfileScreen extends StatelessWidget {
             _MenuTile(
               icon: Icons.description_rounded,
               iconColor: const Color(0xFF2CA5E0),
-              title: 'Условия использования',
+              title: words.termsOfUse,
               onTap: () => Navigator.pushNamed(context, '/terms'),
             ),
           const Divider(height: 1, indent: 56, color: _kBorder),
@@ -594,91 +594,140 @@ class _PointsCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A7A3C), Color(0xFF25A555)],
+          colors: [
+            Color(0xFF145E2E),
+            Color(0xFF22944C),
+          ], // Глубокий, дорогой зеленый
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(
+          20,
+        ), // Строгий радиус вместо мультяшного 22
         boxShadow: [
           BoxShadow(
-            color: _kGreen.withValues(alpha: 0.35),
-            blurRadius: 20,
+            color: const Color(
+              0xFF145E2E,
+            ).withValues(alpha: 0.3), // Мягкая тень для объема
+            blurRadius: 25,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment
+            .center, // Выравнивание элементов по центру строки
         children: [
-          // ── Иконка ──────────────────────────────────────────────────
+          // ── Иконка жетона ───────────────────────────────────────────
           Container(
-            width: 52,
-            height: 52,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(
+                alpha: 0.12,
+              ), // Эффект тонкого стекла
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
               child: Image.asset(
                 'assets/images/point_icon.png',
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 errorBuilder: (_, _, _) => const Icon(
-                  Icons.toll_rounded,
+                  Icons.toll_outlined, // Строгая линейная иконка взамен rounded
                   color: Colors.white,
-                  size: 26,
+                  size: 24,
                 ),
               ),
             ),
           ),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
 
-          // ── Баланс ──────────────────────────────────────────────────
+          // ── Блок Баланса ────────────────────────────────────────────
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Мои жетоны',
                   style: AppText.medium(
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: Colors.white.withValues(
+                      alpha: 0.65,
+                    ), // Аккуратный неброский цвет
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   balance.toStringAsFixed(2),
                   style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
+                    fontSize:
+                        26, // Уменьшили с 30, чтобы цифры выглядели изящнее
+                    fontWeight: FontWeight
+                        .w700, // Чистый Bold вместо перегруженного w900
                     color: Colors.white,
-                    height: 1,
+                    letterSpacing:
+                        -0.5, // Легкое сближение цифр (стиль финтех-приложений)
+                    height: 1.1,
                   ),
                 ),
               ],
             ),
           ),
 
-          // ── Кнопка пополнить ────────────────────────────────────────
-          GestureDetector(
-            onTap: onTopUp,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.add_rounded, color: Colors.white, size: 16),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Пополнить',
-                    style: AppText.bold(fontSize: 12, color: Colors.white),
+          const SizedBox(width: 12),
+
+          // ── Кнопка «Пополнить» с нативным UX-откликом ────────────────
+          ClipRRect(
+            borderRadius: BorderRadius.circular(
+              8,
+            ), // Ограничиваем ripple-эффект углами кнопки
+            child: Material(
+              color: Colors.white.withValues(
+                alpha: 0.15,
+              ), // Полупрозрачный фон кнопки
+              child: InkWell(
+                onTap: onTopUp,
+                splashColor: Colors.white.withValues(
+                  alpha: 0.15,
+                ), // Мягкая волна при тапе (UX)
+                highlightColor: Colors.white.withValues(alpha: 0.05),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-                ],
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withValues(
+                        alpha: 0.25,
+                      ), // Тонкая luxury рамка
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons
+                            .add, // Прямой строгий плюс вместо круглого add_rounded
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Пополнить',
+                        style: AppText.medium(
+                          fontSize: 13,
+                          color: Colors.white,
+                        ).copyWith(letterSpacing: 0.2),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

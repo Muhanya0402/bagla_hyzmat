@@ -16,14 +16,9 @@ class LevelCardWidget extends StatefulWidget {
 class _LevelCardWidgetState extends State<LevelCardWidget> {
   bool _dialogShown = false;
 
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _gradient = LinearGradient(
-    colors: [_green, _red],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
+  static const _green = Color(0xFF3B6D11);
+  static const _greenLight = Color(0xFFEAF3DE);
+  static const _greenMid = Color(0xFF639922);
 
   @override
   void initState() {
@@ -54,7 +49,6 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   @override
   Widget build(BuildContext context) {
     final lang = context.read<LanguageProvider>();
-    final words = lang.words;
     return Consumer<LevelProvider>(
       builder: (_, provider, _) {
         if (provider.pendingLevelUp != null && !_dialogShown) {
@@ -63,10 +57,9 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
             if (mounted) _showLevelUpDialog(lang.isRu);
           });
         }
-
         if (provider.isLoading) return _buildSkeleton();
         if (provider.currentLevel == null) return _buildDebugEmpty(provider);
-        return _buildCard(provider, words, lang.isRu);
+        return _buildCard(provider, lang.words, lang.isRu);
       },
     );
   }
@@ -74,11 +67,11 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   // ── Debug empty ────────────────────────────────────────────────────────────
   Widget _buildDebugEmpty(LevelProvider provider) {
     final reason = provider.allLevels.isEmpty
-        ? '⚠️ level_definitions пустой или нет прав доступа'
-        : '⚠️ current_level_id не заполнен у курьера в Directus';
+        ? 'level_definitions пустой или нет прав доступа'
+        : 'current_level_id не заполнен у курьера в Directus';
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF3CD),
         borderRadius: BorderRadius.circular(16),
@@ -86,8 +79,12 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
       ),
       child: Row(
         children: [
-          const Text('⚠️', style: TextStyle(fontSize: 22)),
-          const SizedBox(width: 12),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFF856404),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               reason,
@@ -103,178 +100,154 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     );
   }
 
-  // ── Main card ──────────────────────────────────────────────────────────────
+  // ── Main card (Variant C) ──────────────────────────────────────────────────
   Widget _buildCard(LevelProvider p, AppLocalizations w, bool isRu) {
     final level = p.currentLevel!;
-    final int levelNum = level.levelNumber;
-    // +0.5 жетонов в день за каждый уровень
-    final double dailyBonus = level.dailyTokens;
 
     return GestureDetector(
       onTap: () => _showDetailsSheet(p, w, isRu),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: _gradient,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: _green.withValues(alpha: 0.22),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
         ),
-        child: Column(
+        child: Row(
           children: [
-            // ── Top: level info + XP ────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Row(
+            // ── Level icon ───────────────────────────────────────────────────
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _greenLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.emoji_events_outlined,
+                color: _green,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // ── Title + progress ─────────────────────────────────────────────
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          w.levelLabel.replaceAll('{n}', '$levelNum'),
-                          style: const TextStyle(
-                            color: Colors.white60,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
                           level.title(isRu),
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _greenLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          w.levelLabel.replaceAll(
+                            '{n}',
+                            '${level.levelNumber}',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: _green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (p.nextLevel != null)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: p.progressInLevel.clamp(0.0, 1.0),
+                              minHeight: 4,
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.07,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation(
+                                _greenMid,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          w.levelToNext.replaceAll(
+                            '{n}',
+                            '${p.nextLevel!.levelNumber}',
+                          ),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${p.xpToNextLevel} XP',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  // XP badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${p.nextLevel!.xpRequired - p.currentLevel!.xpRequired} XP',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Daily bonus info row ─────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.bolt_rounded,
-                      color: Colors.white70,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        w.levelDailyBonus.replaceAll('{n}', '$dailyBonus'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Progress to next level ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: p.nextLevel != null
-                  ? Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              w.levelToNext.replaceAll(
-                                '{n}',
-                                '${p.nextLevel!.levelNumber}',
-                              ),
-                              style: const TextStyle(
-                                color: Colors.white60,
-                                fontSize: 11,
-                              ),
-                            ),
-                            Text(
-                              '${p.xpToNextLevel} XP',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        _AnimatedProgressBar(progress: p.progressInLevel),
-                      ],
                     )
-                  : Text(
+                  else
+                    Text(
                       w.levelMaxReached,
-                      style: TextStyle(color: Colors.white, fontSize: 13),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _green,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-            ),
-
-            // ── Tap hint ────────────────────────────────────────────────────
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    w.levelMore,
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 10,
-                    color: Colors.white38,
-                  ),
                 ],
               ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // ── Daily tokens ─────────────────────────────────────────────────
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${level.dailyTokens}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _green,
+                  ),
+                ),
+                Text(
+                  w.levelPerDay.replaceAll('{n}', ''),
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                ),
+              ],
             ),
           ],
         ),
@@ -285,13 +258,11 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   // ── Skeleton ───────────────────────────────────────────────────────────────
   Widget _buildSkeleton() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      height: 150,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      height: 70,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_green.withValues(alpha: 0.15), _red.withValues(alpha: 0.1)],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.grey.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
       ),
     );
   }
@@ -352,89 +323,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Animated progress bar
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _AnimatedProgressBar extends StatefulWidget {
-  final double progress;
-  const _AnimatedProgressBar({required this.progress});
-
-  @override
-  State<_AnimatedProgressBar> createState() => _AnimatedProgressBarState();
-}
-
-class _AnimatedProgressBarState extends State<_AnimatedProgressBar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _anim = Tween<double>(
-      begin: 0,
-      end: widget.progress,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
-    _ctrl.forward();
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedProgressBar old) {
-    super.didUpdateWidget(old);
-    if (old.progress != widget.progress) {
-      _anim = Tween<double>(
-        begin: _anim.value,
-        end: widget.progress,
-      ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-      _ctrl
-        ..reset()
-        ..forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, _) => Container(
-        height: 8,
-        decoration: BoxDecoration(
-          color: Colors.white24,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: FractionallySizedBox(
-          alignment: Alignment.centerLeft,
-          widthFactor: _anim.value.clamp(0.0, 1.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  blurRadius: 4,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Level Up Dialog — with +0.5/level description
+// Level Up Dialog
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _LevelUpDialog extends StatefulWidget {
@@ -530,13 +419,12 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Title
                   Text(
                     w.levelNewLevel,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF1A7A3C),
+                      color: Color(0xFF3B6D11),
                       letterSpacing: 2,
                     ),
                   ),
@@ -580,15 +468,10 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF1A7A3C).withValues(alpha: 0.08),
-                          const Color(0xFFD32F1E).withValues(alpha: 0.05),
-                        ],
-                      ),
+                      color: const Color(0xFFEAF3DE),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFF1A7A3C).withValues(alpha: 0.2),
+                        color: const Color(0xFF639922).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -596,7 +479,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       children: [
                         const Icon(
                           Icons.bolt_rounded,
-                          color: Color(0xFFE67E22),
+                          color: Color(0xFF854F0B),
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -608,7 +491,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A7A3C),
+                            color: Color(0xFF3B6D11),
                           ),
                         ),
                       ],
@@ -630,7 +513,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                     const SizedBox(height: 8),
                     Text(
                       w.levelNewBonuses,
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 8),
                     ...widget.bonuses
@@ -661,15 +544,14 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                   ],
 
                   const SizedBox(height: 24),
+
                   // Button
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1A7A3C), Color(0xFFD32F1E)],
-                        ),
+                        color: const Color(0xFF3B6D11),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: ElevatedButton(
@@ -683,7 +565,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                         onPressed: widget.onDismiss,
                         child: Text(
                           w.great,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
@@ -704,24 +586,28 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Level Details Sheet — with +0.5/level table
+// Level Details Sheet
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _LevelDetailsSheet extends StatelessWidget {
   final LevelProvider provider;
   final AppLocalizations w;
   final bool isRu;
+
   const _LevelDetailsSheet({
     required this.provider,
     required this.w,
     required this.isRu,
   });
 
+  static const _green = Color(0xFF3B6D11);
+  static const _greenLight = Color(0xFFEAF3DE);
+
   Color _parseHex(String hex) {
     try {
       return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
     } catch (_) {
-      return const Color(0xFF1A7A3C);
+      return _green;
     }
   }
 
@@ -741,7 +627,6 @@ class _LevelDetailsSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            // Handle
             Center(
               child: Container(
                 width: 40,
@@ -833,7 +718,7 @@ class _LevelDetailsSheet extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // ── Daily bonus per level table ─────────────────────────────────
+            // Level table
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
@@ -844,20 +729,19 @@ class _LevelDetailsSheet extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Header row
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.bolt_rounded,
-                            color: Color(0xFFE67E22),
+                            color: Color(0xFFBA7517),
                             size: 16,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
                             w.levelBonusHeader,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF9AA3AF),
@@ -868,33 +752,18 @@ class _LevelDetailsSheet extends StatelessWidget {
                       ),
                     ),
                     const Divider(height: 1, color: Color(0xFFEEF0F3)),
-
-                    // Description row
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  w.levelTokensAuto,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0F1117),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        w.levelTokensAuto,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F1117),
+                        ),
                       ),
                     ),
                     const Divider(height: 1, color: Color(0xFFEEF0F3)),
-
-                    // Level rows
                     ...List.generate(provider.allLevels.length, (i) {
                       final l = provider.allLevels[i];
                       final bonus = l.dailyTokens;
@@ -909,15 +778,14 @@ class _LevelDetailsSheet extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              // Level emoji
                               Text(
-                                isUnlocked ? '' : '🔒',
+                                isUnlocked ? '✓' : '🔒',
                                 style: TextStyle(
-                                  fontSize: isUnlocked ? 18 : 14,
+                                  fontSize: isUnlocked ? 14 : 13,
+                                  color: isUnlocked ? _green : null,
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              // Level name
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -951,7 +819,6 @@ class _LevelDetailsSheet extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              // Bonus badge
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -961,7 +828,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                                   color: isCurrent
                                       ? color.withValues(alpha: 0.12)
                                       : isUnlocked
-                                      ? const Color(0xFFE8F5EE)
+                                      ? _greenLight
                                       : const Color(0xFFF0F0F0),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
@@ -973,7 +840,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                                     color: isCurrent
                                         ? color
                                         : isUnlocked
-                                        ? const Color(0xFF1A7A3C)
+                                        ? _green
                                         : const Color(0xFF9AA3AF),
                                   ),
                                 ),
@@ -997,12 +864,13 @@ class _LevelDetailsSheet extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Confetti particles (unchanged)
+// Confetti particles
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _Particle {
   final double x, speedY, speedX, size, rotation;
   final Color color;
+
   _Particle(Random rng)
     : x = rng.nextDouble(),
       speedY = 0.3 + rng.nextDouble() * 0.7,
@@ -1010,7 +878,7 @@ class _Particle {
       size = 5 + rng.nextDouble() * 7,
       rotation = rng.nextDouble() * pi * 2,
       color = [
-        const Color(0xFF1A7A3C),
+        const Color(0xFF3B6D11),
         const Color(0xFFD32F1E),
         const Color(0xFFF1C40F),
         const Color(0xFF3498DB),
@@ -1022,6 +890,7 @@ class _Particle {
 class _ConfettiPainter extends CustomPainter {
   final List<_Particle> particles;
   final double progress;
+
   _ConfettiPainter(this.particles, this.progress);
 
   @override
