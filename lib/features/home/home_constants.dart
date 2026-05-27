@@ -9,6 +9,7 @@ class HomeColors {
   static const Color border = Color(0xFFEEF0F3);
   static const Color grey = Color(0xFF9AA3AF);
   static const Color dark = Color(0xFF0F1117);
+  static const Color accent = Color(0xFFCC785C);
 
   static const LinearGradient gradient = LinearGradient(
     colors: [green, red],

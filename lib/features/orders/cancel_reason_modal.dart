@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -24,14 +25,7 @@ class CancelReasonModal extends StatefulWidget {
 }
 
 class _CancelReasonModalState extends State<CancelReasonModal> {
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _bg = Color(0xFFF5F7FA);
-  static const _gradient = LinearGradient(colors: [_green, _red]);
-
-  String? _selectedReason;
+  String? _selectedId;
   final _commentCtrl = TextEditingController();
   bool _isLoading = false;
 
@@ -58,6 +52,8 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
     ),
   ];
 
+  bool get _isOther => _selectedId == 'other';
+
   @override
   void dispose() {
     _commentCtrl.dispose();
@@ -65,10 +61,10 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
   }
 
   Future<void> _submit() async {
-    if (_selectedReason == null) return;
+    if (_selectedId == null) return;
+    final option = _reasons(widget.words).firstWhere((r) => r.id == _selectedId);
     final comment = _commentCtrl.text.trim();
-    final fullReason =
-        _selectedReason! + (comment.isNotEmpty ? ': $comment' : '');
+    final fullReason = option.label + (comment.isNotEmpty ? ': $comment' : '');
 
     setState(() => _isLoading = true);
     await widget.service.updateStatus(
@@ -84,157 +80,185 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+    final reasons = _reasons(widget.words);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Material(
+      color: Colors.transparent,
       child: Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: EdgeInsets.fromLTRB(
-          24,
-          12,
-          24,
-          MediaQuery.of(context).padding.bottom + 24,
+          20,
+          10,
+          20,
+          bottomInset > 0 ? bottomInset + 16 : bottomPadding + 20,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle
+            // ── Handle ────────────────────────────────────────────────────────
             Center(
               child: Container(
-                width: 36,
-                height: 4,
+                width: 32,
+                height: 3.5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF0F3),
+                  color: AuthColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Gradient accent bar
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                gradient: _gradient,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             const SizedBox(height: 16),
 
-            // Title
-            Text(
-              widget.words.cancelReasonTitle,
-              style: AppText.bold(fontSize: 17, color: const Color(0xFF0F1117)),
+            // ── Title (errorMuted accent bar + serif) ─────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AuthColors.errorMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.words.cancelReasonTitle,
+                    style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              widget.words.cancelReasonSubtitle,
-              style: AppText.regular(fontSize: 13, color: _grey),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 7),
 
-            // Reason tiles
-            ..._reasons(widget.words).map(
-              (r) => _ReasonTile(
-                reason: r,
-                isSelected: _selectedReason == r.label,
-                onTap: () => setState(() => _selectedReason = r.label),
-              ),
+            // ── Subtitle with accent icon ──────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 1.5),
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    size: 11,
+                    color: AuthColors.accent,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    widget.words.cancelReasonSubtitle,
+                    style: AppText.regular(
+                      fontSize: 12,
+                      color: AuthColors.inkMuted,
+                    ).copyWith(height: 1.45),
+                  ),
+                ),
+              ],
             ),
-
             const SizedBox(height: 14),
 
-            // Comment field
-            TextField(
-              controller: _commentCtrl,
-              maxLines: 3,
-              style: AppText.regular(
-                fontSize: 14,
-                color: const Color(0xFF0F1117),
-              ),
-              decoration: InputDecoration(
-                hintText: widget.words.cancelReasonComment,
-                hintStyle: AppText.regular(fontSize: 13, color: _grey),
-                filled: true,
-                fillColor: _bg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+            // ── Reasons list ──────────────────────────────────────────────────
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: AuthColors.border),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: reasons.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final r = entry.value;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (i > 0)
+                          Container(height: 0.5, color: AuthColors.borderSoft),
+                        _ReasonTile(
+                          reason: r,
+                          isSelected: _selectedId == r.id,
+                          onTap: () => setState(() => _selectedId = r.id),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: _red.withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.all(14),
               ),
             ),
-            const SizedBox(height: 16),
 
-            // Buttons row
+            // ── Comment field — shown only for 'other' ────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: _isOther
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: TextField(
+                        controller: _commentCtrl,
+                        maxLines: 3,
+                        autofocus: true,
+                        style: AppText.regular(
+                          fontSize: 14,
+                          color: AuthColors.ink,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: widget.words.cancelReasonComment,
+                          hintStyle: AppText.regular(
+                            fontSize: 13,
+                            color: AuthColors.inkSoft,
+                          ),
+                          filled: true,
+                          fillColor: AuthColors.bg,
+                          contentPadding: const EdgeInsets.all(12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AuthColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AuthColors.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AuthColors.errorMuted.withValues(
+                                alpha: 0.5,
+                              ),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 14),
+
+            // ── Actions row ───────────────────────────────────────────────────
             Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFEEF0F3)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        widget.words.back,
-                        style: AppText.medium(fontSize: 14, color: _grey),
-                      ),
-                    ),
-                  ),
+                _BackButton(
+                  label: widget.words.back,
+                  onTap: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: (_selectedReason == null || _isLoading)
-                        ? null
-                        : _submit,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: _selectedReason == null
-                            ? _red.withValues(alpha: 0.25)
-                            : _red,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              widget.words.cancelOrder,
-                              style: AppText.semiBold(
-                                fontSize: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
+                  child: _ConfirmButton(
+                    label: widget.words.cancelOrder,
+                    enabled: _selectedId != null,
+                    isLoading: _isLoading,
+                    onTap: _submit,
                   ),
                 ),
               ],
@@ -247,7 +271,6 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 }
 
 // ── Reason tile ───────────────────────────────────────────────────────────────
-
 class _ReasonTile extends StatelessWidget {
   final _ReasonOption reason;
   final bool isSelected;
@@ -259,65 +282,51 @@ class _ReasonTile extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? _red.withValues(alpha: 0.05)
-              : const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? _red.withValues(alpha: 0.35)
-                : Colors.transparent,
-          ),
-        ),
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        color: isSelected ? AuthColors.errorTint : Colors.transparent,
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
+            // Custom radio indicator
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 18,
+              height: 18,
               decoration: BoxDecoration(
-                color: isSelected ? _red.withValues(alpha: 0.1) : Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                shape: BoxShape.circle,
+                color: isSelected ? AuthColors.errorMuted : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? AuthColors.errorMuted : AuthColors.border,
+                  width: 1.5,
+                ),
               ),
-              child: Icon(
-                reason.icon,
-                size: 18,
-                color: isSelected ? _red : _grey,
-              ),
+              child: isSelected
+                  ? const Icon(Icons.check, color: Colors.white, size: 10)
+                  : null,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
+            Icon(
+              reason.icon,
+              size: 15,
+              color: isSelected ? AuthColors.errorMuted : AuthColors.inkSoft,
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 reason.label,
                 style: isSelected
-                    ? AppText.semiBold(fontSize: 14, color: _red)
+                    ? AppText.medium(fontSize: 13, color: AuthColors.ink)
                     : AppText.regular(
-                        fontSize: 14,
-                        color: const Color(0xFF0F1117),
+                        fontSize: 13,
+                        color: AuthColors.inkMuted,
                       ),
               ),
-            ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 150),
-              child: isSelected
-                  ? const Icon(
-                      Icons.check_circle_rounded,
-                      color: _red,
-                      size: 20,
-                      key: ValueKey('check'),
-                    )
-                  : const SizedBox(width: 20, key: ValueKey('empty')),
             ),
           ],
         ),
@@ -326,10 +335,136 @@ class _ReasonTile extends StatelessWidget {
   }
 }
 
+// ── Back button ───────────────────────────────────────────────────────────────
+class _BackButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _BackButton({required this.label, required this.onTap});
+
+  @override
+  State<_BackButton> createState() => _BackButtonState();
+}
+
+class _BackButtonState extends State<_BackButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            border: Border.all(color: AuthColors.border),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: AppText.medium(fontSize: 13, color: AuthColors.inkMuted),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Confirm button with spring press ──────────────────────────────────────────
+class _ConfirmButton extends StatefulWidget {
+  final String label;
+  final bool enabled;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _ConfirmButton({
+    required this.label,
+    required this.enabled,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  State<_ConfirmButton> createState() => _ConfirmButtonState();
+}
+
+class _ConfirmButtonState extends State<_ConfirmButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.enabled && !widget.isLoading;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: active ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: active
+          ? (_) {
+              setState(() => _pressed = false);
+              widget.onTap();
+            }
+          : null,
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 48,
+          decoration: BoxDecoration(
+            color: !widget.enabled
+                ? AuthColors.errorMuted.withValues(alpha: 0.28)
+                : widget.isLoading
+                ? AuthColors.errorMuted.withValues(alpha: 0.5)
+                : AuthColors.errorMuted,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: AuthColors.errorMuted.withValues(alpha: 0.22),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  widget.label,
+                  style: AppText.semiBold(fontSize: 13, color: Colors.white),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
 class _ReasonOption {
   final String id;
   final String label;
   final IconData icon;
+
   const _ReasonOption({
     required this.id,
     required this.label,

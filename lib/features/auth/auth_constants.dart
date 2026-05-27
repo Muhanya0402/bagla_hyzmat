@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 class AuthColors {
   // Brand colors (kept for gradient compat)
   static const Color green = Color(0xFF1A7A3C);
+  static const Color yellow = Color(0xFFFFC107);
+  static const Color dark = Color(0xFF0F1117);
+
   static const Color red = Color(0xFFD32F1E);
 
   // Anthropic-inspired palette (Claude.ai)

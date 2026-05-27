@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -33,79 +36,47 @@ class OrderCard extends StatelessWidget {
   Future<void> _confirmAction({
     required BuildContext context,
     required String title,
-    required String message,
+    required int points,
+    required double deliveryAmount,
+    required String shortOrderId,
+    required String address,
+    required AppLocalizations words,
     required Future<void> Function() action,
   }) async {
-    final bool? confirmed = await showDialog<bool>(
+    final bool? confirmed = await showGeneralDialog<bool>(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: AuthColors.bg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  color: AuthColors.emerald,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(title, style: AppText.semiBold(fontSize: 17)),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                style: AppText.regular(
-                  fontSize: 14,
-                  color: AuthColors.inkSoft,
-                ).copyWith(height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx, false),
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AuthColors.border),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Назад',
-                          style: AppText.medium(color: AuthColors.inkMuted),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx, true),
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: AuthColors.emerald,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Да',
-                          style: AppText.medium(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (_, _, _) => Stack(
+        children: [
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.28),
+            ),
           ),
+          Center(
+            child: _ConfirmDialog(
+              title: title,
+              points: points,
+              deliveryAmount: deliveryAmount,
+              shortOrderId: shortOrderId,
+              address: address,
+              words: words,
+            ),
+          ),
+        ],
+      ),
+      transitionBuilder: (_, anim, _, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.94, end: 1.0).animate(
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+          ),
+          child: child,
         ),
       ),
     );
@@ -114,7 +85,7 @@ class OrderCard extends StatelessWidget {
       try {
         await action();
         if (onUpdate != null) onUpdate!();
-      } catch (e) {
+      } catch (_) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -237,11 +208,7 @@ class OrderCard extends StatelessWidget {
                 const SizedBox(height: 8),
 
                 // ── Row 4: price + action button ───────────────────────
-                Divider(
-                  color: AuthColors.borderSoft,
-                  height: 1,
-                  thickness: 1,
-                ),
+                Divider(color: AuthColors.borderSoft, height: 1, thickness: 1),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -331,22 +298,22 @@ class OrderCard extends StatelessWidget {
   Widget _buildStatusBadge(String status, AppLocalizations words) {
     final styles = {
       'published': _BadgeStyle(
-        color: AuthColors.emerald,
+        color: HomeColors.yellow,
         label: words.statusFree,
         icon: Icons.search_rounded,
       ),
       'active': _BadgeStyle(
-        color: AuthColors.emerald,
+        color: HomeColors.dark,
         label: words.statusActive,
         icon: Icons.local_shipping_outlined,
       ),
       'canceled': _BadgeStyle(
-        color: AuthColors.inkSoft,
+        color: HomeColors.dark,
         label: words.statusCanceled,
         icon: Icons.cancel_outlined,
       ),
       'completed': _BadgeStyle(
-        color: AuthColors.emerald,
+        color: HomeColors.green,
         label: words.statusDone,
         icon: Icons.check_circle_outline_rounded,
       ),
@@ -394,10 +361,7 @@ class OrderCard extends StatelessWidget {
           children: [
             Text(
               amount.toStringAsFixed(0),
-              style: AppText.semiBold(
-                fontSize: 20,
-                color: AuthColors.emerald,
-              ),
+              style: AppText.semiBold(fontSize: 20, color: AuthColors.emerald),
             ),
             const SizedBox(width: 3),
             Text(
@@ -477,12 +441,17 @@ class OrderCard extends StatelessWidget {
               return;
             }
             if (balancePoints >= points) {
+              final langProv = context.read<LanguageProvider>();
               _confirmAction(
                 context: context,
                 title: words.confirmTitle,
-                message: points > 0
-                    ? words.confirmWithPoints.replaceAll('{points}', '$points')
-                    : words.confirmNoPoints,
+                points: points,
+                deliveryAmount: (order['delivery_amount'] ?? 0.0).toDouble(),
+                shortOrderId: orderId.split('-').first.toUpperCase(),
+                address: langProv.isRu
+                    ? (order['adress_of_delivery'] ?? '').toString()
+                    : (order['adress_of_deliverytk'] ?? '').toString(),
+                words: words,
                 action: () => service.updateStatus(
                   orderId,
                   'active',
@@ -506,8 +475,7 @@ class OrderCard extends StatelessWidget {
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
               builder: (_) => RolePickerEmbedded(
-                onClose: () =>
-                    Navigator.of(context, rootNavigator: true).pop(),
+                onClose: () => Navigator.of(context, rootNavigator: true).pop(),
               ),
             ).then((_) => onUpdate?.call());
           }
@@ -536,6 +504,7 @@ class OrderCard extends StatelessWidget {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => CancelReasonModal(
         orderId: orderId,
         currentUserId: currentUserId,
@@ -592,7 +561,7 @@ class _ActionButtonState extends State<_ActionButton> {
         child: Container(
           height: 36,
           decoration: BoxDecoration(
-            color: AuthColors.emerald,
+            color: AuthColors.emerald.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -697,4 +666,287 @@ class _BadgeStyle {
     required this.label,
     required this.icon,
   });
+}
+
+// ── Confirm dialog ────────────────────────────────────────────────────────────
+class _ConfirmDialog extends StatefulWidget {
+  final String title;
+  final int points;
+  final double deliveryAmount;
+  final String shortOrderId;
+  final String address;
+  final AppLocalizations words;
+
+  const _ConfirmDialog({
+    required this.title,
+    required this.points,
+    required this.deliveryAmount,
+    required this.shortOrderId,
+    required this.address,
+    required this.words,
+  });
+
+  @override
+  State<_ConfirmDialog> createState() => _ConfirmDialogState();
+}
+
+class _ConfirmDialogState extends State<_ConfirmDialog> {
+  bool _confirmPressed = false;
+  bool _cancelPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 28),
+        decoration: BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AuthColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AuthColors.ink.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ────────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    widget.title,
+                    style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // ── Economic block ────────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AuthColors.bg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AuthColors.borderSoft),
+                    ),
+                    child: Row(
+                      children: [
+                        // Delivery income
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.words.deliveryFee,
+                                style: AppText.regular(
+                                  fontSize: 10,
+                                  color: AuthColors.inkSoft,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    '+${widget.deliveryAmount.toStringAsFixed(0)}',
+                                    style: AppText.semiBold(
+                                      fontSize: 18,
+                                      color: AuthColors.emerald,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'TMT',
+                                    style: AppText.regular(
+                                      fontSize: 10,
+                                      color: AuthColors.emerald.withValues(
+                                        alpha: 0.55,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Points cost (shown only if > 0)
+                        if (widget.points > 0) ...[
+                          Container(
+                            width: 0.5,
+                            height: 32,
+                            color: AuthColors.borderSoft,
+                            margin: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AuthColors.amberTint,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.toll_rounded,
+                                  size: 13,
+                                  color: AuthColors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '-${widget.points}',
+                                  style: AppText.semiBold(
+                                    fontSize: 13,
+                                    color: AuthColors.amber,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Route hint ────────────────────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Icon(
+                          Icons.route_outlined,
+                          size: 12,
+                          color: AuthColors.inkSoft,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          'ID: ${widget.shortOrderId} • ${widget.address}',
+                          style: AppText.regular(
+                            fontSize: 11,
+                            color: AuthColors.inkMuted,
+                          ).copyWith(height: 1.4),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Divider ───────────────────────────────────────────────────────
+            Container(height: 0.5, color: AuthColors.borderSoft),
+
+            // ── Actions ───────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Row(
+                children: [
+                  // Cancel
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (_) => setState(() => _cancelPressed = true),
+                    onTapUp: (_) {
+                      setState(() => _cancelPressed = false);
+                      Navigator.pop(context, false);
+                    },
+                    onTapCancel: () => setState(() => _cancelPressed = false),
+                    child: AnimatedScale(
+                      scale: _cancelPressed ? 0.97 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOut,
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        decoration: BoxDecoration(
+                          color: AuthColors.borderSoft,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          widget.words.back,
+                          style: AppText.medium(
+                            fontSize: 13,
+                            color: AuthColors.inkMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Confirm
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (_) => setState(() => _confirmPressed = true),
+                      onTapUp: (_) {
+                        setState(() => _confirmPressed = false);
+                        Navigator.pop(context, true);
+                      },
+                      onTapCancel: () =>
+                          setState(() => _confirmPressed = false),
+                      child: AnimatedScale(
+                        scale: _confirmPressed ? 0.97 : 1.0,
+                        duration: const Duration(milliseconds: 120),
+                        curve: Curves.easeOutBack,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 140),
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _confirmPressed
+                                ? AuthColors.emerald.withValues(alpha: 0.85)
+                                : AuthColors.emerald,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: _confirmPressed
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color: AuthColors.emerald.withValues(
+                                        alpha: 0.22,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            widget.words.takeOrder,
+                            style: AppText.semiBold(
+                              fontSize: 13,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

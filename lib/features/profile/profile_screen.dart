@@ -1,8 +1,10 @@
 import 'dart:ui';
+import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_settings_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:flutter/material.dart';
@@ -263,32 +265,13 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showSupportModal(BuildContext context, String phone) {
-    showGeneralDialog(
+    showModalBottomSheet(
       context: context,
       useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 350),
-      pageBuilder: (_, _, _) => Stack(
-        children: [
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(color: Colors.black.withValues(alpha: 0.25)),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: _SupportModal(phone: phone),
-          ),
-        ],
-      ),
-      transitionBuilder: (_, anim, _, child) => SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 1),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-        child: child,
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (_) => _SupportModal(phone: phone),
     );
   }
 }
@@ -554,61 +537,70 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                 final progress = lp.progressInLevel.clamp(0.0, 1.0);
                 final nextXp = lp.nextLevel?.xpRequired;
 
-                return Column(
-                  children: [
-                    const Divider(
-                      height: 1,
-                      thickness: 0.8,
-                      color: AuthColors.borderSoft,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.emoji_events_outlined,
-                                size: 13,
-                                color: AuthColors.amber,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${level.title(lang.isRu)}  •  Ур. ${level.levelNumber}',
-                                style: AppText.medium(
-                                  fontSize: 12,
-                                  color: AuthColors.inkMuted,
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => showLevelDetailsSheet(
+                    context,
+                    provider: lp,
+                    words: lang.words,
+                    isRu: lang.isRu,
+                  ),
+                  child: Column(
+                    children: [
+                      const Divider(
+                        height: 1,
+                        thickness: 0.8,
+                        color: AuthColors.borderSoft,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.emoji_events_outlined,
+                                  size: 13,
+                                  color: AuthColors.amber,
                                 ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                nextXp != null
-                                    ? '${lp.currentXp} / $nextXp XP'
-                                    : '${lp.currentXp} XP',
-                                style: AppText.semiBold(
-                                  fontSize: 11,
-                                  color: AuthColors.ink,
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${level.title(lang.isRu)}  •  Ур. ${level.levelNumber}',
+                                  style: AppText.medium(
+                                    fontSize: 12,
+                                    color: AuthColors.inkMuted,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 4,
-                              backgroundColor: AuthColors.amberTint,
-                              valueColor: const AlwaysStoppedAnimation(
-                                AuthColors.amber,
+                                const Spacer(),
+                                Text(
+                                  nextXp != null
+                                      ? '${lp.currentXp} / $nextXp XP'
+                                      : '${lp.currentXp} XP',
+                                  style: AppText.semiBold(
+                                    fontSize: 11,
+                                    color: AuthColors.ink,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 4,
+                                backgroundColor: AuthColors.amberTint,
+                                valueColor: const AlwaysStoppedAnimation(
+                                  AuthColors.amber,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -1015,156 +1007,348 @@ class _SupportModal extends StatefulWidget {
 }
 
 class _SupportModalState extends State<_SupportModal> {
+  String? _category;
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+  bool _isLoading = false;
+
+  static const _categories = [
+    'Проблема с заказом',
+    'Списание жетонов',
+    'Ошибка в приложении',
+    'Предложение',
+  ];
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) {
+      _focus.requestFocus();
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final auth = context.read<AuthProvider>();
+      await ApiClient().dio.post(
+        '/items/appeals',
+        data: {
+          'user_id': int.tryParse(auth.userId) ?? auth.userId,
+          'subject': _category ?? 'Обращение в поддержку',
+          'body': text,
+          'status': 'open',
+        },
+      );
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      Navigator.pop(context);
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Сообщение отправлено',
+            style: AppText.medium(fontSize: 13, color: Colors.white),
+          ),
+          backgroundColor: AuthColors.emerald,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ошибка отправки. Попробуйте позже.',
+            style: AppText.medium(fontSize: 13, color: Colors.white),
+          ),
+          backgroundColor: AuthColors.errorMuted,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          10,
+          20,
+          bottomInset > 0 ? bottomInset + 16 : bottomPadding + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Handle ──────────────────────────────────────────────────────
+            Center(
+              child: Container(
+                width: 32,
+                height: 3.5,
+                decoration: BoxDecoration(
+                  color: AuthColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Header ──────────────────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AuthColors.emeraldTint,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.headset_mic_outlined,
+                    color: AuthColors.emerald,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Служба поддержки',
+                        style: AppText.serif(
+                          fontSize: 17,
+                          color: AuthColors.ink,
+                        ),
+                      ),
+                      Text(
+                        'Мы на связи и готовы помочь вам с любым вопросом',
+                        style: AppText.regular(
+                          fontSize: 11,
+                          color: AuthColors.inkMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // ── Category tags ────────────────────────────────────────────────
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: _categories.map((cat) {
+                final sel = _category == cat;
+                return GestureDetector(
+                  onTap: () => setState(
+                    () => _category = sel ? null : cat,
+                  ),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: sel
+                          ? AuthColors.emeraldTint
+                          : AuthColors.borderSoft,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: sel
+                            ? AuthColors.emerald.withValues(alpha: 0.35)
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: Text(
+                      cat,
+                      style: AppText.medium(
+                        fontSize: 12,
+                        color: sel
+                            ? AuthColors.emerald
+                            : AuthColors.inkMuted,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Message field ────────────────────────────────────────────────
+            TextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              autofocus: true,
+              maxLines: 4,
+              minLines: 3,
+              textInputAction: TextInputAction.newline,
+              style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+              decoration: InputDecoration(
+                hintText: 'Опишите ваш вопрос...',
+                hintStyle: AppText.regular(
+                  fontSize: 14,
+                  color: AuthColors.inkSoft,
+                ),
+                filled: true,
+                fillColor: AuthColors.bg,
+                contentPadding: const EdgeInsets.all(12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AuthColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AuthColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AuthColors.emerald,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Actions ──────────────────────────────────────────────────────
+            Row(
+              children: [
+                // Call button
+                GestureDetector(
+                  onTap: () => _makePhoneCall(widget.phone),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AuthColors.borderSoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.call_outlined,
+                      color: AuthColors.inkMuted,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Send button
+                Expanded(
+                  child: _SendButton(
+                    isLoading: _isLoading,
+                    onTap: _submit,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Send button with spring press ─────────────────────────────────────────────
+class _SendButton extends StatefulWidget {
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _SendButton({required this.isLoading, required this.onTap});
+
+  @override
+  State<_SendButton> createState() => _SendButtonState();
+}
+
+class _SendButtonState extends State<_SendButton> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AuthColors.bg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        12,
-        24,
-        MediaQuery.of(context).padding.bottom + 28,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AuthColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        if (!widget.isLoading) widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          height: 46,
+          decoration: BoxDecoration(
+            color: widget.isLoading
+                ? AuthColors.emerald.withValues(alpha: 0.5)
+                : AuthColors.emerald,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: widget.isLoading
+                ? null
+                : [
+                    BoxShadow(
+                      color: AuthColors.emerald.withValues(alpha: 0.22),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
-          const SizedBox(height: 24),
-
-          // Icon
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AuthColors.emeraldTint,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.headset_mic_outlined,
-              color: AuthColors.emerald,
-              size: 26,
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Title
-          Text(
-            'Поддержка',
-            style: AppText.serif(fontSize: 20, color: AuthColors.ink),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Мы готовы помочь вам в любое время',
-            style: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
-          ),
-          const SizedBox(height: 22),
-
-          // Phone tile
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapUp: (_) {
-              setState(() => _pressed = false);
-              _makePhoneCall(widget.phone);
-            },
-            onTapCancel: () => setState(() => _pressed = false),
-            child: AnimatedScale(
-              scale: _pressed ? 0.97 : 1.0,
-              duration: const Duration(milliseconds: 120),
-              curve: Curves.easeOut,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 13,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AuthColors.border),
-                ),
-                child: Row(
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: AuthColors.emeraldTint,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.phone_outlined,
-                        color: AuthColors.emerald,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Телефон',
-                            style: AppText.semiBold(
-                              fontSize: 14,
-                              color: AuthColors.ink,
-                            ),
-                          ),
-                          Text(
-                            widget.phone,
-                            style: AppText.regular(
-                              fontSize: 12,
-                              color: AuthColors.inkSoft,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 13,
-                      color: AuthColors.inkSoft,
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Отправить сообщение',
+                      style: AppText.semiBold(
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Close button
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: double.infinity,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AuthColors.border),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                'Закрыть',
-                style: AppText.medium(fontSize: 14, color: AuthColors.inkMuted),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

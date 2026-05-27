@@ -145,15 +145,6 @@ class _HomeScreenState extends State<HomeScreen>
               child: _buildStatusBanner(isBanned, words),
             ),
 
-          if (isCourier && isActive)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: HomeFilterButton(
-                activeCount: filters.activeCount,
-                onTap: showFilterModal,
-              ),
-            ),
-
           if (isShop && isActive || selectedFilterIndex == 1)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 0, 0),

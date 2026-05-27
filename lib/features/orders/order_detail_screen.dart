@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -31,12 +32,15 @@ class OrderDetailScreen extends StatefulWidget {
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
 }
 
-class _OrderDetailScreenState extends State<OrderDetailScreen> {
+class _OrderDetailScreenState extends State<OrderDetailScreen>
+    with SingleTickerProviderStateMixin {
   static const String _baseUrl = BaseUrl.url;
 
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
   bool _isExpired = false;
+
+  late final AnimationController _animCtrl;
 
   String _transportLabel(String? type, AppLocalizations words) {
     switch (type) {
@@ -60,19 +64,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  // ── Brand ─────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _gradient = LinearGradient(
-    colors: [_green, _red],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
   @override
   void initState() {
     super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
     _startCountdown();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
   }
 
   void _startCountdown() {
@@ -104,6 +104,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _animCtrl.dispose();
     super.dispose();
   }
 
@@ -112,6 +113,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  Animation<double> _itemAnim(double start, double end) {
+    return CurvedAnimation(
+      parent: _animCtrl,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+  }
+
+  Widget _animated(Widget child, Animation<double> anim) {
+    return FadeTransition(
+      opacity: anim,
+      child: AnimatedBuilder(
+        animation: anim,
+        builder: (_, inner) => Transform.translate(
+          offset: Offset(0, 14 * (1 - anim.value)),
+          child: inner,
+        ),
+        child: child,
+      ),
+    );
   }
 
   Future<void> _makePhoneCall(String phone) async {
@@ -132,7 +154,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AuthColors.bg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -140,11 +162,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Gradient accent bar
               Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  gradient: _gradient,
+                  color: AuthColors.emerald,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -155,7 +176,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 message,
                 style: AppText.regular(
                   fontSize: 14,
-                  color: const Color(0xFF9AA3AF),
+                  color: AuthColors.inkSoft,
                 ).copyWith(height: 1.5),
               ),
               const SizedBox(height: 24),
@@ -164,11 +185,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(ctx, false),
-                      child: _dialogBtn(
-                        words.dialogBack,
-                        Colors.transparent,
-                        const Color(0xFF9AA3AF),
-                        bordered: true,
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AuthColors.border),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          words.dialogBack,
+                          style: AppText.medium(color: AuthColors.inkMuted),
+                        ),
                       ),
                     ),
                   ),
@@ -176,10 +203,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(ctx, true),
-                      child: _dialogBtn(
-                        words.dialogConfirm,
-                        actionColor,
-                        Colors.white,
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: actionColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          words.dialogConfirm,
+                          style: AppText.medium(color: Colors.white),
+                        ),
                       ),
                     ),
                   ),
@@ -201,7 +235,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(words.error),
-              backgroundColor: _red,
+              backgroundColor: AuthColors.errorMuted,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -213,25 +247,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  static Widget _dialogBtn(
-    String text,
-    Color bg,
-    Color textColor, {
-    bool bordered = false,
-  }) {
-    return Container(
-      height: 46,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: bordered ? Border.all(color: const Color(0xFFEEF0F3)) : null,
-      ),
-      alignment: Alignment.center,
-      child: Text(text, style: AppText.medium(fontSize: 14, color: textColor)),
-    );
-  }
-
-  // ── Cashback success dialog ───────────────────────────────────────────────
+  // ── Cashback success dialog ─────────────────────────────────────────────────
   void _showCashbackSuccessModal(
     BuildContext context,
     double points,
@@ -242,97 +258,85 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: AuthColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 80,
-                height: 80,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
+                  color: AuthColors.emeraldTint,
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      _green.withValues(alpha: 0.12),
-                      _red.withValues(alpha: 0.08),
-                    ],
-                  ),
                 ),
                 child: const Icon(
                   Icons.check_circle_rounded,
-                  color: _green,
-                  size: 44,
+                  color: AuthColors.emerald,
+                  size: 40,
                 ),
               ),
-              const SizedBox(height: 20),
-              ShaderMask(
-                shaderCallback: (b) => _gradient.createShader(b),
-                child: Text(
-                  words.orderDone,
-                  style: AppText.extraBold(fontSize: 20, color: Colors.white),
-                ),
+              const SizedBox(height: 16),
+              Text(
+                words.orderDone,
+                style: AppText.serif(fontSize: 20, color: AuthColors.ink),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 words.deliveredOnTime,
-                style: AppText.regular(
-                  fontSize: 14,
-                  color: const Color(0xFF9AA3AF),
-                ),
+                style: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
-
-              // ── Кэшбек ──
+              const SizedBox(height: 16),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
+                  horizontal: 16,
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: _green.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _green.withValues(alpha: 0.2)),
+                  color: AuthColors.amberTint,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AuthColors.border),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
                       'assets/images/point_icon.png',
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       fit: BoxFit.contain,
                       errorBuilder: (_, _, _) => const Icon(
                         Icons.toll_rounded,
-                        color: _green,
-                        size: 28,
+                        color: AuthColors.amber,
+                        size: 24,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '+${points.toDouble()} ${words.tokens}',
-                      style: AppText.extraBold(fontSize: 22, color: _green),
+                      style: AppText.semiBold(
+                        fontSize: 20,
+                        color: AuthColors.amber,
+                      ),
                     ),
                   ],
                 ),
               ),
-
-              // ── XP ──
               if (xpEarned > 0) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
+                    horizontal: 16,
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF7C3AED).withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
                     ),
@@ -343,13 +347,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       const Icon(
                         Icons.star_rounded,
                         color: Color(0xFF7C3AED),
-                        size: 26,
+                        size: 22,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '+$xpEarned XP',
-                        style: AppText.extraBold(
-                          fontSize: 22,
+                        style: AppText.semiBold(
+                          fontSize: 20,
                           color: const Color(0xFF7C3AED),
                         ),
                       ),
@@ -357,46 +361,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 ),
               ],
-
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 words.deliveryOnTimeSub,
-                style: AppText.regular(
-                  fontSize: 12,
-                  color: const Color(0xFF9AA3AF),
-                ),
+                style: AppText.regular(fontSize: 12, color: AuthColors.inkSoft),
               ),
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: _gradient,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      words.great,
-                      style: AppText.bold(
-                        fontSize: 15,
-                        color: Colors.white,
-                      ).copyWith(letterSpacing: .5),
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 20),
+              _DetailActionButton(
+                label: words.great,
+                color: AuthColors.emerald,
+                filled: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
@@ -412,7 +390,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         .toString()
         .toLowerCase();
     final langProvider = context.watch<LanguageProvider>();
-
     final words = langProvider.words;
     final isShop = widget.role == 'shop';
     final isDataLocked = !isShop && status == 'published';
@@ -424,136 +401,171 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         : [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AuthColors.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AuthColors.bg,
         elevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withValues(alpha: 0.07),
+              color: AuthColors.borderSoft,
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: _green,
+              color: AuthColors.inkMuted,
               size: 16,
             ),
           ),
         ),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  words.order,
-                  style: AppText.semiBold(
-                    fontSize: 17,
-                    color: const Color(0xFF0F1117),
-                  ),
-                ),
-                Text(
-                  'ID: ${orderId.split('-').first.toUpperCase()}',
-                  style: AppText.regular(
-                    fontSize: 11,
-                    color: const Color(0xFF9AA3AF),
-                  ),
-                ),
-              ],
+            Flexible(
+              child: Text(
+                '${words.order} #${orderId.split('-').first.toUpperCase()}',
+                style: AppText.serif(fontSize: 18, color: AuthColors.ink),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(width: 8),
+            _statusChip(status, words),
           ],
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
+          child: Container(height: 0.5, color: AuthColors.border),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          _buildStatusCard(status, words),
-          const SizedBox(height: 12),
-          if (!isShop) _buildCountdownCard(words),
-          const SizedBox(height: 12),
+          // ── Countdown (courier + has deadline) ──────────────────────────
+          if (!isShop)
+            _animated(_buildCountdownCard(words), _itemAnim(0.0, 0.45)),
+          if (!isShop) const SizedBox(height: 10),
 
-          _buildSection(
-            title: words.routeSection,
-            child: _buildRouteBlock(isDataLocked, langProvider),
-          ),
-          const SizedBox(height: 12),
-
-          _buildSection(
-            title: words.transportSection,
-            child: _buildTransportBlock(words),
-          ),
-          const SizedBox(height: 12),
-
-          _buildSection(
-            title: words.recipientSection,
-            child: _buildRecipientBlock(isDataLocked, words),
-          ),
-          const SizedBox(height: 12),
-
-          if (!isDataLocked &&
-              (widget.order['courierId'] != null ||
-                  widget.order['shopId'] != null)) ...[
-            _buildSection(
-              title: isShop ? words.executorSection : words.senderSection,
-              child: _buildCounterpartyBlock(isShop, words),
+          // ── Route timeline ───────────────────────────────────────────────
+          _animated(
+            _section(
+              title: words.routeSection,
+              child: _buildRouteBlock(isDataLocked, langProvider),
             ),
-            const SizedBox(height: 12),
-          ],
-
-          _buildSection(
-            title: words.priceSection,
-            child: _buildPriceBlock(isShop, total, delivery, words),
+            _itemAnim(isShop ? 0.0 : 0.1, isShop ? 0.45 : 0.55),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
+          // ── Details (transport + contacts) ───────────────────────────────
+          _animated(
+            _section(
+              title: words.recipientSection,
+              child: _buildDetailsBlock(isDataLocked, isShop, words),
+            ),
+            _itemAnim(isShop ? 0.1 : 0.2, isShop ? 0.55 : 0.65),
+          ),
+          const SizedBox(height: 10),
+
+          // ── Price ────────────────────────────────────────────────────────
+          _animated(
+            _section(
+              title: words.priceSection,
+              child: _buildPriceBlock(isShop, total, delivery, words),
+            ),
+            _itemAnim(isShop ? 0.2 : 0.3, isShop ? 0.65 : 0.75),
+          ),
+
+          // ── Photos ───────────────────────────────────────────────────────
           if (pictures.isNotEmpty) ...[
-            _buildSection(
-              title: words.photoSection,
-              child: _buildImagesBlock(pictures),
+            const SizedBox(height: 10),
+            _animated(
+              _section(
+                title: words.photoSection,
+                child: _buildImagesBlock(pictures),
+              ),
+              _itemAnim(isShop ? 0.3 : 0.4, isShop ? 0.75 : 0.85),
             ),
-            const SizedBox(height: 12),
           ],
 
-          if ((widget.order['comment'] ?? '').toString().isNotEmpty)
-            _buildSection(
-              title: words.commentSection,
-              child: Text(
-                widget.order['comment'].toString(),
-                style: AppText.regular(
-                  fontSize: 14,
-                  color: const Color(0xFF0F1117),
+          // ── Comment ──────────────────────────────────────────────────────
+          if ((widget.order['comment'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _animated(
+              _section(
+                title: words.commentSection,
+                child: Text(
+                  widget.order['comment'].toString(),
+                  style: AppText.regular(
+                    fontSize: 13,
+                    color: AuthColors.ink,
+                  ).copyWith(height: 1.5),
                 ),
               ),
+              _itemAnim(isShop ? 0.35 : 0.45, isShop ? 0.8 : 0.9),
             ),
+          ],
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: _buildActionButton(context, status, orderId, isShop, words),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: _animated(
+            _buildActionButton(context, status, orderId, isShop, words),
+            _itemAnim(isShop ? 0.4 : 0.5, 1.0),
+          ),
         ),
       ),
     );
   }
 
-  // ── Section wrapper ────────────────────────────────────────────────────────
-  Widget _buildSection({required String title, required Widget child}) {
+  // ── Status chip ────────────────────────────────────────────────────────────
+  Widget _statusChip(String status, AppLocalizations words) {
+    final Color color;
+    final Color bg;
+    final String label;
+
+    switch (status) {
+      case 'published':
+        color = AuthColors.yellow;
+        bg = AuthColors.errorTint;
+        label = words.statusFree;
+      case 'active':
+        color = AuthColors.dark;
+        bg = AuthColors.amberTint;
+        label = words.statusActive;
+      case 'completed':
+        color = AuthColors.emerald;
+        bg = AuthColors.emeraldTint;
+        label = words.statusDone;
+      default:
+        color = AuthColors.red;
+        bg = AuthColors.borderSoft;
+        label = words.statusCanceled;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text(label, style: AppText.semiBold(fontSize: 10, color: color)),
+    );
+  }
+
+  // ── Section wrapper ────────────────────────────────────────────────────────
+  Widget _section({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AuthColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AuthColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
+            color: AuthColors.ink.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -568,7 +580,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 width: 3,
                 height: 12,
                 decoration: BoxDecoration(
-                  gradient: _gradient,
+                  color: AuthColors.emerald,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -577,408 +589,294 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 title.toUpperCase(),
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: const Color(0xFF9AA3AF),
+                  color: AuthColors.inkSoft,
                 ).copyWith(letterSpacing: 0.8),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           child,
         ],
       ),
     );
   }
 
-  // ── Status card ────────────────────────────────────────────────────────────
-  Widget _buildStatusCard(String status, AppLocalizations words) {
-    final styles = {
-      'published': _StatusStyle(
-        color: _red,
-        label: words.statusFree,
-        icon: Icons.search_rounded,
-        description: words.statusWaitCourier,
-      ),
-      'active': _StatusStyle(
-        color: _green,
-        label: words.statusActive,
-        icon: Icons.local_shipping_outlined,
-        description: words.statusOnWay,
-      ),
-      'completed': _StatusStyle(
-        color: _green,
-        label: words.statusDone,
-        icon: Icons.check_circle_outline_rounded,
-        description: words.statusOrderDone,
-      ),
-      'canceled': _StatusStyle(
-        color: Color(0xFF9AA3AF),
-        label: words.statusCanceled,
-        icon: Icons.cancel_outlined,
-        description: words.statusOrderCanceled,
-      ),
-    };
-    final s = styles[status] ?? styles['published']!;
+  // ── Countdown strip ────────────────────────────────────────────────────────
+  Widget _buildCountdownCard(AppLocalizations words) {
+    final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
+    final Color color = _isExpired ? AuthColors.errorMuted : AuthColors.emerald;
+    final Color bg = _isExpired ? AuthColors.errorTint : AuthColors.emeraldTint;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: s.color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: s.color.withValues(alpha: 0.2)),
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: s.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(s.icon, color: s.color, size: 22),
+          Icon(
+            _isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
+            color: color,
+            size: 18,
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                s.label,
-                style: AppText.semiBold(fontSize: 15, color: s.color),
-              ),
-              Text(
-                s.description,
-                style: AppText.regular(
-                  fontSize: 12,
-                  color: s.color.withValues(alpha: 0.7),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _isExpired ? words.timerExpired : words.timerLabel,
+                  style: AppText.regular(fontSize: 10, color: color),
                 ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: s.color,
-              boxShadow: [
-                BoxShadow(
-                  color: s.color.withValues(alpha: 0.4),
-                  blurRadius: 6,
-                  spreadRadius: 1,
+                Text(
+                  _isExpired ? words.cashbackNone : _formatDuration(_timeLeft),
+                  style: AppText.semiBold(fontSize: 16, color: color),
                 ),
               ],
             ),
           ),
+          if (!_isExpired && cashback > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AuthColors.amberTint,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AuthColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/point_icon.png',
+                    width: 16,
+                    height: 16,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.toll_rounded,
+                      size: 16,
+                      color: AuthColors.amber,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '+${cashback.toDouble()}',
+                    style: AppText.semiBold(
+                      fontSize: 13,
+                      color: AuthColors.amber,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  // ── Countdown card ─────────────────────────────────────────────────────────
-  Widget _buildCountdownCard(AppLocalizations words) {
-    final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
-    final Color color = _isExpired ? _red : _green;
-    final Color bgColor = color.withValues(alpha: 0.06);
+  // ── Route timeline ─────────────────────────────────────────────────────────
+  Widget _buildRouteBlock(bool isLocked, LanguageProvider langProvider) {
+    final fromAddr = langProvider.isRu
+        ? (widget.order['shop_adress'] ?? 'Адрес магазина')
+        : (widget.order['shop_adresstk'] ?? 'Dükan salgysy');
+    final toAddr = langProvider.isRu
+        ? (widget.order['adress_of_delivery'] ?? 'Адрес доставки')
+        : (widget.order['adress_of_deliverytk'] ?? 'Eltip beriş salgysy');
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              _isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
-              color: color,
-              size: 22,
+          // Timeline
+          SizedBox(
+            width: 18,
+            child: Column(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AuthColors.accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 1.5,
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AuthColors.borderSoft,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AuthColors.emerald,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 14),
-
+          const SizedBox(width: 12),
+          // Addresses
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _isExpired ? words.timerExpired : words.timerLabel,
-                  style: AppText.regular(
-                    fontSize: 12,
-                    color: color.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _isExpired ? words.cashbackNone : _formatDuration(_timeLeft),
-                  style: AppText.extraBold(fontSize: 22, color: color),
-                ),
+                _routePoint(label: 'Откуда', value: fromAddr),
+                const SizedBox(height: 14),
+                _routePoint(label: 'Куда', value: toAddr),
               ],
             ),
           ),
-          if (!_isExpired && cashback > 0)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  words.cashbackLabel,
-                  style: AppText.regular(
-                    fontSize: 11,
-                    color: const Color(0xFF9AA3AF),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Image.asset(
-                      'assets/images/point_icon.png',
-                      width: 20,
-                      height: 20,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.toll_rounded,
-                        size: 20,
-                        color: _green,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '+${cashback.toDouble()}',
-                      style: AppText.bold(fontSize: 16, color: _green),
-                    ),
-                  ],
-                ),
-              ],
-            ),
         ],
       ),
     );
   }
 
-  // ── Route block ────────────────────────────────────────────────────────────
-  Widget _buildRouteBlock(bool isLocked, LanguageProvider langProvider) {
+  Widget _routePoint({required String label, required String value}) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _buildRoutePoint(
-          icon: Icons.inventory_2_outlined,
-          label: 'Откуда',
-          value: langProvider.isRu
-              ? (widget.order['shop_adress'] ?? 'Адрес магазина')
-              : (widget.order['shop_adresstk'] ?? 'Dükan salgysy'),
-          color: _red,
+        Text(
+          label,
+          style: AppText.regular(fontSize: 10, color: AuthColors.inkSoft),
         ),
-        const SizedBox(height: 12),
-        _buildRoutePoint(
-          icon: Icons.location_on_outlined,
-          label: 'Куда',
-          value: langProvider.isRu
-              ? (widget.order['adress_of_delivery'] ?? 'Адрес доставки')
-              : (widget.order['adress_of_deliverytk'] ?? 'Eltip beriş salgysy'),
-          color: _green,
-          isGrey: false,
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: AppText.medium(
+            fontSize: 13,
+            color: AuthColors.ink,
+          ).copyWith(height: 1.4),
         ),
       ],
     );
   }
 
-  Widget _buildRoutePoint({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    bool isGrey = false,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppText.regular(
-                  fontSize: 11,
-                  color: const Color(0xFF9AA3AF),
-                ),
-              ),
-              Text(
-                value,
-                style: AppText.mono(
-                  fontSize: 14,
-                  color: isGrey
-                      ? const Color(0xFF9AA3AF)
-                      : const Color(0xFF0F1117),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTransportBlock(AppLocalizations words) {
-    final String? type = widget.order['transport_type']?.toString();
-    final label = _transportLabel(type, words);
-    final icon = _transportIcon(type);
-    final Color color = type == 'truck' ? _red : _green;
-
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.09),
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              words.transportRequirement,
-              style: AppText.regular(
-                fontSize: 11,
-                color: const Color(0xFF9AA3AF),
-              ),
-            ),
-            Text(
-              label,
-              style: AppText.semiBold(
-                fontSize: 14,
-                color: const Color(0xFF0F1117),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ── Recipient / counterparty ───────────────────────────────────────────────
-  Widget _buildRecipientBlock(bool isLocked, AppLocalizations words) {
+  // ── Details block (transport + recipient + counterparty) ───────────────────
+  Widget _buildDetailsBlock(
+    bool isLocked,
+    bool isShop,
+    AppLocalizations words,
+  ) {
+    final String? transportType = widget.order['transport_type']?.toString();
     final String phone = (widget.order['client_phone'] ?? '').toString();
-    return Row(
-      children: [
-        Expanded(
-          child: _buildInfoRow(
-            icon: Icons.person_outline,
-            label: isLocked ? words.phoneHidden : words.clientPhone,
-            value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
-            color: _green,
-          ),
-        ),
-        if (phone.isNotEmpty && !isLocked) _buildCallButton(phone),
-      ],
-    );
-  }
-
-  Widget _buildCounterpartyBlock(bool isShop, AppLocalizations words) {
-    final String courierName = widget.order['courier_name']?.toString() ?? '';
-    final String? phone = isShop
+    final String? counterPhone = isShop
         ? widget.order['courier_phone']
         : widget.order['shop_phone'];
-    final IconData icon = isShop
-        ? Icons.delivery_dining_outlined
-        : Icons.storefront_outlined;
-    if (phone == null || phone.isEmpty) return const SizedBox.shrink();
-    return Row(
+    final String courierName = widget.order['courier_name']?.toString() ?? '';
+
+    return Column(
       children: [
-        Expanded(
-          child: _buildInfoRow(
-            icon: icon,
+        // Transport row
+        _detailRow(
+          icon: _transportIcon(transportType),
+          iconColor: transportType == 'truck'
+              ? AuthColors.errorMuted
+              : AuthColors.emerald,
+          label: words.transportRequirement,
+          value: _transportLabel(transportType, words),
+        ),
+
+        const SizedBox(height: 10),
+        Container(height: 0.5, color: AuthColors.borderSoft),
+        const SizedBox(height: 10),
+
+        // Recipient row
+        _detailRow(
+          icon: Icons.person_outline_rounded,
+          iconColor: AuthColors.emerald,
+          label: isLocked ? words.phoneHidden : words.clientPhone,
+          value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
+          trailing: phone.isNotEmpty && !isLocked ? _callButton(phone) : null,
+        ),
+
+        // Counterparty row (if available)
+        if (!isLocked && counterPhone != null && counterPhone.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(height: 0.5, color: AuthColors.borderSoft),
+          const SizedBox(height: 10),
+          _detailRow(
+            icon: isShop
+                ? Icons.delivery_dining_outlined
+                : Icons.storefront_outlined,
+            iconColor: AuthColors.inkMuted,
             label: isShop
                 ? (courierName.isNotEmpty
                       ? '${words.courier} — $courierName'
                       : words.courier)
                 : words.orderSender,
-            value: phone,
-            color: _red,
+            value: counterPhone,
+            trailing: _callButton(counterPhone),
           ),
-        ),
-        _buildCallButton(phone),
+        ],
       ],
     );
   }
 
-  Widget _buildInfoRow({
+  Widget _detailRow({
     required IconData icon,
+    required Color iconColor,
     required String label,
     required String value,
-    required Color color,
+    Widget? trailing,
   }) {
     return Row(
       children: [
         Container(
-          width: 36,
-          height: 36,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
+            color: iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, size: 18, color: color),
+          child: Icon(icon, size: 16, color: iconColor),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 label,
-                style: AppText.regular(
-                  fontSize: 11,
-                  color: const Color(0xFF9AA3AF),
-                ),
+                style: AppText.regular(fontSize: 10, color: AuthColors.inkSoft),
               ),
+              const SizedBox(height: 1),
               Text(
                 value,
-                style: AppText.mono(
-                  fontSize: 14,
-                  color: const Color(0xFF0F1117),
-                ),
+                style: AppText.medium(fontSize: 13, color: AuthColors.ink),
               ),
             ],
           ),
         ),
+        if (trailing != null) ...[const SizedBox(width: 8), trailing],
       ],
     );
   }
 
-  Widget _buildCallButton(String phone) {
+  Widget _callButton(String phone) {
     return GestureDetector(
       onTap: () => _makePhoneCall(phone),
       child: Container(
-        width: 44,
-        height: 44,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [_green, Color(0xFF22963F)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
+          color: AuthColors.emerald,
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.call, color: Colors.white, size: 20),
+        child: const Icon(Icons.call, color: Colors.white, size: 18),
       ),
     );
   }
@@ -998,37 +896,39 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _priceRow(
           words.itemPrice,
           '${itemPrice.toStringAsFixed(0)} TMT',
-          const Color(0xFF0F1117),
+          AuthColors.ink,
         ),
-        const SizedBox(height: 10),
-        _priceRow(words.delivery, '${delivery.toStringAsFixed(0)} TMT', _green),
+        const SizedBox(height: 8),
+        _priceRow(
+          words.delivery,
+          '${delivery.toStringAsFixed(0)} TMT',
+          AuthColors.emerald,
+        ),
         if (!isShop && cashback > 0) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _priceRow(
             words.cashbackPercent,
             '+${cashback.toDouble()} ${words.tokens}',
-            _green,
+            AuthColors.amber,
           ),
         ],
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          child: Divider(color: Color(0xFFF1F4F8), height: 1),
+        Container(
+          height: 0.5,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          color: AuthColors.borderSoft,
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               isShop ? words.toShopReceive : words.courierPayout,
-              style: AppText.semiBold(fontSize: 14),
+              style: AppText.semiBold(fontSize: 13, color: AuthColors.ink),
             ),
-            ShaderMask(
-              shaderCallback: (b) => _gradient.createShader(b),
-              child: Text(
-                isShop
-                    ? '${itemPrice.toStringAsFixed(0)} TMT'
-                    : '${delivery.toStringAsFixed(0)} TMT',
-                style: AppText.semiBold(fontSize: 18, color: Colors.white),
-              ),
+            Text(
+              isShop
+                  ? '${itemPrice.toStringAsFixed(0)} TMT'
+                  : '${delivery.toStringAsFixed(0)} TMT',
+              style: AppText.semiBold(fontSize: 17, color: AuthColors.emerald),
             ),
           ],
         ),
@@ -1040,8 +940,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppText.regular(fontSize: 13)),
-        Text(value, style: AppText.mono(fontSize: 14, color: valueColor)),
+        Text(
+          label,
+          style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+        ),
+        Text(value, style: AppText.medium(fontSize: 13, color: valueColor)),
       ],
     );
   }
@@ -1049,11 +952,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   // ── Images ─────────────────────────────────────────────────────────────────
   Widget _buildImagesBlock(List pictures) {
     return SizedBox(
-      height: 110,
+      height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: pictures.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final String? fileId = pictures[i]['directus_files_id'];
           if (fileId == null) return const SizedBox.shrink();
@@ -1062,18 +965,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             child: Hero(
               tag: 'photo_$fileId',
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(10),
                 child: Image.network(
                   '$_baseUrl/assets/$fileId?width=250&quality=80',
-                  width: 110,
-                  height: 110,
+                  width: 100,
+                  height: 100,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => Container(
-                    width: 110,
-                    color: const Color(0xFFF1F4F8),
+                    width: 100,
+                    color: AuthColors.borderSoft,
                     child: const Icon(
                       Icons.broken_image_outlined,
-                      color: Colors.grey,
+                      color: AuthColors.inkSoft,
                     ),
                   ),
                 ),
@@ -1100,7 +1003,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // ── Action button ──────────────────────────────────────────────────────────
+  // ── Bottom action button ───────────────────────────────────────────────────
   Widget _buildActionButton(
     BuildContext context,
     String status,
@@ -1113,11 +1016,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return const SizedBox.shrink();
     }
 
-    // Shop cancel
     if (isShop && (status == 'published' || status == 'active')) {
-      return _actionBtn(
+      return _DetailActionButton(
         label: words.cancelOrderBtn,
-        color: _red,
+        color: AuthColors.errorMuted,
         filled: false,
         onTap: () => _showCancelReasonModal(context, orderId, service, words),
       );
@@ -1134,9 +1036,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             authProv.role == 'courier' && authProv.status == 'active';
         final bool isClient = authProv.role == 'client';
 
-        return _actionBtn(
+        return _DetailActionButton(
           label: words.takeOrder,
-          color: _green,
+          color: AuthColors.ink,
           filled: true,
           onTap: () async {
             if (isRestricted) {
@@ -1170,7 +1072,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ).then((_) => widget.onUpdate?.call());
             } else if (isUserActive) {
-              // ── ПРОВЕРКА ЛИМИТА: не более 3 активных заказов ──────────────
               final activeCount = await service.getActiveOrdersCount(
                 widget.currentUserId,
               );
@@ -1179,7 +1080,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(words.tooManyOrders),
-                    backgroundColor: _red,
+                    backgroundColor: AuthColors.errorMuted,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1188,8 +1089,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 );
                 return;
               }
-              // ─────────────────────────────────────────────────────────────
-
               if (balancePoints >= points) {
                 _confirmAction(
                   context: context,
@@ -1200,7 +1099,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           '$points',
                         )
                       : words.confirmNoPoints,
-                  actionColor: _green,
+                  actionColor: AuthColors.emerald,
                   words: words,
                   action: () => service.updateStatus(
                     orderId,
@@ -1247,14 +1146,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
         }
 
-        return _actionBtn(
+        return _DetailActionButton(
           label: cashback > 0
               ? words.finishWithCashback.replaceAll(
                   '{cashback}',
                   '${cashback.toDouble()}',
                 )
               : words.finishOrder,
-          color: _green,
+          color: AuthColors.ink,
           filled: true,
           onTap: () => _showDeliveryCodeModal(context, orderId, service, words),
         );
@@ -1286,8 +1185,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           child: Container(
             decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              color: AuthColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: EdgeInsets.fromLTRB(
               24,
@@ -1299,116 +1198,72 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _handle(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: codeSent
-                          ? [
-                              _green.withValues(alpha: 0.1),
-                              _green.withValues(alpha: 0.05),
-                            ]
-                          : [
-                              _red.withValues(alpha: 0.1),
-                              _red.withValues(alpha: 0.05),
-                            ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
+                    color: codeSent
+                        ? AuthColors.emeraldTint
+                        : AuthColors.errorTint,
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     codeSent
                         ? Icons.dialpad_rounded
                         : Icons.lock_outline_rounded,
-                    color: codeSent ? _green : _red,
-                    size: 30,
+                    color: codeSent
+                        ? AuthColors.emerald
+                        : AuthColors.errorMuted,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(height: 16),
-                ShaderMask(
-                  shaderCallback: (b) => _gradient.createShader(b),
-                  child: Text(
-                    words.confirmDelivery,
-                    style: AppText.bold(fontSize: 18, color: Colors.white),
-                  ),
+                const SizedBox(height: 14),
+                Text(
+                  words.confirmDelivery,
+                  style: AppText.serif(fontSize: 18, color: AuthColors.ink),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   codeSent ? words.enterCodeHint : words.sendCodeHint,
                   style: AppText.regular(
                     fontSize: 13,
-                    color: const Color(0xFF9AA3AF),
+                    color: AuthColors.inkSoft,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 if (!codeSent) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: _red,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                  _DetailActionButton(
+                    label: words.sendCodeBtn,
+                    color: AuthColors.ink,
+                    filled: true,
+                    isLoading: isLoading,
+                    onTap: () async {
+                      setS(() => isLoading = true);
+                      final result = await service.generateDeliveryCode(
+                        orderId: orderId,
+                        courierId: widget.currentUserId,
+                        clientPhone: widget.order['client_phone'] ?? '',
+                      );
+                      setS(() {
+                        isLoading = false;
+                        if (result['success'] == true) codeSent = true;
+                      });
+                      if (result['success'] != true && ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text(words.codeSendError),
+                            backgroundColor: AuthColors.errorMuted,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        onPressed: isLoading
-                            ? null
-                            : () async {
-                                setS(() => isLoading = true);
-                                final result = await service
-                                    .generateDeliveryCode(
-                                      orderId: orderId,
-                                      courierId: widget.currentUserId,
-                                      clientPhone:
-                                          widget.order['client_phone'] ?? '',
-                                    );
-                                setS(() {
-                                  isLoading = false;
-                                  if (result['success'] == true) {
-                                    codeSent = true;
-                                  }
-                                });
-                                if (result['success'] != true && ctx.mounted) {
-                                  ScaffoldMessenger.of(ctx).showSnackBar(
-                                    SnackBar(
-                                      content: Text(words.codeSendError),
-                                      backgroundColor: _red,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                words.sendCodeBtn,
-                                style: AppText.bold(
-                                  fontSize: 14,
-                                  color: Colors.white,
-                                ).copyWith(letterSpacing: .5),
-                              ),
-                      ),
-                    ),
+                        );
+                      }
+                    },
                   ),
                 ] else ...[
                   TextField(
@@ -1416,121 +1271,87 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     keyboardType: TextInputType.number,
                     maxLength: 4,
                     textAlign: TextAlign.center,
-                    style: AppText.bold(
+                    style: AppText.semiBold(
                       fontSize: 28,
-                      color: const Color(0xFF0F1117),
+                      color: AuthColors.ink,
                     ).copyWith(letterSpacing: 8),
                     decoration: InputDecoration(
                       counterText: '',
                       hintText: '• • • •',
                       hintStyle: AppText.regular(
                         fontSize: 28,
-                        color: const Color(0xFFD1D5DB),
+                        color: AuthColors.border,
                       ).copyWith(letterSpacing: 8),
                       filled: true,
-                      fillColor: const Color(0xFFF5F7FA),
+                      fillColor: AuthColors.borderSoft,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: _gradient,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: isLoading
-                            ? null
-                            : () async {
-                                final code = codeCtrl.text.trim();
-                                if (code.length != 4) return;
-                                setS(() => isLoading = true);
-                                final result = await service.verifyDeliveryCode(
-                                  orderId: orderId,
-                                  code: code,
-                                );
-                                setS(() => isLoading = false);
-                                if (result['success'] == true) {
-                                  final double cashback =
-                                      (widget.order['cashback_amount'] ?? 0.0)
-                                          .toDouble();
-                                  final int xpEarned = result['xp_earned'] ?? 0;
+                  const SizedBox(height: 14),
+                  _DetailActionButton(
+                    label: words.confirmBtn2,
+                    color: AuthColors.emerald,
+                    filled: true,
+                    isLoading: isLoading,
+                    onTap: () async {
+                      final code = codeCtrl.text.trim();
+                      if (code.length != 4) return;
+                      setS(() => isLoading = true);
+                      final result = await service.verifyDeliveryCode(
+                        orderId: orderId,
+                        code: code,
+                      );
+                      setS(() => isLoading = false);
+                      if (result['success'] == true) {
+                        final double cashback =
+                            (widget.order['cashback_amount'] ?? 0.0).toDouble();
+                        final int xpEarned = result['xp_earned'] ?? 0;
 
-                                  service.applyCashbackIfOnTime(
-                                    orderId: orderId,
-                                    courierId: widget.currentUserId,
-                                  );
+                        service.applyCashbackIfOnTime(
+                          orderId: orderId,
+                          courierId: widget.currentUserId,
+                        );
 
-                                  if (!context.mounted) return;
-                                  Navigator.pop(context);
-                                  widget.onUpdate?.call();
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        widget.onUpdate?.call();
 
-                                  if (context.mounted) {
-                                    if (cashback > 0 && !_isExpired) {
-                                      _showCashbackSuccessModal(
-                                        context,
-                                        cashback,
-                                        xpEarned,
-                                        words,
-                                      );
-                                    } else {
-                                      Navigator.pop(context);
-                                    }
-                                  }
-                                } else {
-                                  codeCtrl.clear();
-                                  if (ctx.mounted) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          result['message'] ?? words.wrongCode,
-                                        ),
-                                        backgroundColor: _red,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                words.confirmBtn2,
-                                style: AppText.bold(
-                                  fontSize: 14,
-                                  color: Colors.white,
-                                ).copyWith(letterSpacing: .5),
+                        if (context.mounted) {
+                          if (cashback > 0 && !_isExpired) {
+                            _showCashbackSuccessModal(
+                              context,
+                              cashback,
+                              xpEarned,
+                              words,
+                            );
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        }
+                      } else {
+                        codeCtrl.clear();
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result['message'] ?? words.wrongCode,
                               ),
-                      ),
-                    ),
+                              backgroundColor: AuthColors.errorMuted,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: isLoading
                         ? null
@@ -1542,7 +1363,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       words.resendCode,
                       style: AppText.regular(
                         fontSize: 13,
-                        color: const Color(0xFF9AA3AF),
+                        color: AuthColors.inkSoft,
                       ),
                     ),
                   ),
@@ -1565,6 +1386,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => CancelReasonModal(
         orderId: orderId,
         currentUserId: widget.currentUserId,
@@ -1575,69 +1397,106 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     ).then((_) => widget.onUpdate?.call());
   }
 
-  Widget _actionBtn({
-    required String label,
-    required Color color,
-    required bool filled,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: filled ? _gradient : null,
-          color: filled ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: filled
-              ? null
-              : Border.all(color: color.withValues(alpha: 0.4)),
-          boxShadow: filled
-              ? [
-                  BoxShadow(
-                    color: _green.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppText.mono(
-            fontSize: 15,
-            color: filled ? Colors.white : color,
-          ),
-        ),
-      ),
-    );
-  }
-
   static Widget _handle() => Center(
     child: Container(
       width: 36,
       height: 4,
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF0F3),
+        color: AuthColors.border,
         borderRadius: BorderRadius.circular(2),
       ),
     ),
   );
 }
 
-class _StatusStyle {
-  final Color color;
+// ── Detail action button — spring press ──────────────────────────────────────
+
+class _DetailActionButton extends StatefulWidget {
   final String label;
-  final IconData icon;
-  final String description;
-  const _StatusStyle({
-    required this.color,
+  final Color color;
+  final bool filled;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _DetailActionButton({
     required this.label,
-    required this.icon,
-    required this.description,
+    required this.color,
+    required this.filled,
+    required this.onTap,
+    this.isLoading = false,
   });
+
+  @override
+  State<_DetailActionButton> createState() => _DetailActionButtonState();
 }
+
+class _DetailActionButtonState extends State<_DetailActionButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        if (!widget.isLoading) widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            color: widget.filled
+                ? (widget.isLoading
+                      ? widget.color.withValues(alpha: 0.4)
+                      : widget.color)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: widget.filled
+                ? null
+                : Border.all(
+                    color: widget.color.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+            boxShadow: widget.filled && !widget.isLoading
+                ? [
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  widget.label,
+                  style: AppText.semiBold(
+                    fontSize: 14,
+                    color: widget.filled ? Colors.white : widget.color,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Photo viewer ──────────────────────────────────────────────────────────────
 
 class _PhotoViewerScreen extends StatefulWidget {
   final List pictures;
@@ -1657,8 +1516,6 @@ class _PhotoViewerScreen extends StatefulWidget {
 class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
   late PageController _pageCtrl;
   late int _current;
-
-  static const _green = Color(0xFF1A7A3C);
 
   @override
   void initState() {
@@ -1720,7 +1577,6 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
       ),
       body: Stack(
         children: [
-          // ── PageView с фото ──────────────────────────────────────────────
           PageView.builder(
             controller: _pageCtrl,
             itemCount: total,
@@ -1747,7 +1603,7 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
                                 ? progress.cumulativeBytesLoaded /
                                       progress.expectedTotalBytes!
                                 : null,
-                            color: _green,
+                            color: AuthColors.emerald,
                             strokeWidth: 2,
                           ),
                         );
@@ -1763,8 +1619,6 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
               );
             },
           ),
-
-          // ── Точки-индикаторы (если больше 1 фото) ───────────────────────
           if (total > 1)
             Positioned(
               bottom: 32,

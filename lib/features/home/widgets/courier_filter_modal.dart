@@ -1,10 +1,13 @@
+import 'dart:ui';
+
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Публичная модель фильтров курьера
+// Public data models
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CourierFilterItem {
@@ -21,7 +24,7 @@ class CourierFilterItem {
 }
 
 class CourierFilters {
-  final String transportFilter; // 'any' | 'car' | 'truck'
+  final String transportFilter;
 
   final CourierFilterItem? shopProvince;
   final CourierFilterItem? shopEtrap;
@@ -93,7 +96,7 @@ class CourierFilters {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Синглтон-кэш классификатора
+// Classifier cache singleton
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ClassifierCache {
@@ -107,23 +110,228 @@ class ClassifierCache {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Helper — opens the modal with expand-from-button animation
+// ─────────────────────────────────────────────────────────────────────────────
+
+void showCourierFilterModal({
+  required BuildContext context,
+  GlobalKey? buttonKey,
+  required CourierFilters initial,
+  required bool isRu,
+  required AppLocalizations words,
+  required ClassifierCache cache,
+  required AuthRepository authRepo,
+  required List<CourierFilterItem> shopItems,
+  bool applyDefaults = true,
+  CourierFilterItem? defaultProvince,
+  CourierFilterItem? defaultEtrap,
+  required void Function(CourierFilters) onApply,
+  required VoidCallback onClear,
+}) {
+  final renderBox =
+      buttonKey?.currentContext?.findRenderObject() as RenderBox?;
+  final buttonCenter = renderBox?.localToGlobal(
+    Offset(renderBox.size.width / 2, renderBox.size.height / 2),
+  );
+
+  showGeneralDialog<void>(
+    context: context,
+    useRootNavigator: true,
+    barrierDismissible: false,
+    barrierLabel: '',
+    barrierColor: Colors.transparent,
+    transitionDuration: Duration.zero,
+    pageBuilder: (ctx, _, _) => _FilterOverlay(
+      buttonCenter: buttonCenter,
+      initial: initial,
+      isRu: isRu,
+      words: words,
+      cache: cache,
+      authRepo: authRepo,
+      shopItems: shopItems,
+      applyDefaults: applyDefaults,
+      defaultProvince: defaultProvince,
+      defaultEtrap: defaultEtrap,
+      onApply: onApply,
+      onClear: onClear,
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _FilterOverlay — handles expand-from-button + blur backdrop animation
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterOverlay extends StatefulWidget {
+  final Offset? buttonCenter;
+  final CourierFilters initial;
+  final bool isRu;
+  final AppLocalizations words;
+  final ClassifierCache cache;
+  final AuthRepository authRepo;
+  final List<CourierFilterItem> shopItems;
+  final bool applyDefaults;
+  final CourierFilterItem? defaultProvince;
+  final CourierFilterItem? defaultEtrap;
+  final void Function(CourierFilters) onApply;
+  final VoidCallback onClear;
+
+  const _FilterOverlay({
+    required this.buttonCenter,
+    required this.initial,
+    required this.isRu,
+    required this.words,
+    required this.cache,
+    required this.authRepo,
+    required this.shopItems,
+    required this.applyDefaults,
+    required this.defaultProvince,
+    required this.defaultEtrap,
+    required this.onApply,
+    required this.onClear,
+  });
+
+  @override
+  State<_FilterOverlay> createState() => _FilterOverlayState();
+}
+
+class _FilterOverlayState extends State<_FilterOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _backdropFade;
+  late final Animation<double> _scale;
+  late final Animation<double> _modalFade;
+
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+      reverseDuration: const Duration(milliseconds: 250),
+    );
+
+    // Backdrop fades in faster than modal appears
+    _backdropFade = CurvedAnimation(
+      parent: _ctrl,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      reverseCurve: const Interval(0.4, 1.0, curve: Curves.easeIn),
+    );
+
+    // Modal scale: starts very small (button-like) → full size
+    _scale = Tween<double>(begin: 0.08, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+    );
+
+    // Modal fades in during the first half of the animation
+    _modalFade = CurvedAnimation(
+      parent: _ctrl,
+      curve: const Interval(0.0, 0.55, curve: Curves.easeOut),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _close() async {
+    if (_closing) return;
+    _closing = true;
+    await _ctrl.reverse();
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  // Scale origin: maps the button's horizontal position to the modal's
+  // alignment space (-1 = left, 1 = right), with Y fixed above the modal top
+  // so the tiny modal appears near the button at open/close endpoints.
+  Alignment _scaleAlignment(Size screen) {
+    final alignX = widget.buttonCenter != null
+        ? ((widget.buttonCenter!.dx / screen.width) * 2 - 1).clamp(-1.0, 1.0)
+        : 0.8;
+    return Alignment(alignX, -1.5);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = MediaQuery.of(context).size;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _close();
+      },
+      child: Stack(
+        children: [
+          // ── Blur backdrop (only FadeTransition — no scale/slide to avoid freeze)
+          FadeTransition(
+            opacity: _backdropFade,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _close,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.38),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Modal: scale + fade, scale origin near button position
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: FadeTransition(
+              opacity: _modalFade,
+              child: ScaleTransition(
+                scale: _scale,
+                alignment: _scaleAlignment(screen),
+                child: CourierFilterModal(
+                  initial: widget.initial,
+                  isRu: widget.isRu,
+                  words: widget.words,
+                  cache: widget.cache,
+                  authRepo: widget.authRepo,
+                  shopItems: widget.shopItems,
+                  applyDefaults: widget.applyDefaults,
+                  defaultProvince: widget.defaultProvince,
+                  defaultEtrap: widget.defaultEtrap,
+                  onApply: (filters) {
+                    widget.onApply(filters);
+                    _close();
+                  },
+                  onClear: widget.onClear,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CourierFilterModal
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CourierFilterModal extends StatefulWidget {
   final CourierFilters initial;
   final bool isRu;
-  final AppLocalizations words; // ← добавлено
+  final AppLocalizations words;
   final ClassifierCache cache;
   final AuthRepository authRepo;
-
   final CourierFilterItem? defaultProvince;
   final CourierFilterItem? defaultEtrap;
-
   final List<CourierFilterItem> shopItems;
-
   final bool applyDefaults;
-
   final void Function(CourierFilters) onApply;
   final VoidCallback onClear;
 
@@ -131,7 +339,7 @@ class CourierFilterModal extends StatefulWidget {
     super.key,
     required this.initial,
     required this.isRu,
-    required this.words, // ← добавлено
+    required this.words,
     required this.cache,
     required this.authRepo,
     required this.shopItems,
@@ -151,7 +359,6 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
   bool _loadingAny = false;
   bool _defaultsApplied = false;
 
-  // transport options теперь строятся из words в build
   List<(String, IconData, String)> _transportOptions() => [
     ('any', Icons.directions_run_rounded, widget.words.filterTransportAny),
     ('car', Icons.directions_car_rounded, widget.words.filterTransportCar),
@@ -171,7 +378,6 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     if (!widget.applyDefaults) return;
 
     var d = _draft;
-
     if (d.shopProvince == null && widget.defaultProvince != null) {
       d = d.copyWith(shopProvince: widget.defaultProvince);
     }
@@ -188,24 +394,22 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
         widget.defaultEtrap != null) {
       d = d.copyWith(deliveryEtrap: widget.defaultEtrap);
     }
-
     _draft = d;
   }
 
-  // ── Загрузчики ──────────────────────────────────────────────────────────
+  // ── Loaders ────────────────────────────────────────────────────────────────
 
   Future<List<CourierFilterItem>> _loadProvinces() async {
     if (widget.cache.provinces.isNotEmpty) return widget.cache.provinces;
     setState(() => _loadingAny = true);
     try {
       final resp = await widget.authRepo.getProvinces();
-      final items =
-          resp
-              .map<CourierFilterItem>(
-                (p) => CourierFilterItem(id: p.id, label: p.label(widget.isRu)),
-              )
-              .toList()
-            ..sort((a, b) => a.label.compareTo(b.label));
+      final items = resp
+          .map<CourierFilterItem>(
+            (p) => CourierFilterItem(id: p.id, label: p.label(widget.isRu)),
+          )
+          .toList()
+        ..sort((a, b) => a.label.compareTo(b.label));
       widget.cache.provinces = items;
       return items;
     } catch (_) {
@@ -222,13 +426,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     setState(() => _loadingAny = true);
     try {
       final list = await widget.authRepo.getEtrapsByProvince(provinceId);
-      final items =
-          list
-              .map<CourierFilterItem>(
-                (e) => CourierFilterItem(id: e.id, label: e.label(widget.isRu)),
-              )
-              .toList()
-            ..sort((a, b) => a.label.compareTo(b.label));
+      final items = list
+          .map<CourierFilterItem>(
+            (e) => CourierFilterItem(id: e.id, label: e.label(widget.isRu)),
+          )
+          .toList()
+        ..sort((a, b) => a.label.compareTo(b.label));
       widget.cache.etraps[provinceId] = items;
       return items;
     } catch (_) {
@@ -245,13 +448,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     setState(() => _loadingAny = true);
     try {
       final list = await widget.authRepo.getDistrictsByEtrap(etrapId);
-      final items =
-          list
-              .map<CourierFilterItem>(
-                (d) => CourierFilterItem(id: d.id, label: d.label(widget.isRu)),
-              )
-              .toList()
-            ..sort((a, b) => a.label.compareTo(b.label));
+      final items = list
+          .map<CourierFilterItem>(
+            (d) => CourierFilterItem(id: d.id, label: d.label(widget.isRu)),
+          )
+          .toList()
+        ..sort((a, b) => a.label.compareTo(b.label));
       widget.cache.districts[etrapId] = items;
       return items;
     } catch (_) {
@@ -261,7 +463,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     }
   }
 
-  // ── Пикер ────────────────────────────────────────────────────────────────
+  // ── Picker ─────────────────────────────────────────────────────────────────
 
   Future<CourierFilterItem?> _openPicker({
     required String title,
@@ -274,15 +476,13 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     return showModalBottomSheet<CourierFilterItem>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (pickerCtx) => _FilterPickerSheet(
         title: title,
         items: items,
         selectedId: selectedId,
-        words: widget.words, // ← передаём words
+        words: widget.words,
         onSelect: (id) {
           final item = items.firstWhere((i) => i.id == id);
           Navigator.pop(pickerCtx, item);
@@ -300,13 +500,29 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
   bool _isCleared(CourierFilterItem? item) =>
       item != null && item.id == '__clear__';
 
-  // ── UI helpers ───────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   Widget _sectionLabel(String text) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-    child: Text(
-      text,
-      style: AppText.semiBold(fontSize: 13, color: const Color(0xFF0F1117)),
+    padding: const EdgeInsets.only(bottom: 7),
+    child: Row(
+      children: [
+        Container(
+          width: 2.5,
+          height: 12,
+          decoration: BoxDecoration(
+            color: AuthColors.emerald.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: AppText.semiBold(
+            fontSize: 11,
+            color: AuthColors.inkMuted,
+          ).copyWith(letterSpacing: 0.2),
+        ),
+      ],
     ),
   );
 
@@ -319,453 +535,555 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     bool disabled = false,
   }) {
     final bool has = selected != null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GestureDetector(
-        onTap: disabled ? null : onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-            color: disabled
-                ? const Color(0xFFF0F1F3)
-                : has
-                ? const Color(0xFF1A7A3C).withValues(alpha: 0.06)
-                : const Color(0xFFF5F7FA),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: has && !disabled
-                  ? const Color(0xFF1A7A3C).withValues(alpha: 0.3)
-                  : Colors.transparent,
+    return GestureDetector(
+      onTap: disabled ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+        decoration: BoxDecoration(
+          color: disabled
+              ? AuthColors.borderSoft.withValues(alpha: 0.5)
+              : has
+              ? AuthColors.emeraldTint
+              : AuthColors.bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: has && !disabled
+                ? AuthColors.emerald.withValues(alpha: 0.35)
+                : AuthColors.borderSoft,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: disabled
+                  ? AuthColors.border
+                  : has
+                  ? AuthColors.emerald
+                  : AuthColors.inkSoft,
             ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: disabled
-                    ? const Color(0xFFD0D4DA)
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                has ? selected.label : hint,
+                overflow: TextOverflow.ellipsis,
+                style: disabled
+                    ? AppText.regular(fontSize: 13, color: AuthColors.border)
                     : has
-                    ? const Color(0xFF1A7A3C)
-                    : const Color(0xFF9AA3AF),
+                    ? AppText.semiBold(fontSize: 13, color: AuthColors.emerald)
+                    : AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  has ? selected.label : hint,
-                  style: disabled
-                      ? AppText.regular(
-                          fontSize: 14,
-                          color: const Color(0xFFD0D4DA),
-                        )
-                      : has
-                      ? AppText.semiBold(
-                          fontSize: 14,
-                          color: const Color(0xFF0F1117),
-                        )
-                      : AppText.regular(
-                          fontSize: 14,
-                          color: const Color(0xFF9AA3AF),
-                        ),
-                ),
-              ),
-              if (has && !disabled && onClear != null)
-                GestureDetector(
-                  onTap: onClear,
-                  child: const Icon(
+            ),
+            if (has && !disabled && onClear != null)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onClear,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Icon(
                     Icons.close_rounded,
-                    size: 16,
-                    color: Color(0xFF9AA3AF),
+                    size: 14,
+                    color: AuthColors.inkSoft,
                   ),
-                )
-              else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: disabled
-                      ? const Color(0xFFD0D4DA)
-                      : const Color(0xFF9AA3AF),
                 ),
-            ],
-          ),
+              )
+            else
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 14,
+                color: disabled ? AuthColors.border : AuthColors.inkSoft,
+              ),
+          ],
         ),
       ),
     );
   }
 
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final w = widget.words;
     final transportOptions = _transportOptions();
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEF0F3),
-                  borderRadius: BorderRadius.circular(2),
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          10,
+          20,
+          bottomInset > 0 ? bottomInset + 16 : bottomPadding + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Handle ───────────────────────────────────────────────────
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3.5,
+                  decoration: BoxDecoration(
+                    color: AuthColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 14),
 
-            // Заголовок + кнопка сброса
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
+              // ── Header ───────────────────────────────────────────────────
+              Row(
                 children: [
                   Text(
                     w.filterTitle,
-                    style: AppText.bold(
-                      fontSize: 18,
-                      color: const Color(0xFF0F1117),
-                    ),
+                    style: AppText.serif(fontSize: 17, color: AuthColors.ink),
                   ),
                   const Spacer(),
                   if (_loadingAny)
                     const SizedBox(
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF1A7A3C),
+                        strokeWidth: 1.5,
+                        color: AuthColors.emerald,
                       ),
                     )
-                  else
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => _draft = const CourierFilters()),
-                      child: Text(
-                        w.filterReset,
-                        style: AppText.medium(
-                          fontSize: 13,
-                          color: const Color(0xFFD32F1E),
-                        ),
-                      ),
+                  else if (_draft.activeCount > 0)
+                    _ResetButton(
+                      label: w.filterReset,
+                      onTap: () => setState(() => _draft = const CourierFilters()),
                     ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 24),
-
-            // ── Транспорт ─────────────────────────────────────────────────
-            _sectionLabel(w.transportSection),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: transportOptions.map((opt) {
-                  final bool sel = _draft.transportFilter == opt.$1;
+              // ── Transport ────────────────────────────────────────────────
+              _sectionLabel(w.transportSection),
+              Row(
+                children: transportOptions.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final opt = entry.value;
                   return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(
-                        () => _draft = _draft.copyWith(transportFilter: opt.$1),
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: i < transportOptions.length - 1 ? 6 : 0,
                       ),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: sel
-                              ? const Color(0xFF1A7A3C).withValues(alpha: 0.08)
-                              : const Color(0xFFF5F7FA),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: sel
-                                ? const Color(
-                                    0xFF1A7A3C,
-                                  ).withValues(alpha: 0.35)
-                                : Colors.transparent,
+                      child: _TransportTag(
+                        selected: _draft.transportFilter == opt.$1,
+                        icon: opt.$2,
+                        label: opt.$3,
+                        onTap: () => setState(
+                          () => _draft = _draft.copyWith(
+                            transportFilter: opt.$1,
                           ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              opt.$2,
-                              size: 22,
-                              color: sel
-                                  ? const Color(0xFF1A7A3C)
-                                  : const Color(0xFF9AA3AF),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              opt.$3,
-                              style: sel
-                                  ? AppText.semiBold(
-                                      fontSize: 11,
-                                      color: const Color(0xFF1A7A3C),
-                                    )
-                                  : AppText.regular(
-                                      fontSize: 11,
-                                      color: const Color(0xFF9AA3AF),
-                                    ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
                   );
                 }).toList(),
               ),
-            ),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 24),
-
-            // ── Адрес ОТПРАВКИ ────────────────────────────────────────────
-            _sectionLabel(w.filterShopAddress),
-
-            _pickerTile(
-              icon: Icons.map_outlined,
-              hint: w.filterPickProvince,
-              selected: _draft.shopProvince,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterProvinceShop,
-                  itemsFuture: _loadProvinces(),
-                  selectedId: _draft.shopProvince?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    shopProvince: _isCleared(res) ? null : res,
-                    shopEtrap: null,
-                    shopDistrict: null,
-                  ),
-                );
-              },
-              onClear: _draft.shopProvince != null
-                  ? () => setState(
-                      () => _draft = _draft.copyWith(
-                        shopProvince: null,
-                        shopEtrap: null,
-                        shopDistrict: null,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 8),
-
-            _pickerTile(
-              icon: Icons.location_city_outlined,
-              hint: w.filterPickEtrap,
-              selected: _draft.shopEtrap,
-              disabled: _draft.shopProvince == null,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterEtrapShop,
-                  itemsFuture: _loadEtraps(_draft.shopProvince!.id),
-                  selectedId: _draft.shopEtrap?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    shopEtrap: _isCleared(res) ? null : res,
-                    shopDistrict: null,
-                  ),
-                );
-              },
-              onClear: _draft.shopEtrap != null
-                  ? () => setState(
-                      () => _draft = _draft.copyWith(
-                        shopEtrap: null,
-                        shopDistrict: null,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 8),
-
-            _pickerTile(
-              icon: Icons.pin_drop_outlined,
-              hint: w.filterPickDistrict,
-              selected: _draft.shopDistrict,
-              disabled: _draft.shopEtrap == null,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterDistrictShop,
-                  itemsFuture: _loadDistricts(_draft.shopEtrap!.id),
-                  selectedId: _draft.shopDistrict?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    shopDistrict: _isCleared(res) ? null : res,
-                  ),
-                );
-              },
-              onClear: _draft.shopDistrict != null
-                  ? () => setState(
-                      () => _draft = _draft.copyWith(shopDistrict: null),
-                    )
-                  : null,
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── Адрес ДОСТАВКИ ────────────────────────────────────────────
-            _sectionLabel(w.filterDeliveryAddress),
-
-            _pickerTile(
-              icon: Icons.map_outlined,
-              hint: w.filterPickProvince,
-              selected: _draft.deliveryProvince,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterProvinceDelivery,
-                  itemsFuture: _loadProvinces(),
-                  selectedId: _draft.deliveryProvince?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    deliveryProvince: _isCleared(res) ? null : res,
-                    deliveryEtrap: null,
-                    deliveryDistrict: null,
-                  ),
-                );
-              },
-              onClear: _draft.deliveryProvince != null
-                  ? () => setState(
-                      () => _draft = _draft.copyWith(
-                        deliveryProvince: null,
-                        deliveryEtrap: null,
-                        deliveryDistrict: null,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 8),
-
-            _pickerTile(
-              icon: Icons.location_city_outlined,
-              hint: w.filterPickEtrap,
-              selected: _draft.deliveryEtrap,
-              disabled: _draft.deliveryProvince == null,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterEtrapDelivery,
-                  itemsFuture: _loadEtraps(_draft.deliveryProvince!.id),
-                  selectedId: _draft.deliveryEtrap?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    deliveryEtrap: _isCleared(res) ? null : res,
-                    deliveryDistrict: null,
-                  ),
-                );
-              },
-              onClear: _draft.deliveryEtrap != null
-                  ? () => setState(
-                      () => _draft = _draft.copyWith(
-                        deliveryEtrap: null,
-                        deliveryDistrict: null,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 8),
-
-            _pickerTile(
-              icon: Icons.pin_drop_outlined,
-              hint: w.filterPickDistrict,
-              selected: _draft.deliveryDistrict,
-              disabled: _draft.deliveryEtrap == null,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterDistrictDelivery,
-                  itemsFuture: _loadDistricts(_draft.deliveryEtrap!.id),
-                  selectedId: _draft.deliveryDistrict?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    deliveryDistrict: _isCleared(res) ? null : res,
-                  ),
-                );
-              },
-              onClear: _draft.deliveryDistrict != null
-                  ? () => setState(
-                      () => _draft = _draft.copyWith(deliveryDistrict: null),
-                    )
-                  : null,
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── Заказчик ──────────────────────────────────────────────────
-            _sectionLabel(w.filterShopLabel),
-            _pickerTile(
-              icon: Icons.store_outlined,
-              hint: w.filterPickShop,
-              selected: _draft.shop,
-              disabled: widget.shopItems.isEmpty,
-              onTap: () async {
-                final res = await _openPicker(
-                  title: w.filterShopLabel,
-                  itemsFuture: Future.value(widget.shopItems),
-                  selectedId: _draft.shop?.id,
-                );
-                if (res == null) return;
-                setState(
-                  () => _draft = _draft.copyWith(
-                    shop: _isCleared(res) ? null : res,
-                  ),
-                );
-              },
-              onClear: _draft.shop != null
-                  ? () => setState(() => _draft = _draft.copyWith(shop: null))
-                  : null,
-            ),
-
-            const SizedBox(height: 28),
-
-            // ── Применить ─────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GestureDetector(
-                onTap: () => widget.onApply(_draft),
-                child: Container(
-                  height: 52,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1A7A3C), Color(0xFFD32F1E)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+              // ── Shop address ─────────────────────────────────────────────
+              _sectionLabel(w.filterShopAddress),
+              _pickerTile(
+                icon: Icons.map_outlined,
+                hint: w.filterPickProvince,
+                selected: _draft.shopProvince,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterProvinceShop,
+                    itemsFuture: _loadProvinces(),
+                    selectedId: _draft.shopProvince?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      shopProvince: _isCleared(res) ? null : res,
+                      shopEtrap: null,
+                      shopDistrict: null,
                     ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF1A7A3C).withValues(alpha: 0.25),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    w.filterApply,
-                    style: AppText.semiBold(fontSize: 15, color: Colors.white),
-                  ),
-                ),
+                  );
+                },
+                onClear: _draft.shopProvince != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(
+                          shopProvince: null,
+                          shopEtrap: null,
+                          shopDistrict: null,
+                        ),
+                      )
+                    : null,
               ),
+              const SizedBox(height: 6),
+              _pickerTile(
+                icon: Icons.location_city_outlined,
+                hint: w.filterPickEtrap,
+                selected: _draft.shopEtrap,
+                disabled: _draft.shopProvince == null,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterEtrapShop,
+                    itemsFuture: _loadEtraps(_draft.shopProvince!.id),
+                    selectedId: _draft.shopEtrap?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      shopEtrap: _isCleared(res) ? null : res,
+                      shopDistrict: null,
+                    ),
+                  );
+                },
+                onClear: _draft.shopEtrap != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(
+                          shopEtrap: null,
+                          shopDistrict: null,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 6),
+              _pickerTile(
+                icon: Icons.pin_drop_outlined,
+                hint: w.filterPickDistrict,
+                selected: _draft.shopDistrict,
+                disabled: _draft.shopEtrap == null,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterDistrictShop,
+                    itemsFuture: _loadDistricts(_draft.shopEtrap!.id),
+                    selectedId: _draft.shopDistrict?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      shopDistrict: _isCleared(res) ? null : res,
+                    ),
+                  );
+                },
+                onClear: _draft.shopDistrict != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(shopDistrict: null),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 16),
+
+              // ── Delivery address ─────────────────────────────────────────
+              _sectionLabel(w.filterDeliveryAddress),
+              _pickerTile(
+                icon: Icons.map_outlined,
+                hint: w.filterPickProvince,
+                selected: _draft.deliveryProvince,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterProvinceDelivery,
+                    itemsFuture: _loadProvinces(),
+                    selectedId: _draft.deliveryProvince?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      deliveryProvince: _isCleared(res) ? null : res,
+                      deliveryEtrap: null,
+                      deliveryDistrict: null,
+                    ),
+                  );
+                },
+                onClear: _draft.deliveryProvince != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(
+                          deliveryProvince: null,
+                          deliveryEtrap: null,
+                          deliveryDistrict: null,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 6),
+              _pickerTile(
+                icon: Icons.location_city_outlined,
+                hint: w.filterPickEtrap,
+                selected: _draft.deliveryEtrap,
+                disabled: _draft.deliveryProvince == null,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterEtrapDelivery,
+                    itemsFuture: _loadEtraps(_draft.deliveryProvince!.id),
+                    selectedId: _draft.deliveryEtrap?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      deliveryEtrap: _isCleared(res) ? null : res,
+                      deliveryDistrict: null,
+                    ),
+                  );
+                },
+                onClear: _draft.deliveryEtrap != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(
+                          deliveryEtrap: null,
+                          deliveryDistrict: null,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 6),
+              _pickerTile(
+                icon: Icons.pin_drop_outlined,
+                hint: w.filterPickDistrict,
+                selected: _draft.deliveryDistrict,
+                disabled: _draft.deliveryEtrap == null,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterDistrictDelivery,
+                    itemsFuture: _loadDistricts(_draft.deliveryEtrap!.id),
+                    selectedId: _draft.deliveryDistrict?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      deliveryDistrict: _isCleared(res) ? null : res,
+                    ),
+                  );
+                },
+                onClear: _draft.deliveryDistrict != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(deliveryDistrict: null),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 16),
+
+              // ── Shop ─────────────────────────────────────────────────────
+              _sectionLabel(w.filterShopLabel),
+              _pickerTile(
+                icon: Icons.store_outlined,
+                hint: w.filterPickShop,
+                selected: _draft.shop,
+                disabled: widget.shopItems.isEmpty,
+                onTap: () async {
+                  final res = await _openPicker(
+                    title: w.filterShopLabel,
+                    itemsFuture: Future.value(widget.shopItems),
+                    selectedId: _draft.shop?.id,
+                  );
+                  if (res == null) return;
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      shop: _isCleared(res) ? null : res,
+                    ),
+                  );
+                },
+                onClear: _draft.shop != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(shop: null),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 18),
+
+              // ── Apply ─────────────────────────────────────────────────────
+              _ApplyButton(
+                label: w.filterApply,
+                onTap: () => widget.onApply(_draft),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _TransportTag
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TransportTag extends StatefulWidget {
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _TransportTag({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  State<_TransportTag> createState() => _TransportTagState();
+}
+
+class _TransportTagState extends State<_TransportTag> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.selected ? AuthColors.emeraldTint : AuthColors.bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: widget.selected
+                  ? AuthColors.emerald.withValues(alpha: 0.35)
+                  : AuthColors.borderSoft,
             ),
-          ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 18,
+                color: widget.selected ? AuthColors.emerald : AuthColors.inkSoft,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.label,
+                textAlign: TextAlign.center,
+                style: widget.selected
+                    ? AppText.semiBold(fontSize: 11, color: AuthColors.emerald)
+                    : AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _ResetButton
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ResetButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _ResetButton({required this.label, required this.onTap});
+
+  @override
+  State<_ResetButton> createState() => _ResetButtonState();
+}
+
+class _ResetButtonState extends State<_ResetButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AuthColors.errorTint,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Text(
+            widget.label,
+            style: AppText.medium(fontSize: 12, color: AuthColors.errorMuted),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _ApplyButton
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ApplyButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _ApplyButton({required this.label, required this.onTap});
+
+  @override
+  State<_ApplyButton> createState() => _ApplyButtonState();
+}
+
+class _ApplyButtonState extends State<_ApplyButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 50,
+          decoration: BoxDecoration(
+            color: _pressed
+                ? AuthColors.emerald.withValues(alpha: 0.85)
+                : AuthColors.emerald,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: _pressed
+                ? null
+                : [
+                    BoxShadow(
+                      color: AuthColors.emerald.withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: AppText.semiBold(fontSize: 14, color: Colors.white),
+          ),
         ),
       ),
     );
@@ -782,13 +1100,13 @@ class _FilterPickerSheet extends StatefulWidget {
   final String? selectedId;
   final void Function(String id) onSelect;
   final VoidCallback? onClear;
-  final AppLocalizations words; // ← добавлено
+  final AppLocalizations words;
 
   const _FilterPickerSheet({
     required this.title,
     required this.items,
     required this.onSelect,
-    required this.words, // ← добавлено
+    required this.words,
     this.selectedId,
     this.onClear,
   });
@@ -814,183 +1132,202 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
         .where((i) => i.label.toLowerCase().contains(_q))
         .toList();
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.55,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (_, sc) => Column(
-        children: [
-          const SizedBox(height: 10),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF0F3),
-              borderRadius: BorderRadius.circular(2),
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, sc) => Container(
+          decoration: const BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          const SizedBox(height: 14),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Text(
-                  widget.title,
-                  style: AppText.bold(
-                    fontSize: 16,
-                    color: const Color(0xFF0F1117),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              // Handle
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3.5,
+                  decoration: BoxDecoration(
+                    color: AuthColors.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Spacer(),
-                if (widget.onClear != null)
-                  GestureDetector(
-                    onTap: widget.onClear,
-                    child: Text(
-                      w.filterReset,
-                      style: AppText.medium(
-                        fontSize: 13,
-                        color: const Color(0xFFD32F1E),
+              ),
+              const SizedBox(height: 14),
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Text(
+                      widget.title,
+                      style: AppText.serif(fontSize: 16, color: AuthColors.ink),
+                    ),
+                    const Spacer(),
+                    if (widget.onClear != null)
+                      GestureDetector(
+                        onTap: widget.onClear,
+                        child: Text(
+                          w.filterReset,
+                          style: AppText.medium(
+                            fontSize: 12,
+                            color: AuthColors.errorMuted,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Search
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) => setState(() => _q = v.toLowerCase()),
+                  style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+                  decoration: InputDecoration(
+                    hintText: w.filterSearchHint,
+                    hintStyle: AppText.regular(
+                      fontSize: 13,
+                      color: AuthColors.inkSoft,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AuthColors.inkSoft,
+                      size: 18,
+                    ),
+                    suffixIcon: _q.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchCtrl.clear();
+                              setState(() => _q = '');
+                            },
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AuthColors.inkSoft,
+                            ),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AuthColors.bg,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AuthColors.borderSoft),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AuthColors.borderSoft),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: AuthColors.emerald.withValues(alpha: 0.45),
                       ),
                     ),
                   ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => setState(() => _q = v.toLowerCase()),
-              style: AppText.regular(
-                fontSize: 14,
-                color: const Color(0xFF0F1117),
+                ),
               ),
-              decoration: InputDecoration(
-                hintText: w.filterSearchHint,
-                hintStyle: AppText.regular(
-                  fontSize: 13,
-                  color: const Color(0xFF9AA3AF),
-                ),
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF9AA3AF),
-                  size: 20,
-                ),
-                suffixIcon: _q.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchCtrl.clear();
-                          setState(() => _q = '');
-                        },
-                        child: const Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: Color(0xFF9AA3AF),
+              const SizedBox(height: 6),
+              Container(height: 0.5, color: AuthColors.borderSoft),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          w.filterNotFound,
+                          style: AppText.regular(
+                            fontSize: 14,
+                            color: AuthColors.inkSoft,
+                          ),
                         ),
                       )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF5F7FA),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: Color(0xFFEEF0F3)),
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      w.filterNotFound,
-                      style: AppText.regular(
-                        fontSize: 14,
-                        color: const Color(0xFF9AA3AF),
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    controller: sc,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(
-                      height: 1,
-                      indent: 52,
-                      color: Color(0xFFF4F5F7),
-                    ),
-                    itemBuilder: (_, i) {
-                      final item = filtered[i];
-                      final isActive = item.id == widget.selectedId;
-                      return InkWell(
-                        onTap: () => widget.onSelect(item.id),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? const Color(
-                                          0xFF1A7A3C,
-                                        ).withValues(alpha: 0.08)
-                                      : const Color(0xFFF5F7FA),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  isActive
-                                      ? Icons.check_rounded
-                                      : Icons.location_on_outlined,
-                                  size: 16,
-                                  color: isActive
-                                      ? const Color(0xFF1A7A3C)
-                                      : const Color(0xFF9AA3AF),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  item.label,
-                                  style: isActive
-                                      ? AppText.semiBold(
-                                          fontSize: 14,
-                                          color: const Color(0xFF0F1117),
-                                        )
-                                      : AppText.regular(
-                                          fontSize: 14,
-                                          color: const Color(0xFF0F1117),
-                                        ),
-                                ),
-                              ),
-                              if (isActive)
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF1A7A3C),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
-                          ),
+                    : ListView.separated(
+                        controller: sc,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => Container(
+                          height: 0.5,
+                          margin: const EdgeInsets.only(left: 48),
+                          color: AuthColors.borderSoft,
                         ),
-                      );
-                    },
-                  ),
+                        itemBuilder: (_, i) {
+                          final item = filtered[i];
+                          final isActive = item.id == widget.selectedId;
+                          return InkWell(
+                            onTap: () => widget.onSelect(item.id),
+                            splashColor:
+                                AuthColors.emerald.withValues(alpha: 0.05),
+                            highlightColor: Colors.transparent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? AuthColors.emeraldTint
+                                          : AuthColors.bg,
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                    child: Icon(
+                                      isActive
+                                          ? Icons.check_rounded
+                                          : Icons.location_on_outlined,
+                                      size: 14,
+                                      color: isActive
+                                          ? AuthColors.emerald
+                                          : AuthColors.inkSoft,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      item.label,
+                                      style: isActive
+                                          ? AppText.semiBold(
+                                              fontSize: 14,
+                                              color: AuthColors.ink,
+                                            )
+                                          : AppText.regular(
+                                              fontSize: 14,
+                                              color: AuthColors.ink,
+                                            ),
+                                    ),
+                                  ),
+                                  if (isActive)
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: AuthColors.emerald,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

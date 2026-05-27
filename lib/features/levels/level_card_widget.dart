@@ -1,3 +1,5 @@
+import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -5,6 +7,25 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'level_provider.dart';
 import 'dart:math';
+
+// ─── Public helper ────────────────────────────────────────────────────────────
+
+void showLevelDetailsSheet(
+  BuildContext context, {
+  required LevelProvider provider,
+  required AppLocalizations words,
+  required bool isRu,
+}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.45),
+    builder: (_) => _LevelDetailsSheet(provider: provider, w: words, isRu: isRu),
+  );
+}
+
+// ─── LevelCardWidget ──────────────────────────────────────────────────────────
 
 class LevelCardWidget extends StatefulWidget {
   const LevelCardWidget({super.key});
@@ -15,10 +36,8 @@ class LevelCardWidget extends StatefulWidget {
 
 class _LevelCardWidgetState extends State<LevelCardWidget> {
   bool _dialogShown = false;
-
-  static const _green = Color(0xFF3B6D11);
-  static const _greenLight = Color(0xFFEAF3DE);
-  static const _greenMid = Color(0xFF639922);
+  bool _expanded = false;
+  bool _pressed = false;
 
   @override
   void initState() {
@@ -64,7 +83,6 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     );
   }
 
-  // ── Debug empty ────────────────────────────────────────────────────────────
   Widget _buildDebugEmpty(LevelProvider provider) {
     final reason = provider.allLevels.isEmpty
         ? 'level_definitions пустой или нет прав доступа'
@@ -73,26 +91,18 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3CD),
+        color: AuthColors.amberTint,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD700)),
+        border: Border.all(color: AuthColors.amber.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFF856404),
-            size: 20,
-          ),
+          const Icon(Icons.warning_amber_rounded, color: AuthColors.amber, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               reason,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF856404),
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppText.medium(fontSize: 12, color: AuthColors.ink),
             ),
           ),
         ],
@@ -100,174 +110,227 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     );
   }
 
-  // ── Main card (Variant C) ──────────────────────────────────────────────────
   Widget _buildCard(LevelProvider p, AppLocalizations w, bool isRu) {
     final level = p.currentLevel!;
+    final hasBonuses = level.bonuses.isNotEmpty;
 
     return GestureDetector(
-      onTap: () => _showDetailsSheet(p, w, isRu),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-        ),
-        child: Row(
-          children: [
-            // ── Level icon ───────────────────────────────────────────────────
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: _greenLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.emoji_events_outlined,
-                color: _green,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // ── Title + progress ─────────────────────────────────────────────
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          level.title(isRu),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() {
+          _pressed = false;
+          if (hasBonuses) _expanded = !_expanded;
+        });
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          decoration: BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AuthColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                child: Row(
+                  children: [
+                    // ── Amber circle emblem ──────────────────────────────────
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AuthColors.amberTint,
+                        border: Border.all(
+                          color: AuthColors.amber.withValues(alpha: 0.35),
+                          width: 1.5,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _greenLight,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          w.levelLabel.replaceAll(
-                            '{n}',
-                            '${level.levelNumber}',
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${level.levelNumber}',
+                        style: AppText.semiBold(fontSize: 22, color: AuthColors.amber),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // ── Title + progress ────────────────────────────────────
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  level.title(isRu),
+                                  style: AppText.serif(fontSize: 15, color: AuthColors.ink),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AuthColors.amberTint,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AuthColors.amber.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  w.levelLabel.replaceAll('{n}', '${level.levelNumber}'),
+                                  style: AppText.semiBold(
+                                    fontSize: 10,
+                                    color: AuthColors.amber,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: _green,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          const SizedBox(height: 7),
+                          if (p.nextLevel != null) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${p.currentXp} XP',
+                                  style: AppText.semiBold(
+                                    fontSize: 11,
+                                    color: AuthColors.ink,
+                                  ),
+                                ),
+                                Text(
+                                  '${p.xpToNextLevel} XP',
+                                  style: AppText.regular(
+                                    fontSize: 10,
+                                    color: AuthColors.inkSoft,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: p.progressInLevel.clamp(0.0, 1.0),
+                                minHeight: 4,
+                                backgroundColor: AuthColors.amberTint,
+                                valueColor: const AlwaysStoppedAnimation(
+                                  AuthColors.amber,
+                                ),
+                              ),
+                            ),
+                          ] else
+                            Text(
+                              w.levelMaxReached,
+                              style: AppText.semiBold(
+                                fontSize: 11,
+                                color: AuthColors.emerald,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    if (hasBonuses) ...[
+                      const SizedBox(width: 10),
+                      // ── Expand arrow ──────────────────────────────────────
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.fastOutSlowIn,
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: AuthColors.inkSoft,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (p.nextLevel != null)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: p.progressInLevel.clamp(0.0, 1.0),
-                              minHeight: 4,
-                              backgroundColor: Colors.black.withValues(
-                                alpha: 0.07,
-                              ),
-                              valueColor: const AlwaysStoppedAnimation(
-                                _greenMid,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Text(
-                          w.levelToNext.replaceAll(
-                            '{n}',
-                            '${p.nextLevel!.levelNumber}',
-                          ),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${p.xpToNextLevel} XP',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Text(
-                      w.levelMaxReached,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: _green,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(width: 12),
-
-            // ── Daily tokens ─────────────────────────────────────────────────
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${level.dailyTokens}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _green,
-                  ),
+              // ── Expanded bonus list ──────────────────────────────────────
+              if (hasBonuses)
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.fastOutSlowIn,
+                  child: _expanded
+                      ? _buildExpandedContent(level.bonuses, isRu)
+                      : const SizedBox.shrink(),
                 ),
-                Text(
-                  w.levelPerDay.replaceAll('{n}', ''),
-                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── Skeleton ───────────────────────────────────────────────────────────────
+  Widget _buildExpandedContent(List bonuses, bool isRu) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(height: 0.5, color: AuthColors.borderSoft),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: bonuses.map<Widget>((b) {
+              final bool isToken = b.bonusType == 'daily_tokens';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isToken ? AuthColors.amberTint : AuthColors.emeraldTint,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(b.icon, style: const TextStyle(fontSize: 14)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isRu ? b.labelRu : b.labelTk,
+                        style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSkeleton() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      height: 70,
+      height: 78,
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.08),
+        color: AuthColors.borderSoft,
         borderRadius: BorderRadius.circular(16),
       ),
     );
   }
 
-  // ── Level up dialog ────────────────────────────────────────────────────────
   void _showLevelUpDialog(bool isRu) {
     final provider = context.read<LevelProvider>();
     final pending = provider.pendingLevelUp;
@@ -286,7 +349,6 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
         levelNumber: pending.levelAfter,
         levelTitle: levelData?.title(isRu) ?? 'Уровень ${pending.levelAfter}',
         levelIcon: levelData?.icon ?? '🏆',
-        levelColor: levelData != null ? _parseHex(levelData.colorHex) : _green,
         xpEarned: pending.xpAmount,
         bonuses: levelData?.bonuses ?? [],
         dailyBonus: levelData?.dailyTokens ?? 0.0,
@@ -298,28 +360,6 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
       ),
     );
   }
-
-  // ── Details sheet ──────────────────────────────────────────────────────────
-  void _showDetailsSheet(
-    LevelProvider provider,
-    AppLocalizations w,
-    bool isRu,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _LevelDetailsSheet(provider: provider, w: w, isRu: isRu),
-    );
-  }
-
-  Color _parseHex(String hex) {
-    try {
-      return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
-    } catch (_) {
-      return _green;
-    }
-  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -330,7 +370,6 @@ class _LevelUpDialog extends StatefulWidget {
   final int levelNumber;
   final String levelTitle;
   final String levelIcon;
-  final Color levelColor;
   final int xpEarned;
   final List bonuses;
   final double dailyBonus;
@@ -340,7 +379,6 @@ class _LevelUpDialog extends StatefulWidget {
     required this.levelNumber,
     required this.levelTitle,
     required this.levelIcon,
-    required this.levelColor,
     required this.xpEarned,
     required this.bonuses,
     required this.dailyBonus,
@@ -406,11 +444,11 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
               margin: const EdgeInsets.symmetric(horizontal: 28),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AuthColors.surface,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.levelColor.withValues(alpha: 0.25),
+                    color: AuthColors.amber.withValues(alpha: 0.22),
                     blurRadius: 40,
                     offset: const Offset(0, 12),
                   ),
@@ -421,21 +459,14 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                 children: [
                   Text(
                     w.levelNewLevel,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF3B6D11),
-                      letterSpacing: 2,
-                    ),
+                    style: AppText.bold(fontSize: 11, color: AuthColors.amber)
+                        .copyWith(letterSpacing: 2),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${widget.levelIcon} ${widget.levelTitle}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: widget.levelColor,
-                    ),
+                    style: AppText.serif(fontSize: 22, color: AuthColors.ink),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
 
@@ -446,16 +477,12 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7FA),
+                      color: AuthColors.bg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       w.levelXpEarned.replaceAll('{n}', '${widget.xpEarned}'),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F1117),
-                      ),
+                      style: AppText.semiBold(fontSize: 13, color: AuthColors.ink),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -468,31 +495,20 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAF3DE),
+                      color: AuthColors.amberTint,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFF639922).withValues(alpha: 0.3),
+                        color: AuthColors.amber.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.bolt_rounded,
-                          color: Color(0xFF854F0B),
-                          size: 18,
-                        ),
+                        const Icon(Icons.bolt_rounded, color: AuthColors.amber, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          w.levelNowDaily.replaceAll(
-                            '{n}',
-                            '${widget.dailyBonus}',
-                          ),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF3B6D11),
-                          ),
+                          w.levelNowDaily.replaceAll('{n}', '${widget.dailyBonus}'),
+                          style: AppText.bold(fontSize: 14, color: AuthColors.ink),
                         ),
                       ],
                     ),
@@ -500,47 +516,38 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                   const SizedBox(height: 6),
                   Text(
                     w.levelTokensAuto,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF9AA3AF),
-                    ),
+                    style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
                   ),
 
                   // Bonuses
                   if (widget.bonuses.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    const Divider(color: Color(0xFFF0F0F0)),
+                    Container(height: 0.5, color: AuthColors.borderSoft),
                     const SizedBox(height: 8),
                     Text(
                       w.levelNewBonuses,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: AppText.regular(fontSize: 12, color: AuthColors.inkMuted),
                     ),
                     const SizedBox(height: 8),
-                    ...widget.bonuses
-                        .take(3)
-                        .map(
-                          (b) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 3),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  b.icon,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  b.labelRu,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0F1117),
-                                  ),
-                                ),
-                              ],
+                    ...widget.bonuses.take(3).map(
+                      (b) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(b.icon, style: const TextStyle(fontSize: 16)),
+                            const SizedBox(width: 8),
+                            Text(
+                              b.labelRu,
+                              style: AppText.semiBold(
+                                fontSize: 13,
+                                color: AuthColors.ink,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
+                      ),
+                    ),
                   ],
 
                   const SizedBox(height: 24),
@@ -551,7 +558,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                     height: 52,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B6D11),
+                        color: AuthColors.ink,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: ElevatedButton(
@@ -565,12 +572,8 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                         onPressed: widget.onDismiss,
                         child: Text(
                           w.great,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            letterSpacing: 1,
-                          ),
+                          style: AppText.bold(fontSize: 15, color: Colors.white)
+                              .copyWith(letterSpacing: 1),
                         ),
                       ),
                     ),
@@ -600,263 +603,269 @@ class _LevelDetailsSheet extends StatelessWidget {
     required this.isRu,
   });
 
-  static const _green = Color(0xFF3B6D11);
-  static const _greenLight = Color(0xFFEAF3DE);
-
-  Color _parseHex(String hex) {
-    try {
-      return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
-    } catch (_) {
-      return _green;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final current = provider.currentLevel;
     if (current == null) return const SizedBox.shrink();
-    final color = _parseHex(current.colorHex);
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(2),
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3.5,
+                  decoration: BoxDecoration(
+                    color: AuthColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  Text(
-                    current.titleRu,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: color,
-                    ),
-                  ),
-                  const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${provider.currentXp}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F1117),
-                        ),
-                      ),
-                      const Text(
-                        'XP',
-                        style: TextStyle(color: Colors.grey, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Progress
-            if (provider.nextLevel != null) ...[
-              const SizedBox(height: 16),
+              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          w.levelToNextShort,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AuthColors.amberTint,
+                        border: Border.all(
+                          color: AuthColors.amber.withValues(alpha: 0.35),
+                          width: 1.5,
                         ),
-                        Text(
-                          '${provider.xpToNextLevel} XP',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: color,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: provider.progressInLevel,
-                        minHeight: 8,
-                        backgroundColor: const Color(0xFFF0F0F0),
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${current.levelNumber}',
+                        style: AppText.semiBold(fontSize: 22, color: AuthColors.amber),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 20),
-
-            // Level table
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FA),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFEEF0F3)),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: Row(
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.bolt_rounded,
-                            color: Color(0xFFBA7517),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
                           Text(
-                            w.levelBonusHeader,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF9AA3AF),
-                              letterSpacing: 0.8,
+                            current.title(isRu),
+                            style: AppText.serif(fontSize: 18, color: AuthColors.ink),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            w.levelLabel.replaceAll('{n}', '${current.levelNumber}'),
+                            style: AppText.medium(
+                              fontSize: 12,
+                              color: AuthColors.inkMuted,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFEEF0F3)),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Text(
-                        w.levelTokensAuto,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F1117),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${provider.currentXp}',
+                          style: AppText.bold(fontSize: 20, color: AuthColors.ink),
+                        ),
+                        Text(
+                          'XP',
+                          style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Progress
+              if (provider.nextLevel != null) ...[
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            w.levelToNextShort,
+                            style: AppText.regular(
+                              fontSize: 12,
+                              color: AuthColors.inkMuted,
+                            ),
+                          ),
+                          Text(
+                            '${provider.xpToNextLevel} XP',
+                            style: AppText.semiBold(
+                              fontSize: 12,
+                              color: AuthColors.amber,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: provider.progressInLevel,
+                          minHeight: 8,
+                          backgroundColor: AuthColors.amberTint,
+                          valueColor: const AlwaysStoppedAnimation(AuthColors.amber),
                         ),
                       ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFEEF0F3)),
-                    ...List.generate(provider.allLevels.length, (i) {
-                      final l = provider.allLevels[i];
-                      final bonus = l.dailyTokens;
-                      final isCurrent = l.id == current.id;
-                      final isUnlocked = provider.currentXp >= l.xpRequired;
-                      return Container(
-                        color: isCurrent ? color.withValues(alpha: 0.05) : null,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                isUnlocked ? '✓' : '🔒',
-                                style: TextStyle(
-                                  fontSize: isUnlocked ? 14 : 13,
-                                  color: isUnlocked ? _green : null,
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+
+              // Level table
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AuthColors.bg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AuthColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bolt_rounded, color: AuthColors.amber, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              w.levelBonusHeader,
+                              style: AppText.bold(fontSize: 10, color: AuthColors.inkSoft)
+                                  .copyWith(letterSpacing: 0.8),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(height: 0.5, color: AuthColors.border),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Text(
+                          w.levelTokensAuto,
+                          style: AppText.medium(fontSize: 13, color: AuthColors.ink),
+                        ),
+                      ),
+                      Container(height: 0.5, color: AuthColors.border),
+                      ...List.generate(provider.allLevels.length, (i) {
+                        final l = provider.allLevels[i];
+                        final bonus = l.dailyTokens;
+                        final isCurrent = l.id == current.id;
+                        final isUnlocked = provider.currentXp >= l.xpRequired;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (i > 0) Container(height: 0.5, color: AuthColors.borderSoft),
+                            Container(
+                              color: isCurrent ? AuthColors.amberTint : Colors.transparent,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Row(
                                   children: [
-                                    Text(
-                                      w.levelRow
-                                          .replaceAll('{n}', '${l.levelNumber}')
-                                          .replaceAll('{title}', l.title(isRu)),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: isCurrent
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                        color: isCurrent
-                                            ? color
-                                            : isUnlocked
-                                            ? const Color(0xFF0F1117)
-                                            : const Color(0xFF9AA3AF),
+                                    Icon(
+                                      isUnlocked
+                                          ? Icons.check_circle_rounded
+                                          : Icons.lock_outline_rounded,
+                                      size: 14,
+                                      color: isUnlocked
+                                          ? AuthColors.emerald
+                                          : AuthColors.inkSoft,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            w.levelRow
+                                                .replaceAll('{n}', '${l.levelNumber}')
+                                                .replaceAll('{title}', l.title(isRu)),
+                                            style: isCurrent
+                                                ? AppText.semiBold(
+                                                    fontSize: 13,
+                                                    color: AuthColors.amber,
+                                                  )
+                                                : AppText.regular(
+                                                    fontSize: 13,
+                                                    color: isUnlocked
+                                                        ? AuthColors.ink
+                                                        : AuthColors.inkSoft,
+                                                  ),
+                                          ),
+                                          Text(
+                                            w.levelFromXp.replaceAll('{n}', '${l.xpRequired}'),
+                                            style: AppText.regular(
+                                              fontSize: 10,
+                                              color: AuthColors.inkSoft,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    Text(
-                                      w.levelFromXp.replaceAll(
-                                        '{n}',
-                                        '${l.xpRequired}',
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
                                       ),
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFF9AA3AF),
+                                      decoration: BoxDecoration(
+                                        color: isCurrent
+                                            ? AuthColors.amber.withValues(alpha: 0.12)
+                                            : isUnlocked
+                                            ? AuthColors.emeraldTint
+                                            : AuthColors.borderSoft,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        w.levelPerDay.replaceAll('{n}', '$bonus'),
+                                        style: AppText.semiBold(
+                                          fontSize: 12,
+                                          color: isCurrent
+                                              ? AuthColors.amber
+                                              : isUnlocked
+                                              ? AuthColors.emerald
+                                              : AuthColors.inkSoft,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isCurrent
-                                      ? color.withValues(alpha: 0.12)
-                                      : isUnlocked
-                                      ? _greenLight
-                                      : const Color(0xFFF0F0F0),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  w.levelPerDay.replaceAll('{n}', '$bonus'),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: isCurrent
-                                        ? color
-                                        : isUnlocked
-                                        ? _green
-                                        : const Color(0xFF9AA3AF),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
+                            ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -878,9 +887,9 @@ class _Particle {
       size = 5 + rng.nextDouble() * 7,
       rotation = rng.nextDouble() * pi * 2,
       color = [
-        const Color(0xFF3B6D11),
+        AuthColors.amber,
+        AuthColors.emerald,
         const Color(0xFFD32F1E),
-        const Color(0xFFF1C40F),
         const Color(0xFF3498DB),
         const Color(0xFF9B59B6),
         const Color(0xFFE67E22),

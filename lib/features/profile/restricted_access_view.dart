@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -18,144 +19,236 @@ const _kGradient = LinearGradient(colors: [_kGreen, _kRed]);
 
 class RestrictedAccessView extends StatelessWidget {
   final VoidCallback onActionPressed;
+  final VoidCallback? onSignOut;
   final String title;
   final String message;
   final String buttonText;
+  final String statusHint;
 
   const RestrictedAccessView({
     super.key,
     required this.onActionPressed,
-    this.title = 'Модерация аккаунта',
+    this.onSignOut,
+    this.title = 'Доступ к заказам временно ограничен',
     this.message =
-        'Пополнение баланса и принятие заказов станут доступны сразу после '
-        'подтверждения вашего профиля модератором.',
-    this.buttonText = 'ПОНЯТНО',
+        'Ваш профиль курьера находится на финальной проверке службой '
+        'безопасности Bagla. Принятие заказов будет доступно '
+        'сразу после подтверждения.',
+    this.buttonText = 'Понятно',
+    this.statusHint = 'Верификация занимает от 15 минут до 2 часов',
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Icon with gradient background
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                _kGreen.withValues(alpha: 0.1),
-                _kRed.withValues(alpha: 0.07),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: const Icon(Icons.lock_clock_rounded, size: 36, color: _kGrey),
-        ),
-        const SizedBox(height: 20),
-
-        // Gradient accent bar
-        Container(
-          height: 3,
-          width: 48,
-          decoration: BoxDecoration(
-            gradient: _kGradient,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Title
-        Text(
-          title,
-          style: AppText.extraBold(
-            fontSize: 20,
-            color: const Color(0xFF0F1117),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-
-        // Message
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: AppText.regular(
-            fontSize: 13,
-            color: _kGrey,
-          ).copyWith(height: 1.55),
-        ),
-        const SizedBox(height: 24),
-
-        // Info pill
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF8EE),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFE67E22).withValues(alpha: 0.2),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.access_time_rounded,
-                color: Color(0xFFE67E22),
-                size: 15,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Обычно занимает до 24 часов',
-                style: AppText.medium(
-                  fontSize: 12,
-                  color: const Color(0xFFE67E22),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 28),
-
-        // Button
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: DecoratedBox(
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Status card ──────────────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              gradient: _kGradient,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: _kGreen.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+              color: AuthColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AuthColors.border),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Icon ──────────────────────────────────────────────────
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AuthColors.errorTint,
+                  ),
+                  child: const Icon(
+                    Icons.lock_person_outlined,
+                    size: 26,
+                    color: AuthColors.errorMuted,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ── Title ─────────────────────────────────────────────────
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                ),
+                const SizedBox(height: 8),
+
+                // ── Description ───────────────────────────────────────────
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: AppText.regular(
+                    fontSize: 13,
+                    color: AuthColors.inkMuted,
+                  ).copyWith(height: 1.55),
+                ),
+                const SizedBox(height: 14),
+
+                // ── Status tag ────────────────────────────────────────────
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AuthColors.bannerBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AuthColors.bannerBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 13,
+                        color: AuthColors.amber,
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          statusHint,
+                          style: AppText.medium(
+                            fontSize: 12,
+                            color: AuthColors.amber,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Divider ───────────────────────────────────────────────
+                Container(height: 0.5, color: AuthColors.borderSoft),
+                const SizedBox(height: 16),
+
+                // ── Primary action ────────────────────────────────────────
+                _ActionButton(
+                  label: buttonText,
+                  onTap: onActionPressed,
                 ),
               ],
             ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onPressed: onActionPressed,
-              child: Text(
-                buttonText,
-                style: AppText.bold(
-                  fontSize: 14,
-                  color: Colors.white,
-                ).copyWith(letterSpacing: 0.5),
-              ),
-            ),
+          ),
+
+          // ── Secondary: sign out ──────────────────────────────────────────
+          if (onSignOut != null) ...[
+            const SizedBox(height: 12),
+            _SignOutButton(onTap: onSignOut!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _ActionButton ────────────────────────────────────────────────────────────
+
+class _ActionButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionButton({required this.label, required this.onTap});
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 48,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: _pressed
+                ? AuthColors.ink.withValues(alpha: 0.82)
+                : AuthColors.ink,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: _pressed
+                ? null
+                : [
+                    BoxShadow(
+                      color: AuthColors.ink.withValues(alpha: 0.14),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: AppText.semiBold(fontSize: 13, color: Colors.white),
           ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+// ─── _SignOutButton ───────────────────────────────────────────────────────────
+
+class _SignOutButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _SignOutButton({required this.onTap});
+
+  @override
+  State<_SignOutButton> createState() => _SignOutButtonState();
+}
+
+class _SignOutButtonState extends State<_SignOutButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 140),
+            style: AppText.medium(
+              fontSize: 13,
+              color: _pressed ? AuthColors.errorMuted : AuthColors.inkSoft,
+            ),
+            child: const Text('Выйти из системы'),
+          ),
+        ),
+      ),
     );
   }
 }

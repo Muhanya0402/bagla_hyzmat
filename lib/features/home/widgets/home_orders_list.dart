@@ -8,6 +8,35 @@ import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 
+class _OrderExpandRoute<T> extends PageRouteBuilder<T> {
+  _OrderExpandRoute({required WidgetBuilder builder, super.settings})
+      : super(
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 240),
+          pageBuilder: (ctx, _, _) => builder(ctx),
+          transitionsBuilder: (_, anim, _, child) {
+            final curved = CurvedAnimation(
+              parent: anim,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.95, end: 1.0).animate(curved),
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.03),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: child,
+                ),
+              ),
+            );
+          },
+        );
+}
+
 class HomeOrdersList extends StatelessWidget {
   final List<dynamic> orders;
   final bool isLoading;
@@ -111,7 +140,7 @@ class HomeOrdersList extends StatelessWidget {
             }
             Navigator.push(
               context,
-              MaterialPageRoute(
+              _OrderExpandRoute(
                 settings: const RouteSettings(name: '/order_detail'),
                 builder: (_) => OrderDetailScreen(
                   order: orders[index],
