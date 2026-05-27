@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/l10n/language_provider.dart';
 
-class HomeFilterButton extends StatelessWidget {
+// ── Filter icon button ────────────────────────────────────────────────────────
+class HomeFilterButton extends StatefulWidget {
   final int activeCount;
   final VoidCallback onTap;
+
   const HomeFilterButton({
     super.key,
     required this.activeCount,
@@ -14,143 +16,176 @@ class HomeFilterButton extends StatelessWidget {
   });
 
   @override
+  State<HomeFilterButton> createState() => _HomeFilterButtonState();
+}
+
+class _HomeFilterButtonState extends State<HomeFilterButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool has = activeCount > 0;
+    final bool has = widget.activeCount > 0;
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: has ? HomeColors.green.withValues(alpha: 0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: has
-                ? HomeColors.green.withValues(alpha: 0.35)
-                : HomeColors.border,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: has ? AuthColors.emeraldTint : AuthColors.bg,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: has
+                  ? AuthColors.emerald.withValues(alpha: 0.35)
+                  : AuthColors.border,
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              Icons.tune_rounded,
-              size: 20,
-              color: has ? HomeColors.green : HomeColors.grey,
-            ),
-            if (has)
-              Positioned(
-                top: 5,
-                right: 5,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: const BoxDecoration(
-                    color: HomeColors.green,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '$activeCount',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 18,
+                color: has ? AuthColors.emerald : AuthColors.inkSoft,
+              ),
+              if (has)
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Container(
+                    width: 13,
+                    height: 13,
+                    decoration: const BoxDecoration(
+                      color: AuthColors.emerald,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${widget.activeCount}',
+                      style: const TextStyle(
+                        fontSize: 8,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Nunito',
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class RoleSelectionBanner extends StatelessWidget {
+// ── Role selection banner ─────────────────────────────────────────────────────
+class RoleSelectionBanner extends StatefulWidget {
   final VoidCallback onTap;
   const RoleSelectionBanner({super.key, required this.onTap});
+
+  @override
+  State<RoleSelectionBanner> createState() => _RoleSelectionBannerState();
+}
+
+class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE8F5EE), Color(0xFFFFF0EE)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: AuthColors.amberTint,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AuthColors.amber.withValues(alpha: 0.25),
+            ),
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: HomeColors.green.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: HomeColors.gradient,
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AuthColors.emerald,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
-              child: const Icon(
-                Icons.person_add_alt_1_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    words.roleSelectionTitle,
-                    style: AppText.bold(fontSize: 14, color: HomeColors.dark),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    words.roleActionPrompt,
-                    style: AppText.regular(
-                      fontSize: 12,
-                      color: HomeColors.grey,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      words.roleSelectionTitle,
+                      style: AppText.semiBold(
+                        fontSize: 13,
+                        color: AuthColors.ink,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 1),
+                    Text(
+                      words.roleActionPrompt,
+                      style: AppText.regular(
+                        fontSize: 11,
+                        color: AuthColors.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: HomeColors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 8),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: AuthColors.emeraldTint,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 12,
+                  color: AuthColors.emerald,
+                ),
               ),
-              child: const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 13,
-                color: HomeColors.green,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+// ── Active orders counter (AppBar chip) ───────────────────────────────────────
 class ActiveOrdersCounter extends StatelessWidget {
   final int current;
   final int max;
@@ -163,13 +198,14 @@ class ActiveOrdersCounter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isFull = current >= max;
-    final Color c = isFull ? HomeColors.red : HomeColors.green;
+    final Color c = isFull ? AuthColors.errorMuted : AuthColors.emerald;
+    final Color bg = isFull ? AuthColors.errorTint : AuthColors.emeraldTint;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.08),
+        color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.withValues(alpha: 0.2)),
+        border: Border.all(color: c.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -199,18 +235,18 @@ class ActiveOrdersCounter extends StatelessWidget {
   }
 }
 
+// ── Accent-colored text helper (replaces gradient text) ───────────────────────
 class GradientText extends StatelessWidget {
   final String text;
   final TextStyle style;
   const GradientText({super.key, required this.text, required this.style});
 
   @override
-  Widget build(BuildContext context) => ShaderMask(
-    shaderCallback: (b) => HomeColors.gradient.createShader(b),
-    child: Text(text, style: style.copyWith(color: Colors.white)),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: style.copyWith(color: AuthColors.emerald));
 }
 
+// ── Empty state ───────────────────────────────────────────────────────────────
 class HomeEmptyState extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -224,25 +260,25 @@ class HomeEmptyState extends StatelessWidget {
         SizedBox(height: MediaQuery.of(context).size.height * 0.18),
         Center(
           child: Container(
-            width: 72,
-            height: 72,
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: HomeColors.border),
+              color: AuthColors.bg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AuthColors.border),
             ),
             child: Icon(
               icon,
-              size: 32,
-              color: HomeColors.green.withValues(alpha: 0.25),
+              size: 28,
+              color: AuthColors.emerald.withValues(alpha: 0.3),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Center(
           child: Text(
             text,
-            style: AppText.medium(fontSize: 14, color: HomeColors.grey),
+            style: AppText.medium(fontSize: 13, color: AuthColors.inkSoft),
           ),
         ),
       ],
@@ -250,6 +286,7 @@ class HomeEmptyState extends StatelessWidget {
   }
 }
 
+// ── Level-up overlay (stub resolved by home_screen) ──────────────────────────
 class LevelUpOverlay extends StatelessWidget {
   final dynamic provider;
   final VoidCallback onDismiss;

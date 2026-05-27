@@ -1,5 +1,6 @@
 import 'package:bagla/features/home/widgets/home_widgets.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_constants.dart';
@@ -94,18 +95,33 @@ class HomeOrdersList extends StatelessWidget {
           currentUserId: authProv.userId,
           userPhone: authProv.phone,
           onUpdate: onRefresh,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              settings: const RouteSettings(name: '/order_detail'),
-              builder: (_) => OrderDetailScreen(
-                order: orders[index],
-                role: isShop ? 'shop' : 'courier',
-                currentUserId: authProv.userId,
-                onUpdate: onRefresh,
+          onTap: () {
+            if (authProv.role == 'client') {
+              showModalBottomSheet(
+                context: context,
+                useRootNavigator: true,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => RolePickerEmbedded(
+                  onClose: () =>
+                      Navigator.of(context, rootNavigator: true).pop(),
+                ),
+              ).then((_) => onRefresh());
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                settings: const RouteSettings(name: '/order_detail'),
+                builder: (_) => OrderDetailScreen(
+                  order: orders[index],
+                  role: isShop ? 'shop' : 'courier',
+                  currentUserId: authProv.userId,
+                  onUpdate: onRefresh,
+                ),
               ),
-            ),
-          ).then((_) => onRefresh()),
+            ).then((_) => onRefresh());
+          },
         );
       },
     );

@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagla/features/notifications/push_notification_service.dart';
 
+/// Тип последней ошибки авторизации — экраны решают, как её показать.
+/// none        — операция прошла
+/// network     — исключение во время запроса (нет сети / таймаут / сервер не отвечает)
+/// invalidCode — server вернул user==null на verify (неверный OTP)
+/// serverBusy  — sendOTP вернул success==false (rate limit / валидация на бэке)
+enum AuthErrorKind { none, network, invalidCode, serverBusy }
+
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepo = AuthRepository();
 
@@ -11,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isCodeSent = false;
   bool _isLoading = false;
+  AuthErrorKind _lastErrorKind = AuthErrorKind.none;
 
   String _token = '';
   String _userId = '';
@@ -32,6 +40,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isCodeSent => _isCodeSent;
   bool get isLoading => _isLoading;
+  AuthErrorKind get lastErrorKind => _lastErrorKind;
   String get token => _token;
   String get userId => _userId;
   String get name => _name;
@@ -149,18 +158,28 @@ class AuthProvider extends ChangeNotifier {
   // ── Send OTP (phone screen) ────────────────────────────────────────────────
 
   /// Sends OTP and returns success. Caller guards context with mounted.
-  Future<bool> sendOTPOnly(BuildContext context, dynamic lang) async {
+  /// [silent] — не показывать встроенный SnackBar (экран сам отрендерит ошибку).
+  Future<bool> sendOTPOnly(
+    BuildContext context,
+    dynamic lang, {
+    bool silent = false,
+  }) async {
     _setLoading(true);
+    _lastErrorKind = AuthErrorKind.none;
     try {
       final success = await _authRepo.sendOTP(
         '+993${phoneController.text.trim()}',
       );
-      if (!success && context.mounted) {
-        _showError(context, lang.words.errorCodeSend);
+      if (!success) {
+        _lastErrorKind = AuthErrorKind.serverBusy;
+        if (!silent && context.mounted) {
+          _showError(context, lang.words.errorCodeSend);
+        }
       }
       return success;
     } catch (e) {
-      if (context.mounted) _showError(context, '$e');
+      _lastErrorKind = AuthErrorKind.network;
+      if (!silent && context.mounted) _showError(context, '$e');
       return false;
     } finally {
       _setLoading(false);
@@ -169,8 +188,14 @@ class AuthProvider extends ChangeNotifier {
 
   // ── Verify OTP & login ─────────────────────────────────────────────────────
 
-  Future<bool> verifyOtpAndLogin(BuildContext context, dynamic lang) async {
+  Future<bool> verifyOtpAndLogin(
+    BuildContext context,
+    dynamic lang, {
+    bool silent = false,
+    bool autoNavigate = true,
+  }) async {
     _setLoading(true);
+    _lastErrorKind = AuthErrorKind.none;
     try {
       final user = await _authRepo.verifyOTP(
         '+993${phoneController.text.trim()}',
@@ -183,14 +208,18 @@ class AuthProvider extends ChangeNotifier {
 
         await PushNotificationService().initialize();
         if (!context.mounted) return true;
-        await _navigate(context);
+        if (autoNavigate) await _navigate(context);
         return true;
       } else {
-        if (context.mounted) _showError(context, lang.words.errorInvalidCode);
+        _lastErrorKind = AuthErrorKind.invalidCode;
+        if (!silent && context.mounted) {
+          _showError(context, lang.words.errorInvalidCode);
+        }
         return false;
       }
     } catch (e) {
-      if (context.mounted) _showError(context, '$e');
+      _lastErrorKind = AuthErrorKind.network;
+      if (!silent && context.mounted) _showError(context, '$e');
       return false;
     } finally {
       _setLoading(false);
@@ -322,7 +351,12 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    // Preserve device-level flags that survive across sessions
+    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    final savedLang = prefs.getString('language_code');
     await prefs.clear();
+    if (onboardingDone) await prefs.setBool('onboarding_done', true);
+    if (savedLang != null) await prefs.setString('selected_lang', savedLang);
     _token = '';
     _userId = '';
     _phone = '';

@@ -1,57 +1,72 @@
-import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:flutter/material.dart';
 
-class HomeCreateButton extends StatelessWidget {
-  final VoidCallback onTap;
+/// Visual-only sticker FAB.
+/// Drag state and positioning live in MainShell.
+class HomeCreateFab extends StatelessWidget {
   final String label;
+  final bool isDragging;
 
-  const HomeCreateButton({super.key, required this.onTap, required this.label});
+  const HomeCreateFab({
+    super.key,
+    required this.label,
+    this.isDragging = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return AnimatedScale(
+      scale: isDragging ? 1.06 : 1.0,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutBack,
       child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: HomeColors.gradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: HomeColors.green.withValues(alpha: 0.25),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+          width: 162,
+          height: 52,
+          decoration: BoxDecoration(
+            color: AuthColors.ink,
+            borderRadius: BorderRadius.circular(13),
+            border: const Border(
+              top: BorderSide(color: AuthColors.accent, width: 3),
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: AuthColors.ink.withValues(
+                  alpha: isDragging ? 0.35 : 0.22,
+                ),
+                blurRadius: isDragging ? 20 : 14,
+                spreadRadius: isDragging ? 1 : 0,
+                offset: Offset(0, isDragging ? 8 : 5),
               ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 18,
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: AppText.medium(
-                fontSize: 15,
-                color: Colors.white,
-              ).copyWith(letterSpacing: 0.2),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppText.semiBold(
+                  fontSize: 13,
+                  color: Colors.white,
+                ).copyWith(letterSpacing: 0.1),
+              ),
+            ],
+          ),
         ),
-      ),
     );
   }
 }

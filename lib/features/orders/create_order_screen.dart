@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
@@ -32,8 +33,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _descController = TextEditingController();
   final _phoneController = TextEditingController();
   final _priceController = TextEditingController();
-  final _deliveryController = TextEditingController(); // ← ручной ввод
+  final _deliveryController = TextEditingController();
   final _dateTimeController = TextEditingController();
+
+  // ── Focus nodes for seamless keyboard flow ─────────────────────────────────
+  final _phoneFocus = FocusNode();
+  final _priceFocus = FocusNode();
+  final _deliveryFocus = FocusNode();
 
   DateTime? _selectedDateTime;
   List<XFile> _images = [];
@@ -46,7 +52,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   ];
   final _picker = ImagePicker();
 
-  // ── Location (same pattern as RegistrationDetailsScreen) ──────────────────
+  // ── Location ───────────────────────────────────────────────────────────────
   List<Province> _provinces = [];
   List<Etrap> _etraps = [];
   List<District> _districts = [];
@@ -62,18 +68,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   int _locationStep = 0;
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
-
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _dark = Color(0xFF0F1117);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _bg = Color(0xFFF5F7FA);
-  static const _gradient = LinearGradient(
-    colors: [_green, _red],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
 
   List<PointsRule> _pointsRules = [];
   final _orderService = OrderService();
@@ -98,6 +92,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _deliveryController.dispose();
     _dateTimeController.dispose();
     _searchCtrl.dispose();
+    _phoneFocus.dispose();
+    _priceFocus.dispose();
+    _deliveryFocus.dispose();
     super.dispose();
   }
 
@@ -109,7 +106,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       final list = await _authRepo.getProvinces();
       setState(() => _provinces = list);
     } catch (e) {
-      _msg('${words.errorLoadProvinces}: $e', _red);
+      _msg('${words.errorLoadProvinces}: $e', isError: true);
     } finally {
       setState(() => _loadingProvinces = false);
     }
@@ -125,21 +122,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _locationStep = 1;
       _searchQuery = '';
       _loadingEtraps = true;
-      _locationSelected = false; // сбрасываем
+      _locationSelected = false;
     });
     _searchCtrl.clear();
     try {
       final list = await _authRepo.getEtrapsByProvince(p.id);
       setState(() {
         _etraps = list;
-        // Если этрапов нет — велаят уже достаточно
         if (list.isEmpty) {
           _locationSelected = true;
           _locationStep = 0;
         }
       });
     } catch (e) {
-      _msg('${words.errorLoadEtraps}: $e', _red);
+      _msg('${words.errorLoadEtraps}: $e', isError: true);
     } finally {
       setState(() => _loadingEtraps = false);
     }
@@ -160,14 +156,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       final list = await _authRepo.getDistrictsByEtrap(e.id);
       setState(() {
         _districts = list;
-        // Если районов нет — этрап уже достаточно
         if (list.isEmpty) {
           _locationSelected = true;
           _locationStep = 1;
         }
       });
     } catch (e) {
-      _msg('${words.errorLoadDistricts}: $e', _red);
+      _msg('${words.errorLoadDistricts}: $e', isError: true);
     } finally {
       setState(() => _loadingDistricts = false);
     }
@@ -177,7 +172,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     setState(() {
       _selectedDistrict = d;
       _searchQuery = '';
-      _locationSelected = true; // район выбран
+      _locationSelected = true;
     });
     _searchCtrl.clear();
   }
@@ -187,7 +182,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _locationStep = step;
       _searchQuery = '';
       _searchCtrl.clear();
-      _locationSelected = false; // сбрасываем при возврате
+      _locationSelected = false;
       if (step == 0) {
         _selectedProvince = null;
         _selectedEtrap = null;
@@ -208,9 +203,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 14)),
       builder: (ctx, child) => Theme(
-        data: Theme.of(
-          ctx,
-        ).copyWith(colorScheme: const ColorScheme.light(primary: _green)),
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AuthColors.emerald),
+        ),
         child: child!,
       ),
     );
@@ -219,9 +214,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (ctx, child) => Theme(
-        data: Theme.of(
-          ctx,
-        ).copyWith(colorScheme: const ColorScheme.light(primary: _green)),
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AuthColors.emerald),
+        ),
         child: child!,
       ),
     );
@@ -240,23 +235,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     });
   }
 
-  // ── Points calculation (preserved from original) ───────────────────────────
-
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   Future<void> _submitOrder(AppLocalizations words) async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_images.isEmpty) {
-      _msg(words.addPhotoError, _red);
+      _msg(words.addPhotoError, isError: true);
       return;
     }
     if (!_locationSelected) {
-      _msg(words.selectDistrictError, _red);
+      _msg(words.selectDistrictError, isError: true);
       return;
     }
     if (_selectedDateTime == null) {
-      _msg(words.selectTimeError, _red);
+      _msg(words.selectTimeError, isError: true);
       return;
     }
 
@@ -279,7 +272,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ? _selectedEtrap!.tk
             : _selectedProvince!.tk,
         shopAddress: auth.address,
-        shopAddressTk: auth.address, // ← TK версии нет, используем тот же
+        shopAddressTk: auth.address,
         transportType: _transportType,
         phone: _phoneController.text,
         comment: '',
@@ -298,20 +291,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
       );
 
-      _msg(words.orderCreated, _green);
+      _msg(words.orderCreated);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      _msg('${words.error}: $e', _red);
+      _msg('${words.error}: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _msg(String text, Color color) {
+  void _msg(String text, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text, style: AppText.regular(fontSize: 13)),
-        backgroundColor: color,
+        backgroundColor: isError ? AuthColors.errorMuted : AuthColors.emerald,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -325,14 +318,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
     final isRu = lang.isRu;
-    final double itemPrice = double.tryParse(_priceController.text) ?? 0;
     final double deliveryFee = double.tryParse(_deliveryController.text) ?? 0;
+    final double itemPrice = double.tryParse(_priceController.text) ?? 0;
     final double total = itemPrice + deliveryFee;
+    final int points = _orderService.calculatePoints(deliveryFee, _pointsRules);
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AuthColors.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AuthColors.bg,
         elevation: 0,
         centerTitle: false,
         leading: GestureDetector(
@@ -340,23 +334,23 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withValues(alpha: 0.07),
+              color: AuthColors.borderSoft,
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: _green,
+              color: AuthColors.inkMuted,
               size: 16,
             ),
           ),
         ),
         title: Text(
           words.newOrder,
-          style: AppText.semiBold(fontSize: 17, color: _dark),
+          style: AppText.serif(fontSize: 20, color: AuthColors.ink),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
+          child: Container(height: 0.5, color: AuthColors.border),
         ),
       ),
       body: Stack(
@@ -367,81 +361,70 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               children: [
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                     children: [
-                      // ── Photos ─────────────────────────────────────────
                       _section(
                         icon: Icons.camera_alt_outlined,
                         title: words.orderPhoto,
                         child: _imagePickerWidget(words),
                       ),
-                      const SizedBox(height: 12),
-
-                      // ── Recipient ──────────────────────────────────────
+                      const SizedBox(height: 10),
                       _section(
                         icon: Icons.person_outline_rounded,
                         title: words.orderRecipient,
                         child: Column(
                           children: [
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             _phoneField(words),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             _dateField(words),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-
-                      // ── Order details ──────────────────────────────────
+                      const SizedBox(height: 10),
                       _section(
                         icon: Icons.inventory_2_outlined,
                         title: words.orderDetails,
                         child: Column(
                           children: [
-                            _priceField(
-                              words,
-                            ), // ← добавлено поле для суммы товара
-                            const SizedBox(height: 10),
-                            _deliveryField(
-                              words,
-                            ), // ← ручной ввод суммы доставки
+                            const SizedBox(height: 8),
+                            _priceField(words),
+                            const SizedBox(height: 8),
+                            _deliveryField(words),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-
+                      const SizedBox(height: 10),
                       _section(
                         icon: Icons.local_shipping_outlined,
                         title: words.transportSection,
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 4),
-                            _transportField(),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: _transportField(),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // ── Delivery address (stepper) ──────────────────────
+                      const SizedBox(height: 10),
                       _section(
                         icon: Icons.map_outlined,
                         title: words.orderDeliveryArea,
                         child: _buildLocationStepper(isRu, words),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
-
-                // ── Bottom panel ───────────────────────────────────────────
-                _buildBottomPanel(deliveryFee, total, words),
+                _buildBottomPanel(deliveryFee, total, points, words),
               ],
             ),
           ),
           if (_isLoading)
             Container(
-              color: Colors.black.withValues(alpha: 0.15),
+              color: Colors.black.withValues(alpha: 0.12),
               child: const Center(
-                child: CircularProgressIndicator(color: _green),
+                child: CircularProgressIndicator(
+                  color: AuthColors.emerald,
+                  strokeWidth: 2.5,
+                ),
               ),
             ),
         ],
@@ -457,14 +440,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     required Widget child,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
+        color: AuthColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AuthColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .025),
+            color: AuthColors.ink.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -475,28 +458,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         children: [
           Row(
             children: [
-              // Gradient mini bar
               Container(
                 width: 3,
-                height: 14,
+                height: 13,
                 decoration: BoxDecoration(
-                  gradient: _gradient,
+                  color: AuthColors.emerald,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(icon, size: 14, color: _grey),
-              const SizedBox(width: 6),
+              Icon(icon, size: 13, color: AuthColors.inkSoft),
+              const SizedBox(width: 5),
               Text(
                 title.toUpperCase(),
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: _grey,
+                  color: AuthColors.inkSoft,
                 ).copyWith(letterSpacing: 0.8),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           child,
         ],
       ),
@@ -507,7 +489,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Widget _imagePickerWidget(AppLocalizations words) {
     return SizedBox(
-      height: 90,
+      height: 84,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _images.length + (_images.length < 3 ? 1 : 0),
@@ -523,16 +505,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 }
               },
               child: Container(
-                width: 90,
-                height: 90,
-                margin: const EdgeInsets.only(right: 10),
+                width: 84,
+                height: 84,
+                margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
-                  color: _bg,
-                  borderRadius: BorderRadius.circular(14),
+                  color: AuthColors.bg,
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _green.withValues(alpha: 0.25),
+                    color: AuthColors.emerald.withValues(alpha: 0.3),
                     width: 1.5,
-                    style: BorderStyle.solid,
                   ),
                 ),
                 child: Column(
@@ -540,13 +521,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   children: [
                     Icon(
                       Icons.add_photo_alternate_outlined,
-                      color: _green.withValues(alpha: 0.5),
-                      size: 26,
+                      color: AuthColors.emerald.withValues(alpha: 0.6),
+                      size: 22,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       words.addPhoto,
-                      style: AppText.regular(fontSize: 10, color: _grey),
+                      style: AppText.regular(
+                        fontSize: 10,
+                        color: AuthColors.inkSoft,
+                      ),
                     ),
                   ],
                 ),
@@ -554,15 +538,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             );
           }
           return Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 8),
             child: Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   child: Image.file(
                     File(_images[index].path),
-                    width: 90,
-                    height: 90,
+                    width: 84,
+                    height: 84,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -574,7 +558,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     child: Container(
                       width: 22,
                       height: 22,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Colors.black54,
                         shape: BoxShape.circle,
                       ),
@@ -594,46 +578,75 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
+  // ── Shared input decoration ────────────────────────────────────────────────
+
+  InputDecoration _fieldDecor({
+    required String hint,
+    Widget? prefix,
+    String? suffixText,
+  }) => InputDecoration(
+    hintText: hint,
+    hintStyle: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
+    prefixIcon: prefix,
+    suffixText: suffixText,
+    suffixStyle: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
+    filled: true,
+    fillColor: AuthColors.borderSoft,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AuthColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: AuthColors.emerald.withValues(alpha: 0.55),
+        width: 1.5,
+      ),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: AuthColors.errorMuted.withValues(alpha: 0.4),
+      ),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: AuthColors.errorMuted.withValues(alpha: 0.6),
+        width: 1.5,
+      ),
+    ),
+    errorStyle: AppText.regular(fontSize: 11, color: AuthColors.errorMuted),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+  );
+
   // ── Fields ─────────────────────────────────────────────────────────────────
 
   Widget _phoneField(AppLocalizations words) {
     return TextFormField(
       controller: _phoneController,
+      focusNode: _phoneFocus,
       keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.next,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: AppText.regular(fontSize: 14, color: _dark),
-      decoration: InputDecoration(
-        hintText: words.clientPhone,
-        hintStyle: AppText.regular(fontSize: 14, color: _grey),
-        prefixIcon: const Icon(
-          Icons.phone_android_outlined,
-          color: _green,
-          size: 18,
-        ),
-        prefixText: '+993 ',
-        prefixStyle: AppText.regular(fontSize: 14, color: _dark),
-        filled: true,
-        fillColor: _bg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: _green.withValues(alpha: 0.4),
-            width: 1.5,
+      onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_priceFocus),
+      style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+      decoration:
+          _fieldDecor(
+            hint: words.clientPhone,
+            prefix: const Icon(
+              Icons.phone_android_outlined,
+              color: AuthColors.emerald,
+              size: 18,
+            ),
+          ).copyWith(
+            prefixText: '+993 ',
+            prefixStyle: AppText.regular(fontSize: 14, color: AuthColors.ink),
           ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-      ),
       validator: (v) => (v == null || v.length < 8) ? words.phoneShort : null,
     );
   }
@@ -642,27 +655,29 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return GestureDetector(
       onTap: _pickDateTime,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: _bg,
+          color: AuthColors.borderSoft,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFEEF0F3)),
+          border: Border.all(color: AuthColors.border),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: _selectedDateTime != null
-                    ? _green.withValues(alpha: 0.1)
-                    : _grey.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                    ? AuthColors.emerald.withValues(alpha: 0.1)
+                    : AuthColors.border,
+                borderRadius: BorderRadius.circular(9),
               ),
               child: Icon(
                 Icons.calendar_today_outlined,
-                size: 17,
-                color: _selectedDateTime != null ? _green : _grey,
+                size: 16,
+                color: _selectedDateTime != null
+                    ? AuthColors.emerald
+                    : AuthColors.inkSoft,
               ),
             ),
             const SizedBox(width: 12),
@@ -672,7 +687,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 children: [
                   Text(
                     words.deliveryTime,
-                    style: AppText.regular(fontSize: 11, color: _grey),
+                    style: AppText.regular(
+                      fontSize: 11,
+                      color: AuthColors.inkSoft,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -684,7 +702,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         : words.deliveryTimeNone,
                     style: AppText.semiBold(
                       fontSize: 14,
-                      color: _selectedDateTime != null ? _dark : _grey,
+                      color: _selectedDateTime != null
+                          ? AuthColors.ink
+                          : AuthColors.inkSoft,
                     ),
                   ),
                 ],
@@ -697,17 +717,25 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   _dateTimeController.clear();
                 }),
                 child: Container(
-                  width: 28,
-                  height: 28,
+                  width: 26,
+                  height: 26,
                   decoration: BoxDecoration(
-                    color: _red.withValues(alpha: 0.08),
+                    color: AuthColors.errorMuted.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.close_rounded, size: 15, color: _red),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 14,
+                    color: AuthColors.errorMuted,
+                  ),
                 ),
               )
             else
-              const Icon(Icons.chevron_right_rounded, color: _grey, size: 20),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AuthColors.inkSoft,
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -717,89 +745,45 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _priceField(AppLocalizations words) {
     return TextFormField(
       controller: _priceController,
+      focusNode: _priceFocus,
       keyboardType: TextInputType.number,
+      textInputAction: TextInputAction.next,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       onChanged: (_) => setState(() {}),
-      style: AppText.semiBold(fontSize: 18, color: _dark),
-      decoration: InputDecoration(
-        hintText: words.itemPriceHint,
-        hintStyle: AppText.regular(fontSize: 14, color: _grey),
-        prefixIcon: const Icon(
+      onFieldSubmitted: (_) =>
+          FocusScope.of(context).requestFocus(_deliveryFocus),
+      style: AppText.semiBold(fontSize: 16, color: AuthColors.ink),
+      decoration: _fieldDecor(
+        hint: words.itemPriceHint,
+        prefix: const Icon(
           Icons.payments_outlined,
-          color: _green,
+          color: AuthColors.emerald,
           size: 18,
         ),
         suffixText: 'TMT',
-        suffixStyle: AppText.regular(fontSize: 13, color: _grey),
-        filled: true,
-        fillColor: _bg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: _green.withValues(alpha: 0.4),
-            width: 1.5,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
       ),
       validator: (v) =>
           (v == null || v.isEmpty || v == '0') ? words.specifyPrice : null,
     );
   }
 
-  /// ← НОВОЕ: ручной ввод суммы доставки (обязательное поле)
   Widget _deliveryField(AppLocalizations words) {
     return TextFormField(
       controller: _deliveryController,
+      focusNode: _deliveryFocus,
       keyboardType: TextInputType.number,
+      textInputAction: TextInputAction.done,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       onChanged: (_) => setState(() {}),
-      style: AppText.semiBold(fontSize: 18, color: _dark),
-      decoration: InputDecoration(
-        hintText: words.deliveryPriceHint,
-        hintStyle: AppText.regular(fontSize: 14, color: _grey),
-        prefixIcon: ShaderMask(
-          shaderCallback: (b) => _gradient.createShader(b),
-          child: const Icon(
-            Icons.delivery_dining_outlined,
-            color: Colors.white,
-            size: 20,
-          ),
+      style: AppText.semiBold(fontSize: 16, color: AuthColors.ink),
+      decoration: _fieldDecor(
+        hint: words.deliveryPriceHint,
+        prefix: const Icon(
+          Icons.delivery_dining_outlined,
+          color: AuthColors.emerald,
+          size: 18,
         ),
         suffixText: 'TMT',
-        suffixStyle: AppText.regular(fontSize: 13, color: _grey),
-        filled: true,
-        fillColor: _bg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: _red.withValues(alpha: 0.4),
-            width: 1.5,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
       ),
       validator: (v) =>
           (v == null || v.isEmpty || v == '0') ? words.specifyDelivery : null,
@@ -815,33 +799,35 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           onTap: () => setState(() => _transportType = value),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
-              color: isSelected ? _green.withValues(alpha: 0.06) : _bg,
+              color: isSelected
+                  ? AuthColors.emeraldTint
+                  : AuthColors.borderSoft,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? _green.withValues(alpha: 0.4)
-                    : const Color(0xFFEEF0F3),
+                    ? AuthColors.emerald.withValues(alpha: 0.4)
+                    : AuthColors.border,
                 width: isSelected ? 1.5 : 1,
               ),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? _green.withValues(alpha: 0.12)
-                        : const Color(0xFFEEF0F3),
-                    borderRadius: BorderRadius.circular(10),
+                        ? AuthColors.emerald.withValues(alpha: 0.12)
+                        : AuthColors.border,
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(
                     icon,
-                    size: 18,
-                    color: isSelected ? _green : _grey,
+                    size: 17,
+                    color: isSelected ? AuthColors.emerald : AuthColors.inkSoft,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -850,7 +836,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     label,
                     style: AppText.medium(
                       fontSize: 14,
-                      color: isSelected ? _dark : _grey,
+                      color: isSelected ? AuthColors.ink : AuthColors.inkMuted,
                     ),
                   ),
                 ),
@@ -860,14 +846,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   height: 20,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: isSelected ? _gradient : null,
-                    color: isSelected ? null : Colors.transparent,
+                    color: isSelected ? AuthColors.emerald : Colors.transparent,
                     border: isSelected
                         ? null
-                        : Border.all(
-                            color: const Color(0xFFDDE1E7),
-                            width: 1.5,
-                          ),
+                        : Border.all(color: AuthColors.border, width: 1.5),
                   ),
                   child: isSelected
                       ? const Icon(
@@ -892,19 +874,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStepIndicator(words),
-        const SizedBox(height: 14),
-
+        const SizedBox(height: 12),
         if (_selectedProvince != null ||
             _selectedEtrap != null ||
             _selectedDistrict != null)
           _buildBreadcrumb(isRu),
-
         if (_locationStep > 0 && !_locationSelected) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _buildSearchField(words),
         ],
-        const SizedBox(height: 10),
-
+        const SizedBox(height: 8),
         _locationSelected
             ? _buildLocationDone(isRu)
             : _buildCurrentStepList(isRu, words),
@@ -931,25 +910,26 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
-                        height: 4,
+                        height: 3,
                         decoration: BoxDecoration(
-                          gradient: (isDone || isActive) ? _gradient : null,
                           color: (isDone || isActive)
-                              ? null
-                              : const Color(0xFFE0E0E0),
+                              ? AuthColors.emerald
+                              : AuthColors.border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
                       Text(
                         steps[i],
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isActive
-                              ? FontWeight.w800
-                              : FontWeight.w500,
-                          color: (isDone || isActive) ? _dark : _grey,
-                        ),
+                        style:
+                            AppText.medium(
+                              fontSize: 10,
+                              color: (isDone || isActive)
+                                  ? AuthColors.ink
+                                  : AuthColors.inkSoft,
+                            ).copyWith(
+                              fontWeight: isActive ? FontWeight.w700 : null,
+                            ),
                       ),
                     ],
                   ),
@@ -965,7 +945,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Widget _buildBreadcrumb(bool isRu) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Wrap(
         spacing: 4,
         runSpacing: 4,
@@ -995,13 +975,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     final hints = ['', words.searchEtrap, words.searchDistrict];
     return TextField(
       controller: _searchCtrl,
+      style: AppText.regular(fontSize: 14, color: AuthColors.ink),
       decoration: InputDecoration(
         hintText: hints[_locationStep],
-        hintStyle: AppText.regular(fontSize: 14, color: _grey),
-        prefixIcon: const Icon(Icons.search_rounded, color: _grey, size: 20),
+        hintStyle: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: AuthColors.inkSoft,
+          size: 20,
+        ),
         suffixIcon: _searchQuery.isNotEmpty
             ? IconButton(
-                icon: const Icon(Icons.close, size: 18, color: _grey),
+                icon: const Icon(
+                  Icons.close,
+                  size: 18,
+                  color: AuthColors.inkSoft,
+                ),
                 onPressed: () {
                   _searchCtrl.clear();
                   setState(() => _searchQuery = '');
@@ -1009,18 +998,25 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               )
             : null,
         filled: true,
-        fillColor: _bg,
+        fillColor: AuthColors.borderSoft,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
+          borderSide: const BorderSide(color: AuthColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: AuthColors.emerald.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
-          vertical: 14,
+          vertical: 12,
         ),
       ),
     );
@@ -1039,8 +1035,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
         childAspectRatio: 2.8,
       ),
       itemCount: _provinces.length,
@@ -1050,16 +1046,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           onTap: () => _selectProvince(p, words),
           child: Container(
             decoration: BoxDecoration(
-              color: _bg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFEEF0F3)),
+              color: AuthColors.borderSoft,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AuthColors.border),
             ),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
               p.label(isRu),
               textAlign: TextAlign.center,
-              style: AppText.semiBold(fontSize: 13, color: _dark),
+              style: AppText.semiBold(fontSize: 13, color: AuthColors.ink),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1103,32 +1099,31 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }) {
     if (items.isEmpty) {
       return Container(
-        height: 72,
+        height: 64,
         alignment: Alignment.center,
         child: Text(
           _searchQuery.isEmpty ? words.noData : words.filterNotFound,
-          style: AppText.regular(fontSize: 14, color: _grey),
+          style: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
         ),
       );
     }
     return Container(
-      constraints: const BoxConstraints(maxHeight: 280),
+      constraints: const BoxConstraints(maxHeight: 260),
       decoration: BoxDecoration(
-        color: _bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
+        color: AuthColors.borderSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AuthColors.border),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: ListView.separated(
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: items.length,
-          separatorBuilder: (_, _) => const Divider(
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-            color: Color(0xFFEEF0F3),
+          separatorBuilder: (_, _) => Container(
+            height: 0.5,
+            margin: const EdgeInsets.only(left: 16),
+            color: AuthColors.border,
           ),
           itemBuilder: (_, i) {
             final item = items[i];
@@ -1137,20 +1132,23 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 13,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
                         labelFn(item),
-                        style: AppText.medium(fontSize: 14, color: _dark),
+                        style: AppText.medium(
+                          fontSize: 14,
+                          color: AuthColors.ink,
+                        ),
                       ),
                     ),
                     const Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 13,
-                      color: _grey,
+                      size: 12,
+                      color: AuthColors.inkSoft,
                     ),
                   ],
                 ),
@@ -1166,22 +1164,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return GestureDetector(
       onTap: () => _resetLocationStep(0),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _green.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _green.withValues(alpha: 0.25)),
+          color: AuthColors.emeraldTint,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AuthColors.emerald.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                gradient: _gradient,
-                borderRadius: BorderRadius.circular(10),
+                color: AuthColors.emerald,
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(Icons.check, color: Colors.white, size: 18),
+              child: const Icon(Icons.check, color: Colors.white, size: 17),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1193,7 +1191,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         _selectedEtrap?.label(isRu) ??
                         _selectedProvince?.label(isRu) ??
                         '',
-                    style: AppText.semiBold(fontSize: 14, color: _dark),
+                    style: AppText.semiBold(
+                      fontSize: 14,
+                      color: AuthColors.ink,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1201,12 +1202,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       _selectedProvince?.label(isRu),
                       if (_selectedEtrap != null) _selectedEtrap!.label(isRu),
                     ].whereType<String>().join(' · '),
-                    style: AppText.regular(fontSize: 12, color: _grey),
+                    style: AppText.regular(
+                      fontSize: 12,
+                      color: AuthColors.inkMuted,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.edit_outlined, size: 16, color: _grey),
+            const Icon(
+              Icons.edit_outlined,
+              size: 15,
+              color: AuthColors.inkSoft,
+            ),
           ],
         ),
       ),
@@ -1215,9 +1223,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Widget _loader() {
     return Container(
-      height: 72,
+      height: 64,
       alignment: Alignment.center,
-      child: const CircularProgressIndicator(color: _green, strokeWidth: 2),
+      child: const CircularProgressIndicator(
+        color: AuthColors.emerald,
+        strokeWidth: 2,
+      ),
     );
   }
 
@@ -1226,88 +1237,101 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _buildBottomPanel(
     double delivery,
     double total,
+    int points,
     AppLocalizations words,
   ) {
-    final hasValues = total > 0;
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
-        14,
+        12,
         16,
-        MediaQuery.of(context).padding.bottom + 14,
+        MediaQuery.of(context).padding.bottom + 12,
       ),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFEEF0F3))),
+        color: AuthColors.surface,
+        border: Border(top: BorderSide(color: AuthColors.border)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${words.courierPays}: ${delivery.toStringAsFixed(0)} TMT',
-                  style: AppText.regular(fontSize: 12, color: _grey),
-                ),
-                const SizedBox(height: 2),
-                ShaderMask(
-                  shaderCallback: (b) =>
-                      (hasValues
-                              ? _gradient
-                              : const LinearGradient(colors: [_grey, _grey]))
-                          .createShader(b),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        total.toStringAsFixed(0),
-                        style: AppText.semiBold(
-                          fontSize: 24,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'TMT',
-                        style: AppText.regular(
-                          fontSize: 13,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: _isLoading ? null : () => _submitOrder(words),
-            child: Container(
-              height: 52,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+          if (points > 0)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                gradient: _isLoading ? null : _gradient,
-                color: _isLoading ? _grey.withValues(alpha: 0.3) : null,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: _isLoading
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: _green.withValues(alpha: 0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                color: AuthColors.amberTint,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AuthColors.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.toll_rounded,
+                    size: 16,
+                    color: AuthColors.amber,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Публикация заказа: $points жетонов. Будут списаны после принятия курьером',
+                      style: AppText.medium(
+                        fontSize: 12,
+                        color: AuthColors.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${words.courierPays}: ${delivery.toStringAsFixed(0)} TMT',
+                      style: AppText.regular(
+                        fontSize: 11,
+                        color: AuthColors.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          total.toStringAsFixed(0),
+                          style: AppText.semiBold(
+                            fontSize: 22,
+                            color: total > 0
+                                ? AuthColors.ink
+                                : AuthColors.inkSoft,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'TMT',
+                          style: AppText.regular(
+                            fontSize: 12,
+                            color: AuthColors.inkSoft,
+                          ),
                         ),
                       ],
+                    ),
+                  ],
+                ),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                words.placeOrder,
-                style: AppText.semiBold(fontSize: 15, color: Colors.white),
+              const SizedBox(width: 12),
+              _SubmitButton(
+                label: words.placeOrder,
+                isLoading: _isLoading,
+                onTap: () => _submitOrder(words),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -1315,7 +1339,79 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 }
 
-// ── Breadcrumb chip (same as RegistrationDetailsScreen) ──────────────────────
+// ── Submit button — spring press + emerald fill ───────────────────────────────
+
+class _SubmitButton extends StatefulWidget {
+  final String label;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _SubmitButton({
+    required this.label,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  State<_SubmitButton> createState() => _SubmitButtonState();
+}
+
+class _SubmitButtonState extends State<_SubmitButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        if (!widget.isLoading) widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          decoration: BoxDecoration(
+            color: widget.isLoading
+                ? AuthColors.inkSoft.withValues(alpha: 0.22)
+                : AuthColors.ink,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: widget.isLoading
+                ? null
+                : [
+                    BoxShadow(
+                      color: AuthColors.ink.withValues(alpha: 0.28),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  widget.label,
+                  style: AppText.semiBold(fontSize: 14, color: Colors.white),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Breadcrumb chip ───────────────────────────────────────────────────────────
 
 class _BreadcrumbChip extends StatelessWidget {
   final String label;
@@ -1328,9 +1424,6 @@ class _BreadcrumbChip extends StatelessWidget {
     this.isSelected = false,
   });
 
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1338,29 +1431,23 @@ class _BreadcrumbChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(colors: [_green, _red])
-              : null,
-          color: isSelected ? null : const Color(0xFFF5F7FA),
+          color: isSelected ? AuthColors.emerald : AuthColors.borderSoft,
           borderRadius: BorderRadius.circular(20),
-          border: isSelected
-              ? null
-              : Border.all(color: const Color(0xFFEEF0F3)),
+          border: isSelected ? null : Border.all(color: AuthColors.border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-              style: TextStyle(
+              style: AppText.semiBold(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : const Color(0xFF0F1117),
+                color: isSelected ? Colors.white : AuthColors.ink,
               ),
             ),
             if (!isSelected) ...[
               const SizedBox(width: 4),
-              const Icon(Icons.close, size: 12, color: Color(0xFF9AA3AF)),
+              const Icon(Icons.close, size: 12, color: AuthColors.inkSoft),
             ],
           ],
         ),

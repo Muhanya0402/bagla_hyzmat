@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 
 class HomeSegmentedFilter extends StatelessWidget {
@@ -25,12 +25,11 @@ class HomeSegmentedFilter extends StatelessWidget {
       children: [
         Expanded(
           child: Container(
-            height: 46,
-            padding: const EdgeInsets.all(4),
+            height: 42,
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: HomeColors.border),
+              color: AuthColors.borderSoft,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
@@ -57,7 +56,9 @@ class HomeSegmentedFilter extends StatelessWidget {
   }
 }
 
-class _FilterTab extends StatelessWidget {
+// ── Single tab segment ────────────────────────────────────────────────────────
+
+class _FilterTab extends StatefulWidget {
   final int index;
   final String label;
   final int selectedIndex;
@@ -71,23 +72,52 @@ class _FilterTab extends StatelessWidget {
   });
 
   @override
+  State<_FilterTab> createState() => _FilterTabState();
+}
+
+class _FilterTabState extends State<_FilterTab> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool sel = selectedIndex == index;
+    final bool sel = widget.selectedIndex == widget.index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => onTap(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            gradient: sel ? HomeColors.gradient : null,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            style: AppText.medium(
-              fontSize: 13,
-              color: sel ? Colors.white : HomeColors.grey,
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          widget.onTap(widget.index);
+        },
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: sel ? AuthColors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: sel
+                  ? [
+                      BoxShadow(
+                        color: AuthColors.ink.withValues(alpha: 0.07),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              style: sel
+                  ? AppText.semiBold(fontSize: 13, color: AuthColors.ink)
+                  : AppText.medium(fontSize: 13, color: AuthColors.inkSoft),
+              child: Text(widget.label),
             ),
           ),
         ),
@@ -96,61 +126,86 @@ class _FilterTab extends StatelessWidget {
   }
 }
 
-class _FilterIconButton extends StatelessWidget {
+// ── Filter icon button ────────────────────────────────────────────────────────
+
+class _FilterIconButton extends StatefulWidget {
   final int activeCount;
   final VoidCallback onTap;
 
-  const _FilterIconButton({required this.activeCount, required this.onTap});
+  const _FilterIconButton({
+    required this.activeCount,
+    required this.onTap,
+  });
+
+  @override
+  State<_FilterIconButton> createState() => _FilterIconButtonState();
+}
+
+class _FilterIconButtonState extends State<_FilterIconButton> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
+    final bool has = widget.activeCount > 0;
     return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: activeCount > 0
-                    ? HomeColors.green.withValues(alpha: 0.4)
-                    : HomeColors.border,
-              ),
-            ),
-            child: Icon(
-              Icons.tune_rounded,
-              size: 20,
-              color: activeCount > 0 ? HomeColors.green : HomeColors.grey,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: has ? AuthColors.emeraldTint : AuthColors.borderSoft,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: has
+                  ? AuthColors.emerald.withValues(alpha: 0.3)
+                  : AuthColors.border,
             ),
           ),
-          if (activeCount > 0)
-            Positioned(
-              top: -4,
-              right: -4,
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: HomeColors.green,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '$activeCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 18,
+                color: has ? AuthColors.emerald : AuthColors.inkSoft,
+              ),
+              if (has)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 13,
+                    height: 13,
+                    decoration: const BoxDecoration(
+                      color: AuthColors.emerald,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${widget.activeCount}',
+                      style: const TextStyle(
+                        fontSize: 8,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Nunito',
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

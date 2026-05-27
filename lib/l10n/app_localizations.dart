@@ -17,6 +17,92 @@ class AppLocalizations {
   }
 
   // Геттеры для автодополнения в IDE
+
+  // ── Auth: phone screen ─────────────────────────────────────────────────
+  String get authPhoneTitle => get('authPhoneTitle');
+  String get authPhoneSubtitle => get('authPhoneSubtitle');
+  String get authPhoneFieldLabel => get('authPhoneFieldLabel');
+  String get authSendCodeBtn => get('authSendCodeBtn');
+  String get authSmsConsent => get('authSmsConsent');
+  String get authPolicyAgreePrefix => get('authPolicyAgreePrefix');
+  String get authPolicyTerms => get('authPolicyTerms');
+  String get authPolicyAnd => get('authPolicyAnd');
+  String get authPolicyPrivacy => get('authPolicyPrivacy');
+  String get authCountryTitle => get('authCountryTitle');
+  String get authCountryTurkmenistan => get('authCountryTurkmenistan');
+  String get authCountryAvailability => get('authCountryAvailability');
+  // ── Auth: otp screen ───────────────────────────────────────────────────
+  String get authOtpTitle => get('authOtpTitle');
+  String get authOtpSubtitle => get('authOtpSubtitle');
+  String get authOtpResendInPrefix => get('authOtpResendInPrefix');
+  String get authOtpResendLink => get('authOtpResendLink');
+  String get authConfirmBtn => get('authConfirmBtn');
+  // ── Empathic errors ────────────────────────────────────────────────────
+  String get errPhoneFormat => get('errPhoneFormat');
+  String get errOtpInvalid => get('errOtpInvalid');
+  String get errNetwork => get('errNetwork');
+  String get errNetworkTitle => get('errNetworkTitle');
+  String get errPolicyRequired => get('errPolicyRequired');
+
+  // ── Onboarding ─────────────────────────────────────────────────────────
+  String get obWelcomeTitle => get('obWelcomeTitle');
+  String get obWelcomeSubtitle => get('obWelcomeSubtitle');
+  String get obRoleShopTitle => get('obRoleShopTitle');
+  String get obRoleShopSubtitle => get('obRoleShopSubtitle');
+  String get obRoleCourierTitle => get('obRoleCourierTitle');
+  String get obRoleCourierSubtitle => get('obRoleCourierSubtitle');
+  String get obRoleObserverTitle => get('obRoleObserverTitle');
+  String get obRoleObserverSubtitle => get('obRoleObserverSubtitle');
+  String get obPhoneStepTitle => get('obPhoneStepTitle');
+  String get obPhoneStepSubtitle => get('obPhoneStepSubtitle');
+  String get obOtpStepTitle => get('obOtpStepTitle');
+  String get obOtpStepSubtitlePrefix => get('obOtpStepSubtitlePrefix');
+  String get obShopUspTag => get('obShopUspTag');
+  String get obShopUspTitle => get('obShopUspTitle');
+  String get obShopUspText => get('obShopUspText');
+  String get obShopUspStepAccepted => get('obShopUspStepAccepted');
+  String get obShopUspStepInTransit => get('obShopUspStepInTransit');
+  String get obShopUspStepDelivered => get('obShopUspStepDelivered');
+  String get obCourierUspTag => get('obCourierUspTag');
+  String get obCourierUspTitle => get('obCourierUspTitle');
+  String get obCourierUspText => get('obCourierUspText');
+  String get obCalcLabel => get('obCalcLabel');
+  String get obCalcBuyout => get('obCalcBuyout');
+  String get obCalcDelivery => get('obCalcDelivery');
+  String get obCalcProfit => get('obCalcProfit');
+  String get obTokenBalance => get('obTokenBalance');
+  String get obTokenUnit => get('obTokenUnit');
+  String get obNext => get('obNext');
+  String get obStart => get('obStart');
+  String get obStep => get('obStep');
+
+  // ── Policy screen ──────────────────────────────────────────────────────
+  String get policyTitle => get('policyTitle');
+  String get policyLastUpdated => get('policyLastUpdated');
+  String get policyIntro => get('policyIntro');
+  String get policyTocTitle => get('policyTocTitle');
+  String get policyInPlainEnglish => get('policyInPlainEnglish');
+  String get policyScrollHint => get('policyScrollHint');
+  String get policyAcceptBtn => get('policyAcceptBtn');
+  String get policySec1Title => get('policySec1Title');
+  String get policySec1Plain => get('policySec1Plain');
+  String get policySec1Body => get('policySec1Body');
+  String get policySec2Title => get('policySec2Title');
+  String get policySec2Plain => get('policySec2Plain');
+  String get policySec2Body => get('policySec2Body');
+  String get policySec3Title => get('policySec3Title');
+  String get policySec3Plain => get('policySec3Plain');
+  String get policySec3Body => get('policySec3Body');
+  String get policySec4Title => get('policySec4Title');
+  String get policySec4Plain => get('policySec4Plain');
+  String get policySec4Body => get('policySec4Body');
+  String get policySec5Title => get('policySec5Title');
+  String get policySec5Plain => get('policySec5Plain');
+  String get policySec5Body => get('policySec5Body');
+  String get policySec6Title => get('policySec6Title');
+  String get policySec6Plain => get('policySec6Plain');
+  String get policySec6Body => get('policySec6Body');
+
   String get loginTitle => get('loginTitle');
   String get availiblorders => get('availiblorders');
   String get welcomeToApp => get('welcomeToApp');
@@ -232,6 +318,7 @@ class AppLocalizations {
   String get notifTitle => get('notifTitle');
   String get notifMarkAll => get('notifMarkAll');
   String get notifToday => get('notifToday');
+  String get notifYesterday => get('notifYesterday');
   String get notifEarlier => get('notifEarlier');
   String get notifEmpty => get('notifEmpty');
   String get notifEmptyDesc => get('notifEmptyDesc');
@@ -261,6 +348,7 @@ class AppLocalizations {
   String get retry => get('retry');
   String get appealsTitle => get('appealsTitle');
   String get appealsNew => get('appealsNew');
+  String get appealsHint => get('appealsHint');
   String get appealsEmpty => get('appealsEmpty');
   String get appealsEmptyDesc => get('appealsEmptyDesc');
   String get appealsLoadError => get('appealsLoadError');

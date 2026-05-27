@@ -18,7 +18,7 @@ class AuthRepository {
       await prefs.remove('auth_token');
       await prefs.remove('refresh_token');
 
-      final cleanPhone = phone.trim();
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
       final response = await _api.dio.post(
         '/items/otp_codes',
@@ -38,7 +38,10 @@ class AuthRepository {
     try {
       final response = await _api.dio.post(
         '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73',
-        data: {'identifier': phone.trim(), 'code': code.trim()},
+        data: {
+          'identifier': phone.replaceAll(RegExp(r'\s+'), ''),
+          'code': code.trim(),
+        },
         options: Options(
           headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
         ),
@@ -141,7 +144,7 @@ class AuthRepository {
       final response = await _api.dio.get(
         '/items/customers',
         queryParameters: {
-          'filter[phone][_eq]': phone.trim(),
+          'filter[phone][_eq]': phone.replaceAll(RegExp(r'\s+'), ''),
           'fields':
               'id,phone,name,surname,role,status,rating,balance_points,address,'
               'district.id,district.district_ru,district.district_tk,'

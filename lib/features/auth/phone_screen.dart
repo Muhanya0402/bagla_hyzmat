@@ -1,6 +1,5 @@
 import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
-import 'package:bagla/features/profile/lang_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -25,11 +24,15 @@ class _PhoneScreenState extends State<PhoneScreen>
   late Animation<double> _shakeAnim;
 
   final _phoneMask = MaskTextInputFormatter(
-    mask: '########',
+    mask: '## ## ## ##',
     filter: {'#': RegExp(r'[0-9]')},
   );
 
   bool _policyAccepted = false;
+
+  // ── Empathic error state ─────────────────────────────────────────────────
+  String? _phoneError;
+  String? _policyError;
 
   @override
   void initState() {
@@ -38,14 +41,28 @@ class _PhoneScreenState extends State<PhoneScreen>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _shakeAnim = Tween<double>(
-      begin: 0,
-      end: 8,
-    ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
+    _shakeAnim = Tween<double>(begin: 0, end: 6)
+        .chain(CurveTween(curve: Curves.elasticIn))
+        .animate(_shakeCtrl);
+
+    // Стартуем с пустого поля — не подтягиваем номер из прошлой сессии.
+    final ctrl = context.read<AuthProvider>().phoneController;
+    ctrl.clear();
+    ctrl.addListener(_onPhoneChanged);
+  }
+
+  void _onPhoneChanged() {
+    if (_phoneError != null) {
+      setState(() => _phoneError = null);
+    }
   }
 
   @override
   void dispose() {
+    context
+        .read<AuthProvider>()
+        .phoneController
+        .removeListener(_onPhoneChanged);
     _shakeCtrl.dispose();
     super.dispose();
   }
@@ -64,10 +81,71 @@ class _PhoneScreenState extends State<PhoneScreen>
       ctx,
       MaterialPageRoute(
         builder: (_) => PolicyScreen(
-          onAccepted: () => setState(() => _policyAccepted = true),
+          onAccepted: () => setState(() {
+            _policyAccepted = true;
+            _policyError = null;
+          }),
         ),
       ),
     );
+  }
+
+  void _openCountryPicker(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: AuthColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const _CountrySheet(),
+    );
+  }
+
+  Future<void> _onSubmit() async {
+    final auth = context.read<AuthProvider>();
+    final lang = context.read<LanguageProvider>();
+    final words = lang.words;
+
+    // 1. policy
+    if (!_policyAccepted) {
+      setState(() => _policyError = words.errPolicyRequired);
+      _shake();
+      return;
+    }
+
+    // 2. phone format
+    if (!_isValidPhone(auth.phoneController.text)) {
+      setState(() => _phoneError = words.errPhoneFormat);
+      _shake();
+      return;
+    }
+
+    // 3. API (silent — экран сам отрисует ошибку)
+    final ok = await auth.sendOTPOnly(context, lang, silent: true);
+
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const OtpScreen()),
+      );
+      return;
+    }
+
+    // 4. API failed — определяем причину
+    if (auth.lastErrorKind == AuthErrorKind.network) {
+      showAuthNetworkBanner(
+        context,
+        title: words.errNetworkTitle,
+        message: words.errNetwork,
+      );
+    } else {
+      // server отказал — показываем рядом с полем
+      setState(() => _phoneError = words.errPhoneFormat);
+      _shake();
+    }
   }
 
   @override
@@ -77,101 +155,124 @@ class _PhoneScreenState extends State<PhoneScreen>
     final words = lang.words;
     final isLoading = context.select<AuthProvider, bool>((a) => a.isLoading);
 
+    final hasPhoneError = _phoneError != null;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AuthColors.bg,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            children: [
-              // ── Top bar ──────────────────────────────────────────────────
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  BaglaLogo(width: 72, height: 36),
-                  const Spacer(),
-                  const LangToggle(),
-                ],
-              ),
-
-              const Spacer(),
-
-              // ── Title ────────────────────────────────────────────────────
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Top bar ────────────────────────────────────────────────
+                const SizedBox(height: 18),
+                Row(
                   children: [
-                    _GradientUnderlineTitle(accentWord: words.welcomeToApp),
-                    const SizedBox(height: 8),
-                    Text(
-                      lang.isRu
-                          ? 'Введите номер — отправим SMS-код для входа'
-                          : 'Belgini giriziň — SMS kody ibereris',
-                      style: AppText.regular(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
+                    const BaglaLogo(width: 64, height: 32),
+                    const Spacer(),
+                    AuthLangSwitcher(
+                      isRu: lang.isRu,
+                      onToggle: lang.toggleLanguage,
                     ),
                   ],
                 ),
-              ),
 
-              const SizedBox(height: 28),
+                const Spacer(flex: 2),
 
-              // ── Phone field ──────────────────────────────────────────────
-              AnimatedBuilder(
-                animation: _shakeAnim,
-                builder: (_, child) => Transform.translate(
-                  offset: Offset(_shakeAnim.value, 0),
-                  child: child,
+                // ── Title (serif, editorial) ───────────────────────────────
+                Text(
+                  words.authPhoneTitle,
+                  style: AppText.serif(fontSize: 34),
                 ),
-                child: _PhoneField(
-                  controller: auth.phoneController,
-                  formatter: _phoneMask,
+                const SizedBox(height: 12),
+                Text(
+                  words.authPhoneSubtitle,
+                  style: AppText.regular(
+                    fontSize: 14.5,
+                    color: AuthColors.inkMuted,
+                  ).copyWith(height: 1.5, letterSpacing: 0.1),
                 ),
-              ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 36),
 
-              // ── Policy checkbox ──────────────────────────────────────────
-              _PolicyCheckbox(
-                accepted: _policyAccepted,
-                isRu: lang.isRu,
-                onChanged: (v) => setState(() => _policyAccepted = v),
-                onTapTerms: () => _openPolicy(context),
-                onTapPrivacy: () => _openPolicy(context),
-              ),
+                // ── Phone field label ──────────────────────────────────────
+                Text(
+                  words.authPhoneFieldLabel,
+                  style: AppText.medium(
+                    fontSize: 12,
+                    color: AuthColors.inkMuted,
+                  ).copyWith(letterSpacing: 0.3),
+                ),
+                const SizedBox(height: 8),
 
-              const SizedBox(height: 22),
+                // ── Phone field + inline error ─────────────────────────────
+                AnimatedBuilder(
+                  animation: _shakeAnim,
+                  builder: (_, child) => Transform.translate(
+                    offset: Offset(_shakeAnim.value, 0),
+                    child: child,
+                  ),
+                  child: _PhoneField(
+                    controller: auth.phoneController,
+                    formatter: _phoneMask,
+                    hasError: hasPhoneError,
+                    onTapCountry: () => _openCountryPicker(context),
+                  ),
+                ),
+                AuthInlineError(message: _phoneError),
 
-              // ── Submit button ────────────────────────────────────────────
-              AuthGradientButton(
-                label: words.getCodeBtn.toUpperCase(),
-                isLoading: isLoading,
-                onPressed: () async {
-                  if (!_policyAccepted) {
-                    _shake();
-                    return;
-                  }
-                  if (!_isValidPhone(auth.phoneController.text)) {
-                    _shake();
-                    return;
-                  }
-                  final ok = await auth.sendOTPOnly(context, lang);
-                  if (ok && context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const OtpScreen()),
-                    );
-                  } else {
-                    _shake();
-                  }
-                },
-              ),
+                const SizedBox(height: 18),
 
-              const Spacer(),
-            ],
+                // ── Policy checkbox + inline error ─────────────────────────
+                AnimatedBuilder(
+                  animation: _shakeAnim,
+                  builder: (_, child) => Transform.translate(
+                    offset: Offset(_shakeAnim.value, 0),
+                    child: child,
+                  ),
+                  child: _PolicyCheckbox(
+                    accepted: _policyAccepted,
+                    hasError: _policyError != null,
+                    onChanged: (v) => setState(() {
+                      _policyAccepted = v;
+                      if (v) _policyError = null;
+                    }),
+                    onTapTerms: () => _openPolicy(context),
+                    onTapPrivacy: () => _openPolicy(context),
+                  ),
+                ),
+                AuthInlineError(message: _policyError),
+
+                const SizedBox(height: 28),
+
+                // ── Submit button ──────────────────────────────────────────
+                AuthGradientButton(
+                  label: words.authSendCodeBtn,
+                  isLoading: isLoading,
+                  onPressed: _onSubmit,
+                ),
+
+                const SizedBox(height: 18),
+
+                // ── Edge note ──────────────────────────────────────────────
+                Center(
+                  child: Text(
+                    words.authSmsConsent,
+                    textAlign: TextAlign.center,
+                    style: AppText.regular(
+                      fontSize: 11.5,
+                      color: AuthColors.inkSoft,
+                    ).copyWith(height: 1.4),
+                  ),
+                ),
+
+                const Spacer(flex: 3),
+              ],
+            ),
           ),
         ),
       ),
@@ -179,76 +280,79 @@ class _PhoneScreenState extends State<PhoneScreen>
   }
 }
 
-class _GradientUnderlineTitle extends StatelessWidget {
-  final String accentWord;
-  const _GradientUnderlineTitle({required this.accentWord});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: accentWord,
-                style: AppText.bold(fontSize: 26, color: Colors.black),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          bottom: 0,
-          left: 0,
-          child: ShaderMask(
-            shaderCallback: (b) => AuthColors.gradient.createShader(
-              Rect.fromLTWH(0, 0, b.width, 3),
-            ),
-            child: Container(
-              width: accentWord.length * 14.8,
-              height: 3,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+// ═════════════════════════════════════════════════════════════════════════════
+// Private widgets
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _PhoneField extends StatelessWidget {
   final TextEditingController controller;
   final MaskTextInputFormatter formatter;
-  const _PhoneField({required this.controller, required this.formatter});
+  final VoidCallback onTapCountry;
+  final bool hasError;
+
+  const _PhoneField({
+    required this.controller,
+    required this.formatter,
+    required this.onTapCountry,
+    this.hasError = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final borderColor =
+        hasError ? AuthColors.errorMuted : AuthColors.border;
+    final fillColor = hasError ? AuthColors.errorTint : AuthColors.surface;
+    final dividerColor =
+        hasError ? AuthColors.errorMuted.withValues(alpha: 0.35) : AuthColors.borderSoft;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
-        border: Border.all(color: AuthColors.green, width: 1.5),
+        color: fillColor,
+        border: Border.all(color: borderColor, width: 1),
         borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AuthColors.ink.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            height: 52,
-            decoration: const BoxDecoration(
-              border: Border(right: BorderSide(color: Colors.black12)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('🇹🇲', style: TextStyle(fontSize: 20)),
-                const SizedBox(width: 6),
-                Text(
-                  '+993',
-                  style: AppText.semiBold(fontSize: 13, color: Colors.black45),
+          GestureDetector(
+            onTap: onTapCountry,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+              height: 58,
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: dividerColor, width: 1),
                 ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🇹🇲', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+993',
+                    style: AppText.semiBold(
+                      fontSize: 15,
+                      color: AuthColors.ink,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: AuthColors.inkMuted,
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -256,11 +360,18 @@ class _PhoneField extends StatelessWidget {
               controller: controller,
               keyboardType: TextInputType.phone,
               inputFormatters: [formatter],
-              style: AppText.semiBold(fontSize: 17),
-              decoration: const InputDecoration(
-                hintText: '__ ___ ___',
+              style: AppText.medium(fontSize: 17, color: AuthColors.ink)
+                  .copyWith(letterSpacing: 0.4),
+              cursorColor: hasError ? AuthColors.errorMuted : AuthColors.ink,
+              cursorWidth: 1.5,
+              decoration: InputDecoration(
+                hintText: '__ __ __ __',
+                hintStyle: AppText.regular(
+                  fontSize: 17,
+                  color: AuthColors.inkSoft,
+                ).copyWith(letterSpacing: 0.4),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14),
               ),
             ),
           ),
@@ -272,14 +383,14 @@ class _PhoneField extends StatelessWidget {
 
 class _PolicyCheckbox extends StatelessWidget {
   final bool accepted;
-  final bool isRu;
+  final bool hasError;
   final ValueChanged<bool> onChanged;
   final VoidCallback onTapTerms;
   final VoidCallback onTapPrivacy;
 
   const _PolicyCheckbox({
     required this.accepted,
-    required this.isRu,
+    required this.hasError,
     required this.onChanged,
     required this.onTapTerms,
     required this.onTapPrivacy,
@@ -287,74 +398,167 @@ class _PolicyCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: const Border(
-          left: BorderSide(color: AuthColors.green, width: 3),
+    final words = context.watch<LanguageProvider>().words;
+
+    final boxBorder = accepted
+        ? AuthColors.ink
+        : hasError
+            ? AuthColors.errorMuted
+            : AuthColors.border;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => onChanged(!accepted),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            margin: const EdgeInsets.only(top: 2),
+            decoration: BoxDecoration(
+              color: accepted ? AuthColors.ink : AuthColors.surface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: boxBorder, width: 1.2),
+            ),
+            child: accepted
+                ? const Icon(Icons.check, size: 13, color: Colors.white)
+                : null,
+          ),
         ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => onChanged(!accepted),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: accepted ? AuthColors.green : Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: accepted ? AuthColors.green : Colors.black26,
-                  width: 1.5,
-                ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 12.5,
+                color: AuthColors.inkMuted,
+                height: 1.55,
               ),
-              child: accepted
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
+              children: [
+                TextSpan(text: words.authPolicyAgreePrefix),
+                TextSpan(
+                  text: words.authPolicyTerms,
+                  style: const TextStyle(
+                    color: AuthColors.ink,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                    decorationColor: AuthColors.ink,
+                  ),
+                  recognizer: TapGestureRecognizer()..onTap = onTapTerms,
+                ),
+                TextSpan(text: words.authPolicyAnd),
+                TextSpan(
+                  text: words.authPolicyPrivacy,
+                  style: const TextStyle(
+                    color: AuthColors.ink,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                    decorationColor: AuthColors.ink,
+                  ),
+                  recognizer: TapGestureRecognizer()..onTap = onTapPrivacy,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                  height: 1.55,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Country picker (single item, готов к расширению) ───────────────────────
+class _CountrySheet extends StatelessWidget {
+  const _CountrySheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                  color: AuthColors.border,
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+            ),
+            Text(
+              words.authCountryTitle,
+              style: AppText.serif(fontSize: 22, letterSpacing: -0.3),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AuthColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AuthColors.border, width: 1),
+              ),
+              child: Row(
                 children: [
-                  TextSpan(text: isRu ? 'Соглашаюсь с ' : 'Ylalaşýaryn: '),
-                  TextSpan(
-                    text: isRu ? 'Условиями использования' : 'Ulanyş şertleri',
-                    style: const TextStyle(
-                      color: AuthColors.green,
-                      fontWeight: FontWeight.w800,
-                      decoration: TextDecoration.underline,
+                  const Text('🇹🇲', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          words.authCountryTurkmenistan,
+                          style: AppText.semiBold(
+                            fontSize: 15,
+                            color: AuthColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '+993',
+                          style: AppText.regular(
+                            fontSize: 13,
+                            color: AuthColors.inkMuted,
+                          ),
+                        ),
+                      ],
                     ),
-                    recognizer: TapGestureRecognizer()..onTap = onTapTerms,
                   ),
-                  TextSpan(text: isRu ? ' и ' : ' we '),
-                  TextSpan(
-                    text: isRu
-                        ? 'Политикой конфиденциальности'
-                        : 'Gizlinlik syýasaty',
-                    style: const TextStyle(
-                      color: AuthColors.red,
-                      fontWeight: FontWeight.w800,
-                      decoration: TextDecoration.underline,
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      color: AuthColors.ink,
+                      shape: BoxShape.circle,
                     ),
-                    recognizer: TapGestureRecognizer()..onTap = onTapPrivacy,
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              words.authCountryAvailability,
+              style: AppText.regular(
+                fontSize: 12,
+                color: AuthColors.inkSoft,
+              ).copyWith(height: 1.4),
+            ),
+          ],
+        ),
       ),
     );
   }

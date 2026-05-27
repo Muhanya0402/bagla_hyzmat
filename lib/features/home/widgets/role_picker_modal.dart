@@ -1,103 +1,110 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:flutter/material.dart';
 
+/// Bottom-sheet content shown when a client/observer tries to open
+/// an order or tap "take order" without having a real role yet.
 class RolePickerEmbedded extends StatelessWidget {
   final VoidCallback onClose;
-
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandGreen, brandRed],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
 
   const RolePickerEmbedded({super.key, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Handle
-
-        // Icon
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                brandGreen.withValues(alpha: 0.12),
-                brandRed.withValues(alpha: 0.07),
-              ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: AuthColors.bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Handle ──────────────────────────────────────────────────
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AuthColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Icon(
-            Icons.swap_horiz_rounded,
-            color: brandGreen,
-            size: 30,
-          ),
-        ),
-        const SizedBox(height: 16),
 
-        ShaderMask(
-          shaderCallback: (b) => brandGradient.createShader(b),
-          child: Text(
-            'Кто вы?',
-            style: AppText.extraBold(fontSize: 22, color: Colors.white),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Выберите вашу роль чтобы продолжить',
-          style: AppText.regular(fontSize: 13, color: const Color(0xFF9AA3AF)),
-        ),
-        const SizedBox(height: 24),
-
-        // Курьер
-        _RoleOption(
-          icon: Icons.electric_bike_outlined,
-          title: 'Курьер',
-          description: 'Принимаю и доставляю заказы',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const RegistrationDetailsScreen(role: 'courier'),
+            // ── Icon ────────────────────────────────────────────────────
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AuthColors.emeraldTint,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.swap_horiz_rounded,
+                color: AuthColors.emerald,
+                size: 26,
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-        // Заказчик
-        _RoleOption(
-          icon: Icons.shopping_bag_outlined,
-          title: 'Заказчик',
-          description: 'Создаю заказы для доставки',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const RegistrationDetailsScreen(role: 'shop'),
+            Text(
+              'Кто вы?',
+              style: AppText.serif(fontSize: 22, letterSpacing: -0.3),
             ),
-          ),
-        ),
+            const SizedBox(height: 6),
+            Text(
+              'Выберите роль, чтобы продолжить',
+              style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+            ),
+            const SizedBox(height: 20),
 
-        const SizedBox(height: 16),
-      ],
+            // ── Курьер ──────────────────────────────────────────────────
+            _RoleOption(
+              icon: Icons.electric_bike_outlined,
+              title: 'Курьер',
+              description: 'Принимаю и доставляю заказы',
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const RegistrationDetailsScreen(role: 'courier'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // ── Заказчик ────────────────────────────────────────────────
+            _RoleOption(
+              icon: Icons.shopping_bag_outlined,
+              title: 'Заказчик',
+              description: 'Создаю заказы для доставки',
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const RegistrationDetailsScreen(role: 'shop'),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _RoleOption extends StatelessWidget {
+// ── Single role option tile ───────────────────────────────────────────────────
+
+class _RoleOption extends StatefulWidget {
   final IconData icon;
   final String title;
   final String description;
   final VoidCallback onTap;
-
-  static const LinearGradient brandGradient = HomeColors.gradient;
 
   const _RoleOption({
     required this.icon,
@@ -107,57 +114,85 @@ class _RoleOption extends StatelessWidget {
   });
 
   @override
+  State<_RoleOption> createState() => _RoleOptionState();
+}
+
+class _RoleOptionState extends State<_RoleOption> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFEEF0F3)),
-        ),
-        child: Row(
-          children: [
-            // Gradient icon box
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: brandGradient,
-                borderRadius: BorderRadius.circular(13),
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AuthColors.borderSoft),
+            boxShadow: [
+              BoxShadow(
+                color: AuthColors.ink.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppText.semiBold(
-                      fontSize: 15,
-                      color: const Color(0xFF0F1117),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: AppText.regular(
-                      fontSize: 13,
-                      color: const Color(0xFF9AA3AF),
-                    ),
-                  ),
-                ],
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AuthColors.emeraldTint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: AuthColors.emerald,
+                  size: 20,
+                ),
               ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 13,
-              color: Color(0xFFD1D5DB),
-            ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: AppText.semiBold(
+                        fontSize: 14,
+                        color: AuthColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.description,
+                      style: AppText.regular(
+                        fontSize: 12,
+                        color: AuthColors.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: AuthColors.inkSoft,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -12,114 +13,118 @@ class AppealDetailSheet extends StatelessWidget {
     required this.words,
   });
 
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _gradient = LinearGradient(colors: [_green, _red]);
-
   @override
   Widget build(BuildContext context) {
-    final String subject = (appeal['subject'] ?? words.appealsNoSubject)
-        .toString();
+    final String subject =
+        (appeal['subject'] ?? words.appealsNoSubject).toString();
     final String body = (appeal['body'] ?? '').toString();
     final String reply = (appeal['reply'] ?? '').toString();
     final String status = (appeal['status'] ?? 'open').toString();
     final String date = _formatDate(appeal['date_created']);
     final bool hasReply = reply.isNotEmpty;
+    final cfg = _statusCfg(status);
 
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        color: AuthColors.bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-        24,
+        20,
         12,
-        24,
-        MediaQuery.of(context).padding.bottom + 24,
+        20,
+        MediaQuery.of(context).padding.bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Handle ────────────────────────────────────────────────
+            // ── Handle ──────────────────────────────────────────────────
             Center(
               child: Container(
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF0F3),
+                  color: AuthColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
-            // ── Тема + статус ─────────────────────────────────────────
+            // ── Subject + status ─────────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text(
                     subject,
-                    style: AppText.bold(
-                      fontSize: 17,
-                      color: const Color(0xFF0F1117),
-                    ),
+                    style: AppText.serif(fontSize: 18, letterSpacing: -0.2),
                   ),
                 ),
                 const SizedBox(width: 10),
-                _StatusBadge(status: status, words: words),
+                _StatusBadge(cfg: cfg),
               ],
             ),
             const SizedBox(height: 4),
-            Text(date, style: AppText.regular(fontSize: 12, color: _grey)),
-            const SizedBox(height: 16),
-
-            // ── Разделитель ───────────────────────────────────────────
-            Container(
-              height: 2,
-              decoration: BoxDecoration(
-                gradient: _gradient,
-                borderRadius: BorderRadius.circular(1),
-              ),
+            Row(
+              children: [
+                const Icon(
+                  Icons.access_time_rounded,
+                  size: 11,
+                  color: AuthColors.inkSoft,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  date,
+                  style: AppText.regular(
+                    fontSize: 12,
+                    color: AuthColors.inkSoft,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
-            // ── Запрос ────────────────────────────────────────────────
+            // ── Divider ──────────────────────────────────────────────────
+            Container(height: 0.5, color: AuthColors.border),
+            const SizedBox(height: 16),
+
+            // ── Your request ─────────────────────────────────────────────
             _SectionLabel(text: words.appealsYourRequest),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F7FA),
+                color: AuthColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFEEF0F3)),
+                border: Border.all(color: AuthColors.border),
               ),
               child: Text(
                 body,
                 style: AppText.regular(
                   fontSize: 14,
-                  color: const Color(0xFF0F1117),
+                  color: AuthColors.ink,
                 ).copyWith(height: 1.5),
               ),
             ),
 
-            // ── Ответ / ожидание ──────────────────────────────────────
+            // ── Reply / waiting ──────────────────────────────────────────
             if (hasReply) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               _SectionLabel(text: words.appealsSupportReply),
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: _green.withValues(alpha: 0.06),
+                  color: AuthColors.emeraldTint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _green.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AuthColors.emerald.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,8 +133,8 @@ class AppealDetailSheet extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        gradient: _gradient,
-                        borderRadius: BorderRadius.circular(8),
+                        color: AuthColors.emerald,
+                        borderRadius: BorderRadius.circular(9),
                       ),
                       child: const Icon(
                         Icons.support_agent_rounded,
@@ -143,7 +148,7 @@ class AppealDetailSheet extends StatelessWidget {
                         reply,
                         style: AppText.regular(
                           fontSize: 14,
-                          color: const Color(0xFF0F1117),
+                          color: AuthColors.ink,
                         ).copyWith(height: 1.5),
                       ),
                     ),
@@ -151,33 +156,33 @@ class AppealDetailSheet extends StatelessWidget {
                 ),
               ),
             ] else ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
+                  horizontal: 14,
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8EE),
+                  color: AuthColors.amberTint,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFE67E22).withValues(alpha: 0.2),
+                    color: AuthColors.amber.withValues(alpha: 0.25),
                   ),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.access_time_rounded,
-                      color: Color(0xFFE67E22),
-                      size: 16,
+                      color: AuthColors.amber,
+                      size: 15,
                     ),
                     const SizedBox(width: 10),
                     Text(
                       words.appealsWaitingReply,
                       style: AppText.medium(
                         fontSize: 13,
-                        color: const Color(0xFFE67E22),
+                        color: AuthColors.amber,
                       ),
                     ),
                   ],
@@ -185,24 +190,11 @@ class AppealDetailSheet extends StatelessWidget {
               ),
             ],
 
-            // ── Кнопка закрыть ────────────────────────────────────────
-            const SizedBox(height: 20),
-            GestureDetector(
+            // ── Close button ─────────────────────────────────────────────
+            const SizedBox(height: 18),
+            _CloseButton(
+              label: words.notifClose,
               onTap: () => Navigator.pop(context),
-              child: Container(
-                width: double.infinity,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FA),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFEEF0F3)),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  words.notifClose,
-                  style: AppText.medium(fontSize: 14, color: _grey),
-                ),
-              ),
             ),
           ],
         ),
@@ -214,15 +206,67 @@ class AppealDetailSheet extends StatelessWidget {
     if (raw == null) return '';
     try {
       final dt = DateTime.parse(raw.toString()).toLocal();
-      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} '
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return '${dt.day.toString().padLeft(2, '0')}.'
+          '${dt.month.toString().padLeft(2, '0')}.'
+          '${dt.year}  '
+          '${dt.hour.toString().padLeft(2, '0')}:'
+          '${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';
     }
   }
+
+  _StatusCfg _statusCfg(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return _StatusCfg(
+          accent: AuthColors.amber,
+          bg: AuthColors.amberTint,
+          text: AuthColors.amber,
+          label: words.appealsStatusOpen,
+        );
+      case 'in_progress':
+        return _StatusCfg(
+          accent: AuthColors.amber,
+          bg: AuthColors.amberTint,
+          text: AuthColors.amber,
+          label: words.appealsStatusProgress,
+        );
+      case 'resolved':
+      case 'closed':
+        return _StatusCfg(
+          accent: AuthColors.emerald,
+          bg: AuthColors.emeraldTint,
+          text: AuthColors.emerald,
+          label: words.appealsStatusClosed,
+        );
+      default:
+        return _StatusCfg(
+          accent: AuthColors.inkSoft,
+          bg: AuthColors.borderSoft,
+          text: AuthColors.inkSoft,
+          label: status,
+        );
+    }
+  }
 }
 
-// ── Вспомогательные виджеты ───────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+class _StatusCfg {
+  final Color accent;
+  final Color bg;
+  final Color text;
+  final String label;
+  const _StatusCfg({
+    required this.accent,
+    required this.bg,
+    required this.text,
+    required this.label,
+  });
+}
+
+// ── Widgets ───────────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   final String text;
@@ -230,61 +274,106 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        color: Color(0xFF9AA3AF),
-        letterSpacing: 0.8,
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 10,
+          decoration: BoxDecoration(
+            color: AuthColors.emerald,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          text,
+          style: AppText.semiBold(
+            fontSize: 10,
+            color: AuthColors.inkSoft,
+          ).copyWith(letterSpacing: 0.8),
+        ),
+      ],
     );
   }
 }
 
 class _StatusBadge extends StatelessWidget {
-  final String status;
-  final AppLocalizations words;
-  const _StatusBadge({required this.status, required this.words});
-
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
+  final _StatusCfg cfg;
+  const _StatusBadge({required this.cfg});
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    String label;
-    switch (status.toLowerCase()) {
-      case 'open':
-        color = _red;
-        label = words.appealsStatusOpen;
-        break;
-      case 'in_progress':
-        color = const Color(0xFFE67E22);
-        label = words.appealsStatusProgress;
-        break;
-      case 'resolved':
-      case 'closed':
-        color = _green;
-        label = words.appealsStatusClosed;
-        break;
-      default:
-        color = _grey;
-        label = status;
-    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: cfg.bg,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cfg.accent.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: color,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: cfg.accent,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            cfg.label,
+            style: AppText.semiBold(fontSize: 11, color: cfg.text),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CloseButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CloseButton({required this.label, required this.onTap});
+
+  @override
+  State<_CloseButton> createState() => _CloseButtonState();
+}
+
+class _CloseButtonState extends State<_CloseButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          width: double.infinity,
+          height: 50,
+          decoration: BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: AuthColors.border),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: AppText.medium(
+              fontSize: 14,
+              color: AuthColors.inkMuted,
+            ),
+          ),
         ),
       ),
     );

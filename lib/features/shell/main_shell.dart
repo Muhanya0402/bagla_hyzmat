@@ -1,10 +1,15 @@
+import 'dart:ui';
 import 'package:bagla/features/appeals/appeals_screen.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/home/home_screen.dart';
+import 'package:bagla/features/home/widgets/home_create_button.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
+import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -13,9 +18,6 @@ class MainShell extends StatefulWidget {
   final int initialIndex;
 
   const MainShell({super.key, this.initialIndex = 0});
-
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
 
   static void switchTab(BuildContext context, int index) {
     final state = context.findAncestorStateOfType<_MainShellState>();
@@ -41,8 +43,11 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 
   int _unreadCount = 0;
 
-  // ── Overlay entry для навбара ──────────────────────────────────────────────
-  OverlayEntry? _navOverlayEntry;
+  Offset? _fabOffset;
+  bool _isFabDragging = false;
+
+  static const double _fabW = 162.0;
+  static const double _fabH = 52.0;
 
   bool get _navVisible => _stackDepths[_currentIndex] == 1;
 
@@ -58,57 +63,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             setState(() => _stackDepths[i] = depth);
-            // Перестроить overlay при изменении видимости
-            _navOverlayEntry?.markNeedsBuild();
           });
         },
       );
     });
 
-    // Вставляем навбар в корневой Overlay после первого кадра.
-    // Корневой Overlay находится выше всех Navigator'ов,
-    // но showModalBottomSheet по умолчанию открывается через корневой Navigator —
-    // его модалки рендерятся ПОВЕРХ Overlay.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _insertNavOverlay();
-      _loadUnreadCount();
-    });
-  }
-
-  void _insertNavOverlay() {
-    _navOverlayEntry = OverlayEntry(
-      builder: (ctx) {
-        final bottomPadding = MediaQuery.of(ctx).padding.bottom;
-        final bottomOffset = bottomPadding > 0 ? bottomPadding + 4.0 : 20.0;
-
-        return AnimatedPositioned(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeInOut,
-          left: 36,
-          right: 36,
-          bottom: _navVisible ? bottomOffset : -100,
-          child: AnimatedOpacity(
-            opacity: _navVisible ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 220),
-            child: _FloatingPillNavInline(
-              currentIndex: _currentIndex,
-              unreadCount: _unreadCount,
-              onTap: _onTabTapped,
-            ),
-          ),
-        );
-      },
-    );
-
-    // Вставляем в корневой Overlay (самый верхний в дереве)
-    Overlay.of(context, rootOverlay: true).insert(_navOverlayEntry!);
-  }
-
-  @override
-  void dispose() {
-    _navOverlayEntry?.remove();
-    _navOverlayEntry?.dispose();
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadUnreadCount());
   }
 
   Future<void> _loadUnreadCount() async {
@@ -123,14 +83,11 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       return;
     }
     setState(() => _currentIndex = index);
-    _navOverlayEntry?.markNeedsBuild();
 
-    // Обновляем уведомления через Navigator
     if (index == 1) {
-      final context = _navigatorKeys[1].currentContext;
-      if (context != null) {
-        final state = context
-            .findAncestorStateOfType<NotificationsScreenState>();
+      final ctx = _navigatorKeys[1].currentContext;
+      if (ctx != null) {
+        final state = ctx.findAncestorStateOfType<NotificationsScreenState>();
         state?.refresh();
       }
     }
@@ -138,6 +95,26 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     if (index == 1 && _unreadCount > 0) {
       setState(() => _unreadCount = 0);
     }
+  }
+
+  void _onFabPanUpdate(DragUpdateDetails d, Size screen, double minY, double maxY) {
+    setState(() {
+      _isFabDragging = true;
+      final dx = (_fabOffset!.dx + d.delta.dx).clamp(0.0, screen.width - _fabW);
+      final dy = (_fabOffset!.dy + d.delta.dy).clamp(minY, maxY);
+      _fabOffset = Offset(dx, dy);
+    });
+  }
+
+  void _onFabPanEnd(DragEndDetails _, Size screen, double minY, double maxY) {
+    final snappedX = _fabOffset!.dx + _fabW / 2 < screen.width / 2
+        ? 20.0
+        : screen.width - _fabW - 20.0;
+    final clampedY = _fabOffset!.dy.clamp(minY, maxY);
+    setState(() {
+      _isFabDragging = false;
+      _fabOffset = Offset(snappedX, clampedY);
+    });
   }
 
   Future<bool> _onWillPop() async {
@@ -148,7 +125,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     }
     if (_currentIndex != 0) {
       setState(() => _currentIndex = 0);
-      _navOverlayEntry?.markNeedsBuild();
       return false;
     }
     return true;
@@ -156,7 +132,32 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<AuthProvider>();
+    final auth = context.watch<AuthProvider>();
+
+    final mq = MediaQuery.of(context);
+    final bottomPadding = mq.padding.bottom;
+    final bottomOffset = bottomPadding > 0 ? bottomPadding + 4.0 : 20.0;
+    final screenSize = mq.size;
+
+    // Bounds: below AppBar + HomeStatusFilter → just above floating nav (66px tall)
+    final fabMinY = mq.padding.top + kToolbarHeight + 54.0;
+    final fabMaxY = screenSize.height - _fabH - 66.0 - bottomOffset - 8.0;
+
+    // Lazy-init FAB position: bottom-right, just above the floating nav
+    _fabOffset ??= Offset(
+      screenSize.width - _fabW - 20.0,
+      fabMaxY,
+    );
+
+    // isCurrent becomes false when any root-navigator dialog/sheet is shown
+    // on top of MainShell (e.g. support modal, logout dialog, role picker).
+    final isTopRoute = ModalRoute.of(context)?.isCurrent ?? true;
+    final showNav = _navVisible && isTopRoute;
+
+    final role = auth.role.toLowerCase().trim();
+    final isShop = role == 'shop' || role == 'business';
+    final isActive = auth.status.toLowerCase().trim() == 'active';
+    final showFab = showNav && _currentIndex == 0 && isShop && isActive;
 
     return PopScope(
       canPop: false,
@@ -165,14 +166,51 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         final shouldPop = await _onWillPop();
         if (shouldPop && context.mounted) Navigator.of(context).pop();
       },
-      // Scaffold без навбара в body — он живёт в корневом Overlay
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F7FA),
+        backgroundColor: AuthColors.bg,
         body: Stack(
           children: [
             _buildTab(0, const HomeScreen()),
             _buildTab(1, const NotificationsScreen()),
             _buildTab(2, const ProfileScreen()),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              left: 32,
+              right: 32,
+              bottom: showNav ? bottomOffset : -100,
+              child: IgnorePointer(
+                ignoring: !showNav,
+                child: AnimatedOpacity(
+                  opacity: showNav ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 220),
+                  child: _FloatingNav(
+                    currentIndex: _currentIndex,
+                    unreadCount: _unreadCount,
+                    onTap: _onTabTapped,
+                  ),
+                ),
+              ),
+            ),
+            if (showFab)
+              Positioned(
+                left: _fabOffset!.dx,
+                top: _fabOffset!.dy,
+                child: GestureDetector(
+                  onPanStart: (_) => setState(() => _isFabDragging = true),
+                  onPanUpdate: (d) => _onFabPanUpdate(d, screenSize, fabMinY, fabMaxY),
+                  onPanEnd: (d) => _onFabPanEnd(d, screenSize, fabMinY, fabMaxY),
+                  onTap: () => _navigatorKeys[0].currentState?.push(
+                    MaterialPageRoute(
+                      builder: (_) => const CreateOrderScreen(),
+                    ),
+                  ),
+                  child: HomeCreateFab(
+                    label: context.read<LanguageProvider>().words.createOrder,
+                    isDragging: _isFabDragging,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -218,7 +256,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Observer
+// Navigator depth observer (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 class _DepthObserver extends NavigatorObserver {
   final void Function(int depth) onDepthChanged;
@@ -241,102 +279,99 @@ class _DepthObserver extends NavigatorObserver {
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     if (!_initialPushDone) {
       _initialPushDone = true;
-      return; // первый push — корневой экран таба, не считаем
+      return;
     }
     _push();
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    _pop();
-  }
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _pop();
 
   @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    _pop();
-  }
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => _pop();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Floating Pill Nav
+// Floating nav — Anthropic warm-paper glassmorphism pill
 // ─────────────────────────────────────────────────────────────────────────────
-class _FloatingPillNavInline extends StatelessWidget {
+class _FloatingNav extends StatelessWidget {
   final int currentIndex;
   final int unreadCount;
   final ValueChanged<int> onTap;
 
-  const _FloatingPillNavInline({
+  const _FloatingNav({
     required this.currentIndex,
     required this.unreadCount,
     required this.onTap,
   });
 
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [_green, _red],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Container(
+          height: 66,
+          decoration: BoxDecoration(
+            color: AuthColors.surface.withValues(alpha: 0.97),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AuthColors.border, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: AuthColors.ink.withValues(alpha: 0.09),
+                blurRadius: 28,
+                spreadRadius: -2,
+                offset: const Offset(0, 10),
+              ),
+              BoxShadow(
+                color: AuthColors.ink.withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                isActive: currentIndex == 0,
+                onTap: () => onTap(0),
+              ),
+              _NavItem(
+                icon: Icons.notifications_outlined,
+                activeIcon: Icons.notifications_rounded,
+                isActive: currentIndex == 1,
+                badge: unreadCount,
+                onTap: () => onTap(1),
+              ),
+              _NavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                isActive: currentIndex == 2,
+                onTap: () => onTap(2),
+              ),
+            ],
+          ),
         ),
-        borderRadius: BorderRadius.circular(36),
-        boxShadow: [
-          BoxShadow(
-            color: _green.withValues(alpha: 0.30),
-            blurRadius: 20,
-            offset: const Offset(-4, 8),
-          ),
-          BoxShadow(
-            color: _red.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(4, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _AnimatedPillItem(
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home_rounded,
-            isActive: currentIndex == 0,
-            onTap: () => onTap(0),
-          ),
-          _AnimatedPillItem(
-            icon: Icons.notifications_outlined,
-            activeIcon: Icons.notifications_rounded,
-            isActive: currentIndex == 1,
-            badge: unreadCount,
-            onTap: () => onTap(1),
-          ),
-          _AnimatedPillItem(
-            icon: Icons.person_outline_rounded,
-            activeIcon: Icons.person_rounded,
-            isActive: currentIndex == 2,
-            onTap: () => onTap(2),
-          ),
-        ],
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Анимированная иконка
+// Single nav item — soft emerald tint pill + animated press scale
 // ─────────────────────────────────────────────────────────────────────────────
-class _AnimatedPillItem extends StatefulWidget {
+class _NavItem extends StatefulWidget {
   final IconData icon;
   final IconData activeIcon;
   final bool isActive;
   final int badge;
   final VoidCallback onTap;
 
-  const _AnimatedPillItem({
+  const _NavItem({
     required this.icon,
     required this.activeIcon,
     required this.isActive,
@@ -345,135 +380,91 @@ class _AnimatedPillItem extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedPillItem> createState() => _AnimatedPillItemState();
+  State<_NavItem> createState() => _NavItemState();
 }
 
-class _AnimatedPillItemState extends State<_AnimatedPillItem>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  late final Animation<double> _offsetY;
+class _NavItemState extends State<_NavItem> {
+  bool _pressed = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 420),
-    );
-    _scale = TweenSequence([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.0,
-          end: 1.26,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 35,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.26,
-          end: 0.92,
-        ).chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 30,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 0.92,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.elasticOut)),
-        weight: 35,
-      ),
-    ]).animate(_ctrl);
-
-    _offsetY = TweenSequence([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 0.0,
-          end: -7.0,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 35,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: -7.0,
-          end: 2.0,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 35,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 2.0,
-          end: 0.0,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 30,
-      ),
-    ]).animate(_ctrl);
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedPillItem old) {
-    super.didUpdateWidget(old);
-    if (widget.isActive && !old.isActive) _ctrl.forward(from: 0);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  static const _emerald = Color(0xFF2D5A27);
+  static const _emeraldTint = Color(0xFFE9EFE5);
+  static const _inkSoft = Color(0xFF9A958D);
+  static const _errorMuted = Color(0xFFC85A53);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
       child: SizedBox(
-        width: 72,
-        height: 64,
+        width: 64,
+        height: 66,
         child: Center(
-          child: AnimatedBuilder(
-            animation: _ctrl,
-            builder: (_, child) => Transform.translate(
-              offset: Offset(0, _offsetY.value),
-              child: Transform.scale(scale: _scale.value, child: child),
-            ),
+          child: AnimatedScale(
+            scale: _pressed ? 0.92 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
+                // ── Background tint pill ──────────────────────────────
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  width: widget.isActive ? 44 : 0,
-                  height: widget.isActive ? 36 : 0,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  width: 46,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: widget.isActive ? _emeraldTint : Colors.transparent,
+                    borderRadius: BorderRadius.circular(13),
                   ),
                 ),
-                Icon(
-                  widget.isActive ? widget.activeIcon : widget.icon,
-                  size: 24,
-                  color: widget.isActive
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.45),
-                ),
-                if (widget.isActive)
-                  Positioned(
-                    bottom: 4,
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
+
+                // ── Icon ─────────────────────────────────────────────
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(
+                      scale: Tween(begin: 0.8, end: 1.0).animate(anim),
+                      child: child,
                     ),
                   ),
+                  child: Icon(
+                    widget.isActive ? widget.activeIcon : widget.icon,
+                    key: ValueKey(widget.isActive),
+                    size: 22,
+                    color: widget.isActive ? _emerald : _inkSoft,
+                  ),
+                ),
+
+                // ── Bottom line indicator ─────────────────────────────
+                Positioned(
+                  bottom: 7,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    width: widget.isActive ? 16.0 : 0.0,
+                    height: 2,
+                    decoration: BoxDecoration(
+                      color: _emerald,
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ),
+
+                // ── Badge ─────────────────────────────────────────────
                 if (widget.badge > 0)
                   Positioned(
-                    top: 6,
-                    right: 8,
+                    top: 8,
+                    right: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 4,
@@ -481,16 +472,16 @@ class _AnimatedPillItemState extends State<_AnimatedPillItem>
                       ),
                       constraints: const BoxConstraints(minWidth: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: _errorMuted,
                         borderRadius: BorderRadius.circular(7),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         widget.badge > 99 ? '99+' : '${widget.badge}',
                         style: const TextStyle(
-                          color: Color(0xFFD32F1E),
+                          color: Colors.white,
                           fontSize: 8,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           fontFamily: 'Nunito',
                         ),
                       ),

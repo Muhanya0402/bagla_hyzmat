@@ -1,41 +1,17 @@
+import 'dart:ui';
 import 'package:bagla/core/app_settings_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/levels/level_card_widget.dart';
-import 'package:bagla/features/profile/lang_toggle.dart';
-import 'package:bagla/features/profile/top_up_modal.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/levels/level_provider.dart';
+import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../l10n/language_provider.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Brand
-// ─────────────────────────────────────────────────────────────────────────────
-const _kGreen = Color(0xFF1A7A3C);
-const _kRed = Color(0xFFD32F1E);
-const _kGrey = Color(0xFF9AA3AF);
-const _kSurface = Color(0xFFF5F7FA);
-const _kBorder = Color(0xFFEEF0F3);
-const _kGradient = LinearGradient(
-  colors: [_kGreen, _kRed],
-  begin: Alignment.centerLeft,
-  end: Alignment.centerRight,
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfileScreen
-// ─────────────────────────────────────────────────────────────────────────────
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  static const Color brandGreen = _kGreen;
-  static const Color brandRed = _kRed;
-  static const Color surfaceColor = _kSurface;
-  static const LinearGradient brandGradient = _kGradient;
 
   @override
   Widget build(BuildContext context) {
@@ -55,10 +31,11 @@ class ProfileScreen extends StatelessWidget {
         isClient && auth.status.toLowerCase() == 'published';
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(context),
+      backgroundColor: AuthColors.bg,
+      appBar: _buildAppBar(context, lang),
       body: RefreshIndicator(
-        color: _kGreen,
+        color: AuthColors.emerald,
+        backgroundColor: Colors.white,
         onRefresh: () => Future.wait([
           auth.refreshProfile(),
           context.read<AppSettingsProvider>().load(),
@@ -66,27 +43,23 @@ class ProfileScreen extends StatelessWidget {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ── Header (аватар с badge + имя + роль) ──────────────────────
+            // ── Top card: avatar + name + level (courier) ──────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                child: _ProfileHeader(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: _ProfileTopCard(
+                  auth: auth,
                   fullName: fullName,
-                  phone: auth.phone,
-                  role: auth.role,
-                  status: auth.status,
+                  isCourier: isCourier,
                 ),
               ),
             ),
 
-            // ── Level card (только курьер) ─────────────────────────────────
-            if (isCourier) const SliverToBoxAdapter(child: LevelCardWidget()),
-
-            // ── Баннер выбора роли ─────────────────────────────────────────
+            // ── Role selection prompt ───────────────────────────────────────
             if (needsRoleSelection)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: _RoleSelectionCard(
                     onTap: () =>
                         Navigator.pushNamed(context, '/user_type_selection'),
@@ -94,11 +67,11 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
 
-            // ── Жетоны (только курьер) ─────────────────────────────────────
+            // ── Tokens card (courier) ───────────────────────────────────────
             if (isCourier)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: _PointsCard(
                     balance: auth.balancePoints.toDouble(),
                     onTopUp: () => _openTopUp(context, auth),
@@ -106,27 +79,28 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
 
-            // ── Меню + footer ──────────────────────────────────────────────
+            // ── Menu ───────────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Column(
-                  children: [
-                    _buildMenu(
-                      context: context,
-                      words: words,
-                      auth: auth,
-                      isCourier: isCourier,
-                      isShop: isShop,
-                      supportPhone: settings.supportPhone,
-                    ),
-                    const SizedBox(height: 10),
-                    _FooterSection(
-                      companyName: settings.companyName,
-                      appVersion: settings.appVersion,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: _buildMenu(
+                  context: context,
+                  words: words,
+                  auth: auth,
+                  isCourier: isCourier,
+                  isShop: isShop,
+                  supportPhone: settings.supportPhone,
+                ),
+              ),
+            ),
+
+            // ── Footer ─────────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 36),
+                child: _FooterSection(
+                  companyName: settings.companyName,
+                  appVersion: settings.appVersion,
                 ),
               ),
             ),
@@ -136,42 +110,51 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ── AppBar ─────────────────────────────────────────────────────────────────
-
-  AppBar _buildAppBar(BuildContext context) => AppBar(
-    backgroundColor: Colors.white,
+  // ── AppBar ──────────────────────────────────────────────────────────────────
+  AppBar _buildAppBar(BuildContext context, LanguageProvider lang) => AppBar(
+    backgroundColor: AuthColors.bg,
     elevation: 0,
     centerTitle: false,
     automaticallyImplyLeading: false,
     title: Text(
       'Профиль',
-      style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
+      style: AppText.serif(fontSize: 18, color: AuthColors.ink),
     ),
     actions: [
-      const LangToggle(),
+      GestureDetector(
+        onTap: lang.toggleLanguage,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: AuthColors.bg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AuthColors.border),
+          ),
+          child: Text(
+            lang.label,
+            style: AppText.semiBold(fontSize: 12, color: AuthColors.inkMuted),
+          ),
+        ),
+      ),
       const SizedBox(width: 8),
       GestureDetector(
         onTap: () => _showLogoutConfirm(context),
-        child: Container(
-          margin: const EdgeInsets.only(right: 16),
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: _kRed.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 16, left: 4),
+          child: Text(
+            'Выйти',
+            style: AppText.medium(fontSize: 13, color: AuthColors.errorMuted),
           ),
-          child: const Icon(Icons.logout_rounded, color: _kRed, size: 18),
         ),
       ),
     ],
     bottom: PreferredSize(
       preferredSize: const Size.fromHeight(0.5),
-      child: Container(height: 0.5, color: _kBorder),
+      child: Container(height: 0.5, color: AuthColors.border),
     ),
   );
 
-  // ── Menu ───────────────────────────────────────────────────────────────────
-
+  // ── Menu ────────────────────────────────────────────────────────────────────
   Widget _buildMenu({
     required BuildContext context,
     required dynamic words,
@@ -180,170 +163,169 @@ class ProfileScreen extends StatelessWidget {
     required bool isShop,
     required String supportPhone,
   }) {
+    final items = <Widget>[];
+
+    items.add(_MenuTile(
+      icon: Icons.inbox_outlined,
+      title: words.feedbacks,
+      onTap: () => Navigator.pushNamed(context, '/appeals'),
+    ));
+
+    if (isShop || (isCourier && auth.status != 'published')) {
+      items.add(const Divider(
+        height: 1,
+        thickness: 0.8,
+        indent: 52,
+        color: AuthColors.borderSoft,
+      ));
+      items.add(_MenuTile(
+        icon: Icons.description_outlined,
+        title: words.termsOfUse,
+        onTap: () => Navigator.pushNamed(context, '/terms'),
+      ));
+    }
+
+    items.add(const Divider(
+      height: 1,
+      thickness: 0.8,
+      indent: 52,
+      color: AuthColors.borderSoft,
+    ));
+    items.add(_MenuTile(
+      icon: Icons.headset_mic_outlined,
+      title: 'Связаться с поддержкой',
+      onTap: () => _showSupportModal(context, supportPhone),
+    ));
+
     return Container(
       decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kBorder),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AuthColors.border),
       ),
-      child: Column(
-        children: [
-          _MenuTile(
-            icon: Icons.inbox_rounded,
-            iconColor: _kGreen,
-            title: words.feedbacks,
-            onTap: () => Navigator.pushNamed(context, '/appeals'),
-          ),
-          const Divider(height: 1, indent: 56, color: _kBorder),
-          if (isShop || (isCourier && auth.status != 'published'))
-            _MenuTile(
-              icon: Icons.description_rounded,
-              iconColor: const Color(0xFF2CA5E0),
-              title: words.termsOfUse,
-              onTap: () => Navigator.pushNamed(context, '/terms'),
-            ),
-          const Divider(height: 1, indent: 56, color: _kBorder),
-          _MenuTile(
-            icon: Icons.support_agent_rounded,
-            iconColor: const Color(0xFFE67E22),
-            title: 'Связаться с поддержкой',
-            onTap: () => _showSupportModal(context, supportPhone),
-          ),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Column(children: items),
       ),
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   void _openTopUp(BuildContext context, AuthProvider auth) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) =>
           TopUpModal(userId: auth.userId, role: auth.role, status: auth.status),
     ).then((_) => auth.refreshProfile());
   }
 
   void _showLogoutConfirm(BuildContext context) {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  gradient: _kGradient,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text('Выход', style: AppText.bold(fontSize: 17)),
-              const SizedBox(height: 8),
-              Text(
-                'Вы действительно хотите выйти из аккаунта?',
-                style: AppText.regular(
-                  fontSize: 14,
-                  color: _kGrey,
-                ).copyWith(height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: _kBorder),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Отмена',
-                          style: AppText.medium(color: _kGrey),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _handleLogout(context);
-                      },
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: _kRed,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Выйти',
-                          style: AppText.medium(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (_, _, _) => Stack(
+        children: [
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Container(color: Colors.black.withValues(alpha: 0.18)),
           ),
+          Center(
+            child: _LogoutDialog(
+              onConfirm: () => _handleLogout(context),
+            ),
+          ),
+        ],
+      ),
+      transitionBuilder: (_, anim, _, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+          ),
+          child: child,
         ),
       ),
     );
   }
 
   Future<void> _handleLogout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (!context.mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+    // Capture navigator ref BEFORE the async gap — context may be deactivated
+    // after logout() calls notifyListeners() and rebuilds the widget tree.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    await context.read<AuthProvider>().logout();
+    navigator.pushNamedAndRemoveUntil('/login', (r) => false);
   }
 
   void _showSupportModal(BuildContext context, String phone) {
-    showModalBottomSheet(
+    showGeneralDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _SupportModal(phone: phone),
+      useRootNavigator: true,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 350),
+      pageBuilder: (_, _, _) => Stack(
+        children: [
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Container(color: Colors.black.withValues(alpha: 0.25)),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: _SupportModal(phone: phone),
+          ),
+        ],
+      ),
+      transitionBuilder: (_, anim, _, child) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
     );
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// _ProfileHeader — аватар с badge поверх + имя + роль
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _ProfileHeader extends StatelessWidget {
+// ── Top card: profile + level progress ────────────────────────────────────────
+class _ProfileTopCard extends StatefulWidget {
+  final AuthProvider auth;
   final String fullName;
-  final String phone;
-  final String role;
-  final String status;
+  final bool isCourier;
 
-  const _ProfileHeader({
+  const _ProfileTopCard({
+    required this.auth,
     required this.fullName,
-    required this.phone,
-    required this.role,
-    required this.status,
+    required this.isCourier,
   });
 
+  @override
+  State<_ProfileTopCard> createState() => _ProfileTopCardState();
+}
+
+class _ProfileTopCardState extends State<_ProfileTopCard> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isCourier && widget.auth.userId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final lp = context.read<LevelProvider>();
+        if (!lp.isLoading && lp.currentLevel == null) {
+          lp.loadForUser(widget.auth.userId);
+        }
+      });
+    }
+  }
+
   String get _roleLabel {
-    switch (role.toLowerCase()) {
+    switch (widget.auth.role.toLowerCase()) {
       case 'courier':
         return 'Курьер';
       case 'shop':
@@ -356,185 +338,298 @@ class _ProfileHeader extends StatelessWidget {
     }
   }
 
+  _StatusCfg _cfg(String s) {
+    switch (s.toLowerCase()) {
+      case 'active':
+        return _StatusCfg(
+          color: AuthColors.emerald,
+          bg: AuthColors.emeraldTint,
+          label: 'Активен',
+        );
+      case 'pending':
+        return _StatusCfg(
+          color: AuthColors.amber,
+          bg: AuthColors.amberTint,
+          label: 'Проверка',
+        );
+      case 'banned':
+        return _StatusCfg(
+          color: AuthColors.errorMuted,
+          bg: AuthColors.errorTint,
+          label: 'Блок',
+        );
+      case 'published':
+        return _StatusCfg(
+          color: AuthColors.inkMuted,
+          bg: AuthColors.borderSoft,
+          label: 'Новый',
+        );
+      default:
+        return _StatusCfg(
+          color: AuthColors.inkSoft,
+          bg: AuthColors.bg,
+          label: s,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cfg = _badgeCfg(status);
+    final cfg = _cfg(widget.auth.status);
+    final lang = context.watch<LanguageProvider>();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // ── Аватар + статус-badge ──────────────────────────────────────
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Цветное кольцо статуса вокруг аватара
-            Container(
-              width: 66,
-              height: 66,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: cfg.color, width: 2.5),
-              ),
-              padding: const EdgeInsets.all(3),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: _kGradient,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Badge — правый нижний угол
-            Positioned(
-              right: -4,
-              bottom: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: cfg.bg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cfg.color.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AuthColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header row ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar + status badge
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    // Пульсация только для active
-                    status.toLowerCase() == 'active'
-                        ? _PulseDot(color: cfg.color)
-                        : Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: cfg.color,
-                              shape: BoxShape.circle,
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: cfg.color, width: 2),
+                      ),
+                      padding: const EdgeInsets.all(3),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: AuthColors.emerald,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            widget.fullName.isNotEmpty
+                                ? widget.fullName[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Nunito',
                             ),
                           ),
-                    const SizedBox(width: 4),
-                    Text(
-                      cfg.label,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: cfg.color,
-                        height: 1,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cfg.bg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            widget.auth.status.toLowerCase() == 'active'
+                                ? _PulseDot(color: cfg.color)
+                                : Container(
+                                    width: 4,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: cfg.color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                            const SizedBox(width: 3),
+                            Text(
+                              cfg.label,
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                color: cfg.color,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
 
-        const SizedBox(width: 16),
+                const SizedBox(width: 14),
 
-        // ── Имя + телефон ──────────────────────────────────────────────
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                fullName,
-                style: AppText.extraBold(
-                  fontSize: 20,
-                  color: const Color(0xFF0F1117),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.phone_outlined, size: 12, color: _kGrey),
-                  const SizedBox(width: 4),
-                  Text(
-                    phone.isNotEmpty ? phone : '+993 ...',
-                    style: AppText.regular(fontSize: 13, color: _kGrey),
+                // Name + role + phone
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.fullName,
+                              style: AppText.serif(
+                                fontSize: 17,
+                                color: AuthColors.ink,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AuthColors.emeraldTint,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _roleLabel,
+                              style: AppText.semiBold(
+                                fontSize: 10,
+                                color: AuthColors.emerald,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.phone_outlined,
+                            size: 11,
+                            color: AuthColors.inkSoft,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.auth.phone.isNotEmpty
+                                ? widget.auth.phone
+                                : '+993 ...',
+                            style: AppText.regular(
+                              fontSize: 12,
+                              color: AuthColors.inkSoft,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        // ── Роль-бейдж ─────────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            gradient: _kGradient,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            _roleLabel,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+                ),
+              ],
             ),
           ),
-        ),
-      ],
-    );
-  }
 
-  _BadgeCfg _badgeCfg(String s) {
-    switch (s.toLowerCase()) {
-      case 'active':
-        return _BadgeCfg(
-          color: _kGreen,
-          bg: const Color(0xFFEDF7F1),
-          label: 'Активен',
-        );
-      case 'pending':
-        return _BadgeCfg(
-          color: const Color(0xFFE67E22),
-          bg: const Color(0xFFFFF8EE),
-          label: 'Проверка',
-        );
-      case 'banned':
-        return _BadgeCfg(
-          color: _kRed,
-          bg: const Color(0xFFFFEBEB),
-          label: 'Блок',
-        );
-      case 'published':
-        return _BadgeCfg(
-          color: const Color(0xFF2CA5E0),
-          bg: const Color(0xFFE8F6FD),
-          label: 'Новый',
-        );
-      default:
-        return _BadgeCfg(color: _kGrey, bg: _kSurface, label: s);
-    }
+          // ── Level progress (courier) ──────────────────────────────────
+          if (widget.isCourier)
+            Consumer<LevelProvider>(
+              builder: (_, lp, _) {
+                if (lp.isLoading || lp.currentLevel == null) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AuthColors.borderSoft,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  );
+                }
+                final level = lp.currentLevel!;
+                final progress = lp.progressInLevel.clamp(0.0, 1.0);
+                final nextXp = lp.nextLevel?.xpRequired;
+
+                return Column(
+                  children: [
+                    const Divider(
+                      height: 1,
+                      thickness: 0.8,
+                      color: AuthColors.borderSoft,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.emoji_events_outlined,
+                                size: 13,
+                                color: AuthColors.amber,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${level.title(lang.isRu)}  •  Ур. ${level.levelNumber}',
+                                style: AppText.medium(
+                                  fontSize: 12,
+                                  color: AuthColors.inkMuted,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                nextXp != null
+                                    ? '${lp.currentXp} / $nextXp XP'
+                                    : '${lp.currentXp} XP',
+                                style: AppText.semiBold(
+                                  fontSize: 11,
+                                  color: AuthColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 4,
+                              backgroundColor: AuthColors.amberTint,
+                              valueColor: const AlwaysStoppedAnimation(
+                                AuthColors.amber,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
   }
 }
 
-class _BadgeCfg {
+class _StatusCfg {
   final Color color;
   final Color bg;
   final String label;
-  const _BadgeCfg({required this.color, required this.bg, required this.label});
+  const _StatusCfg({
+    required this.color,
+    required this.bg,
+    required this.label,
+  });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _PulseDot — анимированная точка для статуса active
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ── Pulsing dot for active status ─────────────────────────────────────────────
 class _PulseDot extends StatefulWidget {
   final Color color;
   const _PulseDot({required this.color});
@@ -555,10 +650,9 @@ class _PulseDotState extends State<_PulseDot>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.35,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.35, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -571,165 +665,145 @@ class _PulseDotState extends State<_PulseDot>
   Widget build(BuildContext context) => FadeTransition(
     opacity: _anim,
     child: Container(
-      width: 5,
-      height: 5,
+      width: 4,
+      height: 4,
       decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
     ),
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// _PointsCard — карточка жетонов для курьера
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _PointsCard extends StatelessWidget {
+// ── Tokens card ───────────────────────────────────────────────────────────────
+class _PointsCard extends StatefulWidget {
   final double balance;
   final VoidCallback onTopUp;
 
   const _PointsCard({required this.balance, required this.onTopUp});
 
   @override
+  State<_PointsCard> createState() => _PointsCardState();
+}
+
+class _PointsCardState extends State<_PointsCard> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF145E2E),
-            Color(0xFF22944C),
-          ], // Глубокий, дорогой зеленый
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(
-          20,
-        ), // Строгий радиус вместо мультяшного 22
-        boxShadow: [
-          BoxShadow(
-            color: const Color(
-              0xFF145E2E,
-            ).withValues(alpha: 0.3), // Мягкая тень для объема
-            blurRadius: 25,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AuthColors.amberTint,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AuthColors.amber.withValues(alpha: 0.25)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment
-            .center, // Выравнивание элементов по центру строки
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Иконка жетона ───────────────────────────────────────────
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(
-                alpha: 0.12,
-              ), // Эффект тонкого стекла
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Image.asset(
-                'assets/images/point_icon.png',
-                width: 24,
-                height: 24,
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.toll_outlined, // Строгая линейная иконка взамен rounded
-                  color: Colors.white,
-                  size: 24,
+          // Balance row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AuthColors.amber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.toll_rounded,
+                  color: AuthColors.amber,
+                  size: 20,
                 ),
               ),
-            ),
-          ),
-
-          const SizedBox(width: 14),
-
-          // ── Блок Баланса ────────────────────────────────────────────
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Мои жетоны',
-                  style: AppText.medium(
-                    fontSize: 12,
-                    color: Colors.white.withValues(
-                      alpha: 0.65,
-                    ), // Аккуратный неброский цвет
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Мои жетоны',
+                      style: AppText.regular(
+                        fontSize: 11,
+                        color: AuthColors.inkMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      widget.balance.toStringAsFixed(2),
+                      style: AppText.bold(
+                        fontSize: 22,
+                        color: AuthColors.ink,
+                      ).copyWith(letterSpacing: -0.5, height: 1.1),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  balance.toStringAsFixed(2),
-                  style: const TextStyle(
-                    fontSize:
-                        26, // Уменьшили с 30, чтобы цифры выглядели изящнее
-                    fontWeight: FontWeight
-                        .w700, // Чистый Bold вместо перегруженного w900
-                    color: Colors.white,
-                    letterSpacing:
-                        -0.5, // Легкое сближение цифр (стиль финтех-приложений)
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // ── Кнопка «Пополнить» с нативным UX-откликом ────────────────
-          ClipRRect(
-            borderRadius: BorderRadius.circular(
-              8,
-            ), // Ограничиваем ripple-эффект углами кнопки
-            child: Material(
-              color: Colors.white.withValues(
-                alpha: 0.15,
-              ), // Полупрозрачный фон кнопки
-              child: InkWell(
-                onTap: onTopUp,
-                splashColor: Colors.white.withValues(
-                  alpha: 0.15,
-                ), // Мягкая волна при тапе (UX)
-                highlightColor: Colors.white.withValues(alpha: 0.05),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.white.withValues(
-                        alpha: 0.25,
-                      ), // Тонкая luxury рамка
-                      width: 0.8,
+              ),
+              // Top-up button
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => setState(() => _pressed = true),
+                onTapUp: (_) {
+                  setState(() => _pressed = false);
+                  widget.onTopUp();
+                },
+                onTapCancel: () => setState(() => _pressed = false),
+                child: AnimatedScale(
+                  scale: _pressed ? 0.94 : 1.0,
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOut,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AuthColors.emeraldTint,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AuthColors.emerald.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.add_rounded,
+                          size: 14,
+                          color: AuthColors.emerald,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Пополнить',
+                          style: AppText.semiBold(
+                            fontSize: 12,
+                            color: AuthColors.emerald,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons
-                            .add, // Прямой строгий плюс вместо круглого add_rounded
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Пополнить',
-                        style: AppText.medium(
-                          fontSize: 13,
-                          color: Colors.white,
-                        ).copyWith(letterSpacing: 0.2),
-                      ),
-                    ],
-                  ),
                 ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Hint
+          Row(
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 11,
+                color: AuthColors.inkSoft,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                'Жетоны списываются только при взятии заказа',
+                style: AppText.regular(
+                  fontSize: 11,
+                  color: AuthColors.inkSoft,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -737,10 +811,167 @@ class _PointsCard extends StatelessWidget {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// _FooterSection
-// ═════════════════════════════════════════════════════════════════════════════
+// ── Role selection card ───────────────────────────────────────────────────────
+class _RoleSelectionCard extends StatefulWidget {
+  final VoidCallback onTap;
+  const _RoleSelectionCard({required this.onTap});
 
+  @override
+  State<_RoleSelectionCard> createState() => _RoleSelectionCardState();
+}
+
+class _RoleSelectionCardState extends State<_RoleSelectionCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AuthColors.amberTint,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AuthColors.amber.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AuthColors.emerald,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Выберите вашу роль',
+                      style: AppText.semiBold(
+                        fontSize: 13,
+                        color: AuthColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'Станьте курьером или заказчиком',
+                      style: AppText.regular(
+                        fontSize: 11,
+                        color: AuthColors.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: AuthColors.emeraldTint,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 12,
+                  color: AuthColors.emerald,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Menu tile ─────────────────────────────────────────────────────────────────
+class _MenuTile extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  State<_MenuTile> createState() => _MenuTileState();
+}
+
+class _MenuTileState extends State<_MenuTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        color: _pressed
+            ? AuthColors.emeraldTint.withValues(alpha: 0.6)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AuthColors.borderSoft,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(widget.icon, size: 16, color: AuthColors.inkMuted),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.title,
+                style: AppText.medium(fontSize: 14, color: AuthColors.ink),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: AuthColors.inkSoft,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
 class _FooterSection extends StatelessWidget {
   final String companyName;
   final String appVersion;
@@ -750,26 +981,23 @@ class _FooterSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ShaderMask(
-          shaderCallback: (b) => _kGradient.createShader(b),
-          child: Text(
-            companyName.toUpperCase(),
-            style: AppText.extraBold(
-              fontSize: 12,
-              color: Colors.white,
-            ).copyWith(letterSpacing: 1.5),
-          ),
+        Text(
+          companyName.toUpperCase(),
+          style: AppText.semiBold(
+            fontSize: 11,
+            color: AuthColors.inkMuted,
+          ).copyWith(letterSpacing: 1.5),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Text(
           '© 2024–2026. Все права защищены.',
-          style: AppText.regular(fontSize: 11, color: _kGrey),
+          style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
         ),
         if (appVersion.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             'Версия $appVersion',
-            style: AppText.medium(fontSize: 10, color: const Color(0xFFD1D5DB)),
+            style: AppText.regular(fontSize: 10, color: AuthColors.border),
           ),
         ],
       ],
@@ -777,19 +1005,23 @@ class _FooterSection extends StatelessWidget {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// _SupportModal
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _SupportModal extends StatelessWidget {
+// ── Support modal ─────────────────────────────────────────────────────────────
+class _SupportModal extends StatefulWidget {
   final String phone;
   const _SupportModal({required this.phone});
+
+  @override
+  State<_SupportModal> createState() => _SupportModalState();
+}
+
+class _SupportModalState extends State<_SupportModal> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AuthColors.bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: EdgeInsets.fromLTRB(
@@ -801,118 +1033,134 @@ class _SupportModal extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Handle
           Center(
             child: Container(
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: _kBorder,
+                color: AuthColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 24),
+
+          // Icon
           Container(
-            width: 64,
-            height: 64,
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _kGreen.withValues(alpha: 0.12),
-                  _kRed.withValues(alpha: 0.07),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
+              color: AuthColors.emeraldTint,
+              borderRadius: BorderRadius.circular(18),
             ),
             child: const Icon(
-              Icons.support_agent_rounded,
-              color: _kGreen,
-              size: 30,
+              Icons.headset_mic_outlined,
+              color: AuthColors.emerald,
+              size: 26,
             ),
           ),
-          const SizedBox(height: 16),
-          ShaderMask(
-            shaderCallback: (b) => _kGradient.createShader(b),
-            child: Text(
-              'Поддержка',
-              style: AppText.extraBold(fontSize: 20, color: Colors.white),
-            ),
+          const SizedBox(height: 14),
+
+          // Title
+          Text(
+            'Поддержка',
+            style: AppText.serif(fontSize: 20, color: AuthColors.ink),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
             'Мы готовы помочь вам в любое время',
-            style: AppText.regular(fontSize: 13, color: _kGrey),
+            style: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
+
+          // Phone tile
           GestureDetector(
-            onTap: () => _makePhoneCall(phone),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2CA5E0).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF2CA5E0).withValues(alpha: 0.2),
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapUp: (_) {
+              setState(() => _pressed = false);
+              _makePhoneCall(widget.phone);
+            },
+            onTapCancel: () => setState(() => _pressed = false),
+            child: AnimatedScale(
+              scale: _pressed ? 0.97 : 1.0,
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
                 ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2CA5E0).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AuthColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AuthColors.emeraldTint,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.phone_outlined,
+                        color: AuthColors.emerald,
+                        size: 18,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.phone,
-                      color: Color(0xFF2CA5E0),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Телефон',
-                          style: AppText.semiBold(
-                            fontSize: 14,
-                            color: const Color(0xFF0F1117),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Телефон',
+                            style: AppText.semiBold(
+                              fontSize: 14,
+                              color: AuthColors.ink,
+                            ),
                           ),
-                        ),
-                        Text(
-                          phone,
-                          style: AppText.regular(fontSize: 12, color: _kGrey),
-                        ),
-                      ],
+                          Text(
+                            widget.phone,
+                            style: AppText.regular(
+                              fontSize: 12,
+                              color: AuthColors.inkSoft,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 14,
-                    color: Color(0xFF2CA5E0),
-                  ),
-                ],
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 13,
+                      color: AuthColors.inkSoft,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+
+          // Close button
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
               width: double.infinity,
-              height: 50,
+              height: 48,
               decoration: BoxDecoration(
-                color: _kSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _kBorder),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AuthColors.border),
               ),
               alignment: Alignment.center,
               child: Text(
                 'Закрыть',
-                style: AppText.medium(fontSize: 14, color: _kGrey),
+                style: AppText.medium(fontSize: 14, color: AuthColors.inkMuted),
               ),
             ),
           ),
@@ -922,79 +1170,149 @@ class _SupportModal extends StatelessWidget {
   }
 }
 
-Future<void> _makePhoneCall(String phone) async {
-  final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'[^\d+]'), ''));
-  if (await canLaunchUrl(uri)) await launchUrl(uri);
+// ── Logout confirmation dialog ────────────────────────────────────────────────
+class _LogoutDialog extends StatefulWidget {
+  final VoidCallback onConfirm;
+  const _LogoutDialog({required this.onConfirm});
+
+  @override
+  State<_LogoutDialog> createState() => _LogoutDialogState();
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Sub-widgets
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _RoleSelectionCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _RoleSelectionCard({required this.onTap});
+class _LogoutDialogState extends State<_LogoutDialog> {
+  bool _cancelPressed = false;
+  bool _confirmPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return Material(
+      color: Colors.transparent,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 28),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE8F5EE), Color(0xFFFFF0EE)],
-          ),
+          color: AuthColors.bg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _kGreen.withValues(alpha: 0.2)),
+          border: Border.all(color: AuthColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AuthColors.ink.withValues(alpha: 0.1),
+              blurRadius: 40,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Icon
             Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: _kGradient,
-                borderRadius: BorderRadius.circular(12),
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: AuthColors.errorTint,
+                shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.person_add_alt_1_rounded,
-                color: Colors.white,
-                size: 22,
+                Icons.logout_rounded,
+                color: AuthColors.errorMuted,
+                size: 24,
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Выберите вашу роль',
-                    style: AppText.bold(
-                      fontSize: 14,
-                      color: const Color(0xFF0F1117),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              'Выйти из профиля?',
+              style: AppText.serif(fontSize: 19, color: AuthColors.ink),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+
+            // Subtitle
+            Text(
+              'Вы сможете войти снова в любой момент, используя свой номер телефона. Все ваши данные, жетоны и уровень (XP) будут сохранены.',
+              style: AppText.regular(
+                fontSize: 13,
+                color: AuthColors.inkMuted,
+              ).copyWith(height: 1.55),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // Buttons
+            Row(
+              children: [
+                // Cancel
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (_) => setState(() => _cancelPressed = true),
+                    onTapUp: (_) {
+                      setState(() => _cancelPressed = false);
+                      Navigator.pop(context);
+                    },
+                    onTapCancel: () =>
+                        setState(() => _cancelPressed = false),
+                    child: AnimatedScale(
+                      scale: _cancelPressed ? 0.97 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOut,
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AuthColors.borderSoft,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Остаться',
+                          style: AppText.medium(
+                            fontSize: 14,
+                            color: AuthColors.ink,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Станьте курьером или заказчиком',
-                    style: AppText.regular(fontSize: 12, color: _kGrey),
+                ),
+                const SizedBox(width: 10),
+
+                // Confirm
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (_) => setState(() => _confirmPressed = true),
+                    onTapUp: (_) {
+                      setState(() => _confirmPressed = false);
+                      Navigator.pop(context);
+                      widget.onConfirm();
+                    },
+                    onTapCancel: () =>
+                        setState(() => _confirmPressed = false),
+                    child: AnimatedScale(
+                      scale: _confirmPressed ? 0.97 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOut,
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AuthColors.errorMuted,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Выйти',
+                          style: AppText.medium(
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              ),
-            ),
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: _kGreen.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 13,
-                color: _kGreen,
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1003,42 +1321,7 @@ class _RoleSelectionCard extends StatelessWidget {
   }
 }
 
-class _MenuTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final VoidCallback onTap;
-
-  const _MenuTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: iconColor, size: 18),
-      ),
-      title: Text(
-        title,
-        style: AppText.semiBold(fontSize: 14, color: const Color(0xFF0F1117)),
-      ),
-      trailing: const Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 13,
-        color: Color(0xFFD1D5DB),
-      ),
-    );
-  }
+Future<void> _makePhoneCall(String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'[^\d+]'), ''));
+  if (await canLaunchUrl(uri)) await launchUrl(uri);
 }

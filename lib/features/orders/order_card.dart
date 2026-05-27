@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -34,13 +34,12 @@ class OrderCard extends StatelessWidget {
     required BuildContext context,
     required String title,
     required String message,
-    required Color actionColor,
     required Future<void> Function() action,
   }) async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AuthColors.bg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -51,7 +50,7 @@ class OrderCard extends StatelessWidget {
               Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  gradient: HomeColors.gradient,
+                  color: AuthColors.emerald,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -62,7 +61,7 @@ class OrderCard extends StatelessWidget {
                 message,
                 style: AppText.regular(
                   fontSize: 14,
-                  color: const Color(0xFF9AA3AF),
+                  color: AuthColors.inkSoft,
                 ).copyWith(height: 1.5),
               ),
               const SizedBox(height: 24),
@@ -74,13 +73,13 @@ class OrderCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFEEF0F3)),
+                          border: Border.all(color: AuthColors.border),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           'Назад',
-                          style: AppText.medium(color: HomeColors.grey),
+                          style: AppText.medium(color: AuthColors.inkMuted),
                         ),
                       ),
                     ),
@@ -92,12 +91,7 @@ class OrderCard extends StatelessWidget {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              actionColor,
-                              actionColor.withValues(alpha: 0.75),
-                            ],
-                          ),
+                          color: AuthColors.emerald,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
@@ -126,9 +120,12 @@ class OrderCard extends StatelessWidget {
             SnackBar(
               content: Text(
                 'Ошибка сети. Попробуйте позже.',
-                style: AppText.regular(fontSize: 13, color: Colors.white),
+                style: AppText.regular(
+                  fontSize: 13,
+                  color: AuthColors.errorMuted,
+                ),
               ),
-              backgroundColor: HomeColors.red,
+              backgroundColor: AuthColors.errorTint,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -185,10 +182,10 @@ class OrderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
+        border: Border.all(color: AuthColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AuthColors.ink.withValues(alpha: 0.03),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -198,79 +195,71 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          splashColor: HomeColors.green.withValues(alpha: 0.04),
+          splashColor: AuthColors.emerald.withValues(alpha: 0.04),
           highlightColor: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Status strip ───────────────────────────────────────────
-              _StatusStrip(status: status),
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Row 1: transport icon + ID + status badge ──────────
+                Row(
                   children: [
-                    // ── Row 1: transport icon + ID + status badge ──────
-                    Row(
-                      children: [
-                        _buildTransportIcon(),
-                        const SizedBox(width: 6),
-                        _buildIdPill(),
-                        const Spacer(),
-                        _buildStatusBadge(status, words),
-                      ],
-                    ),
+                    _buildTransportIcon(),
+                    const SizedBox(width: 6),
+                    _buildIdPill(),
+                    const Spacer(),
+                    _buildStatusBadge(status, words),
+                  ],
+                ),
 
-                    const SizedBox(height: 8),
+                const SizedBox(height: 8),
 
-                    // ── Row 2-3: addresses ─────────────────────────────
-                    _buildAddressRow(
-                      icon: Icons.inventory_2_outlined,
-                      iconColor: HomeColors.red,
-                      address: langProvider.isRu
-                          ? (order['shop_adress'] ?? 'Адрес магазина')
-                          : (order['shop_adresstk'] ?? 'Dükan salgysy'),
-                    ),
-                    const SizedBox(height: 4),
-                    _buildAddressRow(
-                      icon: Icons.location_on_outlined,
-                      iconColor: HomeColors.green,
-                      address: langProvider.isRu
-                          ? (order['adress_of_delivery'] ?? 'Адрес доставки')
-                          : (order['adress_of_deliverytk'] ??
-                                'Eltip beriş salgysy'),
-                    ),
+                // ── Row 2-3: addresses ─────────────────────────────────
+                _buildAddressRow(
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: AuthColors.inkMuted,
+                  address: langProvider.isRu
+                      ? (order['shop_adress'] ?? 'Адрес магазина')
+                      : (order['shop_adresstk'] ?? 'Dükan salgysy'),
+                ),
+                const SizedBox(height: 4),
+                _buildAddressRow(
+                  icon: Icons.location_on_outlined,
+                  iconColor: AuthColors.emerald,
+                  address: langProvider.isRu
+                      ? (order['adress_of_delivery'] ?? 'Адрес доставки')
+                      : (order['adress_of_deliverytk'] ??
+                            'Eltip beriş salgysy'),
+                ),
 
-                    const SizedBox(height: 8),
+                const SizedBox(height: 8),
 
-                    // ── Row 4: price + action button ───────────────────
-                    const Divider(
-                      color: Color(0xFFF1F4F8),
-                      height: 1,
-                      thickness: 1,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildPriceSection(isShop, order, words),
-                        _buildActionButtons(
-                          context,
-                          status,
-                          orderId,
-                          isShop,
-                          currentUserId,
-                          userPhone,
-                          words,
-                        ),
-                      ],
+                // ── Row 4: price + action button ───────────────────────
+                Divider(
+                  color: AuthColors.borderSoft,
+                  height: 1,
+                  thickness: 1,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildPriceSection(isShop, order, words),
+                    _buildActionButtons(
+                      context,
+                      status,
+                      orderId,
+                      isShop,
+                      currentUserId,
+                      userPhone,
+                      words,
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -296,7 +285,7 @@ class OrderCard extends StatelessWidget {
             address,
             style: AppText.regular(
               fontSize: 12,
-              color: const Color(0xFF0F1117),
+              color: AuthColors.ink,
             ).copyWith(height: 1.4),
           ),
         ),
@@ -304,23 +293,21 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  // ── Transport icon (no background container) ───────────────────────────────
+  // ── Transport icon ─────────────────────────────────────────────────────────
   Widget _buildTransportIcon() {
     final String? transportType = order['transport_type']?.toString();
-    IconData icon;
-    Color color;
+    final IconData icon;
+    final Color color;
     switch (transportType) {
       case 'car':
         icon = Icons.directions_car_rounded;
-        color = HomeColors.green;
-        break;
+        color = AuthColors.emerald;
       case 'truck':
         icon = Icons.local_shipping_rounded;
-        color = HomeColors.red;
-        break;
+        color = AuthColors.errorMuted;
       default:
         icon = Icons.directions_run_rounded;
-        color = const Color(0xFF9AA3AF);
+        color = AuthColors.inkSoft;
     }
     return Icon(icon, size: 15, color: color);
   }
@@ -330,12 +317,12 @@ class OrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
+        color: AuthColors.borderSoft,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
-        style: AppText.medium(fontSize: 10, color: const Color(0xFF9AA3AF)),
+        style: AppText.medium(fontSize: 10, color: AuthColors.inkSoft),
       ),
     );
   }
@@ -344,22 +331,22 @@ class OrderCard extends StatelessWidget {
   Widget _buildStatusBadge(String status, AppLocalizations words) {
     final styles = {
       'published': _BadgeStyle(
-        color: HomeColors.red,
+        color: AuthColors.emerald,
         label: words.statusFree,
         icon: Icons.search_rounded,
       ),
       'active': _BadgeStyle(
-        color: HomeColors.green,
+        color: AuthColors.emerald,
         label: words.statusActive,
         icon: Icons.local_shipping_outlined,
       ),
       'canceled': _BadgeStyle(
-        color: const Color(0xFF9AA3AF),
+        color: AuthColors.inkSoft,
         label: words.statusCanceled,
         icon: Icons.cancel_outlined,
       ),
       'completed': _BadgeStyle(
-        color: HomeColors.green,
+        color: AuthColors.emerald,
         label: words.statusDone,
         icon: Icons.check_circle_outline_rounded,
       ),
@@ -399,17 +386,17 @@ class OrderCard extends StatelessWidget {
       children: [
         Text(
           isShop ? words.toReceive : words.deliveryFee,
-          style: AppText.regular(fontSize: 10, color: const Color(0xFF9AA3AF)),
+          style: AppText.regular(fontSize: 10, color: AuthColors.inkSoft),
         ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            ShaderMask(
-              shaderCallback: (b) => HomeColors.gradient.createShader(b),
-              child: Text(
-                amount.toStringAsFixed(0),
-                style: AppText.semiBold(fontSize: 20, color: Colors.white),
+            Text(
+              amount.toStringAsFixed(0),
+              style: AppText.semiBold(
+                fontSize: 20,
+                color: AuthColors.emerald,
               ),
             ),
             const SizedBox(width: 3),
@@ -417,7 +404,7 @@ class OrderCard extends StatelessWidget {
               'TMT',
               style: AppText.regular(
                 fontSize: 10,
-                color: HomeColors.green.withValues(alpha: 0.5),
+                color: AuthColors.emerald.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -443,9 +430,8 @@ class OrderCard extends StatelessWidget {
     }
 
     if (isShop && (status == 'published' || status == 'active')) {
-      return _buildOutlineButton(
+      return _OutlineButton(
         label: words.cancelOrder,
-        color: HomeColors.red,
         onTap: () => _showCancelReasonModal(context, orderId, service, words),
       );
     }
@@ -460,11 +446,9 @@ class OrderCard extends StatelessWidget {
           authProv.role == 'courier' && authProv.status == 'active';
       final bool isClient = authProv.role == 'client';
 
-      return _buildFilledButton(
+      return _ActionButton(
         label: words.takeOrder,
         points: points,
-        balancePoints: balancePoints,
-        color: HomeColors.green,
         onTap: () async {
           if (isRestricted) {
             _showRestrictedModal(context);
@@ -476,8 +460,14 @@ class OrderCard extends StatelessWidget {
             if (activeCount >= 3) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(words.tooManyOrders),
-                  backgroundColor: HomeColors.red,
+                  content: Text(
+                    words.tooManyOrders,
+                    style: AppText.regular(
+                      fontSize: 13,
+                      color: AuthColors.errorMuted,
+                    ),
+                  ),
+                  backgroundColor: AuthColors.errorTint,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -493,7 +483,6 @@ class OrderCard extends StatelessWidget {
                 message: points > 0
                     ? words.confirmWithPoints.replaceAll('{points}', '$points')
                     : words.confirmNoPoints,
-                actionColor: HomeColors.green,
                 action: () => service.updateStatus(
                   orderId,
                   'active',
@@ -505,10 +494,7 @@ class OrderCard extends StatelessWidget {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                backgroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
+                backgroundColor: Colors.transparent,
                 builder: (_) =>
                     TopUpModal(userId: userId, role: role, status: status),
               ).then((_) => onUpdate?.call());
@@ -516,13 +502,13 @@ class OrderCard extends StatelessWidget {
           } else if (isClient) {
             showModalBottomSheet(
               context: context,
+              useRootNavigator: true,
               isScrollControlled: true,
-              backgroundColor: Colors.white,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              backgroundColor: Colors.transparent,
+              builder: (_) => RolePickerEmbedded(
+                onClose: () =>
+                    Navigator.of(context, rootNavigator: true).pop(),
               ),
-              builder: (_) =>
-                  RolePickerEmbedded(onClose: () => Navigator.pop(context)),
             ).then((_) => onUpdate?.call());
           }
         },
@@ -530,109 +516,13 @@ class OrderCard extends StatelessWidget {
     }
 
     if (status == 'active' && role == 'courier') {
-      const double cashback = 0.0;
-      return _buildFilledButton(
+      return _ActionButton(
         label: words.finishOrder,
-        color: HomeColors.green,
-        cashback: cashback,
         onTap: () => onTap?.call(),
       );
     }
 
     return const SizedBox();
-  }
-
-  // ── Filled button ──────────────────────────────────────────────────────────
-  Widget _buildFilledButton({
-    required String label,
-    required Color color,
-    required void Function() onTap,
-    int points = 0,
-    double balancePoints = 0,
-    double cashback = 0,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppText.semiBold(fontSize: 12, color: Colors.white),
-            ),
-            if (points > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                width: 1,
-                height: 12,
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-              const SizedBox(width: 6),
-              Image.asset(
-                'assets/images/point_icon.png',
-                width: 18,
-                height: 18,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 3),
-              Text(
-                '$points',
-                style: AppText.regular(fontSize: 12, color: Colors.white),
-              ),
-            ],
-            if (cashback > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                width: 1,
-                height: 12,
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-              const SizedBox(width: 6),
-              Image.asset(
-                'assets/images/point_icon.png',
-                width: 18,
-                height: 18,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 3),
-              Text(
-                '+${cashback.toDouble()}',
-                style: AppText.regular(fontSize: 12, color: Colors.white),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Outline button ─────────────────────────────────────────────────────────
-  Widget _buildOutlineButton({
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        child: Text(label, style: AppText.medium(fontSize: 12, color: color)),
-      ),
-    );
   }
 
   void _showCancelReasonModal(
@@ -643,6 +533,7 @@ class OrderCard extends StatelessWidget {
   ) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CancelReasonModal(
@@ -659,39 +550,139 @@ class OrderCard extends StatelessWidget {
     width: 36,
     height: 4,
     decoration: BoxDecoration(
-      color: const Color(0xFFEEF0F3),
+      color: AuthColors.border,
       borderRadius: BorderRadius.circular(2),
     ),
   );
 }
 
-// ── Status strip ──────────────────────────────────────────────────────────────
-class _StatusStrip extends StatelessWidget {
-  final String status;
-  const _StatusStrip({required this.status});
+// ── Filled action button with AnimatedScale press feedback ────────────────────
+class _ActionButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final int points;
+
+  const _ActionButton({
+    required this.label,
+    required this.onTap,
+    this.points = 0,
+  });
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    Color left, right;
-    switch (status) {
-      case 'active':
-        left = right = HomeColors.green;
-        break;
-      case 'canceled':
-        left = right = HomeColors.grey;
-        break;
-      case 'completed':
-        left = right = HomeColors.green;
-        break;
-      default:
-        left = HomeColors.green;
-        right = HomeColors.red;
-    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          height: 36,
+          decoration: BoxDecoration(
+            color: AuthColors.emerald,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Text(
+                  widget.label,
+                  style: AppText.semiBold(fontSize: 12, color: Colors.white),
+                ),
+              ),
+              if (widget.points > 0) _amberBlock('${widget.points}'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _amberBlock(String text) {
     return Container(
-      height: 3,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [left, right]),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: const BoxDecoration(
+        color: AuthColors.amberTint,
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(10),
+          bottomRight: Radius.circular(10),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.toll_rounded, size: 13, color: AuthColors.amber),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: AppText.semiBold(fontSize: 12, color: AuthColors.amber),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Outline cancel button with AnimatedScale press feedback ───────────────────
+class _OutlineButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _OutlineButton({required this.label, required this.onTap});
+
+  @override
+  State<_OutlineButton> createState() => _OutlineButtonState();
+}
+
+class _OutlineButtonState extends State<_OutlineButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: AuthColors.errorMuted.withValues(alpha: 0.4),
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: AppText.medium(fontSize: 12, color: AuthColors.errorMuted),
+          ),
+        ),
       ),
     );
   }

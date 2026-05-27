@@ -4,6 +4,25 @@ class AppText {
   AppText._();
 
   static const String _font = 'Nunito';
+  static const String _serifFont = 'Lora';
+
+  /// Editorial serif для крупных заголовков (Anthropic / Claude.ai look).
+  /// Используй для display-текстов экранов авторизации, hero-заголовков,
+  /// модалок. Body / UI должны оставаться на Nunito для читабельности.
+  static TextStyle serif({
+    double fontSize = 28,
+    FontWeight fontWeight = FontWeight.w500,
+    Color color = const Color(0xFF191919),
+    double height = 1.1,
+    double letterSpacing = -0.5,
+  }) => TextStyle(
+    fontFamily: _serifFont,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    height: height,
+    letterSpacing: letterSpacing,
+  );
 
   static TextStyle regular({
     double fontSize = 14,

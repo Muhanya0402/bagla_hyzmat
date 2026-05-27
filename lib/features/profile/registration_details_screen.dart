@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -30,15 +31,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
   File? _passportFile;
   File? _addressFile;
-
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
-
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandGreen, brandRed],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
 
   final _c1 = TextEditingController();
   final _c2 = TextEditingController();
@@ -95,7 +87,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       final list = await _authRepo.getProvinces();
       setState(() => _provinces = list);
     } catch (e) {
-      _showSnack('Ошибка загрузки велаятов: $e');
+      _showToast('Ошибка загрузки велаятов: $e');
     } finally {
       setState(() => _loadingProvinces = false);
     }
@@ -111,20 +103,19 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       _locationStep = 1;
       _searchQuery = '';
       _loadingEtraps = true;
-      _locationSelected = false; // сбрасываем
+      _locationSelected = false;
     });
     try {
       final list = await _authRepo.getEtrapsByProvince(p.id);
       setState(() {
         _etraps = list;
-        // Если этрапов нет — велаят уже достаточно
         if (list.isEmpty) {
           _locationSelected = true;
           _locationStep = 0;
         }
       });
     } catch (e) {
-      _showSnack('Ошибка загрузки этрапов: $e');
+      _showToast('Ошибка загрузки этрапов: $e');
     } finally {
       setState(() => _loadingEtraps = false);
     }
@@ -144,14 +135,13 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       final list = await _authRepo.getDistrictsByEtrap(e.id);
       setState(() {
         _districts = list;
-        // Если районов нет — этрап уже достаточно
         if (list.isEmpty) {
           _locationSelected = true;
           _locationStep = 1;
         }
       });
     } catch (e) {
-      _showSnack('Ошибка загрузки районов: $e');
+      _showToast('Ошибка загрузки районов: $e');
     } finally {
       setState(() => _loadingDistricts = false);
     }
@@ -161,7 +151,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     setState(() {
       _selectedDistrict = d;
       _searchQuery = '';
-      _locationSelected = true; // район выбран
+      _locationSelected = true;
     });
   }
 
@@ -169,7 +159,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     setState(() {
       _locationStep = step;
       _searchQuery = '';
-      _locationSelected = false; // сбрасываем при возврате
+      _locationSelected = false;
       if (step == 0) {
         _selectedProvince = null;
         _selectedEtrap = null;
@@ -179,89 +169,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         _selectedDistrict = null;
       }
     });
-  }
-
-  Widget _buildTransportPicker() {
-    return Column(
-      children: _transportOptions.map((opt) {
-        final (value, label, icon) = opt;
-        final isSelected = _transportType == value;
-        return GestureDetector(
-          onTap: () => setState(() => _transportType = value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? brandGreen.withValues(alpha: 0.06)
-                  : const Color(0xFFF5F7FA),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected
-                    ? brandGreen.withValues(alpha: 0.4)
-                    : const Color(0xFFEEF0F3),
-                width: isSelected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? brandGreen.withValues(alpha: 0.12)
-                        : const Color(0xFFEEF0F3),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: isSelected ? brandGreen : const Color(0xFF9AA3AF),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: AppText.medium(
-                      fontSize: 14,
-                      color: isSelected
-                          ? const Color(0xFF0F1117)
-                          : const Color(0xFF9AA3AF),
-                    ),
-                  ),
-                ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: isSelected ? brandGradient : null,
-                    color: isSelected ? null : Colors.transparent,
-                    border: isSelected
-                        ? null
-                        : Border.all(
-                            color: const Color(0xFFDDE1E7),
-                            width: 1.5,
-                          ),
-                  ),
-                  child: isSelected
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: Colors.white,
-                          size: 13,
-                        )
-                      : null,
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
   }
 
   // ── Photo ──────────────────────────────────────────────────────────────────
@@ -287,13 +194,13 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_locationSelected) {
-      _showSnack('Пожалуйста, выберите район');
+      _showToast('Пожалуйста, выберите район');
       return;
     }
 
     if (widget.role == 'courier' &&
         (_passportFile == null || _addressFile == null)) {
-      _showSnack('Пожалуйста, загрузите оба фото паспорта');
+      _showToast('Пожалуйста, загрузите оба фото паспорта');
       return;
     }
 
@@ -330,7 +237,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           'transport_type': _transportType,
         });
       } else {
-        // Формируем адрес из выбранной локации
         final shopAddress = _selectedDistrict != null
             ? "${_selectedEtrap!.ru}, ${_selectedDistrict!.ru}"
             : _selectedEtrap != null
@@ -339,7 +245,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
         updateData.addAll({
           'organization_name': _c1.text.trim(),
-          'address': shopAddress, // ← адрес из локации
+          'address': shopAddress,
           'name': _c1.text.trim(),
           'status': 'pending',
           'district': _selectedDistrict?.id,
@@ -347,7 +253,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           'province': _selectedProvince!.id,
         });
 
-        // Обновляем адрес в провайдере
         if (mounted) {
           context.read<AuthProvider>().updateShopAddress(shopAddress);
         }
@@ -364,199 +269,142 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           context.read<AuthProvider>().updateShopAddress(_c2.text.trim());
         }
         await context.read<AuthProvider>().refreshProfile();
-        _showSnack(
+        _showToast(
           'Данные отправлены. Ожидайте подтверждения',
-          color: brandGreen,
+          isSuccess: true,
         );
         if (!mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pushNamedAndRemoveUntil('/home', (r) => false);
       }
     } catch (e) {
-      _showSnack('Ошибка: $e');
+      _showToast(
+        'Не удалось сохранить данные. Попробуйте ещё раз через мгновение.',
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showSnack(String msg, {Color? color}) {
+  void _showToast(String msg, {bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          msg,
-          style: AppText.regular(fontSize: 13, color: Colors.white),
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle_outline : Icons.info_outline,
+              size: 17,
+              color: isSuccess ? AuthColors.emerald : AuthColors.errorMuted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                msg,
+                style: AppText.regular(
+                  fontSize: 13,
+                  color: isSuccess ? AuthColors.emerald : AuthColors.ink,
+                ).copyWith(height: 1.4),
+              ),
+            ),
+          ],
         ),
-        backgroundColor: color ?? brandRed,
+        backgroundColor: isSuccess
+            ? AuthColors.emeraldTint
+            : AuthColors.errorTint,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isSuccess
+                ? AuthColors.emerald.withValues(alpha: 0.25)
+                : AuthColors.errorMuted.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
       ),
     );
   }
 
-  // ── UI ─────────────────────────────────────────────────────────────────────
+  // ── Transport picker ───────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    final isCourier = widget.role == 'courier';
-    final langProvider = context.watch<LanguageProvider>();
-    final isRu = langProvider.isRu;
-    final words = langProvider.words;
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
+  Widget _buildTransportPicker() {
+    return Column(
+      children: _transportOptions.map((opt) {
+        final (value, label, icon) = opt;
+        final isSelected = _transportType == value;
+        return GestureDetector(
+          onTap: () => setState(() => _transportType = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: brandGreen.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(10),
+              color: isSelected ? AuthColors.emeraldTint : AuthColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected
+                    ? AuthColors.ink.withValues(alpha: 0.45)
+                    : AuthColors.border,
+                width: isSelected ? 1.5 : 1,
+              ),
             ),
-            child: const Icon(
-              Icons.arrow_back_ios_new,
-              color: brandGreen,
-              size: 18,
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AuthColors.ink.withValues(alpha: 0.12)
+                        : const Color(0xFFF4F0EA),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: isSelected ? AuthColors.ink : AuthColors.inkSoft,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppText.medium(
+                      fontSize: 14,
+                      color: isSelected ? AuthColors.ink : AuthColors.inkMuted,
+                    ),
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? AuthColors.emerald : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected ? AuthColors.ink : AuthColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 13,
+                        )
+                      : null,
+                ),
+              ],
             ),
           ),
-        ),
-        title: Text(
-          isCourier ? words.courierFormTitle : words.profileDetailsTitle,
-          style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: const Color(0xFFEEF0F3)),
-        ),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-          children: [
-            // ── Роль-бейдж ─────────────────────────────────────────────
-            _RoleBadge(isCourier: isCourier),
-            const SizedBox(height: 28),
-
-            // ── Секция: Личные данные ───────────────────────────────────
-            _SectionLabel(
-              icon: Icons.person_outline_rounded,
-              label: isCourier ? 'ЛИЧНЫЕ ДАННЫЕ' : 'ОБ ОРГАНИЗАЦИИ',
-            ),
-            const SizedBox(height: 14),
-
-            if (!isCourier) ...[
-              _BrandInputField(
-                label: 'Наименование организации',
-                controller: _c1,
-                icon: Icons.business_outlined,
-              ),
-            ],
-            if (isCourier) ...[
-              _BrandInputField(
-                label: 'Имя',
-                controller: _c1,
-                icon: Icons.badge_outlined,
-              ),
-              const SizedBox(height: 14),
-              _BrandInputField(
-                label: 'Фамилия',
-                controller: _c2,
-                icon: Icons.badge_outlined,
-              ),
-              const SizedBox(height: 14),
-              _BrandInputField(
-                label: 'Отчество',
-                controller: _c3,
-                icon: Icons.badge_outlined,
-              ),
-            ],
-
-            const SizedBox(height: 28),
-
-            // ── Секция: Местоположение ──────────────────────────────────
-            _SectionLabel(
-              icon: Icons.location_on_outlined,
-              label: 'МЕСТОПОЛОЖЕНИЕ',
-            ),
-            const SizedBox(height: 14),
-            _buildLocationStepper(isRu),
-
-            // ── Секция: Фото паспорта ───────────────────────────────────
-            if (isCourier) ...[
-              const SizedBox(height: 28), // ← ДОБАВИТЬ
-              _SectionLabel(
-                // ← ДОБАВИТЬ
-                icon: Icons.local_shipping_outlined,
-                label: 'ВИД ТРАНСПОРТА',
-              ),
-              const SizedBox(height: 14), // ← ДОБАВИТЬ
-              _buildTransportPicker(),
-              const SizedBox(height: 28),
-              _SectionLabel(
-                icon: Icons.document_scanner_outlined,
-                label: 'ФОТО ПАСПОРТА',
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  _BrandPhotoBox(
-                    text: 'Главная',
-                    subtitle: 'страница',
-                    file: _passportFile,
-                    onTap: () => _pickImage(true),
-                  ),
-                  const SizedBox(width: 12),
-                  _BrandPhotoBox(
-                    text: 'Прописка',
-                    subtitle: 'страница',
-                    file: _addressFile,
-                    onTap: () => _pickImage(false),
-                  ),
-                ],
-              ),
-            ],
-
-            const SizedBox(height: 36),
-
-            // ── Кнопка ─────────────────────────────────────────────────
-            _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: brandGreen,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : GestureDetector(
-                    onTap: _handleSubmit,
-                    child: Container(
-                      width: double.infinity,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: brandGradient,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: brandGreen.withValues(alpha: 0.22),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        words.saveBtn.toUpperCase(),
-                        style: AppText.bold(
-                          fontSize: 14,
-                          color: Colors.white,
-                        ).copyWith(letterSpacing: 0.5),
-                      ),
-                    ),
-                  ),
-          ],
-        ),
-      ),
+        );
+      }).toList(),
     );
   }
 
@@ -568,18 +416,15 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       children: [
         _buildStepIndicator(),
         const SizedBox(height: 14),
-
         if (_selectedProvince != null ||
             _selectedEtrap != null ||
             _selectedDistrict != null)
           _buildBreadcrumb(isRu),
-
         if (_locationStep > 0 && !_locationSelected) ...[
           const SizedBox(height: 10),
           _buildSearchField(),
         ],
         const SizedBox(height: 10),
-
         _locationSelected
             ? _buildLocationDone(isRu)
             : _buildCurrentStepList(isRu),
@@ -593,7 +438,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       children: List.generate(3, (i) {
         final isDone =
             i < _locationStep || (i == 2 && _selectedDistrict != null);
-        final isActive = i == _locationStep && _selectedDistrict == null;
+        final isActive = i == _locationStep && !_locationSelected;
         return Expanded(
           child: GestureDetector(
             onTap: () {
@@ -606,12 +451,11 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
-                        height: 4,
+                        height: 3,
                         decoration: BoxDecoration(
-                          gradient: (isDone || isActive) ? brandGradient : null,
                           color: (isDone || isActive)
-                              ? null
-                              : const Color(0xFFEEF0F3),
+                              ? AuthColors.ink
+                              : AuthColors.border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -619,16 +463,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                       Text(
                         steps[i],
                         style: AppText.medium(
-                          fontSize: 10,
+                          fontSize: 10.5,
                           color: isDone || isActive
-                              ? const Color(0xFF0F1117)
-                              : const Color(0xFF9AA3AF),
-                        ),
+                              ? AuthColors.ink
+                              : AuthColors.inkSoft,
+                        ).copyWith(letterSpacing: 0.2),
                       ),
                     ],
                   ),
                 ),
-                if (i < 2) const SizedBox(width: 6),
+                if (i < 2) const SizedBox(width: 8),
               ],
             ),
           ),
@@ -645,17 +489,19 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         runSpacing: 6,
         children: [
           if (_selectedProvince != null)
-            _BreadcrumbChip(
+            _Chip(
               label: _selectedProvince!.label(isRu),
               onTap: () => _resetLocationStep(0),
+              isSelected: _selectedEtrap == null && _locationSelected,
             ),
           if (_selectedEtrap != null)
-            _BreadcrumbChip(
+            _Chip(
               label: _selectedEtrap!.label(isRu),
               onTap: () => _resetLocationStep(1),
+              isSelected: _selectedDistrict == null && _locationSelected,
             ),
           if (_selectedDistrict != null)
-            _BreadcrumbChip(
+            _Chip(
               label: _selectedDistrict!.label(isRu),
               isSelected: true,
               onTap: () => _resetLocationStep(1),
@@ -669,16 +515,13 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     final hints = ['', 'Поиск этрапа...', 'Поиск района...'];
     return TextField(
       controller: _searchController,
-      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
+      style: AppText.regular(fontSize: 14, color: AuthColors.ink),
       decoration: InputDecoration(
         hintText: hints[_locationStep],
-        hintStyle: AppText.regular(
-          fontSize: 14,
-          color: const Color(0xFF9AA3AF),
-        ),
+        hintStyle: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
         prefixIcon: const Icon(
           Icons.search_rounded,
-          color: Color(0xFF9AA3AF),
+          color: AuthColors.inkSoft,
           size: 20,
         ),
         suffixIcon: _searchQuery.isNotEmpty
@@ -690,15 +533,23 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                 child: const Icon(
                   Icons.close_rounded,
                   size: 18,
-                  color: Color(0xFF9AA3AF),
+                  color: AuthColors.ink,
                 ),
               )
             : null,
         filled: true,
-        fillColor: const Color(0xFFF5F7FA),
+        fillColor: const Color(0xFFF4F0EA),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AuthColors.border, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AuthColors.emerald, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -768,19 +619,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           onTap: () => onTap(item),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F7FA),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFEEF0F3)),
+              color: AuthColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AuthColors.border),
             ),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               labelFn(item),
               textAlign: TextAlign.center,
-              style: AppText.semiBold(
-                fontSize: 13,
-                color: const Color(0xFF0F1117),
-              ),
+              style: AppText.medium(fontSize: 13, color: AuthColors.ink),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -801,19 +649,19 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         alignment: Alignment.center,
         child: Text(
           _searchQuery.isEmpty ? 'Нет данных' : 'Ничего не найдено',
-          style: AppText.regular(fontSize: 14, color: const Color(0xFF9AA3AF)),
+          style: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
         ),
       );
     }
     return Container(
       constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEF0F3)),
+        color: AuthColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AuthColors.border),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: ListView.separated(
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -822,13 +670,13 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             height: 1,
             indent: 16,
             endIndent: 16,
-            color: Color(0xFFEEF0F3),
+            color: AuthColors.borderSoft,
           ),
           itemBuilder: (_, i) {
             final item = items[i];
             return InkWell(
               onTap: () => onTap(item),
-              splashColor: brandGreen.withValues(alpha: 0.05),
+              splashColor: AuthColors.ink.withValues(alpha: 0.05),
               highlightColor: Colors.transparent,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -842,14 +690,14 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         labelFn(item),
                         style: AppText.medium(
                           fontSize: 14,
-                          color: const Color(0xFF0F1117),
+                          color: AuthColors.ink,
                         ),
                       ),
                     ),
                     const Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 13,
-                      color: Color(0xFFD1D5DB),
+                      color: AuthColors.border,
                     ),
                   ],
                 ),
@@ -865,33 +713,41 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     return Container(
       height: 80,
       alignment: Alignment.center,
-      child: const CircularProgressIndicator(color: brandGreen, strokeWidth: 2),
+      child: const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(
+          color: AuthColors.emerald,
+          strokeWidth: 1.5,
+        ),
+      ),
     );
   }
 
   Widget _buildLocationDone(bool isRu) {
     return GestureDetector(
       onTap: () => _resetLocationStep(0),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: brandGreen.withValues(alpha: 0.25)),
+          color: AuthColors.emeraldTint,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AuthColors.emerald.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                gradient: brandGradient,
-                borderRadius: BorderRadius.circular(12),
+                color: AuthColors.emerald,
+                borderRadius: BorderRadius.circular(11),
               ),
               child: const Icon(
                 Icons.check_rounded,
                 color: Colors.white,
-                size: 20,
+                size: 18,
               ),
             ),
             const SizedBox(width: 14),
@@ -904,9 +760,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         _selectedEtrap?.label(isRu) ??
                         _selectedProvince?.label(isRu) ??
                         '',
-                    style: AppText.bold(
+                    style: AppText.semiBold(
                       fontSize: 15,
-                      color: const Color(0xFF0F1117),
+                      color: AuthColors.ink,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -917,13 +773,192 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     ].whereType<String>().join(' · '),
                     style: AppText.regular(
                       fontSize: 12,
-                      color: const Color(0xFF9AA3AF),
+                      color: AuthColors.inkMuted,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF9AA3AF)),
+            Icon(
+              Icons.edit_outlined,
+              size: 16,
+              color: AuthColors.ink.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final isCourier = widget.role == 'courier';
+    final langProvider = context.watch<LanguageProvider>();
+    final isRu = langProvider.isRu;
+    final words = langProvider.words;
+
+    return Scaffold(
+      backgroundColor: AuthColors.bg,
+      appBar: AppBar(
+        backgroundColor: AuthColors.bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AuthColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AuthColors.border, width: 1),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new,
+              color: AuthColors.ink,
+              size: 15,
+            ),
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: AuthColors.borderSoft),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 52),
+          children: [
+            // ── Роль-чип + заголовок ───────────────────────────────────
+            _RoleChip(isCourier: isCourier),
+            const SizedBox(height: 18),
+            Text(
+              isCourier ? 'Расскажите о себе' : 'Ваша организация',
+              style: AppText.serif(fontSize: 32, letterSpacing: -0.5),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              isCourier
+                  ? 'Эти данные необходимы для оформления документов '
+                        'и связи с магазинами-партнёрами.'
+                  : 'Эти данные помогут курьерам найти вас '
+                        'и правильно оформить доставку.',
+              style: AppText.regular(
+                fontSize: 14.5,
+                color: AuthColors.inkMuted,
+              ).copyWith(height: 1.55, letterSpacing: 0.1),
+            ),
+
+            const SizedBox(height: 36),
+
+            // ── Личные данные / Организация ────────────────────────────
+            _SectionLabel(
+              icon: Icons.person_outline_rounded,
+              label: isCourier ? 'ЛИЧНЫЕ ДАННЫЕ' : 'ОБ ОРГАНИЗАЦИИ',
+            ),
+            const SizedBox(height: 16),
+
+            if (!isCourier) ...[
+              _InputField(
+                label: 'Наименование организации',
+                hint: 'Например: ИП «Хасанов»',
+                errorHint:
+                    'Пожалуйста, укажите название, чтобы курьеры могли найти вас.',
+                controller: _c1,
+                icon: Icons.business_outlined,
+              ),
+            ],
+            if (isCourier) ...[
+              _InputField(
+                label: 'Имя',
+                hint: 'Ваше имя',
+                errorHint: 'Пожалуйста, укажите ваше имя.',
+                controller: _c1,
+                icon: Icons.badge_outlined,
+              ),
+              const SizedBox(height: 12),
+              _InputField(
+                label: 'Фамилия',
+                hint: 'Ваша фамилия',
+                errorHint: 'Пожалуйста, укажите фамилию.',
+                controller: _c2,
+                icon: Icons.badge_outlined,
+              ),
+              const SizedBox(height: 12),
+              _InputField(
+                label: 'Отчество',
+                hint: 'Ваше отчество',
+                errorHint: 'Пожалуйста, укажите отчество.',
+                controller: _c3,
+                icon: Icons.badge_outlined,
+              ),
+            ],
+
+            const SizedBox(height: 32),
+
+            // ── Местоположение ─────────────────────────────────────────
+            _SectionLabel(
+              icon: Icons.location_on_outlined,
+              label: 'МЕСТОПОЛОЖЕНИЕ',
+            ),
+            const SizedBox(height: 16),
+            _buildLocationStepper(isRu),
+
+            if (isCourier) ...[
+              const SizedBox(height: 32),
+
+              // ── Вид транспорта ─────────────────────────────────────
+              _SectionLabel(
+                icon: Icons.local_shipping_outlined,
+                label: 'ВИД ТРАНСПОРТА',
+              ),
+              const SizedBox(height: 16),
+              _buildTransportPicker(),
+
+              const SizedBox(height: 32),
+
+              // ── Фото паспорта ──────────────────────────────────────
+              _SectionLabel(
+                icon: Icons.document_scanner_outlined,
+                label: 'ФОТО ПАСПОРТА',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Главная страница и страница с пропиской.',
+                style: AppText.regular(
+                  fontSize: 13,
+                  color: AuthColors.inkSoft,
+                ).copyWith(height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _PhotoBox(
+                    label: 'Главная\nстраница',
+                    file: _passportFile,
+                    onTap: () => _pickImage(true),
+                  ),
+                  const SizedBox(width: 12),
+                  _PhotoBox(
+                    label: 'Прописка',
+                    file: _addressFile,
+                    onTap: () => _pickImage(false),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 44),
+
+            // ── Кнопка ─────────────────────────────────────────────────
+            _SubmitButton(
+              label: words.saveBtn,
+              isLoading: _isLoading,
+              onPressed: _handleSubmit,
+            ),
           ],
         ),
       ),
@@ -935,25 +970,22 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 // Sub-widgets
 // ═════════════════════════════════════════════════════════════════════════════
 
-class _RoleBadge extends StatelessWidget {
+class _RoleChip extends StatelessWidget {
   final bool isCourier;
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandGreen, brandRed],
-  );
-
-  const _RoleBadge({required this.isCourier});
+  const _RoleChip({required this.isCourier});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            gradient: brandGradient,
+            color: AuthColors.emeraldTint,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AuthColors.emerald.withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -962,13 +994,16 @@ class _RoleBadge extends StatelessWidget {
                 isCourier
                     ? Icons.electric_bike_outlined
                     : Icons.shopping_bag_outlined,
-                color: Colors.white,
-                size: 16,
+                color: AuthColors.emerald,
+                size: 14,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
-                isCourier ? 'Курьер' : 'Заказчик',
-                style: AppText.bold(fontSize: 13, color: Colors.white),
+                isCourier ? 'Курьер' : 'Магазин',
+                style: AppText.semiBold(
+                  fontSize: 12.5,
+                  color: AuthColors.emerald,
+                ).copyWith(letterSpacing: 0.1),
               ),
             ],
           ),
@@ -981,7 +1016,6 @@ class _RoleBadge extends StatelessWidget {
 class _SectionLabel extends StatelessWidget {
   final IconData icon;
   final String label;
-  static const Color brandGreen = Color(0xFF1A7A3C);
 
   const _SectionLabel({required this.icon, required this.label});
 
@@ -990,116 +1024,145 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 28,
-          height: 28,
+          width: 3,
+          height: 14,
           decoration: BoxDecoration(
-            color: brandGreen.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
+            color: AuthColors.emerald,
+            borderRadius: BorderRadius.circular(2),
           ),
-          child: Icon(icon, size: 15, color: brandGreen),
         ),
         const SizedBox(width: 10),
+        Icon(icon, size: 15, color: AuthColors.inkMuted),
+        const SizedBox(width: 7),
         Text(
           label,
           style: AppText.bold(
             fontSize: 11,
-            color: const Color(0xFF0F1117),
-          ).copyWith(letterSpacing: 1),
+            color: AuthColors.ink,
+          ).copyWith(letterSpacing: 1.1),
         ),
       ],
     );
   }
 }
 
-class _BrandInputField extends StatelessWidget {
+class _InputField extends StatefulWidget {
   final String label;
+  final String hint;
+  final String errorHint;
   final TextEditingController controller;
   final IconData icon;
 
-  static const Color brandGreen = Color(0xFF1A7A3C);
-
-  const _BrandInputField({
+  const _InputField({
     required this.label,
+    required this.hint,
+    required this.errorHint,
     required this.controller,
     required this.icon,
   });
 
   @override
+  State<_InputField> createState() => _InputFieldState();
+}
+
+class _InputFieldState extends State<_InputField> {
+  final _focus = FocusNode();
+  bool _hasFocus = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (mounted) setState(() => _hasFocus = _focus.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller,
-      style: AppText.regular(fontSize: 14, color: const Color(0xFF0F1117)),
+      controller: widget.controller,
+      focusNode: _focus,
+      style: AppText.regular(fontSize: 15, color: AuthColors.ink),
       decoration: InputDecoration(
-        labelText: label,
+        labelText: widget.label,
+        hintText: widget.hint,
+        hintStyle: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
         labelStyle: AppText.regular(
-          fontSize: 13,
-          color: const Color(0xFF9AA3AF),
+          fontSize: 13.5,
+          color: _hasFocus ? AuthColors.ink : AuthColors.inkSoft,
         ),
-        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9AA3AF)),
+        prefixIcon: Icon(
+          widget.icon,
+          size: 18,
+          color: _hasFocus ? AuthColors.ink : AuthColors.inkSoft,
+        ),
         filled: true,
-        fillColor: const Color(0xFFF5F7FA),
+        fillColor: const Color(0xFFF4F0EA),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AuthColors.border, width: 1),
+        ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: brandGreen.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AuthColors.ink, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AuthColors.errorMuted, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: AuthColors.errorMuted,
             width: 1.5,
           ),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFD32F1E), width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFD32F1E), width: 1.5),
-        ),
+        errorStyle: AppText.regular(
+          fontSize: 12,
+          color: AuthColors.errorMuted,
+        ).copyWith(height: 1.4),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
       ),
-      validator: (v) => (v == null || v.isEmpty) ? 'Заполните поле' : null,
+      validator: (v) => (v == null || v.isEmpty) ? widget.errorHint : null,
     );
   }
 }
 
-class _BrandPhotoBox extends StatelessWidget {
-  final String text;
-  final String subtitle;
+class _PhotoBox extends StatelessWidget {
+  final String label;
   final File? file;
   final VoidCallback onTap;
 
-  static const Color brandGreen = Color(0xFF1A7A3C);
-  static const Color brandRed = Color(0xFFD32F1E);
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandGreen, brandRed],
-  );
-
-  const _BrandPhotoBox({
-    required this.text,
-    required this.subtitle,
-    this.file,
-    required this.onTap,
-  });
+  const _PhotoBox({required this.label, this.file, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
-          height: 150,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          height: 148,
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FA),
+            color: file == null ? const Color(0xFFF4F0EA) : null,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: file != null
-                  ? brandGreen.withValues(alpha: 0.4)
-                  : const Color(0xFFEEF0F3),
+                  ? AuthColors.ink.withValues(alpha: 0.5)
+                  : AuthColors.border,
               width: file != null ? 1.5 : 1,
             ),
             image: file != null
@@ -1111,32 +1174,26 @@ class _BrandPhotoBox extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
-                        gradient: brandGradient,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AuthColors.ink.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(13),
                       ),
                       child: const Icon(
                         Icons.add_a_photo_outlined,
-                        color: Colors.white,
-                        size: 20,
+                        color: AuthColors.ink,
+                        size: 19,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      text,
-                      style: AppText.bold(
-                        fontSize: 13,
-                        color: const Color(0xFF0F1117),
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: AppText.regular(
-                        fontSize: 11,
-                        color: const Color(0xFF9AA3AF),
-                      ),
+                      label,
+                      textAlign: TextAlign.center,
+                      style: AppText.medium(
+                        fontSize: 12.5,
+                        color: AuthColors.inkMuted,
+                      ).copyWith(height: 1.35),
                     ),
                   ],
                 )
@@ -1146,7 +1203,7 @@ class _BrandPhotoBox extends StatelessWidget {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        Colors.black.withValues(alpha: 0.35),
+                        Colors.black.withValues(alpha: 0.4),
                       ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -1160,9 +1217,9 @@ class _BrandPhotoBox extends StatelessWidget {
                       const Icon(
                         Icons.check_circle_rounded,
                         color: Colors.white,
-                        size: 16,
+                        size: 15,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 5),
                       Text(
                         'Загружено',
                         style: AppText.semiBold(
@@ -1179,14 +1236,12 @@ class _BrandPhotoBox extends StatelessWidget {
   }
 }
 
-class _BreadcrumbChip extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool isSelected;
 
-  static const Color brandGreen = Color(0xFF1A7A3C);
-
-  const _BreadcrumbChip({
+  const _Chip({
     required this.label,
     required this.onTap,
     this.isSelected = false,
@@ -1199,14 +1254,12 @@ class _BreadcrumbChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected
-              ? brandGreen.withValues(alpha: 0.1)
-              : const Color(0xFFF5F7FA),
+          color: isSelected ? AuthColors.emeraldTint : AuthColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? brandGreen.withValues(alpha: 0.3)
-                : const Color(0xFFEEF0F3),
+                ? AuthColors.ink.withValues(alpha: 0.4)
+                : AuthColors.border,
           ),
         ),
         child: Row(
@@ -1214,9 +1267,9 @@ class _BreadcrumbChip extends StatelessWidget {
           children: [
             Text(
               label,
-              style: AppText.semiBold(
+              style: AppText.medium(
                 fontSize: 12,
-                color: isSelected ? brandGreen : const Color(0xFF6B7280),
+                color: isSelected ? AuthColors.emerald : AuthColors.inkMuted,
               ),
             ),
             if (!isSelected) ...[
@@ -1224,10 +1277,147 @@ class _BreadcrumbChip extends StatelessWidget {
               const Icon(
                 Icons.close_rounded,
                 size: 12,
-                color: Color(0xFF9AA3AF),
+                color: AuthColors.inkSoft,
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Submit button with press-scale + pulsing loader ────────────────────────
+
+class _SubmitButton extends StatefulWidget {
+  final String label;
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  const _SubmitButton({
+    required this.label,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  @override
+  State<_SubmitButton> createState() => _SubmitButtonState();
+}
+
+class _SubmitButtonState extends State<_SubmitButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        if (!widget.isLoading) widget.onPressed();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: Container(
+          width: double.infinity,
+          height: 58,
+          decoration: BoxDecoration(
+            color: AuthColors.ink,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AuthColors.ink.withValues(alpha: 0.22),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: AuthColors.ink.withValues(alpha: 0.08),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const _PulsingDots()
+              : Text(
+                  widget.label,
+                  style: AppText.semiBold(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ).copyWith(letterSpacing: 0.2),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PulsingDots extends StatefulWidget {
+  const _PulsingDots();
+
+  @override
+  State<_PulsingDots> createState() => _PulsingDotsState();
+}
+
+class _PulsingDotsState extends State<_PulsingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final List<Animation<double>> _anims;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 960),
+    )..repeat();
+
+    _anims = List.generate(3, (i) {
+      final start = i * 0.22;
+      final end = (start + 0.55).clamp(0.0, 1.0);
+      return TweenSequence<double>([
+        TweenSequenceItem(tween: Tween(begin: 0.3, end: 1.0), weight: 1),
+        TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.3), weight: 1),
+      ]).animate(
+        CurvedAnimation(
+          parent: _ctrl,
+          curve: Interval(start, end, curve: Curves.easeInOut),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          3,
+          (i) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Opacity(
+              opacity: _anims[i].value,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

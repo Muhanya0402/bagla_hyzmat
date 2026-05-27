@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -14,19 +15,6 @@ class TermsScreen extends StatefulWidget {
 }
 
 class _TermsScreenState extends State<TermsScreen> {
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _bg = Color(0xFFF5F7FA);
-  static const _border = Color(0xFFEEF0F3);
-  static const _gradient = LinearGradient(
-    colors: [_green, _red],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
-  // ── State ──────────────────────────────────────────────────────────────────
   List<_TermItem> _items = [];
   bool _isLoading = true;
   String? _error;
@@ -94,32 +82,34 @@ class _TermsScreenState extends State<TermsScreen> {
         : auth.phone;
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AuthColors.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AuthColors.bg,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _green.withValues(alpha: 0.07),
+              color: AuthColors.surface,
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AuthColors.border),
             ),
             child: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: _green,
+              color: AuthColors.ink,
               size: 16,
             ),
           ),
         ),
         title: Text(
           words.termsOfUse,
-          style: AppText.semiBold(fontSize: 17, color: const Color(0xFF0F1117)),
+          style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: _border),
+          child: Container(height: 0.5, color: AuthColors.border),
         ),
       ),
       body: _buildBody(isRu, fullName, words),
@@ -129,47 +119,65 @@ class _TermsScreenState extends State<TermsScreen> {
   Widget _buildBody(bool isRu, String fullName, AppLocalizations words) {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: _green, strokeWidth: 2),
+        child: CircularProgressIndicator(
+          color: AuthColors.emerald,
+          strokeWidth: 2,
+        ),
       );
     }
 
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.wifi_off_rounded, color: _grey, size: 40),
-            const SizedBox(height: 12),
-            Text(
-              words.downloadError,
-              style: AppText.semiBold(fontSize: 15, color: _grey),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _loadTerms,
-              child: Text(
-                words.retry,
-                style: AppText.semiBold(fontSize: 14, color: _green),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AuthColors.errorTint,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AuthColors.border),
+                ),
+                child: const Icon(
+                  Icons.wifi_off_rounded,
+                  color: AuthColors.errorMuted,
+                  size: 26,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              Text(
+                words.downloadError,
+                style: AppText.semiBold(fontSize: 15, color: AuthColors.ink),
+              ),
+              const SizedBox(height: 14),
+              _RetryButton(label: words.retry, onTap: _loadTerms),
+            ],
+          ),
         ),
       );
     }
 
     return Column(
       children: [
-        // ── Scrollable terms ────────────────────────────────────────────────
         Expanded(
           child: ListView(
             controller: _scrollCtrl,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             children: [
-              // Header card
-              _buildHeader(isRu, words),
+              // ── Quick summary ───────────────────────────────────────────
+              _QuickSummary(isRu: isRu),
               const SizedBox(height: 16),
 
-              // Terms items
+              // ── Section label ───────────────────────────────────────────
+              _SectionLabel(
+                text: isRu ? 'РАЗДЕЛЫ СОГЛАШЕНИЯ' : 'YLALAŞYK BÖLÜMLERI',
+              ),
+              const SizedBox(height: 8),
+
+              // ── Term tiles ──────────────────────────────────────────────
               ..._items.asMap().entries.map(
                 (e) => _TermTile(
                   item: e.value,
@@ -182,190 +190,299 @@ class _TermsScreenState extends State<TermsScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // Scroll hint
-              if (!_hasScrolledToBottom) _scrollHint(isRu),
+              if (!_hasScrolledToBottom && _items.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _ScrollHint(isRu: isRu),
+              ],
+              const SizedBox(height: 8),
             ],
           ),
         ),
 
-        // ── Signature footer ────────────────────────────────────────────────
-        _buildSignatureFooter(isRu, fullName),
+        // ── Footer ──────────────────────────────────────────────────────
+        _SignatureFooter(
+          isRu: isRu,
+          fullName: fullName,
+          canAccept: _hasScrolledToBottom || _items.isEmpty,
+          onAccept: () => Navigator.pop(context),
+        ),
       ],
     );
   }
+}
 
-  // ── Header card ────────────────────────────────────────────────────────────
+// ─── Quick summary strip ──────────────────────────────────────────────────────
 
-  Widget _buildHeader(bool isRu, AppLocalizations words) {
+class _QuickSummary extends StatelessWidget {
+  final bool isRu;
+  const _QuickSummary({required this.isRu});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = isRu
+        ? const [
+            _SummaryItem(
+              icon: Icons.bolt_rounded,
+              iconColor: AuthColors.amber,
+              iconBg: AuthColors.amberTint,
+              text: '5 жетонов за выкуп заказа',
+            ),
+            _SummaryItem(
+              icon: Icons.local_shipping_rounded,
+              iconColor: AuthColors.emerald,
+              iconBg: AuthColors.emeraldTint,
+              text: 'Доставка строго в срок',
+            ),
+            _SummaryItem(
+              icon: Icons.warning_amber_rounded,
+              iconColor: AuthColors.errorMuted,
+              iconBg: AuthColors.errorTint,
+              text: 'Штраф за срыв доставки',
+            ),
+          ]
+        : const [
+            _SummaryItem(
+              icon: Icons.bolt_rounded,
+              iconColor: AuthColors.amber,
+              iconBg: AuthColors.amberTint,
+              text: 'Zakaz üçin 5 žeton',
+            ),
+            _SummaryItem(
+              icon: Icons.local_shipping_rounded,
+              iconColor: AuthColors.emerald,
+              iconBg: AuthColors.emeraldTint,
+              text: 'Eltip bermek wagtynda',
+            ),
+            _SummaryItem(
+              icon: Icons.warning_amber_rounded,
+              iconColor: AuthColors.errorMuted,
+              iconBg: AuthColors.errorTint,
+              text: 'Goýbolsun üçin jerime',
+            ),
+          ];
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AuthColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AuthColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top gradient bar
-          Container(
-            height: 3,
-            decoration: BoxDecoration(
-              gradient: _gradient,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 3,
+                height: 10,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _green.withValues(alpha: 0.12),
-                      _red.withValues(alpha: 0.07),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.description_rounded,
-                  color: _green,
-                  size: 22,
+                  color: AuthColors.accent,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (b) => _gradient.createShader(b),
-                      child: Text(
-                        words.termsOfUse,
-                        style: AppText.extraBold(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      isRu
-                          ? 'Пожалуйста, ознакомьтесь со всеми пунктами'
-                          : 'Ähli nokatlary okaň',
-                      style: AppText.regular(fontSize: 12, color: _grey),
-                    ),
-                  ],
-                ),
+              const SizedBox(width: 7),
+              Text(
+                isRu ? 'ГЛАВНОЕ' : 'ESASY',
+                style: AppText.semiBold(
+                  fontSize: 10,
+                  color: AuthColors.inkSoft,
+                ).copyWith(letterSpacing: 0.9),
               ),
             ],
           ),
-
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: _border),
-          const SizedBox(height: 12),
-
+          const SizedBox(height: 11),
           Row(
-            children: [
-              const Icon(Icons.access_time_rounded, size: 13, color: _grey),
-              const SizedBox(width: 6),
-              Text(
-                isRu
-                    ? 'Прокрутите до конца, чтобы принять'
-                    : 'Kabul etmek üçin aşak aýlaň',
-                style: AppText.regular(fontSize: 12, color: _grey),
-              ),
-            ],
+            children: items
+                .map((item) => Expanded(child: _SummaryCard(item: item)))
+                .toList(),
           ),
         ],
       ),
     );
   }
+}
 
-  // ── Scroll hint ─────────────────────────────────────────────────────────────
+class _SummaryItem {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String text;
+  const _SummaryItem({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.text,
+  });
+}
 
-  Widget _scrollHint(bool isRu) {
-    return Center(
+class _SummaryCard extends StatelessWidget {
+  final _SummaryItem item;
+  const _SummaryCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       child: Column(
         children: [
-          const Icon(Icons.keyboard_arrow_down_rounded, color: _grey, size: 20),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: item.iconBg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: item.iconColor.withValues(alpha: 0.15)),
+            ),
+            child: Icon(item.icon, color: item.iconColor, size: 16),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            item.text,
+            textAlign: TextAlign.center,
+            style: AppText.medium(
+              fontSize: 11,
+              color: AuthColors.inkMuted,
+            ).copyWith(height: 1.35),
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Section label ────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 10,
+          decoration: BoxDecoration(
+            color: AuthColors.emerald,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          text,
+          style: AppText.semiBold(
+            fontSize: 10,
+            color: AuthColors.inkSoft,
+          ).copyWith(letterSpacing: 0.9),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Scroll hint ──────────────────────────────────────────────────────────────
+
+class _ScrollHint extends StatelessWidget {
+  final bool isRu;
+  const _ScrollHint({required this.isRu});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 15,
+            color: AuthColors.inkSoft,
+          ),
+          const SizedBox(width: 4),
           Text(
             isRu
                 ? 'Прокрутите вниз для принятия'
                 : 'Kabul etmek üçin aşak aýlaň',
-            style: AppText.regular(fontSize: 11, color: _grey),
+            style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
           ),
         ],
       ),
     );
   }
+}
 
-  // ── Signature footer ────────────────────────────────────────────────────────
+// ─── Signature footer ─────────────────────────────────────────────────────────
 
-  Widget _buildSignatureFooter(bool isRu, String fullName) {
-    final bool canAccept = _hasScrolledToBottom || _items.isEmpty;
+class _SignatureFooter extends StatelessWidget {
+  final bool isRu;
+  final String fullName;
+  final bool canAccept;
+  final VoidCallback onAccept;
 
+  const _SignatureFooter({
+    required this.isRu,
+    required this.fullName,
+    required this.canAccept,
+    required this.onAccept,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: _border)),
+      decoration: BoxDecoration(
+        color: AuthColors.surface,
+        border: const Border(
+          top: BorderSide(color: AuthColors.border, width: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 16,
-            offset: Offset(0, -4),
+            color: AuthColors.ink.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
       padding: EdgeInsets.fromLTRB(
         16,
-        16,
+        14,
         16,
         MediaQuery.of(context).padding.bottom + 16,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Signature card
+          // ── Signature card ─────────────────────────────────────────
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: canAccept ? _green.withValues(alpha: 0.06) : _bg,
-              borderRadius: BorderRadius.circular(14),
+              color: canAccept ? AuthColors.emeraldTint : AuthColors.bg,
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: canAccept ? _green.withValues(alpha: 0.25) : _border,
+                color: canAccept
+                    ? AuthColors.ink.withValues(alpha: 0.3)
+                    : AuthColors.border,
               ),
             ),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: canAccept
-                        ? _green.withValues(alpha: 0.12)
-                        : _grey.withValues(alpha: 0.1),
+                        ? AuthColors.ink.withValues(alpha: 0.12)
+                        : AuthColors.borderSoft,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.person_outline_rounded,
-                    color: canAccept ? _green : _grey,
-                    size: 18,
+                    color: canAccept ? AuthColors.ink : AuthColors.inkSoft,
+                    size: 17,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -375,37 +492,43 @@ class _TermsScreenState extends State<TermsScreen> {
                     children: [
                       Text(
                         isRu ? 'Принял условия' : 'Kabul etdi',
-                        style: AppText.regular(fontSize: 11, color: _grey),
+                        style: AppText.regular(
+                          fontSize: 11,
+                          color: AuthColors.inkSoft,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         fullName.isNotEmpty
                             ? fullName
                             : (isRu ? 'Пользователь' : 'Ulanyjy'),
-                        style: AppText.bold(
-                          fontSize: 15,
-                          color: canAccept ? const Color(0xFF0F1117) : _grey,
+                        style: AppText.semiBold(
+                          fontSize: 14,
+                          color: canAccept
+                              ? AuthColors.ink
+                              : AuthColors.inkMuted,
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Checkmark
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, anim) =>
+                      ScaleTransition(scale: anim, child: child),
                   child: canAccept
                       ? Container(
                           key: const ValueKey('check'),
                           width: 28,
                           height: 28,
-                          decoration: BoxDecoration(
-                            gradient: _gradient,
+                          decoration: const BoxDecoration(
+                            color: AuthColors.ink,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.check_rounded,
                             color: Colors.white,
-                            size: 16,
+                            size: 15,
                           ),
                         )
                       : Container(
@@ -413,13 +536,14 @@ class _TermsScreenState extends State<TermsScreen> {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: _grey.withValues(alpha: 0.1),
+                            color: AuthColors.borderSoft,
                             shape: BoxShape.circle,
+                            border: Border.all(color: AuthColors.border),
                           ),
                           child: const Icon(
                             Icons.lock_outline_rounded,
-                            color: _grey,
-                            size: 14,
+                            color: AuthColors.inkSoft,
+                            size: 13,
                           ),
                         ),
                 ),
@@ -427,67 +551,13 @@ class _TermsScreenState extends State<TermsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          // Accept button
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: canAccept ? _gradient : null,
-                color: canAccept ? null : _bg,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: canAccept
-                    ? [
-                        BoxShadow(
-                          color: _green.withValues(alpha: 0.22),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  disabledBackgroundColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                onPressed: canAccept ? () => Navigator.pop(context) : null,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isRu ? 'ПОНЯТНО' : 'DÜŞÜNDÜM',
-                      style: AppText.bold(
-                        fontSize: 14,
-                        color: canAccept ? Colors.white : _grey,
-                      ).copyWith(letterSpacing: 0.4),
-                    ),
-                    if (canAccept) ...[
-                      const SizedBox(width: 10),
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+          // ── Accept button ──────────────────────────────────────────
+          _AcceptButton(
+            isRu: isRu,
+            canAccept: canAccept,
+            onTap: canAccept ? onAccept : null,
           ),
         ],
       ),
@@ -495,22 +565,153 @@ class _TermsScreenState extends State<TermsScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Term tile — accordion style
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Accept button ────────────────────────────────────────────────────────────
 
-class _TermTile extends StatelessWidget {
+class _AcceptButton extends StatefulWidget {
+  final bool isRu;
+  final bool canAccept;
+  final VoidCallback? onTap;
+
+  const _AcceptButton({
+    required this.isRu,
+    required this.canAccept,
+    required this.onTap,
+  });
+
+  @override
+  State<_AcceptButton> createState() => _AcceptButtonState();
+}
+
+class _AcceptButtonState extends State<_AcceptButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: widget.onTap != null
+          ? (_) => setState(() => _pressed = true)
+          : null,
+      onTapUp: widget.onTap != null
+          ? (_) {
+              setState(() => _pressed = false);
+              widget.onTap!();
+            }
+          : null,
+      onTapCancel: widget.onTap != null
+          ? () => setState(() => _pressed = false)
+          : null,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            color: widget.canAccept ? AuthColors.ink : AuthColors.borderSoft,
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: widget.canAccept
+                ? [
+                    BoxShadow(
+                      color: AuthColors.ink.withValues(alpha: 0.22),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: AppText.semiBold(
+                  fontSize: 14,
+                  color: widget.canAccept ? Colors.white : AuthColors.ink,
+                ).copyWith(letterSpacing: 0.4),
+                child: Text(widget.isRu ? 'ПОНЯТНО' : 'DÜŞÜNDÜM'),
+              ),
+              if (widget.canAccept) ...[
+                const SizedBox(width: 10),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 13,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Retry button ─────────────────────────────────────────────────────────────
+
+class _RetryButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _RetryButton({required this.label, required this.onTap});
+
+  @override
+  State<_RetryButton> createState() => _RetryButtonState();
+}
+
+class _RetryButtonState extends State<_RetryButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: AuthColors.emeraldTint,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AuthColors.emerald.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Text(
+            widget.label,
+            style: AppText.semiBold(fontSize: 13, color: AuthColors.emerald),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Term tile ────────────────────────────────────────────────────────────────
+
+class _TermTile extends StatefulWidget {
   final _TermItem item;
   final int index;
   final bool isRu;
   final bool isExpanded;
   final VoidCallback onTap;
-
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _border = Color(0xFFEEF0F3);
-  static const _gradient = LinearGradient(colors: [_green, _red]);
 
   const _TermTile({
     required this.item,
@@ -521,124 +722,140 @@ class _TermTile extends StatelessWidget {
   });
 
   @override
+  State<_TermTile> createState() => _TermTileState();
+}
+
+class _TermTileState extends State<_TermTile> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final String title = isRu ? item.titleRu : item.titleTk;
-    final String body = isRu ? item.bodyRu : item.bodyTk;
+    final String title = widget.isRu
+        ? widget.item.titleRu
+        : widget.item.titleTk;
+    final String body = widget.isRu ? widget.item.bodyRu : widget.item.bodyTk;
+    final fallbackTitle = widget.isRu
+        ? 'Пункт ${widget.index + 1}'
+        : '${widget.index + 1}-nji madda';
+    final fallbackBody = widget.isRu
+        ? 'Текст пункта не заполнен.'
+        : 'Madda teksti doldurylmady.';
 
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isExpanded ? _green.withValues(alpha: 0.3) : _border,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.99 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.isExpanded
+                  ? AuthColors.emerald.withValues(alpha: 0.3)
+                  : AuthColors.border,
+            ),
           ),
-          boxShadow: isExpanded
-              ? [
-                  BoxShadow(
-                    color: _green.withValues(alpha: 0.07),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            // Header row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  // Number badge
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: isExpanded ? _gradient : null,
-                      color: isExpanded ? null : const Color(0xFFF5F7FA),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: isExpanded ? Colors.white : _grey,
+          child: Column(
+            children: [
+              // ── Header ─────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
+                child: Row(
+                  children: [
+                    // Number badge
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: widget.isExpanded
+                            ? AuthColors.ink
+                            : AuthColors.borderSoft,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${widget.index + 1}',
+                        style: AppText.semiBold(
+                          fontSize: 11,
+                          color: widget.isExpanded
+                              ? Colors.white
+                              : AuthColors.inkSoft,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title.isEmpty
-                          ? (isRu
-                                ? 'Пункт ${index + 1}'
-                                : '${index + 1}-nji madda')
-                          : title,
-                      style: AppText.semiBold(
-                        fontSize: 14,
-                        color: isExpanded
-                            ? const Color(0xFF0F1117)
-                            : const Color(0xFF0F1117),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        title.isEmpty ? fallbackTitle : title,
+                        style: AppText.medium(
+                          fontSize: 13,
+                          color: AuthColors.ink,
+                        ),
                       ),
                     ),
-                  ),
-                  AnimatedRotation(
-                    turns: isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: isExpanded ? _green : _grey,
-                      size: 22,
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: widget.isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: widget.isExpanded
+                            ? AuthColors.emerald
+                            : AuthColors.inkSoft,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            // Body (animated)
-            AnimatedCrossFade(
-              firstChild: const SizedBox(width: double.infinity),
-              secondChild: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(height: 1, color: _border),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                    child: Text(
-                      body.isEmpty
-                          ? (isRu
-                                ? 'Текст пункта не заполнен.'
-                                : 'Madda teksti doldurylmady.')
-                          : body,
-                      style: AppText.regular(
-                        fontSize: 13,
-                        color: const Color(0xFF4A4A4A),
-                      ).copyWith(height: 1.65),
+              // ── Body ───────────────────────────────────────────────
+              AnimatedCrossFade(
+                firstChild: const SizedBox(width: double.infinity),
+                secondChild: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(height: 0.5, color: AuthColors.borderSoft),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                      child: Text(
+                        body.isEmpty ? fallbackBody : body,
+                        style: AppText.regular(
+                          fontSize: 13,
+                          color: AuthColors.inkMuted,
+                        ).copyWith(height: 1.65),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                crossFadeState: widget.isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 200),
               ),
-              crossFadeState: isExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 220),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Data model ───────────────────────────────────────────────────────────────
 
 class _TermItem {
   final int id;

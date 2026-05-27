@@ -1,15 +1,12 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/widgets/auth_widgets.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/home/controllers/home_screen_controller.dart';
 import 'package:bagla/features/home/home_constants.dart';
-import 'package:bagla/features/home/widgets/home_create_button.dart';
-import 'package:bagla/features/home/widgets/home_level_bar.dart';
+import 'package:bagla/features/home/widgets/home_app_bar.dart';
 import 'package:bagla/features/home/widgets/home_orders_list.dart';
 import 'package:bagla/features/home/widgets/home_segmented_filter.dart';
 import 'package:bagla/features/home/widgets/home_status_filter.dart';
 import 'package:bagla/features/home/widgets/home_widgets.dart';
-import 'package:bagla/features/orders/create_order_screen.dart';
-import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -85,12 +82,17 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return Scaffold(
-      backgroundColor: HomeColors.surface,
+      backgroundColor: AuthColors.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AuthColors.bg,
         elevation: 0,
         centerTitle: false,
-        title: _buildLogoRow(authProv, levelProvider),
+        title: HomeLogoRow(
+          authProv: authProv,
+          realtimeService: realtimeService,
+          onRefresh: handleRefresh,
+          levelProvider: levelProvider,
+        ),
         actions: [
           if (isCourier)
             Padding(
@@ -100,12 +102,13 @@ class _HomeScreenState extends State<HomeScreen>
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: HomeColors.border),
+          child: Container(height: 0.5, color: AuthColors.border),
         ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          HomeNetworkBanner(isConnected: realtimeService.isConnected),
           if (needsRoleSelection)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -117,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-          if (isCourier)
+          if (isCourier && isActive)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: HomeSegmentedFilter(
@@ -142,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: _buildStatusBanner(isBanned, words),
             ),
 
-          if (isShop)
+          if (isCourier && isActive)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
               child: HomeFilterButton(
@@ -151,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-          if (isShop || selectedFilterIndex == 1)
+          if (isShop && isActive || selectedFilterIndex == 1)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 0, 0),
               child: HomeStatusFilter(
@@ -171,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           Expanded(
             child: RefreshIndicator(
-              color: HomeColors.green,
+              color: AuthColors.emerald,
               backgroundColor: Colors.white,
               onRefresh: handleRefresh,
               child: HomeOrdersList(
@@ -190,95 +193,12 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      bottomNavigationBar: (isShop && isActive)
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: HomeCreateButton(
-                  label: words.createOrder,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CreateOrderScreen(),
-                    ),
-                  ).then((_) => handleRefresh()),
-                ),
-              ),
-            )
-          : null,
-    );
-  }
-
-  Widget _buildLogoRow(AuthProvider authProv, LevelProvider levelProvider) {
-    final bool isCourier = authProv.role.toLowerCase() == 'courier';
-    final bool isClient = authProv.role.toLowerCase() == 'client';
-    final bool needsRoleSelection =
-        isClient && authProv.status.toLowerCase() == 'published';
-
-    return Row(
-      children: [
-        Image.asset(
-          realtimeService.isConnected
-              ? 'assets/images/bagla_logo.png'
-              : 'assets/images/bagla_logo_gray.png',
-          width: 40,
-          height: 40,
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => const BaglaLogo(width: 48, height: 24),
-        ),
-        if (!needsRoleSelection && isCourier) ...[
-          const SizedBox(width: 10),
-          Expanded(child: HomeLevelBar(provider: levelProvider)),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.white,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              builder: (_) => TopUpModal(
-                userId: authProv.userId,
-                role: authProv.role,
-                status: authProv.status,
-              ),
-            ).then((_) => handleRefresh()),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/images/point_icon.png',
-                  width: 20,
-                  height: 20,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.toll_rounded,
-                    size: 18,
-                    color: HomeColors.green,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  authProv.balancePoints.toDouble().toStringAsFixed(2),
-                  style: AppText.semiBold(
-                    fontSize: 14,
-                    color: HomeColors.green,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
     );
   }
 
   Widget _buildStatusBanner(bool isBanned, AppLocalizations words) {
-    final color = isBanned ? HomeColors.red : const Color(0xFFE67E22);
-    final bgColor = isBanned
-        ? const Color(0xFFFFF0EE)
-        : const Color(0xFFFFF8EE);
+    final color = isBanned ? AuthColors.errorMuted : AuthColors.amber;
+    final bgColor = isBanned ? AuthColors.errorTint : AuthColors.amberTint;
     final icon = isBanned ? Icons.block_rounded : Icons.access_time_rounded;
     final text = isBanned ? words.accountBanned : words.accountPending;
 

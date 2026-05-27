@@ -3,9 +3,15 @@ import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
 
+/// Anthropic-style Terms of Service screen.
+///
+/// Editorial typography (serif headings + reading-optimized sans body),
+/// inline TOC chips, "In plain English" callouts before each legal section,
+/// generous whitespace, no flashy colors.
 class PolicyScreen extends StatefulWidget {
   final VoidCallback? onAccepted;
   const PolicyScreen({super.key, this.onAccepted});
@@ -15,8 +21,15 @@ class PolicyScreen extends StatefulWidget {
 }
 
 class _PolicyScreenState extends State<PolicyScreen> {
+  static const _contentMaxWidth = 720.0;
+  static const _calloutBg = Color(0xFFF6F0E8); // тёплый бежевый callout
+
   final _scrollCtrl = ScrollController();
   bool _hasScrolledToBottom = false;
+
+  // GlobalKey'и для якорей секций — нужны для ensureVisible из TOC.
+  late final List<GlobalKey> _sectionKeys =
+      List.generate(6, (_) => GlobalKey());
 
   @override
   void initState() {
@@ -44,218 +57,202 @@ class _PolicyScreenState extends State<PolicyScreen> {
     Navigator.pop(context);
   }
 
+  Future<void> _scrollToSection(int i) async {
+    final ctx = _sectionKeys[i].currentContext;
+    if (ctx == null) return;
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      alignment: 0.02, // секция почти у верха
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
-    final isRu = lang.isRu;
+    final words = lang.words;
+
+    final sections = _buildSections(words);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AuthColors.bg,
       body: SafeArea(
         child: Column(
           children: [
             // ── Top bar ────────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(28, 16, 28, 0),
-              child: Row(
-                children: [
-                  _BackButton(),
-                  const Spacer(),
-                  const BaglaLogo(width: 56, height: 28),
-                  const Spacer(),
-                  _LangSwitcher(isRu: isRu, onToggle: lang.toggleLanguage),
-                ],
-              ),
-            ),
-
-            // ── Header ─────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Green badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5EE),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Text(
-                      isRu ? 'Документ' : 'Resminama',
-                      style: AppText.semiBold(
-                        fontSize: 11,
-                        color: AuthColors.green,
+              padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(maxWidth: _contentMaxWidth),
+                  child: Row(
+                    children: [
+                      const AuthBackButton(),
+                      const Spacer(),
+                      const BaglaLogo(width: 56, height: 28),
+                      const Spacer(),
+                      AuthLangSwitcher(
+                        isRu: lang.isRu,
+                        onToggle: lang.toggleLanguage,
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    isRu ? 'Условия и политика' : 'Şertler we syýasat',
-                    style: AppText.bold(fontSize: 22),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isRu
-                        ? 'Пожалуйста, ознакомьтесь перед использованием'
-                        : 'Ulanmazdan ozal okaň',
-                    style: AppText.regular(fontSize: 13, color: Colors.black54),
-                  ),
-                  const SizedBox(height: 16),
-                  // Gradient divider
-                  Container(
-                    height: 2,
-                    decoration: BoxDecoration(
-                      gradient: AuthColors.gradient,
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
 
             // ── Scrollable content ─────────────────────────────────────────
             Expanded(
-              child: ListView(
+              child: SingleChildScrollView(
                 controller: _scrollCtrl,
-                padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
-                children: [
-                  _PolicySection(
-                    index: '1',
-                    title: isRu ? 'Общие положения' : 'Umumy düzgünler',
-                    body: isRu
-                        ? 'Настоящие Условия использования регулируют отношения между пользователем и сервисом при использовании мобильного приложения на территории Туркменистана. Продолжая использование, вы соглашаетесь с настоящими Условиями.'
-                        : 'Bu Ulanyş şertleri ulanyjy bilen hyzmat arasynda Türkmenistanda mobil programmany ulanmak bilen bagly gatnaşyklary düzenleýär.',
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: _contentMaxWidth),
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.fromLTRB(28, 36, 28, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Last updated meta
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AuthColors.surface,
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: AuthColors.border,
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              words.policyLastUpdated,
+                              style: AppText.medium(
+                                fontSize: 11.5,
+                                color: AuthColors.inkMuted,
+                              ).copyWith(letterSpacing: 0.2),
+                            ),
+                          ),
+
+                          const SizedBox(height: 22),
+
+                          // Hero serif title
+                          Text(
+                            words.policyTitle,
+                            style: AppText.serif(
+                              fontSize: 40,
+                              letterSpacing: -0.8,
+                              height: 1.05,
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Lede / intro — editorial serif standfirst
+                          Text(
+                            words.policyIntro,
+                            style: AppText.serif(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w400,
+                              color: AuthColors.inkMuted,
+                              height: 1.55,
+                              letterSpacing: 0,
+                            ),
+                          ),
+
+                          const SizedBox(height: 36),
+
+                          // TOC — горизонтальный sidebar-аналог для мобильного
+                          _TableOfContents(
+                            title: words.policyTocTitle,
+                            items: sections
+                                .map((s) => s.title)
+                                .toList(growable: false),
+                            onTap: _scrollToSection,
+                          ),
+
+                          const SizedBox(height: 28),
+
+                          // ── Hairline divider ──────────────────────────
+                          Container(
+                            height: 1,
+                            color: AuthColors.border,
+                          ),
+
+                          const SizedBox(height: 28),
+
+                          // Sections
+                          for (var i = 0; i < sections.length; i++) ...[
+                            _PolicySection(
+                              key: _sectionKeys[i],
+                              index: i + 1,
+                              section: sections[i],
+                              calloutBg: _calloutBg,
+                              calloutLabel: words.policyInPlainEnglish,
+                            ),
+                            if (i < sections.length - 1) ...[
+                              const SizedBox(height: 28),
+                              Container(
+                                height: 1,
+                                color: AuthColors.borderSoft,
+                              ),
+                              const SizedBox(height: 28),
+                            ],
+                          ],
+
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
                   ),
-                  _PolicySection(
-                    index: '2',
-                    title: isRu ? 'Персональные данные' : 'Şahsy maglumatlar',
-                    body: isRu
-                        ? 'Мы собираем минимально необходимые данные: номер телефона и идентификатор устройства. Данные не передаются третьим лицам без вашего явного согласия.'
-                        : 'Biz diňe zerur maglumatlary ýygnaýarys: telefon belgisi we enjam identifikatory. Maglumatlary siziň açyk razylygyňyz bolmazdan üçünji taraplara geçirmeýäris.',
-                  ),
-                  _PolicySection(
-                    index: '3',
-                    title: isRu
-                        ? 'SMS-коды и безопасность'
-                        : 'SMS-kodlar we howpsuzlyk',
-                    body: isRu
-                        ? 'Коды подтверждения действительны 5 минут и одноразовые. Никогда не сообщайте код другим лицам — сотрудники приложения его не запрашивают.'
-                        : 'Tassyklaýjy kodlar 5 minut geçerli we bir gezeklik. Kody hiç kimsä aýtmaň — programma işgärleri ony soramaýar.',
-                  ),
-                  _PolicySection(
-                    index: '4',
-                    title: isRu ? 'Правила использования' : 'Ulanyş düzgünleri',
-                    body: isRu
-                        ? 'Вы обязуетесь использовать приложение только в законных целях, не нарушать права других пользователей и не предпринимать попыток взлома системы.'
-                        : 'Programmany diňe kanuny maksatlar üçin ulanmaga, beýleki ulanyjylaryň hukuklaryny bozmazlyga borçlanýarsyňyz.',
-                  ),
-                  _PolicySection(
-                    index: '5',
-                    title: isRu
-                        ? 'Ограничение ответственности'
-                        : 'Jogapkärçiligiň çäklenmesi',
-                    body: isRu
-                        ? 'Приложение предоставляется «как есть». Мы не несём ответственности за перебои в работе, вызванные внешними факторами, включая проблемы со связью.'
-                        : 'Programma "bar bolşy ýaly" hödürlenýär. Aragatnaşyk meseleleri ýaly daşarky faktorlar bilen baglanyşykly bökdençlikler üçin jogapkärçilik çekmeýäris.',
-                  ),
-                  _PolicySection(
-                    index: '6',
-                    title: isRu ? 'Изменение условий' : 'Şertleri üýtgetmek',
-                    body: isRu
-                        ? 'Мы вправе изменять настоящие Условия. О существенных изменениях уведомим через push-уведомление или SMS не позднее чем за 5 дней.'
-                        : 'Şertleri üýtgetmäge haklarymyz bar. Esasy üýtgeşmeler barada 5 günden az bolmadyk möhletde push-bildiriş ýa-da SMS arkaly habar bereris.',
-                    isLast: true,
-                  ),
-                ],
+                ),
               ),
             ),
 
-            // ── Accept button ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
-              child: Column(
-                children: [
-                  if (!_hasScrolledToBottom)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        isRu
-                            ? 'Прокрутите вниз, чтобы продолжить'
-                            : 'Dowam etmek üçin aşak aýlaň',
-                        style: AppText.regular(
-                          fontSize: 12,
-                          color: Colors.black38,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: _hasScrolledToBottom
-                            ? AuthColors.gradient
-                            : null,
-                        color: _hasScrolledToBottom
-                            ? null
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _hasScrolledToBottom ? _accept : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          disabledBackgroundColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+            // ── Accept footer ──────────────────────────────────────────────
+            Container(
+              decoration: const BoxDecoration(
+                color: AuthColors.bg,
+                border: Border(
+                  top: BorderSide(color: AuthColors.borderSoft, width: 1),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(maxWidth: _contentMaxWidth),
+                  child: Column(
+                    children: [
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 220),
+                        opacity: _hasScrolledToBottom ? 0 : 1,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            words.policyScrollHint,
+                            style: AppText.regular(
+                              fontSize: 12,
+                              color: AuthColors.inkSoft,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              isRu
-                                  ? 'ПРИНЯТЬ И ПРОДОЛЖИТЬ'
-                                  : 'KABUL ET WE DOWAM ET',
-                              style: TextStyle(
-                                color: _hasScrolledToBottom
-                                    ? Colors.white
-                                    : Colors.black38,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: _hasScrolledToBottom
-                                    ? Colors.white24
-                                    : Colors.black12,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.check,
-                                color: _hasScrolledToBottom
-                                    ? Colors.white
-                                    : Colors.black38,
-                                size: 14,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
+                      AuthGradientButton(
+                        label: words.policyAcceptBtn,
+                        enabled: _hasScrolledToBottom,
+                        onPressed: _accept,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -263,100 +260,41 @@ class _PolicyScreenState extends State<PolicyScreen> {
       ),
     );
   }
+
+  List<_SectionData> _buildSections(AppLocalizations w) => [
+        _SectionData(w.policySec1Title, w.policySec1Plain, w.policySec1Body),
+        _SectionData(w.policySec2Title, w.policySec2Plain, w.policySec2Body),
+        _SectionData(w.policySec3Title, w.policySec3Plain, w.policySec3Body),
+        _SectionData(w.policySec4Title, w.policySec4Plain, w.policySec4Body),
+        _SectionData(w.policySec5Title, w.policySec5Plain, w.policySec5Body),
+        _SectionData(w.policySec6Title, w.policySec6Plain, w.policySec6Body),
+      ];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Private widgets
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Data
+// ═════════════════════════════════════════════════════════════════════════════
 
-class _BackButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(
-          Icons.arrow_back_ios_new,
-          size: 16,
-          color: Colors.black87,
-        ),
-      ),
-    );
-  }
-}
-
-class _LangSwitcher extends StatelessWidget {
-  final bool isRu;
-  final VoidCallback onToggle;
-  const _LangSwitcher({required this.isRu, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onToggle,
-      child: Container(
-        height: 34,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: Colors.black12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _LangTab(label: 'RU', active: isRu),
-            _LangTab(label: 'TK', active: !isRu),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LangTab extends StatelessWidget {
-  final String label;
-  final bool active;
-  const _LangTab({required this.label, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        gradient: active ? AuthColors.gradient : null,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          color: active ? Colors.white : Colors.black38,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-class _PolicySection extends StatelessWidget {
-  final String index;
+class _SectionData {
   final String title;
+  final String plain;
   final String body;
-  final bool isLast;
+  const _SectionData(this.title, this.plain, this.body);
+}
 
-  const _PolicySection({
-    required this.index,
+// ═════════════════════════════════════════════════════════════════════════════
+// Table of contents — chips rail (мобильный sidebar)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _TableOfContents extends StatelessWidget {
+  final String title;
+  final List<String> items;
+  final ValueChanged<int> onTap;
+
+  const _TableOfContents({
     required this.title,
-    required this.body,
-    this.isLast = false,
+    required this.items,
+    required this.onTap,
   });
 
   @override
@@ -364,49 +302,211 @@ class _PolicySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Text(
+          title.toUpperCase(),
+          style: AppText.semiBold(
+            fontSize: 11,
+            color: AuthColors.inkSoft,
+          ).copyWith(letterSpacing: 1.4),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5EE),
-                borderRadius: BorderRadius.circular(6),
+            for (var i = 0; i < items.length; i++)
+              _TocChip(
+                index: i + 1,
+                label: items[i],
+                onTap: () => onTap(i),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                index,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AuthColors.green,
-                ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TocChip extends StatelessWidget {
+  final int index;
+  final String label;
+  final VoidCallback onTap;
+
+  const _TocChip({
+    required this.index,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: AuthColors.border, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$index',
+              style: AppText.semiBold(
+                fontSize: 11.5,
+                color: AuthColors.inkSoft,
+              ).copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: AppText.semiBold(fontSize: 13, color: Colors.black87),
-              ),
+            Text(
+              label,
+              style: AppText.medium(
+                fontSize: 12.5,
+                color: AuthColors.ink,
+              ).copyWith(letterSpacing: 0.1),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Section block — number, serif title, plain-English callout, body
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _PolicySection extends StatelessWidget {
+  final int index;
+  final _SectionData section;
+  final Color calloutBg;
+  final String calloutLabel;
+
+  const _PolicySection({
+    super.key,
+    required this.index,
+    required this.section,
+    required this.calloutBg,
+    required this.calloutLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Number label (small caps)
         Text(
-          body,
-          style: AppText.regular(
-            fontSize: 13,
-            color: Colors.black54,
-          ).copyWith(height: 1.6),
+          'S· ${index.toString().padLeft(2, '0')}',
+          style: AppText.semiBold(
+            fontSize: 11,
+            color: AuthColors.inkSoft,
+          ).copyWith(
+            letterSpacing: 1.6,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
-        if (!isLast) ...[
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          const SizedBox(height: 16),
-        ] else
-          const SizedBox(height: 16),
+        const SizedBox(height: 10),
+
+        // Serif title
+        Text(
+          section.title,
+          style: AppText.serif(
+            fontSize: 24,
+            letterSpacing: -0.3,
+            height: 1.2,
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        // Plain-English callout
+        _PlainEnglishCallout(
+          label: calloutLabel,
+          text: section.plain,
+          bg: calloutBg,
+        ),
+
+        const SizedBox(height: 18),
+
+        // Body
+        Text(
+          section.body,
+          style: AppText.regular(
+            fontSize: 15,
+            color: AuthColors.ink,
+          ).copyWith(height: 1.7, letterSpacing: 0.1),
+        ),
       ],
+    );
+  }
+}
+
+class _PlainEnglishCallout extends StatelessWidget {
+  final String label;
+  final String text;
+  final Color bg;
+
+  const _PlainEnglishCallout({
+    required this.label,
+    required this.text,
+    required this.bg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AuthColors.accent.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AuthColors.accent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: AppText.semiBold(
+                  fontSize: 11.5,
+                  color: AuthColors.accent,
+                ).copyWith(letterSpacing: 1.0),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            // Serif pull-quote — короткое объяснение читается как «врезка»
+            style: AppText.serif(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: AuthColors.ink,
+              height: 1.55,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

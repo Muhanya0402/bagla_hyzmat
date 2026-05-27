@@ -414,7 +414,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final langProvider = context.watch<LanguageProvider>();
 
     final words = langProvider.words;
-    final isShop = widget.role == 'shop' || widget.role == 'business';
+    final isShop = widget.role == 'shop';
     final isDataLocked = !isShop && status == 'published';
     final orderId = widget.order['id'].toString();
     final double total = (widget.order['total_amount'] ?? 0.0).toDouble();
@@ -476,8 +476,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         children: [
           _buildStatusCard(status, words),
           const SizedBox(height: 12),
-
-          _buildCountdownCard(words),
+          if (!isShop) _buildCountdownCard(words),
           const SizedBox(height: 12),
 
           _buildSection(
@@ -705,6 +704,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ),
           const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
@@ -15,26 +16,22 @@ class CreateAppealSheet extends StatefulWidget {
 }
 
 class CreateAppealSheetState extends State<CreateAppealSheet> {
-  // ── Brand ──────────────────────────────────────────────────────────────────
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
-  static const _gradient = LinearGradient(colors: [_green, _red]);
-
   final _subjectCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   String? _selectedPreset;
+  final FocusNode _subjectFocus = FocusNode();
+  final FocusNode _bodyFocus = FocusNode();
 
   @override
   void dispose() {
     _subjectCtrl.dispose();
     _bodyCtrl.dispose();
+    _subjectFocus.dispose();
+    _bodyFocus.dispose();
     super.dispose();
   }
-
-  // ── Submit ─────────────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -57,7 +54,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${words.error}: $e'),
-            backgroundColor: _red,
+            backgroundColor: AuthColors.errorMuted,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -69,8 +66,6 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -88,14 +83,14 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
       ),
       child: Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          color: AuthColors.bg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.fromLTRB(
-          24,
+          20,
           12,
-          24,
-          MediaQuery.of(context).padding.bottom + 24,
+          20,
+          MediaQuery.of(context).padding.bottom + 20,
         ),
         child: Form(
           key: _formKey,
@@ -103,46 +98,46 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Handle ────────────────────────────────────────────────
+              // ── Handle ─────────────────────────────────────────────────
               Center(
                 child: Container(
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF0F3),
+                    color: AuthColors.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // ── Заголовок ─────────────────────────────────────────────
-              ShaderMask(
-                shaderCallback: (b) => _gradient.createShader(b),
-                child: Text(
-                  words.appealsCreateTitle,
-                  style: AppText.extraBold(fontSize: 20, color: Colors.white),
-                ),
+              // ── Title ───────────────────────────────────────────────────
+              Text(
+                words.appealsCreateTitle,
+                style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 words.appealsCreateSubtitle,
-                style: AppText.regular(fontSize: 13, color: _grey),
+                style: AppText.regular(
+                  fontSize: 13,
+                  color: AuthColors.inkMuted,
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // ── Пресеты темы ──────────────────────────────────────────
+              // ── Topic presets ───────────────────────────────────────────
               Text(
                 words.appealsTopicLabel,
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: _grey,
+                  color: AuthColors.inkSoft,
                 ).copyWith(letterSpacing: 0.8),
               ),
               const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 7,
+                runSpacing: 7,
                 children: presets.map((p) {
                   final sel = _selectedPreset == p;
                   return GestureDetector(
@@ -153,23 +148,21 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
+                        horizontal: 12,
+                        vertical: 7,
                       ),
                       decoration: BoxDecoration(
-                        gradient: sel ? _gradient : null,
-                        color: sel ? null : const Color(0xFFF5F7FA),
+                        color: sel ? AuthColors.ink : AuthColors.surface,
                         borderRadius: BorderRadius.circular(20),
-                        border: sel
-                            ? null
-                            : Border.all(color: const Color(0xFFEEF0F3)),
+                        border: Border.all(
+                          color: sel ? AuthColors.ink : AuthColors.border,
+                        ),
                       ),
                       child: Text(
                         p,
-                        style: TextStyle(
+                        style: AppText.semiBold(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: sel ? Colors.white : const Color(0xFF0F1117),
+                          color: sel ? Colors.white : AuthColors.ink,
                         ),
                       ),
                     ),
@@ -178,79 +171,51 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
               ),
               const SizedBox(height: 14),
 
-              // ── Поле темы ─────────────────────────────────────────────
+              // ── Subject field ───────────────────────────────────────────
               TextFormField(
                 controller: _subjectCtrl,
-                style: AppText.regular(
-                  fontSize: 14,
-                  color: const Color(0xFF0F1117),
-                ),
+                focusNode: _subjectFocus,
+                style: AppText.regular(fontSize: 14, color: AuthColors.ink),
                 decoration: _inputDeco(
                   hint: words.appealsTopicHint,
                   icon: Icons.edit_outlined,
+                  focused: _subjectFocus.hasFocus,
                 ),
+                onTap: () => setState(() {}),
+                onEditingComplete: () {
+                  setState(() {});
+                  FocusScope.of(context).requestFocus(_bodyFocus);
+                },
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? words.appealsTopicRequired
                     : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
-              // ── Поле описания ─────────────────────────────────────────
+              // ── Body field ──────────────────────────────────────────────
               TextFormField(
                 controller: _bodyCtrl,
+                focusNode: _bodyFocus,
                 maxLines: 4,
-                style: AppText.regular(
-                  fontSize: 14,
-                  color: const Color(0xFF0F1117),
-                ),
+                style: AppText.regular(fontSize: 14, color: AuthColors.ink),
                 decoration: _inputDeco(
                   hint: words.appealsBodyHint,
                   icon: Icons.description_outlined,
+                  focused: _bodyFocus.hasFocus,
                 ),
+                onTap: () => setState(() {}),
+                onEditingComplete: () => setState(() {}),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? words.appealsBodyRequired
                     : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // ── Кнопка отправить ──────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: _isLoading ? null : _gradient,
-                    color: _isLoading ? const Color(0xFFEEF0F3) : null,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      disabledBackgroundColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: _isLoading ? null : _submit,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              color: _green,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            words.appealsSend,
-                            style: AppText.bold(
-                              fontSize: 14,
-                              color: Colors.white,
-                            ).copyWith(letterSpacing: 0.5),
-                          ),
-                  ),
-                ),
+              // ── Submit button ───────────────────────────────────────────
+              _SubmitButton(
+                isLoading: _isLoading,
+                label: words.appealsSend,
+                onTap: _isLoading ? null : _submit,
               ),
             ],
           ),
@@ -259,31 +224,124 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  InputDecoration _inputDeco({required String hint, required IconData icon}) {
+  InputDecoration _inputDeco({
+    required String hint,
+    required IconData icon,
+    required bool focused,
+  }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: AppText.regular(fontSize: 13, color: const Color(0xFF9AA3AF)),
-      prefixIcon: Icon(icon, color: const Color(0xFF9AA3AF), size: 18),
+      hintStyle: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
+      prefixIcon: Icon(
+        icon,
+        color: focused ? AuthColors.emerald : AuthColors.inkSoft,
+        size: 17,
+      ),
       filled: true,
-      fillColor: const Color(0xFFF5F7FA),
+      fillColor: AuthColors.surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEEF0F3)),
+        borderSide: const BorderSide(color: AuthColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
-          color: _green.withValues(alpha: 0.4),
+          color: AuthColors.emerald.withValues(alpha: 0.5),
           width: 1.5,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: AuthColors.errorMuted.withValues(alpha: 0.5),
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: AuthColors.errorMuted,
+          width: 1.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 13,
+      ),
+    );
+  }
+}
+
+// ── Submit button ─────────────────────────────────────────────────────────────
+
+class _SubmitButton extends StatefulWidget {
+  final bool isLoading;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _SubmitButton({
+    required this.isLoading,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  State<_SubmitButton> createState() => _SubmitButtonState();
+}
+
+class _SubmitButtonState extends State<_SubmitButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: widget.onTap != null
+          ? (_) => setState(() => _pressed = true)
+          : null,
+      onTapUp: widget.onTap != null
+          ? (_) {
+              setState(() => _pressed = false);
+              widget.onTap!();
+            }
+          : null,
+      onTapCancel: widget.onTap != null
+          ? () => setState(() => _pressed = false)
+          : null,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            color: widget.isLoading ? AuthColors.borderSoft : AuthColors.ink,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: AuthColors.inkSoft,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  widget.label,
+                  style: AppText.semiBold(
+                    fontSize: 14,
+                    color: Colors.white,
+                  ).copyWith(letterSpacing: 0.5),
+                ),
+        ),
+      ),
     );
   }
 }

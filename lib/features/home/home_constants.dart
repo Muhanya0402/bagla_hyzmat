@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 class HomeColors {
   static const Color green = Color(0xFF1A7A3C);
   static const Color red = Color(0xFFD32F1E);
+  static const Color yellow = Color(0xFFFFC107);
   static const Color surface = Color(0xFFF5F7FA);
   static const Color border = Color(0xFFEEF0F3);
   static const Color grey = Color(0xFF9AA3AF);
@@ -36,12 +37,12 @@ List<StatusFilterItem> getStatusFilters(AppLocalizations words) => [
   StatusFilterItem(
     label: words.statusFreeFilter,
     value: 'published',
-    color: HomeColors.red,
+    color: HomeColors.yellow,
   ),
   StatusFilterItem(
     label: words.statusActiveFilter,
     value: 'active',
-    color: HomeColors.green,
+    color: HomeColors.dark,
   ),
   StatusFilterItem(
     label: words.statusDoneFilter,
@@ -51,6 +52,6 @@ List<StatusFilterItem> getStatusFilters(AppLocalizations words) => [
   StatusFilterItem(
     label: words.statusCanceledFilter,
     value: 'canceled',
-    color: HomeColors.grey,
+    color: HomeColors.red,
   ),
 ];

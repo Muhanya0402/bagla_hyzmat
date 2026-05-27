@@ -1,14 +1,57 @@
-import 'dart:async';
+// ─────────────────────────────────────────────────────────────────────────────
+// pubspec.yaml — скопируй в секцию flutter › assets:
+//
+//   flutter:
+//     fonts:
+//       - family: Lora
+//         fonts:
+//           - asset: assets/fonts/Lora-Regular.ttf
+//           - asset: assets/fonts/Lora-Medium.ttf   weight: 500
+//           - asset: assets/fonts/Lora-SemiBold.ttf weight: 600
+//           - asset: assets/fonts/Lora-Bold.ttf     weight: 700
+//       - family: Nunito
+//         fonts:
+//           - asset: assets/fonts/Nunito-Regular.ttf
+//           ... (остальные начертания)
+//     assets:
+//       - assets/images/bagla_logo.png
+//       - assets/images/onboarding/merchant_welcome.png
+//       - assets/images/onboarding/courier_welcome.png
+//
+// Структура папки assets/images/onboarding/:
+//   merchant_welcome.png   — прилавок / маркет / коробки с товаром
+//   courier_welcome.png    — курьер с рюкзаком или пакетом на улице
+// ─────────────────────────────────────────────────────────────────────────────
+
+import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
+import 'package:bagla/features/profile/registration_details_screen.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/app_text_styles.dart';
-import 'auth_provider.dart';
-import '../../l10n/language_provider.dart'; // adjust import path
-import '../../l10n/app_localizations.dart'; // adjust import path
+// ─────────────────────────────────────────────────────────────────────────────
+// Roles
+// ─────────────────────────────────────────────────────────────────────────────
+enum _UserRole { shop, courier, observer }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Asset paths — только карточки выбора роли
+// ─────────────────────────────────────────────────────────────────────────────
+class _OnboardingAssets {
+  static const String roleShop =
+      'assets/images/onboarding/merchant_welcome.png';
+  static const String roleCourier =
+      'assets/images/onboarding/courier_welcome.png';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// OnboardingScreen
+// Шаги: 0 — Быстрая доставка  1 — Роли  2 — Жетоны  3 — Выбор роли (финал)
+// После финала → PhoneScreen (auth вынесен из онбординга)
+// ═════════════════════════════════════════════════════════════════════════════
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -18,1123 +61,741 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
-  // ── State ──────────────────────────────────────────────────────────────────
-  final _pageCtrl = PageController();
-  int _page = 0;
-  int _seconds = 3;
-  bool _canNext = false;
-  Timer? _timer;
+  static const int _stepCount = 4;
 
-  // ── Page enter animation ───────────────────────────────────────────────────
-  late AnimationController _fadeCtrl;
-  late Animation<double> _fadeAnim;
-  late AnimationController _slideCtrl;
-  late Animation<Offset> _slideAnim;
-
-  // ── Build pages dynamically from localization ──────────────────────────────
-  List<_PageData> _buildPages(AppLocalizations l) => [
-    _PageData(
-      tag: l.onboardingTag1,
-      title: l.onboardingTitle1,
-      subtitle: l.onboardingSubtitle1,
-      pills: [
-        _Pill(l.onboardingPill1_1, true),
-        _Pill(l.onboardingPill1_2, true),
-        _Pill(l.onboardingPill1_3, false),
-      ],
-    ),
-    _PageData(
-      tag: l.onboardingTag2,
-      title: l.onboardingTitle2,
-      subtitle: l.onboardingSubtitle2,
-      pills: [
-        _Pill(l.onboardingPill2_1, true),
-        _Pill(l.onboardingPill2_2, false),
-      ],
-    ),
-    _PageData(
-      tag: l.onboardingTag3,
-      title: l.onboardingTitle3,
-      subtitle: l.onboardingSubtitle3,
-      pills: [
-        _Pill(l.onboardingPill3_1, true),
-        _Pill(l.onboardingPill3_2, false),
-      ],
-    ),
-    _PageData(
-      tag: l.onboardingTag4,
-      title: l.onboardingTitle4,
-      subtitle: l.onboardingSubtitle4,
-      pills: [
-        _Pill(l.onboardingPill4_1, true),
-        _Pill(l.onboardingPill4_2, false),
-      ],
-    ),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _slideCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOut));
-    _startTimer();
-    _fadeCtrl.forward();
-    _slideCtrl.forward();
-  }
+  final PageController _pageCtrl = PageController();
+  int _currentStep = 0;
+  _UserRole? _selectedRole;
 
   @override
   void dispose() {
-    _timer?.cancel();
     _pageCtrl.dispose();
-    _fadeCtrl.dispose();
-    _slideCtrl.dispose();
     super.dispose();
   }
 
-  void _startTimer() {
-    _timer?.cancel();
-    setState(() {
-      _seconds = 3;
-      _canNext = false;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      setState(() {
-        _seconds--;
-        if (_seconds <= 0) {
-          _canNext = true;
-          t.cancel();
-        }
-      });
-    });
+  Future<void> _goToStep(int step) async {
+    if (step < 0 || step >= _stepCount) return;
+    setState(() => _currentStep = step);
+    await _pageCtrl.animateToPage(
+      step,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
   }
 
-  void _next(int pageCount) {
-    if (!_canNext) return;
-    if (_page < pageCount - 1) {
-      _fadeCtrl.reset();
-      _slideCtrl.reset();
-      _pageCtrl.nextPage(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
+  void _onBack() {
+    if (_currentStep == 0) return;
+    _goToStep(_currentStep - 1);
+  }
+
+  Future<void> _finishOnboarding() async {
+    final role = switch (_selectedRole) {
+      _UserRole.shop => 'shop',
+      _UserRole.courier => 'courier',
+      _UserRole.observer => 'observer',
+      null => 'observer',
+    };
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_done', true);
+    await prefs.setString('user_role', role);
+    if (!mounted) return;
+    if (_selectedRole == _UserRole.observer) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
     } else {
-      _goStart();
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RegistrationDetailsScreen(role: role),
+        ),
+      );
     }
   }
 
-  Future<void> _skip() async {
-    await context.read<AuthProvider>().skipOnboarding(context);
-  }
-
-  void _goStart() {
-    Navigator.pushNamed(context, '/user_type_selection');
+  _CtaConfig _ctaFor(int step, dynamic words) {
+    switch (step) {
+      case 0:
+      case 1:
+      case 2:
+        return _CtaConfig(
+          label: words.obNext,
+          onPressed: () => _goToStep(step + 1),
+        );
+      case 3:
+        return _CtaConfig(
+          label: words.obStart,
+          onPressed: _selectedRole == null ? null : _finishOnboarding,
+          accentEmerald: true,
+        );
+      default:
+        return _CtaConfig(label: '', onPressed: null);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch the language provider so the UI rebuilds on locale change
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
-    final pages = _buildPages(words);
-    final isLast = _page == pages.length - 1;
+    final cta = _ctaFor(_currentStep, words);
+    final isLastStep = _currentStep == _stepCount - 1;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AuthColors.bg,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Column(
-          children: [
-            // ── Top bar ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  BaglaLogo(width: 52, height: 26),
-                  AnimatedOpacity(
-                    opacity: isLast ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: GestureDetector(
-                      onTap: isLast ? _skip : null,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F7FA),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFEEF0F3)),
-                        ),
-                        child: Text(
-                          words.skip,
-                          style: AppText.semiBold(
-                            fontSize: 12,
-                            color: const Color(0xFF9AA3AF),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Dots ──────────────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(pages.length, (i) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _page == i ? 20 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    gradient: _page == i ? AuthColors.gradient : null,
-                    color: _page == i ? null : const Color(0xFFEEF0F3),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Illustration ───────────────────────────────────────────────
-            Expanded(
-              flex: 5,
-              child: PageView.builder(
-                controller: _pageCtrl,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (i) {
-                  setState(() => _page = i);
-                  _startTimer();
-                  _fadeCtrl.forward(from: 0);
-                  _slideCtrl.forward(from: 0);
-                },
-                itemCount: pages.length,
-                itemBuilder: (_, i) => _buildIllustration(i, words),
-              ),
-            ),
-
-            // ── Text content ───────────────────────────────────────────────
-            Expanded(
-              flex: 4,
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: SlideTransition(
-                  position: _slideAnim,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Tag
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AuthColors.green.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            pages[_page].tag,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: AuthColors.green,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        // Title
-                        Text(
-                          pages[_page].title,
-                          style: AppText.extraBold(
-                            fontSize: 22,
-                            color: const Color(0xFF0F1117),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Subtitle
-                        Text(
-                          pages[_page].subtitle,
-                          style: AppText.regular(
-                            fontSize: 13,
-                            color: const Color(0xFF9AA3AF),
-                          ).copyWith(height: 1.6),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Pills
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: pages[_page].pills
-                              .map((p) => _PillWidget(pill: p))
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              children: [
+                _TopBar(
+                  showBack: _currentStep > 0,
+                  currentStep: _currentStep,
+                  totalSteps: _stepCount,
+                  isRu: lang.isRu,
+                  onBack: _onBack,
+                  onToggleLang: lang.toggleLanguage,
                 ),
-              ),
-            ),
-
-            // ── Timer hint ─────────────────────────────────────────────────
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _canNext
-                  ? Text(
-                      words.canContinue,
-                      key: const ValueKey('ok'),
-                      style: AppText.regular(
-                        fontSize: 11,
-                        color: AuthColors.green,
-                      ),
-                    )
-                  : Text(
-                      '${words.waitSeconds} $_seconds ${words.sec}',
-                      key: const ValueKey('wait'),
-                      style: AppText.regular(
-                        fontSize: 11,
-                        color: const Color(0xFF9AA3AF),
-                      ),
-                    ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // ── Button ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
-              child: GestureDetector(
-                onTap: _canNext ? () => _next(pages.length) : null,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: double.infinity,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: _canNext ? AuthColors.gradient : null,
-                    color: _canNext ? null : const Color(0xFFF0F0F0),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: _canNext
-                        ? [
-                            BoxShadow(
-                              color: AuthColors.green.withValues(alpha: 0.25),
-                              blurRadius: 14,
-                              offset: const Offset(0, 5),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(height: 4),
+                Expanded(
+                  child: PageView(
+                    controller: _pageCtrl,
+                    physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      Text(
-                        isLast ? words.start : words.next,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                          color: _canNext
-                              ? Colors.white
-                              : const Color(0xFF9AA3AF),
-                        ),
+                      // ── Шаг 0: Быстрая доставка ─────────────────────────
+                      _FeatureSlide(
+                        heroIcon: Icons.local_shipping_outlined,
+                        heroBg: AuthColors.emeraldTint,
+                        heroColor: AuthColors.emerald,
+                        tag: words.onboardingTag1,
+                        tagColor: AuthColors.emerald,
+                        title: words.onboardingTitle1,
+                        subtitle: words.get('onboardingSubtitle1'),
+                        pills: [
+                          words.onboardingPill1_1,
+                          words.onboardingPill1_2,
+                          words.onboardingPill1_3,
+                        ],
                       ),
-                      if (_canNext) ...[
-                        const SizedBox(width: 10),
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 15,
-                          ),
-                        ),
-                      ],
+                      // ── Шаг 1: Роли ─────────────────────────────────────
+                      _FeatureSlide(
+                        heroIcon: Icons.groups_outlined,
+                        heroBg: const Color(0xFFECE9F5),
+                        heroColor: const Color(0xFF5B4B8A),
+                        tag: words.onboardingTag2,
+                        tagColor: AuthColors.accent,
+                        title: words.onboardingTitle2,
+                        subtitle: words.get('onboardingSubtitle2'),
+                        pills: [
+                          words.onboardingPill2_1,
+                          words.onboardingPill2_2,
+                        ],
+                      ),
+                      // ── Шаг 2: Жетоны и уровни ──────────────────────────
+                      _FeatureSlide(
+                        heroIcon: Icons.toll_outlined,
+                        heroBg: AuthColors.amberTint,
+                        heroColor: AuthColors.amber,
+                        tag: words.onboardingTag3,
+                        tagColor: AuthColors.amber,
+                        title: words.onboardingTitle3,
+                        subtitle: words.get('onboardingSubtitle3'),
+                        pills: [
+                          words.onboardingPill3_1,
+                          words.onboardingPill3_2,
+                        ],
+                      ),
+                      // ── Шаг 3: Выбор роли (финал) ───────────────────────
+                      _RoleStep(
+                        words: words,
+                        selectedRole: _selectedRole,
+                        onSelect: (r) => setState(() => _selectedRole = r),
+                      ),
                     ],
                   ),
                 ),
-              ),
+
+                // ── CTA ────────────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
+                  child: _PrimaryCta(
+                    label: cta.label,
+                    onPressed: cta.onPressed,
+                    accentEmerald: cta.accentEmerald,
+                  ),
+                ),
+
+                // ── Пропустить (только на слайдах 0–2) ────────────────────
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: isLastStep
+                      ? const SizedBox(height: 24)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: 14, bottom: 24),
+                          child: GestureDetector(
+                            onTap: () => _goToStep(_stepCount - 1),
+                            behavior: HitTestBehavior.opaque,
+                            child: Text(
+                              words.skip,
+                              style: AppText.medium(
+                                fontSize: 13,
+                                color: AuthColors.inkSoft,
+                              ).copyWith(letterSpacing: 0.1),
+                            ),
+                          ),
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Illustrations ──────────────────────────────────────────────────────────
-  Widget _buildIllustration(int index, AppLocalizations l) {
-    switch (index) {
-      case 0:
-        return _DeliveryIllus();
-      case 1:
-        return _RolesIllus(
-          shopLabel: l.get('onboardingPill2_1'),
-          shopDesc: l.get('shopDesc'),
-          courierLabel: l.get('onboardingPill2_2'),
-          courierDesc: l.get('courierDesc'),
-        );
-      case 2:
-        return _TokensIllus();
-      case 3:
-        return _StepsIllus(
-          shopLabel: l.get('onboardingPill2_1'),
-          shopSub: l.get('shopCreatesOrder'),
-          courierLabel: l.get('onboardingPill2_2'),
-          courierSub: l.get('courierTakesOrder'),
-          deliveryLabel: l.get('delivery'),
-          deliverySub: l.get('deliveryConfirmed'),
-          badge: l.get('cashback'),
-        );
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Illustration 1 — delivery van  (no text, unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DeliveryIllus extends StatefulWidget {
-  @override
-  State<_DeliveryIllus> createState() => _DeliveryIllusState();
-}
-
-class _DeliveryIllusState extends State<_DeliveryIllus>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _move;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    );
-    _move = Tween<double>(
-      begin: -30,
-      end: 0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _move,
-      builder: (_, _) => Transform.translate(
-        offset: Offset(_move.value, 0),
-        child: CustomPaint(
-          painter: _VanPainter(),
-          child: const SizedBox.expand(),
-        ),
-      ),
-    );
-  }
-}
-
-class _VanPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height * 0.48;
-
-    canvas.drawCircle(
-      Offset(cx, cy),
-      size.width * 0.34,
-      Paint()..color = AuthColors.green.withValues(alpha: 0.07),
-    );
-
-    final road = Paint()..color = const Color(0xFFEEF0F3);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(cx, cy + 70),
-          width: size.width * 0.8,
-          height: 10,
-        ),
-        const Radius.circular(5),
-      ),
-      road,
-    );
-
-    final bodyP = Paint()..color = AuthColors.green;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx - 90, cy + 10, 130, 56),
-        const Radius.circular(10),
-      ),
-      bodyP,
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx + 28, cy - 6, 54, 50),
-        const Radius.circular(8),
-      ),
-      Paint()..color = const Color(0xFF22963F),
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx + 36, cy + 2, 38, 26),
-        const Radius.circular(5),
-      ),
-      Paint()..color = const Color(0xFFE8F5EE),
-    );
-
-    void wheel(double x) {
-      canvas.drawCircle(
-        Offset(x, cy + 66),
-        16,
-        Paint()..color = const Color(0xFF0F1117),
-      );
-      canvas.drawCircle(Offset(x, cy + 66), 8, Paint()..color = Colors.white);
-    }
-
-    wheel(cx - 50);
-    wheel(cx + 30);
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx - 78, cy - 12, 56, 42),
-        const Radius.circular(7),
-      ),
-      Paint()..color = AuthColors.red.withValues(alpha: 0.9),
-    );
-    final linePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..strokeWidth = 1.5;
-    canvas.drawLine(
-      Offset(cx - 78, cy + 9),
-      Offset(cx - 22, cy + 9),
-      linePaint,
-    );
-    canvas.drawLine(
-      Offset(cx - 50, cy - 12),
-      Offset(cx - 50, cy + 30),
-      linePaint,
-    );
-
-    final bow = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final bowPath = Path()
-      ..moveTo(cx - 56, cy - 12)
-      ..quadraticBezierTo(cx - 50, cy - 20, cx - 44, cy - 12);
-    canvas.drawPath(bowPath, bow);
-
-    final lineP = Paint()..strokeCap = StrokeCap.round;
-    for (int i = 0; i < 3; i++) {
-      final y = cy + 20 + i * 12.0;
-      lineP
-        ..color = AuthColors.green.withValues(alpha: 0.4 - i * 0.1)
-        ..strokeWidth = 2.5 - i * 0.5;
-      canvas.drawLine(Offset(cx - 130, y), Offset(cx - 102, y), lineP);
-    }
-
-    canvas.drawCircle(
-      Offset(cx + 72, cy - 42),
-      13,
-      Paint()..color = AuthColors.red,
-    );
-    canvas.drawCircle(
-      Offset(cx + 72, cy - 46),
-      5,
-      Paint()..color = Colors.white,
-    );
-    canvas.drawLine(
-      Offset(cx + 72, cy - 29),
-      Offset(cx + 72, cy - 22),
-      Paint()
-        ..color = AuthColors.red
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _VanPainter old) => false;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Illustration 2 — roles  (labels now come from l10n)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _RolesIllus extends StatelessWidget {
-  final String shopLabel;
-  final String shopDesc;
-  final String courierLabel;
-  final String courierDesc;
-
-  const _RolesIllus({
-    required this.shopLabel,
-    required this.shopDesc,
-    required this.courierLabel,
-    required this.courierDesc,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _RoleCard(
-            color: AuthColors.green,
-            bg: const Color(0xFFE8F5EE),
-            icon: Icons.storefront_outlined,
-            title: shopLabel,
-            desc: shopDesc,
           ),
-          const SizedBox(width: 14),
-          _RoleCard(
-            color: AuthColors.red,
-            bg: const Color(0xFFFFF0EE),
-            icon: Icons.delivery_dining_outlined,
-            title: courierLabel,
-            desc: courierDesc,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoleCard extends StatefulWidget {
-  final Color color;
-  final Color bg;
-  final IconData icon;
-  final String title;
-  final String desc;
-  const _RoleCard({
-    required this.color,
-    required this.bg,
-    required this.icon,
-    required this.title,
-    required this.desc,
-  });
-
-  @override
-  State<_RoleCard> createState() => _RoleCardState();
-}
-
-class _RoleCardState extends State<_RoleCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _scale = Tween<double>(
-      begin: 0.85,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: Container(
-        width: 130,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFEEF0F3)),
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                color: widget.color,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: widget.bg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(widget.icon, color: widget.color, size: 26),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              widget.title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F1117),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.desc,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF9AA3AF),
-                height: 1.4,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Illustration 3 — tokens & levels  (no user-visible text to localize)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TokensIllus extends StatefulWidget {
-  @override
-  State<_TokensIllus> createState() => _TokensIllusState();
-}
-
-class _TokensIllusState extends State<_TokensIllus>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _pulse = Tween<double>(
-      begin: 1.0,
-      end: 1.08,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-    _ctrl.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (_, _) => CustomPaint(
-        painter: _TokensPainter(_pulse.value),
-        child: const SizedBox.expand(),
-      ),
-    );
-  }
-}
-
-class _TokensPainter extends CustomPainter {
-  final double pulse;
-  const _TokensPainter(this.pulse);
-
-  static const _green = Color(0xFF1A7A3C);
-  static const _orange = Color(0xFFE67E22);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height * 0.44;
-
-    for (int i = 3; i >= 1; i--) {
-      canvas.drawCircle(
-        Offset(cx, cy),
-        (38 + i * 18) * pulse,
-        Paint()..color = _orange.withValues(alpha: 0.04 * i),
-      );
-    }
-
-    canvas.drawCircle(Offset(cx, cy), 36 * pulse, Paint()..color = _orange);
-
-    final tp = TextPainter(
-      text: const TextSpan(
-        text: 'T',
-        style: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w900,
-          color: Colors.white,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
-
-    final b1 = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx + 64, cy - 36), width: 36, height: 22),
-      const Radius.circular(11),
-    );
-    canvas.drawRRect(b1, Paint()..color = _green);
-    _drawText(canvas, '+1', cx + 64, cy - 36, Colors.white, 12);
-
-    final b2 = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx - 60, cy - 34), width: 36, height: 22),
-      const Radius.circular(11),
-    );
-    canvas.drawRRect(b2, Paint()..color = const Color(0xFFD32F1E));
-    _drawText(canvas, '+2', cx - 60, cy - 34, Colors.white, 12);
-
-    // Daily bonus pill — localized inline via passed text would require
-    // refactoring _TokensPainter to accept a string; keeping as-is since
-    // "+0.5" is a numeric label understood across both locales.
-    final bonusRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, cy + 58), width: 170, height: 24),
-      const Radius.circular(12),
-    );
-    canvas.drawRRect(bonusRect, Paint()..color = _green.withValues(alpha: 0.1));
-    _drawText(canvas, '+0.5 / day', cx, cy + 58, _green, 10, bold: true);
-
-    final barY = cy + 88.0;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx - 90, barY, 180, 8),
-        const Radius.circular(4),
-      ),
-      Paint()..color = const Color(0xFFEEF0F3),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx - 90, barY, 115, 8),
-        const Radius.circular(4),
-      ),
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [_green, Color(0xFFD32F1E)],
-        ).createShader(Rect.fromLTWH(cx - 90, barY, 180, 8)),
-    );
-
-    // Level labels use "Ур." / numeric — keep neutral
-    _drawText(canvas, 'Lv.1', cx - 86, barY + 20, const Color(0xFF9AA3AF), 9);
-    _drawText(canvas, 'Lv.3 ★', cx, barY + 20, _green, 9, bold: true);
-    _drawText(canvas, 'Lv.10', cx + 82, barY + 20, const Color(0xFF9AA3AF), 9);
-  }
-
-  void _drawText(
-    Canvas canvas,
-    String text,
-    double cx,
-    double cy,
-    Color color,
-    double fontSize, {
-    bool bold = false,
-  }) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: bold ? FontWeight.w800 : FontWeight.w400,
-          color: color,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
-  }
-
-  @override
-  bool shouldRepaint(covariant _TokensPainter old) => old.pulse != pulse;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Illustration 4 — 3 steps flow  (labels now come from l10n)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StepsIllus extends StatelessWidget {
-  final String shopLabel;
-  final String shopSub;
-  final String courierLabel;
-  final String courierSub;
-  final String deliveryLabel;
-  final String deliverySub;
-  final String badge;
-
-  const _StepsIllus({
-    required this.shopLabel,
-    required this.shopSub,
-    required this.courierLabel,
-    required this.courierSub,
-    required this.deliveryLabel,
-    required this.deliverySub,
-    required this.badge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _StepBox(
-            bg: const Color(0xFFE8F5EE),
-            color: AuthColors.green,
-            icon: Icons.storefront_outlined,
-            label: shopLabel,
-            sub: shopSub,
-          ),
-          _Arrow(),
-          _StepBox(
-            bg: const Color(0xFFFFF0EE),
-            color: AuthColors.red,
-            icon: Icons.delivery_dining_outlined,
-            label: courierLabel,
-            sub: courierSub,
-          ),
-          _Arrow(),
-          _StepBox(
-            bg: const Color(0xFFE8F5EE),
-            color: AuthColors.green,
-            icon: Icons.check_circle_outline_rounded,
-            label: deliveryLabel,
-            sub: deliverySub,
-            badge: badge,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepBox extends StatefulWidget {
-  final Color bg;
-  final Color color;
-  final IconData icon;
+class _CtaConfig {
   final String label;
-  final String sub;
-  final String? badge;
-
-  const _StepBox({
-    required this.bg,
-    required this.color,
-    required this.icon,
+  final VoidCallback? onPressed;
+  final bool accentEmerald;
+  _CtaConfig({
     required this.label,
-    required this.sub,
-    this.badge,
+    required this.onPressed,
+    this.accentEmerald = false,
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Top bar — back · progress dots · language switcher
+// ═════════════════════════════════════════════════════════════════════════════
+class _TopBar extends StatelessWidget {
+  final bool showBack;
+  final int currentStep;
+  final int totalSteps;
+  final bool isRu;
+  final VoidCallback onBack;
+  final VoidCallback onToggleLang;
+
+  const _TopBar({
+    required this.showBack,
+    required this.currentStep,
+    required this.totalSteps,
+    required this.isRu,
+    required this.onBack,
+    required this.onToggleLang,
   });
 
   @override
-  State<_StepBox> createState() => _StepBoxState();
-}
-
-class _StepBoxState extends State<_StepBox>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _scale = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: Row(
         children: [
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: widget.bg,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(widget.icon, color: widget.color, size: 32),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: widget.color,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            widget.sub,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Color(0xFF9AA3AF),
-              height: 1.3,
-            ),
-          ),
-          if (widget.badge != null) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: widget.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                widget.badge!,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: widget.color,
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: showBack ? 1 : 0,
+            child: IgnorePointer(
+              ignoring: !showBack,
+              child: GestureDetector(
+                onTap: onBack,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AuthColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AuthColors.border, width: 1),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new,
+                    size: 14,
+                    color: AuthColors.ink,
+                  ),
                 ),
               ),
             ),
-          ],
+          ),
+          const Spacer(),
+          _ProgressDots(current: currentStep, total: totalSteps),
+          const Spacer(),
+          AuthLangSwitcher(isRu: isRu, onToggle: onToggleLang),
         ],
       ),
     );
   }
 }
 
-class _Arrow extends StatelessWidget {
+class _ProgressDots extends StatelessWidget {
+  final int current;
+  final int total;
+  const _ProgressDots({required this.current, required this.total});
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 14,
-        color: const Color(0xFFEEF0F3),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(total, (i) {
+        final active = i == current;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          margin: EdgeInsets.only(right: i == total - 1 ? 0 : 6),
+          width: active ? 22 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: active ? AuthColors.ink : AuthColors.border,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Primary CTA
+// ═════════════════════════════════════════════════════════════════════════════
+class _PrimaryCta extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final bool accentEmerald;
+
+  const _PrimaryCta({
+    required this.label,
+    required this.onPressed,
+    this.accentEmerald = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool active = onPressed != null;
+    final Color fill = active
+        ? (accentEmerald ? AuthColors.emerald : AuthColors.ink)
+        : const Color(0xFFE2DCD0);
+    final Color shadowColor = accentEmerald
+        ? AuthColors.emerald
+        : AuthColors.ink;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      width: double.infinity,
+      height: 58,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: shadowColor.withValues(alpha: 0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: shadowColor.withValues(alpha: 0.06),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            : const [],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: fill,
+          disabledBackgroundColor: const Color(0xFFE2DCD0),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : AuthColors.inkMuted,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            letterSpacing: 0.1,
+            fontFamily: 'Nunito',
+          ),
+        ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Logo
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data models
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PageData {
+// ═════════════════════════════════════════════════════════════════════════════
+// ШАГИ 0–2 — Feature slides
+// ═════════════════════════════════════════════════════════════════════════════
+class _FeatureSlide extends StatelessWidget {
+  final IconData heroIcon;
+  final Color heroBg;
+  final Color heroColor;
   final String tag;
+  final Color tagColor;
   final String title;
   final String subtitle;
-  final List<_Pill> pills;
-  const _PageData({
+  final List<String> pills;
+
+  const _FeatureSlide({
+    required this.heroIcon,
+    required this.heroBg,
+    required this.heroColor,
     required this.tag,
+    required this.tagColor,
     required this.title,
     required this.subtitle,
     required this.pills,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
+      children: [
+        _FeatureHero(icon: heroIcon, bg: heroBg, color: heroColor),
+        const SizedBox(height: 32),
+        _SlideTag(text: tag, color: tagColor),
+        const SizedBox(height: 14),
+        Text(title, style: AppText.serif(fontSize: 34, letterSpacing: -0.6)),
+        const SizedBox(height: 12),
+        Text(
+          subtitle,
+          style: AppText.regular(
+            fontSize: 15,
+            color: AuthColors.inkMuted,
+          ).copyWith(height: 1.6, letterSpacing: 0.1),
+        ),
+        const SizedBox(height: 24),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: pills.map((p) => _SlidePill(label: p)).toList(),
+        ),
+      ],
+    );
+  }
 }
 
-class _Pill {
-  final String label;
-  final bool isGreen;
-  const _Pill(this.label, this.isGreen);
-}
+class _FeatureHero extends StatelessWidget {
+  final IconData icon;
+  final Color bg;
+  final Color color;
 
-class _PillWidget extends StatelessWidget {
-  final _Pill pill;
-  const _PillWidget({required this.pill});
+  const _FeatureHero({
+    required this.icon,
+    required this.bg,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      height: 210,
       decoration: BoxDecoration(
-        color: pill.isGreen
-            ? AuthColors.green.withValues(alpha: 0.08)
-            : const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: pill.isGreen
-              ? AuthColors.green.withValues(alpha: 0.2)
-              : const Color(0xFFEEF0F3),
+        color: bg,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Center(
+        child: Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: Icon(icon, size: 42, color: color),
         ),
+      ),
+    );
+  }
+}
+
+class _SlideTag extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _SlideTag({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 4,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text.toUpperCase(),
+          style: AppText.semiBold(
+            fontSize: 11,
+            color: color,
+          ).copyWith(letterSpacing: 1.2),
+        ),
+      ],
+    );
+  }
+}
+
+class _SlidePill extends StatelessWidget {
+  final String label;
+  const _SlidePill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      decoration: BoxDecoration(
+        color: AuthColors.surface,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: AuthColors.border, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AuthColors.ink.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
-        pill.label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: pill.isGreen ? AuthColors.green : const Color(0xFF9AA3AF),
+        label,
+        style: AppText.medium(
+          fontSize: 12.5,
+          color: AuthColors.ink,
+        ).copyWith(letterSpacing: 0.1),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ШАГ 3 — Выбор роли
+// ═════════════════════════════════════════════════════════════════════════════
+class _RoleStep extends StatelessWidget {
+  final dynamic words;
+  final _UserRole? selectedRole;
+  final ValueChanged<_UserRole> onSelect;
+
+  const _RoleStep({
+    required this.words,
+    required this.selectedRole,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
+      children: [
+        Text(
+          words.obWelcomeTitle,
+          style: AppText.serif(fontSize: 34, letterSpacing: -0.6),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          words.obWelcomeSubtitle,
+          style: AppText.regular(
+            fontSize: 14.5,
+            color: AuthColors.inkMuted,
+          ).copyWith(height: 1.5, letterSpacing: 0.1),
+        ),
+        const SizedBox(height: 32),
+        _RoleCard(
+          asset: _OnboardingAssets.roleShop,
+          title: words.obRoleShopTitle,
+          subtitle: words.obRoleShopSubtitle,
+          selected: selectedRole == _UserRole.shop,
+          onTap: () => onSelect(_UserRole.shop),
+          placeholderColor: const Color(0xFFEFE6D6),
+          placeholderIcon: Icons.storefront_outlined,
+        ),
+        const SizedBox(height: 14),
+        _RoleCard(
+          asset: _OnboardingAssets.roleCourier,
+          title: words.obRoleCourierTitle,
+          subtitle: words.obRoleCourierSubtitle,
+          selected: selectedRole == _UserRole.courier,
+          onTap: () => onSelect(_UserRole.courier),
+          placeholderColor: const Color(0xFFE6E0D3),
+          placeholderIcon: Icons.pedal_bike_outlined,
+        ),
+        const SizedBox(height: 14),
+        _RoleCard(
+          asset: '',
+          title: words.obRoleObserverTitle,
+          subtitle: words.obRoleObserverSubtitle,
+          selected: selectedRole == _UserRole.observer,
+          onTap: () => onSelect(_UserRole.observer),
+          placeholderColor: const Color(0xFFE8E4F0),
+          placeholderIcon: Icons.visibility_outlined,
+        ),
+      ],
+    );
+  }
+}
+
+class _RoleCard extends StatelessWidget {
+  final String asset;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color placeholderColor;
+  final IconData placeholderIcon;
+
+  const _RoleCard({
+    required this.asset,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+    required this.placeholderColor,
+    required this.placeholderIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        splashColor: AuthColors.ink.withValues(alpha: 0.04),
+        highlightColor: AuthColors.ink.withValues(alpha: 0.02),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AuthColors.emerald : AuthColors.border,
+              width: selected ? 1.5 : 1,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AuthColors.emerald.withValues(alpha: 0.10),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: AuthColors.ink.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 110,
+                  height: 110,
+                  child: _AssetImage(
+                    path: asset,
+                    placeholderColor: placeholderColor,
+                    placeholderIcon: placeholderIcon,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        style: AppText.serif(
+                          fontSize: 19,
+                          letterSpacing: -0.2,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        style: AppText.regular(
+                          fontSize: 13,
+                          color: AuthColors.inkMuted,
+                        ).copyWith(height: 1.45),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                width: 22,
+                height: 22,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: selected ? AuthColors.emerald : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? AuthColors.emerald : AuthColors.border,
+                    width: 1.5,
+                  ),
+                ),
+                child: selected
+                    ? const Icon(Icons.check, size: 13, color: Colors.white)
+                    : null,
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AssetImage с цветом-заглушкой и errorBuilder
+// ═════════════════════════════════════════════════════════════════════════════
+class _AssetImage extends StatelessWidget {
+  final String path;
+  final Color placeholderColor;
+  final IconData placeholderIcon;
+
+  const _AssetImage({
+    required this.path,
+    required this.placeholderColor,
+    required this.placeholderIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(color: placeholderColor),
+        Image(
+          image: AssetImage(path),
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => Center(
+            child: Icon(
+              placeholderIcon,
+              size: 28,
+              color: AuthColors.ink.withValues(alpha: 0.35),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,8 +1,9 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
-class AppealCard extends StatelessWidget {
+class AppealCard extends StatefulWidget {
   final dynamic appeal;
   final VoidCallback onTap;
   final AppLocalizations words;
@@ -14,103 +15,131 @@ class AppealCard extends StatelessWidget {
     required this.words,
   });
 
-  static const _green = Color(0xFF1A7A3C);
-  static const _red = Color(0xFFD32F1E);
-  static const _grey = Color(0xFF9AA3AF);
+  @override
+  State<AppealCard> createState() => _AppealCardState();
+}
+
+class _AppealCardState extends State<AppealCard> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final String status = (appeal['status'] ?? 'open').toString();
-    final String subject = (appeal['subject'] ?? '').toString();
-    final String body = (appeal['body'] ?? '').toString();
-    final String date = _formatDate(appeal['date_created']);
-    final bool hasReply = (appeal['reply'] ?? '').toString().isNotEmpty;
-    final _StatusCfg cfg = _statusCfg(status);
+    final String status = (widget.appeal['status'] ?? 'open').toString();
+    final String subject = (widget.appeal['subject'] ?? '').toString();
+    final String body = (widget.appeal['body'] ?? '').toString();
+    final String date = _formatDate(widget.appeal['date_created']);
+    final bool hasReply =
+        (widget.appeal['reply'] ?? '').toString().isNotEmpty;
+    final cfg = _statusCfg(status);
 
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFEEF0F3)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // ── Цветная полоска статуса ──────────────────────────────────
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                color: cfg.color,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(18),
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: AuthColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AuthColors.border),
+          ),
+          child: Row(
+            children: [
+              // ── Status accent bar ────────────────────────────────────
+              Container(
+                width: 3,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: cfg.accent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Тема + статус ──────────────────────────────────────
-                  Row(
+
+              // ── Content ──────────────────────────────────────────────
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          subject.isEmpty ? words.appealsNoSubject : subject,
-                          style: AppText.semiBold(
-                            fontSize: 14,
-                            color: const Color(0xFF0F1117),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              subject.isEmpty
+                                  ? widget.words.appealsNoSubject
+                                  : subject,
+                              style: AppText.semiBold(
+                                fontSize: 13,
+                                color: AuthColors.ink,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          _StatusBadge(cfg: cfg),
+                        ],
+                      ),
+                      if (body.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          body,
+                          style: AppText.regular(
+                            fontSize: 12,
+                            color: AuthColors.inkMuted,
+                          ).copyWith(height: 1.35),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                      ],
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time_rounded,
+                            size: 11,
+                            color: AuthColors.inkSoft,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            date,
+                            style: AppText.regular(
+                              fontSize: 11,
+                              color: AuthColors.inkSoft,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (hasReply) _HasReplyBadge(label: widget.words.appealsHasReply),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      _StatusBadge(cfg: cfg),
                     ],
                   ),
-                  const SizedBox(height: 6),
-
-                  // ── Тело ──────────────────────────────────────────────
-                  Text(
-                    body,
-                    style: AppText.regular(fontSize: 13, color: _grey),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 10),
-
-                  // ── Дата + ответ ───────────────────────────────────────
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time_rounded,
-                        size: 12,
-                        color: _grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        date,
-                        style: AppText.regular(fontSize: 11, color: _grey),
-                      ),
-                      const Spacer(),
-                      if (hasReply)
-                        _HasReplyBadge(label: words.appealsHasReply),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+
+              // ── Chevron ──────────────────────────────────────────────
+              const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: AuthColors.inkSoft,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -122,10 +151,14 @@ class AppealCard extends StatelessWidget {
       final dt = DateTime.parse(raw.toString()).toLocal();
       final diff = DateTime.now().difference(dt);
       if (diff.inDays == 0) {
-        return '${words.appealsToday} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        return '${widget.words.appealsToday} '
+            '${dt.hour.toString().padLeft(2, '0')}:'
+            '${dt.minute.toString().padLeft(2, '0')}';
       }
-      if (diff.inDays == 1) return words.appealsYesterday;
-      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+      if (diff.inDays == 1) return widget.words.appealsYesterday;
+      return '${dt.day.toString().padLeft(2, '0')}.'
+          '${dt.month.toString().padLeft(2, '0')}.'
+          '${dt.year}';
     } catch (_) {
       return '';
     }
@@ -134,25 +167,54 @@ class AppealCard extends StatelessWidget {
   _StatusCfg _statusCfg(String status) {
     switch (status.toLowerCase()) {
       case 'open':
-        return _StatusCfg(_red, words.appealsStatusOpen);
+        return _StatusCfg(
+          accent: AuthColors.amber,
+          bg: AuthColors.amberTint,
+          text: AuthColors.amber,
+          label: widget.words.appealsStatusOpen,
+        );
       case 'in_progress':
-        return _StatusCfg(const Color(0xFFE67E22), words.appealsStatusProgress);
+        return _StatusCfg(
+          accent: AuthColors.amber,
+          bg: AuthColors.amberTint,
+          text: AuthColors.amber,
+          label: widget.words.appealsStatusProgress,
+        );
       case 'resolved':
       case 'closed':
-        return _StatusCfg(_green, words.appealsStatusClosed);
+        return _StatusCfg(
+          accent: AuthColors.emerald,
+          bg: AuthColors.emeraldTint,
+          text: AuthColors.emerald,
+          label: widget.words.appealsStatusClosed,
+        );
       default:
-        return _StatusCfg(const Color(0xFF9AA3AF), status);
+        return _StatusCfg(
+          accent: AuthColors.inkSoft,
+          bg: AuthColors.borderSoft,
+          text: AuthColors.inkSoft,
+          label: status,
+        );
     }
   }
 }
 
-// ── Вспомогательные виджеты ───────────────────────────────────────────────────
+// ── Data ─────────────────────────────────────────────────────────────────────
 
 class _StatusCfg {
-  final Color color;
+  final Color accent;
+  final Color bg;
+  final Color text;
   final String label;
-  const _StatusCfg(this.color, this.label);
+  const _StatusCfg({
+    required this.accent,
+    required this.bg,
+    required this.text,
+    required this.label,
+  });
 }
+
+// ── Widgets ───────────────────────────────────────────────────────────────────
 
 class _StatusBadge extends StatelessWidget {
   final _StatusCfg cfg;
@@ -161,10 +223,11 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: cfg.color.withValues(alpha: 0.1),
+        color: cfg.bg,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cfg.accent.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -172,16 +235,15 @@ class _StatusBadge extends StatelessWidget {
           Container(
             width: 5,
             height: 5,
-            decoration: BoxDecoration(color: cfg.color, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: cfg.accent,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 5),
           Text(
             cfg.label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: cfg.color,
-            ),
+            style: AppText.semiBold(fontSize: 10, color: cfg.text),
           ),
         ],
       ),
@@ -193,22 +255,30 @@ class _HasReplyBadge extends StatelessWidget {
   final String label;
   const _HasReplyBadge({required this.label});
 
-  static const _green = Color(0xFF1A7A3C);
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: _green.withValues(alpha: 0.08),
+        color: AuthColors.emeraldTint,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AuthColors.emerald.withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.reply_rounded, size: 11, color: _green),
+          const Icon(
+            Icons.reply_rounded,
+            size: 10,
+            color: AuthColors.emerald,
+          ),
           const SizedBox(width: 4),
-          Text(label, style: AppText.semiBold(fontSize: 10, color: _green)),
+          Text(
+            label,
+            style: AppText.semiBold(fontSize: 10, color: AuthColors.emerald),
+          ),
         ],
       ),
     );

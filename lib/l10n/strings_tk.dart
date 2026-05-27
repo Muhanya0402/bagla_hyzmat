@@ -1,4 +1,123 @@
 const Map<String, String> stringsTk = {
+  // ── Auth: phone screen ──────────────────────────────────────────────────
+  'authPhoneTitle': 'Hoş geldiňiz',
+  'authPhoneSubtitle':
+      'Telefon belgini giriziň — tassyklama kody\nbilen SMS ibereris.',
+  'authPhoneFieldLabel': 'Telefon belgisi',
+  'authSendCodeBtn': 'Kody ibermek',
+  'authSmsConsent': '«Ibermek» basyp, SMS almaga razy bolýarsyňyz.',
+  'authPolicyAgreePrefix': 'Ylalaşýaryn: ',
+  'authPolicyTerms': 'Ulanyş şertleri',
+  'authPolicyAnd': ' we ',
+  'authPolicyPrivacy': 'Gizlinlik syýasaty',
+  'authCountryTitle': 'Ýurt',
+  'authCountryTurkmenistan': 'Türkmenistan',
+  'authCountryAvailability':
+      'Häzir diňe Türkmenistanda eltip bermek elýeterli.',
+  // ── Auth: otp screen ────────────────────────────────────────────────────
+  'authOtpTitle': 'Tassyklama',
+  'authOtpSubtitle': '4 belgili kody iberdik:\n',
+  'authOtpResendInPrefix': 'Täze kody ibermek wagty: ',
+  'authOtpResendLink': 'Kody täzeden ibermek',
+  'authConfirmBtn': 'Tassyklamak',
+  // ── Empathic error messages (no blame, gentle tone) ─────────────────────
+  'errPhoneFormat':
+      'Görnüşinden, telefon belgisinde sanlar ýetenok ýa-da ýurt kody nädogry. '
+      'Formaty barlap, ýene synanyşyň.',
+  'errOtpInvalid':
+      'Giren kodyňyz iberilen kod bilen gabat gelmedi. Iň soňky alan habaryňyzy '
+      'girizýändigiňize göz ýetiriň ýa-da 30 sekuntdan soň täze kod isläň.',
+  'errNetwork':
+      'Server bilen habarlaşyp bolmady. Tor birikmesini barlaň. Aragatnaşyk '
+      'dikeleninden soň sahypa awtomatik täzelener.',
+  'errNetworkTitle': 'Aragatnaşyk ýok',
+  'errPolicyRequired':
+      'Dowam etmek üçin Ulanyş şertlerine razylygy belläň.',
+  // ── Onboarding ──────────────────────────────────────────────────────────
+  'obWelcomeTitle': 'Bagla-a hoş geldiňiz',
+  'obWelcomeSubtitle': 'Programmany nähili ulanjakdygyňyzy saýlaň.',
+  'obRoleShopTitle': 'Men satyjy',
+  'obRoleShopSubtitle': '2 minutda kurýer tapýaryn',
+  'obRoleCourierTitle': 'Men kurýer',
+  'obRoleCourierSubtitle': 'Durnukly girdeji we çeýe iş wagty',
+  'obRoleObserverTitle': 'Synçy',
+  'obRoleObserverSubtitle': 'Sargytlara gatnaşmazdan syn edýärin',
+  'obPhoneStepTitle': 'Belgiňiz',
+  'obPhoneStepSubtitle':
+      'Tassyklamak üçin SMS-kod ibereris. Spam ýok.',
+  'obOtpStepTitle': 'Kody giriziň',
+  'obOtpStepSubtitlePrefix': '4 belgili kody iberdik: ',
+  'obShopUspTag': 'Aç-açanlyk',
+  'obShopUspTitle': 'Eltip bermegiň her ädimini görüň',
+  'obShopUspText':
+      'Eltip bermegiň her tapgyryny gerçek wagtda görýärsiňiz — kurýere goşmaça jaňsyz.',
+  'obShopUspStepAccepted': 'Kabul edildi',
+  'obShopUspStepInTransit': 'Ýolda',
+  'obShopUspStepDelivered': 'Eltildi',
+  'obCourierUspTag': 'Adalatly girdeji',
+  'obCourierUspTitle': 'Adalatly gazanyň',
+  'obCourierUspText':
+      'Tylla sargyt almak üçin gerek. Diňe gazananyňyzda töleýärsiňiz.',
+  'obCalcLabel': 'Girdeji hasaplama',
+  'obCalcBuyout': 'Haryt satyn alyş',
+  'obCalcDelivery': 'Eltip bermek',
+  'obCalcProfit': 'Arassa girdeji',
+  'obTokenBalance': 'Tylla balansy',
+  'obTokenUnit': 'tyl.',
+  'obNext': 'Dowam etmek',
+  'obStart': 'Ulanyp başlamak',
+  'obStep': 'Ädim',
+  // ── Policy screen ───────────────────────────────────────────────────────
+  'policyTitle': 'Ulanyş şertleri',
+  'policyLastUpdated': 'Soňky täzelenme · 2026',
+  'policyIntro':
+      'Bu resminama Bagla programmasyny ulanmagyň düzgünlerini düşündirýär. '
+      'Her bölümiň ýanynda sada dilde gysga düşündiriş bar.',
+  'policyTocTitle': 'Bölümler',
+  'policyInPlainEnglish': 'Sada dilde',
+  'policyScrollHint': 'Dowam etmek üçin aşaga aýlaň',
+  'policyAcceptBtn': 'Kabul et we dowam et',
+  // Sections (6)
+  'policySec1Title': 'Umumy düzgünler',
+  'policySec1Plain': 'Programmany ulanyp, düzgünlere razy bolýarsyňyz.',
+  'policySec1Body':
+      'Bu Ulanyş şertleri ulanyjy bilen hyzmat arasynda Türkmenistanda mobil programmany '
+      'ulanmak bilen bagly gatnaşyklary düzenleýär. Ulanmagy dowam etdirip, şu Şertlere '
+      'razy bolýarsyňyz.',
+  'policySec2Title': 'Şahsy maglumatlar',
+  'policySec2Plain':
+      'Diňe telefon belgisini we enjam ID-sini saklaýarys. Üçünji taraplara bermeýäris.',
+  'policySec2Body':
+      'Biz diňe zerur maglumatlary ýygnaýarys: telefon belgisi we enjam identifikatory. '
+      'Maglumatlary siziň açyk razylygyňyz bolmazdan üçünji taraplara geçirmeýäris. '
+      'Goldaw arkaly maglumatlary öçürmegi haýyş edip bilersiňiz.',
+  'policySec3Title': 'SMS-kodlar we howpsuzlyk',
+  'policySec3Plain': 'Kod 5 minut geçerli we bir gezeklik. Hiç kime aýtmaň.',
+  'policySec3Body':
+      'Tassyklaýjy kodlar 5 minut geçerli we bir gezeklik. Kody hiç kimsä aýtmaň — programma '
+      'işgärleri ony soramaýar. Hasabyňyzyň howpsuzlygy şübheli ýagdaýda derrew goldaw bilen '
+      'habarlaşyň.',
+  'policySec4Title': 'Ulanyş düzgünleri',
+  'policySec4Plain':
+      'Kanuny we başgalaryň hukuklaryny bozmaň — ýogsam çäklendirme bolup biler.',
+  'policySec4Body':
+      'Programmany diňe kanuny maksatlar üçin ulanmaga, beýleki ulanyjylaryň hukuklaryny '
+      'bozmazlyga we ulgamy döwmäge synanyşmazlyga borçlanýarsyňyz. Bu düzgünleri bozmak '
+      'wagtlaýyn ýa-da hemişelik petiklenmäge eltip biler.',
+  'policySec5Title': 'Jogapkärçiligiň çäklenmesi',
+  'policySec5Plain':
+      'Internet, aragatnaşyk we daşarky hyzmatlaryň bökdençlikleri üçin jogapkär däl.',
+  'policySec5Body':
+      'Programma "bar bolşy ýaly" hödürlenýär. Aragatnaşyk meseleleri, hyzmatdaş banklaryň '
+      'tölegi we üçünji tarap API-leriniň elýetersizligi ýaly daşarky faktorlar bilen '
+      'baglanyşykly bökdençlikler üçin jogapkärçilik çekmeýäris.',
+  'policySec6Title': 'Şertleri üýtgetmek',
+  'policySec6Plain':
+      'Esasy üýtgeşmeler barada azyndan 5 gün öňünden habar bereris.',
+  'policySec6Body':
+      'Şertleri üýtgetmäge haklarymyz bar. Esasy üýtgeşmeler barada güýje girmezden 5 günden '
+      'az bolmadyk möhletde push-bildiriş ýa-da SMS arkaly habar bereris. Habardan soň '
+      'programmany ulanmagy dowam etdirmek täze görnüş bilen ylalaşmaklygy aňladýar.',
   'loginTitle': 'Bagla',
   'welcomeToApp': 'Hoş geldiňiz',
   'fastDeliveryTitle': 'Şäher içinde\nçalt eltip bermek',
@@ -216,6 +335,7 @@ const Map<String, String> stringsTk = {
   'notifTitle': 'Habarlar',
   'notifMarkAll': 'Hemmesini oка',
   'notifToday': 'ŞUGÜN',
+  'notifYesterday': 'DÜN',
   'notifEarlier': 'ÖŇKI',
   'notifEmpty': 'Häzirlikçe habar ýok',
   'notifEmptyDesc':
@@ -272,4 +392,5 @@ const Map<String, String> stringsTk = {
   'appealsYourRequest': 'SIZIŇ HAÝYŞYŇYZ',
   'appealsSupportReply': 'GOLDAW JOGABY',
   'appealsWaitingReply': 'Goldaw jogabyny garaşyň',
+  'appealsHint': 'Ýüz tutmalaryň seredilmegi 15 minutdan köp almaýar',
 };

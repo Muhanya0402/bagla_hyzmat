@@ -16,52 +16,90 @@ class OtpScreen extends StatefulWidget {
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
-  int _seconds = 30;
+class _OtpScreenState extends State<OtpScreen>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  static const int _resendDuration = 60;
+  static const int _disableMs = 700;
+
+  int _seconds = _resendDuration;
   Timer? _timer;
   DateTime? _backgroundTime;
+
+  // ── Error UX state ───────────────────────────────────────────────────────
+  String? _otpError;
+  bool _forceError = false; // подсветка через errorPinTheme
+  bool _disabled = false; // кнопка временно неактивна после ошибки
+
+  // Горизонтальный shake всего пин-блока
+  late final AnimationController _shakeCtrl;
+  late final Animation<double> _shakeAnim;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startTimer();
+
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    // несколько мягких качаний влево-вправо
+    _shakeAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: -7), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -7, end: 7), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 7, end: -5), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -5, end: 4), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 4, end: 0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
+
+    // Очищаем ошибку при редактировании
+    context.read<AuthProvider>().otpController.addListener(_onOtpChanged);
+  }
+
+  void _onOtpChanged() {
+    // Сбрасываем сообщение об ошибке ТОЛЬКО когда пользователь начинает
+    // вводить новый код. Программный clear() после shake'а оставляет
+    // text='' — на него реагировать нельзя, иначе текст исчезнет мгновенно.
+    final text = context.read<AuthProvider>().otpController.text;
+    if (text.isNotEmpty && (_otpError != null || _forceError)) {
+      setState(() {
+        _otpError = null;
+        _forceError = false;
+      });
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // Уходим в фон — запоминаем время и останавливаем таймер
       _backgroundTime = DateTime.now();
       _timer?.cancel();
     } else if (state == AppLifecycleState.resumed) {
-      // Возвращаемся — считаем сколько прошло времени
       if (_backgroundTime != null && _seconds > 0) {
         final elapsed = DateTime.now().difference(_backgroundTime!).inSeconds;
         final remaining = _seconds - elapsed;
         setState(() => _seconds = remaining > 0 ? remaining : 0);
         _backgroundTime = null;
-
-        if (_seconds > 0) {
-          // Продолжаем отсчёт
-          _timer?.cancel();
-          _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-            if (_seconds == 0) {
-              _timer?.cancel();
-            } else {
-              setState(() => _seconds--);
-            }
-          });
-        }
-        // Если _seconds == 0 — таймер закончился пока были в фоне,
-        // кнопка "Отправить снова" появится автоматически
+        if (_seconds > 0) _tickAfterResume();
       }
     }
   }
 
+  void _tickAfterResume() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_seconds == 0) {
+        _timer?.cancel();
+      } else {
+        setState(() => _seconds--);
+      }
+    });
+  }
+
   void _startTimer() {
     _timer?.cancel();
-    setState(() => _seconds = 60);
+    setState(() => _seconds = _resendDuration);
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_seconds == 0) {
         _timer?.cancel();
@@ -73,197 +111,263 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    context.read<AuthProvider>().otpController.removeListener(_onOtpChanged);
     WidgetsBinding.instance.removeObserver(this);
+    _shakeCtrl.dispose();
     _timer?.cancel();
     super.dispose();
   }
 
-  // ── Pinput themes ──────────────────────────────────────────────────────────
-  // FIX: use copyWith(decoration: ...) — copyDecorationWith doesn't exist in
-  // this version of pinput and caused the compile error.
+  Future<void> _onVerify({required bool fromAutoComplete}) async {
+    final auth = context.read<AuthProvider>();
+    final lang = context.read<LanguageProvider>();
+    final words = lang.words;
 
+    // Если ручной submit, но пина ещё нет — игнор
+    if (!fromAutoComplete && auth.otpController.text.length < 4) return;
+    if (_disabled) return;
+
+    final ok = await auth.verifyOtpAndLogin(context, lang, silent: true);
+
+    if (!mounted) return;
+
+    if (ok) return; // успешно — навигация внутри AuthProvider
+
+    // ── Ошибка ────────────────────────────────────────────────────────────
+    if (auth.lastErrorKind == AuthErrorKind.network) {
+      showAuthNetworkBanner(
+        context,
+        title: words.errNetworkTitle,
+        message: words.errNetwork,
+      );
+      return;
+    }
+
+    // Неверный код: shake + inline + temporary disable
+    setState(() {
+      _otpError = words.errOtpInvalid;
+      _forceError = true;
+      _disabled = true;
+    });
+    _shakeCtrl.forward(from: 0);
+
+    // После shake'а: чистим ячейки и убираем красный фон,
+    // НО оставляем _otpError видимым — он пропадёт, когда пользователь
+    // начнёт вводить новый код (см. _onOtpChanged).
+    Future.delayed(const Duration(milliseconds: 480), () {
+      if (!mounted) return;
+      auth.otpController.clear();
+      setState(() => _forceError = false);
+    });
+
+    Future.delayed(const Duration(milliseconds: _disableMs), () {
+      if (!mounted) return;
+      setState(() => _disabled = false);
+    });
+  }
+
+  Future<void> _onResend(
+    AuthProvider auth,
+    LanguageProvider lang,
+    dynamic words,
+  ) async {
+    await auth.sendOTPOnly(context, lang, silent: true);
+    if (!mounted) return;
+    if (auth.lastErrorKind == AuthErrorKind.network) {
+      showAuthNetworkBanner(
+        context,
+        title: words.errNetworkTitle,
+        message: words.errNetwork,
+      );
+    } else {
+      _startTimer();
+    }
+  }
+
+  // ── Pin themes — минимальные «карточки бумаги», серифные цифры ──────────
   PinTheme get _defaultTheme => PinTheme(
-    width: 64,
-    height: 64,
-    textStyle: AppText.bold(fontSize: 24),
-    decoration: BoxDecoration(
-      color: Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.black12, width: 1.5),
-    ),
-  );
+        width: 56,
+        height: 64,
+        textStyle: AppText.serif(fontSize: 26, letterSpacing: 0),
+        decoration: BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AuthColors.border, width: 1),
+        ),
+      );
 
   PinTheme get _focusedTheme => _defaultTheme.copyWith(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AuthColors.green, width: 2),
-      boxShadow: [
-        BoxShadow(
-          color: AuthColors.green.withValues(alpha: 0.15),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
+        decoration: BoxDecoration(
+          color: AuthColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AuthColors.ink, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AuthColors.ink.withValues(alpha: 0.10),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 
   PinTheme get _submittedTheme => _defaultTheme.copyWith(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AuthColors.red, width: 2),
-    ),
-  );
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F0E8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AuthColors.accent, width: 1),
+        ),
+      );
 
+  // Muted terracotta вместо неонового красного.
   PinTheme get _errorTheme => _defaultTheme.copyWith(
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFF0EE),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AuthColors.red, width: 2),
-    ),
-  );
+        textStyle: AppText.serif(
+          fontSize: 26,
+          letterSpacing: 0,
+          color: AuthColors.errorMuted,
+        ),
+        decoration: BoxDecoration(
+          color: AuthColors.errorTint,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AuthColors.errorMuted, width: 1.5),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final lang = context.watch<LanguageProvider>();
+    final words = lang.words;
     final isLoading = context.select<AuthProvider, bool>((a) => a.isLoading);
 
+    final buttonDisabled = _disabled || isLoading;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AuthColors.bg,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Top bar ──────────────────────────────────────────────────
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  AuthBackButton(),
-                  const Spacer(),
-                  const BaglaLogo(width: 56, height: 28),
-                  const Spacer(),
-                  AuthLangSwitcher(
-                    isRu: lang.isRu,
-                    onToggle: lang.toggleLanguage,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 36),
-
-              // ── Title ────────────────────────────────────────────────────
-              RichText(
-                text: TextSpan(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Top bar ────────────────────────────────────────────────
+                const SizedBox(height: 18),
+                Row(
                   children: [
-                    TextSpan(
-                      text: 'SMS',
-                      style: AppText.bold(
-                        fontSize: 26,
-                        color: AuthColors.green,
-                      ),
-                    ),
-                    TextSpan(
-                      text: lang.isRu ? '-код\nотправлен' : '-kod\niberildi',
-                      style: AppText.bold(fontSize: 26, color: Colors.black),
+                    const AuthBackButton(),
+                    const Spacer(),
+                    const BaglaLogo(width: 56, height: 28),
+                    const Spacer(),
+                    AuthLangSwitcher(
+                      isRu: lang.isRu,
+                      onToggle: lang.toggleLanguage,
                     ),
                   ],
                 ),
-              ),
 
-              const SizedBox(height: 8),
+                const Spacer(flex: 2),
 
-              RichText(
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                    height: 1.4,
-                  ),
-                  children: [
-                    TextSpan(text: lang.isRu ? 'На номер ' : 'Belgä '),
-                    TextSpan(
-                      text: auth.phoneController.text.isNotEmpty
-                          ? auth.phoneController.text
-                          : '+993 6X XXX XXX',
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                // ── Title (calm serif) ─────────────────────────────────────
+                Text(
+                  words.authOtpTitle,
+                  style: AppText.serif(fontSize: 34),
                 ),
-              ),
-
-              const SizedBox(height: 36),
-
-              // ── Pinput ───────────────────────────────────────────────────
-              Center(
-                child: Pinput(
-                  length: 4,
-                  controller: auth.otpController,
-                  defaultPinTheme: _defaultTheme,
-                  focusedPinTheme: _focusedTheme,
-                  submittedPinTheme: _submittedTheme,
-                  errorPinTheme: _errorTheme,
-                  showCursor: true,
-                  cursor: Container(
-                    width: 2,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: AuthColors.green,
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                  ),
-                  onCompleted: (pin) async {
-                    final ok = await auth.verifyOtpAndLogin(context, lang);
-                    if (!ok && context.mounted) auth.otpController.clear();
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Timer / Resend ───────────────────────────────────────────
-              Center(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: _seconds > 0
-                      ? _TimerPill(
-                          seconds: _seconds,
-                          isRu: lang.isRu,
-                          key: const ValueKey('timer'),
-                        )
-                      : _ResendButton(
-                          isRu: lang.isRu,
-                          key: const ValueKey('resend'),
-                          onPressed: () async {
-                            await auth.sendOTPOnly(context, lang);
-                            _startTimer();
-                          },
+                const SizedBox(height: 12),
+                RichText(
+                  text: TextSpan(
+                    style: AppText.regular(
+                      fontSize: 14.5,
+                      color: AuthColors.inkMuted,
+                    ).copyWith(height: 1.5, letterSpacing: 0.1),
+                    children: [
+                      TextSpan(text: words.authOtpSubtitle),
+                      TextSpan(
+                        text: auth.phoneController.text.isNotEmpty
+                            ? '+993 ${auth.phoneController.text}'
+                            : '+993 6X XX XX XX',
+                        style: const TextStyle(
+                          color: AuthColors.ink,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              const Spacer(),
+                const SizedBox(height: 40),
 
-              // ── Confirm button ───────────────────────────────────────────
-              if (isLoading)
-                const Center(child: CircularProgressIndicator())
-              else
+                // ── Pinput (горизонтальный shake при ошибке) ───────────────
+                Center(
+                  child: AnimatedBuilder(
+                    animation: _shakeAnim,
+                    builder: (_, child) => Transform.translate(
+                      offset: Offset(_shakeAnim.value, 0),
+                      child: child,
+                    ),
+                    child: Pinput(
+                      length: 4,
+                      controller: auth.otpController,
+                      defaultPinTheme: _defaultTheme,
+                      focusedPinTheme: _focusedTheme,
+                      submittedPinTheme: _submittedTheme,
+                      errorPinTheme: _errorTheme,
+                      forceErrorState: _forceError,
+                      separatorBuilder: (_) => const SizedBox(width: 12),
+                      showCursor: true,
+                      cursor: Container(
+                        width: 1.5,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: AuthColors.ink,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                      onCompleted: (_) =>
+                          _onVerify(fromAutoComplete: true),
+                    ),
+                  ),
+                ),
+
+                // ── Inline error message ───────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: AuthInlineError(message: _otpError),
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Timer / Resend (минимальный inline) ────────────────────
+                Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: _seconds > 0
+                        ? _SubtleTimer(
+                            seconds: _seconds,
+                            key: const ValueKey('timer'),
+                          )
+                        : _ResendLink(
+                            key: const ValueKey('resend'),
+                            onPressed: () => _onResend(auth, lang, words),
+                          ),
+                  ),
+                ),
+
+                const Spacer(flex: 3),
+
+                // ── Confirm button ─────────────────────────────────────────
                 AuthGradientButton(
-                  label: lang.isRu ? 'ПОДТВЕРДИТЬ' : 'TASSYKLAMAK',
-                  onPressed: () async {
-                    if (auth.otpController.text.length < 4) return;
-                    await auth.verifyOtpAndLogin(context, lang);
-                  },
+                  label: words.authConfirmBtn,
+                  isLoading: isLoading,
+                  enabled: !buttonDisabled,
+                  onPressed: () => _onVerify(fromAutoComplete: false),
                 ),
 
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 28),
+              ],
+            ),
           ),
         ),
       ),
@@ -271,36 +375,34 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Private widgets
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Private widgets
+// ═════════════════════════════════════════════════════════════════════════════
 
-class _TimerPill extends StatelessWidget {
+class _SubtleTimer extends StatelessWidget {
   final int seconds;
-  final bool isRu;
-  const _TimerPill({required this.seconds, required this.isRu, super.key});
+  const _SubtleTimer({required this.seconds, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    final words = context.watch<LanguageProvider>().words;
+    final mm = '0:${seconds.toString().padLeft(2, '0')}';
+
+    return RichText(
+      text: TextSpan(
+        style: AppText.regular(
+          fontSize: 13.5,
+          color: AuthColors.inkSoft,
+        ).copyWith(height: 1.4, letterSpacing: 0.1),
         children: [
-          const Icon(Icons.timer_outlined, size: 15, color: Colors.black45),
-          const SizedBox(width: 7),
-          Text(
-            isRu ? 'Повтор через ' : 'Gaýtalamak: ',
-            style: AppText.regular(fontSize: 13, color: Colors.black45),
-          ),
-          Text(
-            '0:${seconds.toString().padLeft(2, '0')}',
-            style: AppText.bold(fontSize: 13, color: AuthColors.green),
+          TextSpan(text: words.authOtpResendInPrefix),
+          TextSpan(
+            text: mm,
+            style: const TextStyle(
+              color: AuthColors.ink,
+              fontWeight: FontWeight.w600,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
@@ -308,19 +410,31 @@ class _TimerPill extends StatelessWidget {
   }
 }
 
-class _ResendButton extends StatelessWidget {
-  final bool isRu;
+class _ResendLink extends StatelessWidget {
   final VoidCallback onPressed;
-  const _ResendButton({required this.isRu, required this.onPressed, super.key});
+  const _ResendLink({required this.onPressed, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.refresh, size: 16, color: AuthColors.green),
-      label: Text(
-        isRu ? 'Отправить снова' : 'Täzeden ibermek',
-        style: AppText.semiBold(fontSize: 14, color: AuthColors.green),
+    final words = context.watch<LanguageProvider>().words;
+
+    return GestureDetector(
+      onTap: onPressed,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(
+          words.authOtpResendLink,
+          style: AppText.semiBold(
+            fontSize: 13.5,
+            color: AuthColors.ink,
+          ).copyWith(
+            decoration: TextDecoration.underline,
+            decorationColor: AuthColors.ink,
+            decorationThickness: 1.2,
+            letterSpacing: 0.1,
+          ),
+        ),
       ),
     );
   }
