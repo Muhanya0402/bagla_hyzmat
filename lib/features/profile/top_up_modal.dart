@@ -117,7 +117,9 @@ class _TopUpModalState extends State<TopUpModal> {
 
     final double bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
-    final double bottomSpace = bottomInset > 0 ? bottomInset + 16 : bottomPadding + 24;
+    final double bottomSpace = bottomInset > 0
+        ? bottomInset + 16
+        : bottomPadding + 24;
 
     return Container(
       decoration: const BoxDecoration(
@@ -141,7 +143,6 @@ class _TopUpModalState extends State<TopUpModal> {
                         onActionPressed: () => Navigator.pop(context),
                       ),
               )
-
             // ── Main top-up flow ──────────────────────────────────────────────
             else
               Flexible(
@@ -167,14 +168,11 @@ class _TopUpModalState extends State<TopUpModal> {
                       ],
 
                       // Bank picker
-                      _SectionLabel(
-                        text: widget.isRu ? 'СПОСОБ ОПЛАТЫ' : 'TÖLEG USULY',
-                      ),
-                      const SizedBox(height: 10),
                       BankPickerSection(
                         isRu: widget.isRu,
                         selected: _selectedBank,
-                        onSelected: (bank) => setState(() => _selectedBank = bank),
+                        onSelected: (bank) =>
+                            setState(() => _selectedBank = bank),
                       ),
                       const SizedBox(height: 22),
 
@@ -270,7 +268,10 @@ class _Header extends StatelessWidget {
                 isRu
                     ? 'Жетоны нужны для принятия заказов'
                     : 'Sargytlary kabul etmek üçin nişanlar gerek',
-                style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+                style: AppText.regular(
+                  fontSize: 13,
+                  color: AuthColors.inkMuted,
+                ),
               ),
             ],
           ),
@@ -776,9 +777,7 @@ class _PayButtonState extends State<_PayButton> {
                   widget.isRu ? 'Перейти к оплате' : 'Töleg etmek',
                   style: AppText.semiBold(
                     fontSize: 14,
-                    color: widget.enabled
-                        ? AuthColors.bg
-                        : AuthColors.inkSoft,
+                    color: widget.enabled ? AuthColors.bg : AuthColors.inkSoft,
                   ).copyWith(letterSpacing: 0.3),
                 ),
         ),
