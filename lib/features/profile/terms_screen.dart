@@ -120,7 +120,7 @@ class _TermsScreenState extends State<TermsScreen> {
     if (_isLoading) {
       return Center(
         child: CircularProgressIndicator(
-          color: AppColors.of(context).emerald,
+          color: AppColors.of(context).ink,
           strokeWidth: 2,
         ),
       );
@@ -150,7 +150,10 @@ class _TermsScreenState extends State<TermsScreen> {
               SizedBox(height: 14),
               Text(
                 words.downloadError,
-                style: AppText.semiBold(fontSize: 15, color: AppColors.of(context).ink),
+                style: AppText.semiBold(
+                  fontSize: 15,
+                  color: AppColors.of(context).ink,
+                ),
               ),
               SizedBox(height: 14),
               _RetryButton(label: words.retry, onTap: _loadTerms),
@@ -229,7 +232,7 @@ class _QuickSummary extends StatelessWidget {
             ),
             _SummaryItem(
               icon: Icons.local_shipping_rounded,
-              iconColor: AppColors.of(context).emerald,
+              iconColor: AppColors.of(context).ink,
               iconBg: AppColors.of(context).emeraldTint,
               text: 'Доставка строго в срок',
             ),
@@ -249,7 +252,7 @@ class _QuickSummary extends StatelessWidget {
             ),
             _SummaryItem(
               icon: Icons.local_shipping_rounded,
-              iconColor: AppColors.of(context).emerald,
+              iconColor: AppColors.of(context).ink,
               iconBg: AppColors.of(context).emeraldTint,
               text: 'Eltip bermek wagtynda',
             ),
@@ -366,7 +369,7 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 10,
           decoration: BoxDecoration(
-            color: AppColors.of(context).emerald,
+            color: AppColors.of(context).ink,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -395,7 +398,7 @@ class _ScrollHint extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-                    Icon(
+          Icon(
             Icons.keyboard_arrow_down_rounded,
             size: 15,
             color: AppColors.of(context).inkSoft,
@@ -405,7 +408,10 @@ class _ScrollHint extends StatelessWidget {
             isRu
                 ? 'Прокрутите вниз для принятия'
                 : 'Kabul etmek üçin aşak aýlaň',
-            style: AppText.regular(fontSize: 11, color: AppColors.of(context).inkSoft),
+            style: AppText.regular(
+              fontSize: 11,
+              color: AppColors.of(context).inkSoft,
+            ),
           ),
         ],
       ),
@@ -459,7 +465,9 @@ class _SignatureFooter extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: canAccept ? AppColors.of(context).emeraldTint : AppColors.of(context).bg,
+              color: canAccept
+                  ? AppColors.of(context).emeraldTint
+                  : AppColors.of(context).bg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: canAccept
@@ -481,7 +489,9 @@ class _SignatureFooter extends StatelessWidget {
                   ),
                   child: Icon(
                     Icons.person_outline_rounded,
-                    color: canAccept ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
+                    color: canAccept
+                        ? AppColors.of(context).ink
+                        : AppColors.of(context).inkSoft,
                     size: 17,
                   ),
                 ),
@@ -538,7 +548,9 @@ class _SignatureFooter extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: AppColors.of(context).borderSoft,
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.of(context).border),
+                            border: Border.all(
+                              color: AppColors.of(context).border,
+                            ),
                           ),
                           child: Icon(
                             Icons.lock_outline_rounded,
@@ -610,7 +622,9 @@ class _AcceptButtonState extends State<_AcceptButton> {
           width: double.infinity,
           height: 52,
           decoration: BoxDecoration(
-            color: widget.canAccept ? AppColors.of(context).ink : AppColors.of(context).borderSoft,
+            color: widget.canAccept
+                ? AppColors.of(context).ink
+                : AppColors.of(context).borderSoft,
             borderRadius: BorderRadius.circular(13),
             boxShadow: widget.canAccept
                 ? [
@@ -629,7 +643,9 @@ class _AcceptButtonState extends State<_AcceptButton> {
                 duration: const Duration(milliseconds: 200),
                 style: AppText.semiBold(
                   fontSize: 14,
-                  color: widget.canAccept ? Colors.white : AppColors.of(context).ink,
+                  color: widget.canAccept
+                      ? Colors.white
+                      : AppColors.of(context).ink,
                 ).copyWith(letterSpacing: 0.4),
                 child: Text(widget.isRu ? 'ПОНЯТНО' : 'DÜŞÜNDÜM'),
               ),
@@ -691,12 +707,15 @@ class _RetryButtonState extends State<_RetryButton> {
             color: AppColors.of(context).emeraldTint,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: AppColors.of(context).emerald.withValues(alpha: 0.25),
+              color: AppColors.of(context).ink.withValues(alpha: 0.25),
             ),
           ),
           child: Text(
             widget.label,
-            style: AppText.semiBold(fontSize: 13, color: AppColors.of(context).emerald),
+            style: AppText.semiBold(
+              fontSize: 13,
+              color: AppColors.of(context).ink,
+            ),
           ),
         ),
       ),
@@ -761,7 +780,7 @@ class _TermTileState extends State<_TermTile> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: widget.isExpanded
-                  ? AppColors.of(context).emerald.withValues(alpha: 0.3)
+                  ? AppColors.of(context).ink.withValues(alpha: 0.3)
                   : AppColors.of(context).border,
             ),
           ),
@@ -814,7 +833,7 @@ class _TermTileState extends State<_TermTile> {
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: widget.isExpanded
-                            ? AppColors.of(context).emerald
+                            ? AppColors.of(context).ink
                             : AppColors.of(context).inkSoft,
                         size: 20,
                       ),
@@ -829,7 +848,10 @@ class _TermTileState extends State<_TermTile> {
                 secondChild: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(height: 0.5, color: AppColors.of(context).borderSoft),
+                    Container(
+                      height: 0.5,
+                      color: AppColors.of(context).borderSoft,
+                    ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                       child: Text(

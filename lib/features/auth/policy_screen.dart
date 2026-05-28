@@ -86,20 +86,34 @@ class _PolicyScreenState extends State<PolicyScreen> {
         child: Column(
           children: [
             // ── Top bar ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
-                  child: Row(
-                    children: [
-                      const AuthBackButton(),
-                      const Spacer(),
-                      AuthLangSwitcher(
-                        isRu: lang.isRu,
-                        onToggle: lang.toggleLanguage,
-                      ),
-                    ],
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.of(context).bg,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.of(context).borderSoft,
+                    width: 1,
+                  ),
+                ),
+              ),
+
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 10),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: _contentMaxWidth,
+                    ),
+                    child: Row(
+                      children: [
+                        const AuthBackButton(),
+                        const Spacer(),
+                        AuthLangSwitcher(
+                          isRu: lang.isRu,
+                          onToggle: lang.toggleLanguage,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -228,7 +242,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                   ),
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
+              padding: const EdgeInsets.fromLTRB(28, 10, 28, 20),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
@@ -474,7 +488,7 @@ class _PlainEnglishCallout extends StatelessWidget {
                 width: 4,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: AppColors.of(context).accent,
+                  color: AppColors.of(context).ink,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -483,7 +497,7 @@ class _PlainEnglishCallout extends StatelessWidget {
                 label,
                 style: AppText.semiBold(
                   fontSize: 11.5,
-                  color: AppColors.of(context).accent,
+                  color: AppColors.of(context).inklabel,
                 ).copyWith(letterSpacing: 1.0),
               ),
             ],

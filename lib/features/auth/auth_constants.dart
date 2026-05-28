@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 class AuthColors {
   // Brand colors (kept for gradient compat)
-  static const Color green = Color(0xFF1A7A3C);
   static const Color yellow = Color(0xFFFFC107);
   static const Color dark = Color(0xFF0F1117);
 
@@ -27,14 +26,7 @@ class AuthColors {
   static const Color bannerBorder = Color(0xFFD8D2C5);
 
   // ── Onboarding accents (noble, restrained) ─────────────────────────────
-  static const Color emerald = Color(0xFF2D5A27); // noble dark green
   static const Color emeraldTint = Color(0xFFE9EFE5); // soft sage bg
   static const Color amber = Color(0xFFD4AF37); // archival amber/brass
   static const Color amberTint = Color(0xFFF7F0DB); // soft sand bg
-
-  static const LinearGradient gradient = LinearGradient(
-    colors: [green, red],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
 }

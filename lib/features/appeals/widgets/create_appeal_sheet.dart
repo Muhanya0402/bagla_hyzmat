@@ -248,7 +248,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
       prefixIcon: Icon(
         icon,
         color: focused
-            ? AppColors.of(context).emerald
+            ? AppColors.of(context).ink
             : AppColors.of(context).inkSoft,
         size: 17,
       ),
@@ -265,7 +265,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
-          color: AppColors.of(context).emerald.withValues(alpha: 0.5),
+          color: AppColors.of(context).ink.withValues(alpha: 0.5),
           width: 1.5,
         ),
       ),

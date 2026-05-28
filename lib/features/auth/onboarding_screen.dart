@@ -165,9 +165,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       _FeatureSlide(
                         heroIcon: Icons.local_shipping_outlined,
                         heroBg: AppColors.of(context).emeraldTint,
-                        heroColor: AppColors.of(context).emerald,
+                        heroColor: AppColors.of(context).ink,
                         tag: words.onboardingTag1,
-                        tagColor: AppColors.of(context).emerald,
+                        tagColor: AppColors.of(context).ink,
                         title: words.onboardingTitle1,
                         subtitle: words.get('onboardingSubtitle1'),
                         pills: [
@@ -377,11 +377,11 @@ class _PrimaryCta extends StatelessWidget {
     final bool active = onPressed != null;
     final Color fill = active
         ? (accentEmerald
-              ? AppColors.of(context).emerald
+              ? AppColors.of(context).ink
               : AppColors.of(context).ink)
         : const Color(0xFFE2DCD0);
     final Color shadowColor = accentEmerald
-        ? AppColors.of(context).emerald
+        ? AppColors.of(context).ink
         : AppColors.of(context).ink;
 
     return AnimatedContainer(
@@ -685,16 +685,14 @@ class _RoleCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected
-                  ? AppColors.of(context).emerald
+                  ? AppColors.of(context).ink
                   : AppColors.of(context).border,
               width: selected ? 1.5 : 1,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: AppColors.of(
-                        context,
-                      ).emerald.withValues(alpha: 0.10),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.10),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -756,12 +754,12 @@ class _RoleCard extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppColors.of(context).emerald
+                      ? AppColors.of(context).ink
                       : Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: selected
-                        ? AppColors.of(context).emerald
+                        ? AppColors.of(context).ink
                         : AppColors.of(context).border,
                     width: 1.5,
                   ),

@@ -20,7 +20,7 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
       return (bg: c.amberTint, icon: c.amber);
     case 'new_order':
     case 'order_status':
-      return (bg: c.emeraldTint, icon: c.emerald);
+      return (bg: c.emeraldTint, icon: c.ink);
     case 'account_status':
       return (bg: c.errorTint, icon: c.errorMuted);
     default:
@@ -42,7 +42,7 @@ class NotificationsScreenState extends State<NotificationsScreen>
   final NotificationService _service = NotificationService();
 
   final _titleKey = GlobalKey();
-  final _listKey  = GlobalKey();
+  final _listKey = GlobalKey();
 
   List<dynamic> _items = [];
   bool _isLoading = true;
@@ -109,11 +109,8 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
   // ── Group into today / yesterday / earlier ─────────────────────────────────
 
-  ({
-    List<dynamic> today,
-    List<dynamic> yesterday,
-    List<dynamic> earlier,
-  }) _groupItems() {
+  ({List<dynamic> today, List<dynamic> yesterday, List<dynamic> earlier})
+  _groupItems() {
     final today = <dynamic>[];
     final yesterday = <dynamic>[];
     final earlier = <dynamic>[];
@@ -123,8 +120,9 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
     for (final n in _items) {
       try {
-        final dt =
-            DateTime.parse((n['date_created'] ?? '').toString()).toLocal();
+        final dt = DateTime.parse(
+          (n['date_created'] ?? '').toString(),
+        ).toLocal();
         if (dt.isAfter(todayStart)) {
           today.add(n);
         } else if (dt.isAfter(yesterdayStart)) {
@@ -146,8 +144,10 @@ class NotificationsScreenState extends State<NotificationsScreen>
         key: _titleKey,
         titleRu: 'Уведомления',
         titleTk: 'Habarnamalar',
-        bodyRu:  'Здесь появляются все системные уведомления — новые заказы, статусы и бонусы.',
-        bodyTk:  'Bu ýerde ähli ulgam habarlary görkezilýär — täze sargytlar, statuslar we bonuslar.',
+        bodyRu:
+            'Здесь появляются все системные уведомления — новые заказы, статусы и бонусы.',
+        bodyTk:
+            'Bu ýerde ähli ulgam habarlary görkezilýär — täze sargytlar, statuslar we bonuslar.',
         isRu: lang.isRu,
         align: ContentAlign.bottom,
       ),
@@ -155,8 +155,8 @@ class NotificationsScreenState extends State<NotificationsScreen>
         key: _listKey,
         titleRu: 'Список уведомлений',
         titleTk: 'Habarnamalar sanawy',
-        bodyRu:  'Нажмите на уведомление чтобы отметить его как прочитанное.',
-        bodyTk:  'Habarnama basyň — ol okalandy diýip belleniler.',
+        bodyRu: 'Нажмите на уведомление чтобы отметить его как прочитанное.',
+        bodyTk: 'Habarnama basyň — ol okalandy diýip belleniler.',
         isRu: lang.isRu,
         align: ContentAlign.top,
       ),
@@ -197,7 +197,7 @@ class NotificationsScreenState extends State<NotificationsScreen>
     final c = AppColors.of(context);
     if (_isLoading) {
       return Center(
-        child: CircularProgressIndicator(color: c.emerald, strokeWidth: 2),
+        child: CircularProgressIndicator(color: c.ink, strokeWidth: 2),
       );
     }
     if (_items.isEmpty) return _buildEmpty(words);
@@ -206,7 +206,7 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
     return RefreshIndicator(
       key: _listKey,
-      color: c.emerald,
+      color: c.ink,
       backgroundColor: c.surface,
       onRefresh: _refresh,
       child: ListView(
@@ -282,12 +282,18 @@ class NotificationsScreenState extends State<NotificationsScreen>
               ),
             ),
             const SizedBox(height: 14),
-            Text(words.notifEmpty, style: AppText.semiBold(fontSize: 15, color: c.ink)),
+            Text(
+              words.notifEmpty,
+              style: AppText.semiBold(fontSize: 15, color: c.ink),
+            ),
             const SizedBox(height: 6),
             Text(
               words.notifEmptyDesc,
               textAlign: TextAlign.center,
-              style: AppText.regular(fontSize: 13, color: c.inkMuted).copyWith(height: 1.5),
+              style: AppText.regular(
+                fontSize: 13,
+                color: c.inkMuted,
+              ).copyWith(height: 1.5),
             ),
           ],
         ),
@@ -313,14 +319,17 @@ class _SectionLabel extends StatelessWidget {
             width: 3,
             height: 11,
             decoration: BoxDecoration(
-              color: c.emerald,
+              color: c.ink,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(width: 7),
           Text(
             text.toUpperCase(),
-            style: AppText.semiBold(fontSize: 10, color: c.inkSoft).copyWith(letterSpacing: 0.8),
+            style: AppText.semiBold(
+              fontSize: 10,
+              color: c.inkSoft,
+            ).copyWith(letterSpacing: 0.8),
           ),
         ],
       ),
@@ -352,31 +361,36 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
         widget.onTap();
       },
       onTapCancel: () => setState(() => _pressed = false),
-      child: Builder(builder: (context) {
-        final c = AppColors.of(context);
-        return AnimatedScale(
-          scale: _pressed ? 0.95 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          child: Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-            decoration: BoxDecoration(
-              color: c.emeraldTint,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: c.emerald.withValues(alpha: 0.25)),
+      child: Builder(
+        builder: (context) {
+          final c = AppColors.of(context);
+          return AnimatedScale(
+            scale: _pressed ? 0.95 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+              decoration: BoxDecoration(
+                color: c.emeraldTint,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: c.ink.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.done_all_rounded, color: c.ink, size: 13),
+                  const SizedBox(width: 5),
+                  Text(
+                    widget.label,
+                    style: AppText.semiBold(fontSize: 12, color: c.ink),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.done_all_rounded, color: c.emerald, size: 13),
-                const SizedBox(width: 5),
-                Text(widget.label, style: AppText.semiBold(fontSize: 12, color: c.emerald)),
-              ],
-            ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
@@ -413,8 +427,7 @@ class _NotifCardState extends State<_NotifCard> {
         widget.notif[lang.isRu ? 'body_ru' : 'body_tk'] ??
         widget.notif['body'] ??
         '';
-    final String timeStr =
-        notifFormatDate(widget.notif['date_created'], words);
+    final String timeStr = notifFormatDate(widget.notif['date_created'], words);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -432,14 +445,10 @@ class _NotifCardState extends State<_NotifCard> {
           duration: const Duration(milliseconds: 250),
           margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
-            color: isRead
-                ? c.surface
-                : style.icon.withValues(alpha: 0.04),
+            color: isRead ? c.surface : style.icon.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isRead
-                  ? c.borderSoft
-                  : style.icon.withValues(alpha: 0.18),
+              color: isRead ? c.borderSoft : style.icon.withValues(alpha: 0.18),
             ),
           ),
           child: Row(
@@ -468,11 +477,7 @@ class _NotifCardState extends State<_NotifCard> {
                     color: style.bg,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Icon(
-                    notifTypeIcon(type),
-                    color: style.icon,
-                    size: 18,
-                  ),
+                  child: Icon(notifTypeIcon(type), color: style.icon, size: 18),
                 ),
               ),
 
@@ -490,10 +495,7 @@ class _NotifCardState extends State<_NotifCard> {
                             child: Text(
                               title,
                               style: isRead
-                                  ? AppText.medium(
-                                      fontSize: 13,
-                                      color: c.ink,
-                                    )
+                                  ? AppText.medium(fontSize: 13, color: c.ink)
                                   : AppText.semiBold(
                                       fontSize: 13,
                                       color: c.ink,

@@ -40,7 +40,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     with SingleTickerProviderStateMixin, AppTourMixin<OrderDetailScreen> {
   static const String _baseUrl = BaseUrl.url;
 
-  final _routeKey  = GlobalKey();
+  final _routeKey = GlobalKey();
   final _actionKey = GlobalKey();
 
   Timer? _timer;
@@ -56,8 +56,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         key: _routeKey,
         titleRu: 'Маршрут',
         titleTk: 'Ugur',
-        bodyRu:  'Здесь отображается откуда и куда доставить заказ.',
-        bodyTk:  'Bu ýerde sargydyň nireden we nirä gowşuryljakdygy görkezilýär.',
+        bodyRu: 'Здесь отображается откуда и куда доставить заказ.',
+        bodyTk:
+            'Bu ýerde sargydyň nireden we nirä gowşuryljakdygy görkezilýär.',
         isRu: lang.isRu,
         align: ContentAlign.bottom,
       ),
@@ -65,8 +66,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         key: _actionKey,
         titleRu: 'Действие',
         titleTk: 'Hereket',
-        bodyRu:  'Нажмите чтобы принять или завершить заказ.',
-        bodyTk:  'Sargyt kabul etmek ýa-da tamamlamak üçin basyň.',
+        bodyRu: 'Нажмите чтобы принять или завершить заказ.',
+        bodyTk: 'Sargyt kabul etmek ýa-da tamamlamak üçin basyň.',
         isRu: lang.isRu,
         align: ContentAlign.top,
       ),
@@ -201,7 +202,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  color: c.emerald,
+                  color: c.ink,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -309,11 +310,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   color: c.emeraldTint,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.check_circle_rounded,
-                  color: c.emerald,
-                  size: 40,
-                ),
+                child: Icon(Icons.check_circle_rounded, color: c.ink, size: 40),
               ),
               const SizedBox(height: 16),
               Text(
@@ -346,19 +343,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       width: 24,
                       height: 24,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => Icon(
-                        Icons.toll_rounded,
-                        color: c.amber,
-                        size: 24,
-                      ),
+                      errorBuilder: (_, _, _) =>
+                          Icon(Icons.toll_rounded, color: c.amber, size: 24),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '+${points.toDouble()} ${words.tokens}',
-                      style: AppText.semiBold(
-                        fontSize: 20,
-                        color: c.amber,
-                      ),
+                      style: AppText.semiBold(fontSize: 20, color: c.amber),
                     ),
                   ],
                 ),
@@ -406,7 +397,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               const SizedBox(height: 20),
               _DetailActionButton(
                 label: words.great,
-                color: c.emerald,
+                color: c.ink,
                 filled: true,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -578,7 +569,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         bg = c.amberTint;
         label = words.statusActive;
       case 'completed':
-        color = c.emerald;
+        color = c.ink;
         bg = c.emeraldTint;
         label = words.statusDone;
       default:
@@ -624,7 +615,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 width: 3,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: c.emerald,
+                  color: c.ink,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -649,7 +640,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
   Widget _buildCountdownCard(AppLocalizations words) {
     final c = AppColors.of(context);
     final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
-    final Color color = _isExpired ? c.errorMuted : c.emerald;
+    final Color color = _isExpired ? c.errorMuted : c.ink;
     final Color bg = _isExpired ? c.errorTint : c.emeraldTint;
 
     return Container(
@@ -699,19 +690,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     width: 16,
                     height: 16,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => Icon(
-                      Icons.toll_rounded,
-                      size: 16,
-                      color: c.amber,
-                    ),
+                    errorBuilder: (_, _, _) =>
+                        Icon(Icons.toll_rounded, size: 16, color: c.amber),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '+${cashback.toDouble()}',
-                    style: AppText.semiBold(
-                      fontSize: 13,
-                      color: c.amber,
-                    ),
+                    style: AppText.semiBold(fontSize: 13, color: c.amber),
                   ),
                 ],
               ),
@@ -765,7 +750,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: c.emerald,
+                    color: c.ink,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -795,10 +780,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: AppText.regular(fontSize: 10, color: c.inkSoft),
-        ),
+        Text(label, style: AppText.regular(fontSize: 10, color: c.inkSoft)),
         const SizedBox(height: 2),
         Text(
           value,
@@ -830,9 +812,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         // Transport row
         _detailRow(
           icon: _transportIcon(transportType),
-          iconColor: transportType == 'truck'
-              ? c.errorMuted
-              : c.emerald,
+          iconColor: transportType == 'truck' ? c.errorMuted : c.ink,
           label: words.transportRequirement,
           value: _transportLabel(transportType, words),
         ),
@@ -844,7 +824,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         // Recipient row
         _detailRow(
           icon: Icons.person_outline_rounded,
-          iconColor: c.emerald,
+          iconColor: c.ink,
           label: isLocked ? words.phoneHidden : words.clientPhone,
           value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
           trailing: phone.isNotEmpty && !isLocked ? _callButton(phone) : null,
@@ -903,10 +883,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 style: AppText.regular(fontSize: 10, color: c.inkSoft),
               ),
               const SizedBox(height: 1),
-              Text(
-                value,
-                style: AppText.medium(fontSize: 13, color: c.ink),
-              ),
+              Text(value, style: AppText.medium(fontSize: 13, color: c.ink)),
             ],
           ),
         ),
@@ -923,7 +900,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: c.emerald,
+          color: c.ink,
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Icon(Icons.call, color: Colors.white, size: 18),
@@ -950,11 +927,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           c.ink,
         ),
         const SizedBox(height: 8),
-        _priceRow(
-          words.delivery,
-          '${delivery.toStringAsFixed(0)} TMT',
-          c.emerald,
-        ),
+        _priceRow(words.delivery, '${delivery.toStringAsFixed(0)} TMT', c.ink),
         if (!isShop && cashback > 0) ...[
           const SizedBox(height: 8),
           _priceRow(
@@ -979,7 +952,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               isShop
                   ? '${itemPrice.toStringAsFixed(0)} TMT'
                   : '${delivery.toStringAsFixed(0)} TMT',
-              style: AppText.semiBold(fontSize: 17, color: c.emerald),
+              style: AppText.semiBold(fontSize: 17, color: c.ink),
             ),
           ],
         ),
@@ -992,10 +965,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: AppText.regular(fontSize: 13, color: c.inkMuted),
-        ),
+        Text(label, style: AppText.regular(fontSize: 13, color: c.inkMuted)),
         Text(value, style: AppText.medium(fontSize: 13, color: valueColor)),
       ],
     );
@@ -1157,7 +1127,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                           '$points',
                         )
                       : words.confirmNoPoints,
-                  actionColor: c.emerald,
+                  actionColor: c.ink,
                   words: words,
                   action: () => service.updateStatus(
                     orderId,
@@ -1245,7 +1215,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           child: Container(
             decoration: BoxDecoration(
               color: c.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             padding: EdgeInsets.fromLTRB(
               24,
@@ -1262,18 +1234,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: codeSent
-                        ? c.emeraldTint
-                        : c.errorTint,
+                    color: codeSent ? c.emeraldTint : c.errorTint,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     codeSent
                         ? Icons.dialpad_rounded
                         : Icons.lock_outline_rounded,
-                    color: codeSent
-                        ? c.emerald
-                        : c.errorMuted,
+                    color: codeSent ? c.ink : c.errorMuted,
                     size: 28,
                   ),
                 ),
@@ -1285,10 +1253,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 const SizedBox(height: 6),
                 Text(
                   codeSent ? words.enterCodeHint : words.sendCodeHint,
-                  style: AppText.regular(
-                    fontSize: 13,
-                    color: c.inkSoft,
-                  ),
+                  style: AppText.regular(fontSize: 13, color: c.inkSoft),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -1353,7 +1318,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   const SizedBox(height: 14),
                   _DetailActionButton(
                     label: words.confirmBtn2,
-                    color: c.emerald,
+                    color: c.ink,
                     filled: true,
                     isLoading: isLoading,
                     onTap: () async {
@@ -1420,10 +1385,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                           }),
                     child: Text(
                       words.resendCode,
-                      style: AppText.regular(
-                        fontSize: 13,
-                        color: c.inkSoft,
-                      ),
+                      style: AppText.regular(fontSize: 13, color: c.inkSoft),
                     ),
                   ),
                 ],
@@ -1665,7 +1627,7 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
                                 ? progress.cumulativeBytesLoaded /
                                       progress.expectedTotalBytes!
                                 : null,
-                            color: AppColors.of(context).emerald,
+                            color: AppColors.of(context).ink,
                             strokeWidth: 2,
                           ),
                         );

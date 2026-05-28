@@ -123,7 +123,7 @@ class AppealDetailSheet extends StatelessWidget {
                   color: AppColors.of(context).emeraldTint,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.of(context).emerald.withValues(alpha: 0.2),
+                    color: AppColors.of(context).ink.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -133,7 +133,7 @@ class AppealDetailSheet extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: AppColors.of(context).emerald,
+                        color: AppColors.of(context).ink,
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: Icon(
@@ -235,9 +235,9 @@ class AppealDetailSheet extends StatelessWidget {
       case 'resolved':
       case 'closed':
         return _StatusCfg(
-          accent: AppColors.of(context).emerald,
+          accent: AppColors.of(context).ink,
           bg: AppColors.of(context).emeraldTint,
-          text: AppColors.of(context).emerald,
+          text: AppColors.of(context).ink,
           label: words.appealsStatusClosed,
         );
       default:
@@ -280,7 +280,7 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 10,
           decoration: BoxDecoration(
-            color: AppColors.of(context).emerald,
+            color: AppColors.of(context).ink,
             borderRadius: BorderRadius.circular(2),
           ),
         ),

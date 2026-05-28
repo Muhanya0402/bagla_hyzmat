@@ -50,12 +50,11 @@ class TopUpModal extends StatefulWidget {
   State<TopUpModal> createState() => _TopUpModalState();
 }
 
-class _TopUpModalState extends State<TopUpModal>
-    with AppTourMixin<TopUpModal> {
+class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
   final TextEditingController _controller = TextEditingController();
   final AuthRepository _authRepo = AuthRepository();
   final _packagesKey = GlobalKey();
-  final _payKey      = GlobalKey();
+  final _payKey = GlobalKey();
 
   int _points = 0;
   int? _selectedPackageIndex;
@@ -78,8 +77,8 @@ class _TopUpModalState extends State<TopUpModal>
       key: _packagesKey,
       titleRu: 'Пакеты жетонов',
       titleTk: 'Nişan paketleri',
-      bodyRu:  'Выберите готовый пакет или введите своё количество.',
-      bodyTk:  'Taýyn paketi saýlaň ýa-da öz mukdaryňyzy giriziň.',
+      bodyRu: 'Выберите готовый пакет или введите своё количество.',
+      bodyTk: 'Taýyn paketi saýlaň ýa-da öz mukdaryňyzy giriziň.',
       isRu: widget.isRu,
       align: ContentAlign.top,
     ),
@@ -87,8 +86,8 @@ class _TopUpModalState extends State<TopUpModal>
       key: _payKey,
       titleRu: 'Оплата',
       titleTk: 'Töleg',
-      bodyRu:  'Выберите банк и нажмите кнопку для перехода к оплате.',
-      bodyTk:  'Banky saýlaň we töleg etmek üçin düwmä basyň.',
+      bodyRu: 'Выберите банк и нажмите кнопку для перехода к оплате.',
+      bodyTk: 'Banky saýlaň we töleg etmek üçin düwmä basyň.',
       isRu: widget.isRu,
       align: ContentAlign.top,
     ),
@@ -396,10 +395,7 @@ class _BalanceChip extends StatelessWidget {
             style: AppText.regular(fontSize: 13, color: c.inkMuted),
           ),
           const SizedBox(width: 6),
-          Text(
-            '$balance',
-            style: AppText.semiBold(fontSize: 14, color: c.ink),
-          ),
+          Text('$balance', style: AppText.semiBold(fontSize: 14, color: c.ink)),
           const SizedBox(width: 4),
           Text(
             isRu ? 'жет.' : 'nişan',
@@ -545,7 +541,10 @@ class _PackageCardState extends State<_PackageCard> {
                         padding: const EdgeInsets.only(bottom: 3),
                         child: Text(
                           widget.isRu ? 'жет.' : 'nşn.',
-                          style: AppText.regular(fontSize: 11, color: c.inkSoft),
+                          style: AppText.regular(
+                            fontSize: 11,
+                            color: c.inkSoft,
+                          ),
                         ),
                       ),
                     ],
@@ -565,14 +564,17 @@ class _PackageCardState extends State<_PackageCard> {
                   top: -2,
                   right: -2,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: c.emeraldTint,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       badge,
-                      style: AppText.semiBold(fontSize: 9, color: c.emerald),
+                      style: AppText.semiBold(fontSize: 9, color: c.ink),
                     ),
                   ),
                 ),
@@ -626,7 +628,10 @@ class _CustomAmountField extends StatelessWidget {
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
         fillColor: isActive ? c.accent.withValues(alpha: 0.04) : c.bg,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: c.border),

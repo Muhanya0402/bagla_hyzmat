@@ -138,10 +138,7 @@ class _FilterIconButton extends StatefulWidget {
   final int activeCount;
   final VoidCallback onTap;
 
-  const _FilterIconButton({
-    required this.activeCount,
-    required this.onTap,
-  });
+  const _FilterIconButton({required this.activeCount, required this.onTap});
 
   @override
   State<_FilterIconButton> createState() => _FilterIconButtonState();
@@ -174,9 +171,7 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
             color: has ? c.emeraldTint : c.borderSoft,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: has
-                  ? c.emerald.withValues(alpha: 0.3)
-                  : c.border,
+              color: has ? c.ink.withValues(alpha: 0.3) : c.border,
             ),
           ),
           child: Stack(
@@ -185,7 +180,7 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
               Icon(
                 Icons.tune_rounded,
                 size: 18,
-                color: has ? c.emerald : c.inkSoft,
+                color: has ? c.ink : c.inkSoft,
               ),
               if (has)
                 Positioned(
@@ -195,7 +190,7 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
                     width: 13,
                     height: 13,
                     decoration: BoxDecoration(
-                      color: c.emerald,
+                      color: c.ink,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,

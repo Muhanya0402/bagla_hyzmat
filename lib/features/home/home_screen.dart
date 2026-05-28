@@ -210,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen>
           Expanded(
             child: RefreshIndicator(
               key: _ordersKey,
-              color: c.emerald,
+              color: c.ink,
               backgroundColor: c.surface,
               onRefresh: handleRefresh,
               child: HomeOrdersList(

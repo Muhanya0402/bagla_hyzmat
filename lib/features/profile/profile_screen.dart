@@ -27,8 +27,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with AppTourMixin<ProfileScreen> {
   final _topCardKey = GlobalKey();
-  final _tokensKey  = GlobalKey();
-  final _menuKey    = GlobalKey();
+  final _tokensKey = GlobalKey();
+  final _menuKey = GlobalKey();
 
   @override
   void initState() {
@@ -40,39 +40,47 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   List<TargetFocus> _buildTourTargets() {
-    final lang    = context.read<LanguageProvider>();
-    final auth    = context.read<AuthProvider>();
+    final lang = context.read<LanguageProvider>();
+    final auth = context.read<AuthProvider>();
     final targets = <TargetFocus>[
       TourTarget.build(
         key: _topCardKey,
         titleRu: 'Ваш профиль',
         titleTk: 'Siziň profiliniz',
-        bodyRu:  'Здесь отображается ваш статус, имя и роль в системе.',
-        bodyTk:  'Bu ýerde siziň ýagdaýyňyz, adyňyz we sistemadaky roluňyz görkezilýär.',
+        bodyRu: 'Здесь отображается ваш статус, имя и роль в системе.',
+        bodyTk:
+            'Bu ýerde siziň ýagdaýyňyz, adyňyz we sistemadaky roluňyz görkezilýär.',
         isRu: lang.isRu,
         align: ContentAlign.bottom,
       ),
     ];
     if (auth.role == 'courier') {
-      targets.add(TourTarget.build(
-        key: _tokensKey,
-        titleRu: 'Мои жетоны',
-        titleTk: 'Meniň žetonlarym',
-        bodyRu:  'Жетоны списываются при принятии заказа. Здесь можно пополнить баланс.',
-        bodyTk:  'Sargyt kabul edilende žetonlar hasapdan çykarylýar. Bu ýerde balans doldurylýar.',
-        isRu: lang.isRu,
-        align: ContentAlign.bottom,
-      ));
+      targets.add(
+        TourTarget.build(
+          key: _tokensKey,
+          titleRu: 'Мои жетоны',
+          titleTk: 'Meniň žetonlarym',
+          bodyRu:
+              'Жетоны списываются при принятии заказа. Здесь можно пополнить баланс.',
+          bodyTk:
+              'Sargyt kabul edilende žetonlar hasapdan çykarylýar. Bu ýerde balans doldurylýar.',
+          isRu: lang.isRu,
+          align: ContentAlign.bottom,
+        ),
+      );
     }
-    targets.add(TourTarget.build(
-      key: _menuKey,
-      titleRu: 'Меню',
-      titleTk: 'Menýu',
-      bodyRu:  'Обращения в поддержку, условия использования и другие настройки.',
-      bodyTk:  'Goldaw ýüztutmalary, ulanylyş şertleri we beýleki sazlamalar.',
-      isRu: lang.isRu,
-      align: ContentAlign.top,
-    ));
+    targets.add(
+      TourTarget.build(
+        key: _menuKey,
+        titleRu: 'Меню',
+        titleTk: 'Menýu',
+        bodyRu:
+            'Обращения в поддержку, условия использования и другие настройки.',
+        bodyTk: 'Goldaw ýüztutmalary, ulanylyş şertleri we beýleki sazlamalar.',
+        isRu: lang.isRu,
+        align: ContentAlign.top,
+      ),
+    );
     return targets;
   }
 
@@ -98,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       backgroundColor: c.bg,
       appBar: _buildAppBar(context, lang),
       body: RefreshIndicator(
-        color: c.emerald,
+        color: c.ink,
         backgroundColor: c.surface,
         onRefresh: () => Future.wait([
           auth.refreshProfile(),
@@ -185,10 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       elevation: 0,
       centerTitle: false,
       automaticallyImplyLeading: false,
-      title: Text(
-        'Профиль',
-        style: AppText.serif(fontSize: 18, color: c.ink),
-      ),
+      title: Text('Профиль', style: AppText.serif(fontSize: 18, color: c.ink)),
       actions: [
         GestureDetector(
           onTap: lang.toggleLanguage,
@@ -236,44 +241,41 @@ class _ProfileScreenState extends State<ProfileScreen>
     final c = AppColors.of(context);
     final items = <Widget>[];
 
-    items.add(_MenuTile(
-      icon: Icons.inbox_outlined,
-      title: words.feedbacks,
-      onTap: () => Navigator.pushNamed(context, '/appeals'),
-    ));
+    items.add(
+      _MenuTile(
+        icon: Icons.inbox_outlined,
+        title: words.feedbacks,
+        onTap: () => Navigator.pushNamed(context, '/appeals'),
+      ),
+    );
 
     if (isShop || (isCourier && auth.status != 'published')) {
-      items.add(Divider(
-        height: 1,
-        thickness: 0.8,
-        indent: 52,
-        color: c.borderSoft,
-      ));
-      items.add(_MenuTile(
-        icon: Icons.description_outlined,
-        title: words.termsOfUse,
-        onTap: () => Navigator.pushNamed(context, '/terms'),
-      ));
+      items.add(
+        Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+      );
+      items.add(
+        _MenuTile(
+          icon: Icons.description_outlined,
+          title: words.termsOfUse,
+          onTap: () => Navigator.pushNamed(context, '/terms'),
+        ),
+      );
     }
 
-    items.add(Divider(
-      height: 1,
-      thickness: 0.8,
-      indent: 52,
-      color: c.borderSoft,
-    ));
-    items.add(_MenuTile(
-      icon: Icons.headset_mic_outlined,
-      title: 'Связаться с поддержкой',
-      onTap: () => _showSupportModal(context, supportPhone),
-    ));
+    items.add(
+      Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+    );
+    items.add(
+      _MenuTile(
+        icon: Icons.headset_mic_outlined,
+        title: 'Связаться с поддержкой',
+        onTap: () => _showSupportModal(context, supportPhone),
+      ),
+    );
 
-    items.add(Divider(
-      height: 1,
-      thickness: 0.8,
-      indent: 52,
-      color: c.borderSoft,
-    ));
+    items.add(
+      Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+    );
     items.add(const ThemeToggleTile());
 
     return Container(
@@ -314,19 +316,16 @@ class _ProfileScreenState extends State<ProfileScreen>
             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
             child: Container(color: Colors.black.withValues(alpha: 0.18)),
           ),
-          Center(
-            child: _LogoutDialog(
-              onConfirm: () => _handleLogout(context),
-            ),
-          ),
+          Center(child: _LogoutDialog(onConfirm: () => _handleLogout(context))),
         ],
       ),
       transitionBuilder: (_, anim, _, child) => FadeTransition(
         opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
         child: ScaleTransition(
-          scale: Tween<double>(begin: 0.92, end: 1.0).animate(
-            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-          ),
+          scale: Tween<double>(
+            begin: 0.92,
+            end: 1.0,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
       ),
@@ -399,35 +398,15 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
   _StatusCfg _cfg(String s, AppColors c) {
     switch (s.toLowerCase()) {
       case 'active':
-        return _StatusCfg(
-          color: c.emerald,
-          bg: c.emeraldTint,
-          label: 'Активен',
-        );
+        return _StatusCfg(color: c.ink, bg: c.emeraldTint, label: 'Активен');
       case 'pending':
-        return _StatusCfg(
-          color: c.amber,
-          bg: c.amberTint,
-          label: 'Проверка',
-        );
+        return _StatusCfg(color: c.amber, bg: c.amberTint, label: 'Проверка');
       case 'banned':
-        return _StatusCfg(
-          color: c.errorMuted,
-          bg: c.errorTint,
-          label: 'Блок',
-        );
+        return _StatusCfg(color: c.errorMuted, bg: c.errorTint, label: 'Блок');
       case 'published':
-        return _StatusCfg(
-          color: c.inkMuted,
-          bg: c.borderSoft,
-          label: 'Новый',
-        );
+        return _StatusCfg(color: c.inkMuted, bg: c.borderSoft, label: 'Новый');
       default:
-        return _StatusCfg(
-          color: c.inkSoft,
-          bg: c.bg,
-          label: s,
-        );
+        return _StatusCfg(color: c.inkSoft, bg: c.bg, label: s);
     }
   }
 
@@ -466,7 +445,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                       padding: const EdgeInsets.all(3),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: c.emerald,
+                          color: c.ink,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -539,10 +518,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                           Flexible(
                             child: Text(
                               widget.fullName,
-                              style: AppText.serif(
-                                fontSize: 17,
-                                color: c.ink,
-                              ),
+                              style: AppText.serif(fontSize: 17, color: c.ink),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -560,7 +536,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                               _roleLabel,
                               style: AppText.semiBold(
                                 fontSize: 10,
-                                color: c.emerald,
+                                color: c.ink,
                               ),
                             ),
                           ),
@@ -624,11 +600,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                   ),
                   child: Column(
                     children: [
-                      Divider(
-                        height: 1,
-                        thickness: 0.8,
-                        color: c.borderSoft,
-                      ),
+                      Divider(height: 1, thickness: 0.8, color: c.borderSoft),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
                         child: Column(
@@ -717,9 +689,10 @@ class _PulseDotState extends State<_PulseDot>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.35, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _anim = Tween<double>(
+      begin: 0.35,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -777,11 +750,7 @@ class _PointsCardState extends State<_PointsCard> {
                   color: c.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.toll_rounded,
-                  color: c.amber,
-                  size: 20,
-                ),
+                child: Icon(Icons.toll_rounded, color: c.amber, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -790,10 +759,7 @@ class _PointsCardState extends State<_PointsCard> {
                   children: [
                     Text(
                       'Мои жетоны',
-                      style: AppText.regular(
-                        fontSize: 11,
-                        color: c.inkMuted,
-                      ),
+                      style: AppText.regular(fontSize: 11, color: c.inkMuted),
                     ),
                     const SizedBox(height: 1),
                     Text(
@@ -827,25 +793,16 @@ class _PointsCardState extends State<_PointsCard> {
                     decoration: BoxDecoration(
                       color: c.emeraldTint,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: c.emerald.withValues(alpha: 0.3),
-                      ),
+                      border: Border.all(color: c.ink.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.add_rounded,
-                          size: 14,
-                          color: c.emerald,
-                        ),
+                        Icon(Icons.add_rounded, size: 14, color: c.ink),
                         const SizedBox(width: 5),
                         Text(
                           'Пополнить',
-                          style: AppText.semiBold(
-                            fontSize: 12,
-                            color: c.emerald,
-                          ),
+                          style: AppText.semiBold(fontSize: 12, color: c.ink),
                         ),
                       ],
                     ),
@@ -858,18 +815,11 @@ class _PointsCardState extends State<_PointsCard> {
           // Hint
           Row(
             children: [
-              Icon(
-                Icons.info_outline_rounded,
-                size: 11,
-                color: c.inkSoft,
-              ),
+              Icon(Icons.info_outline_rounded, size: 11, color: c.inkSoft),
               const SizedBox(width: 5),
               Text(
                 'Жетоны списываются только при взятии заказа',
-                style: AppText.regular(
-                  fontSize: 11,
-                  color: c.inkSoft,
-                ),
+                style: AppText.regular(fontSize: 11, color: c.inkSoft),
               ),
             ],
           ),
@@ -911,9 +861,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
           decoration: BoxDecoration(
             color: c.amberTint,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: c.amber.withValues(alpha: 0.25),
-            ),
+            border: Border.all(color: c.amber.withValues(alpha: 0.25)),
           ),
           child: Row(
             children: [
@@ -921,7 +869,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: c.emerald,
+                  color: c.ink,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -937,18 +885,12 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                   children: [
                     Text(
                       'Выберите вашу роль',
-                      style: AppText.semiBold(
-                        fontSize: 13,
-                        color: c.ink,
-                      ),
+                      style: AppText.semiBold(fontSize: 13, color: c.ink),
                     ),
                     const SizedBox(height: 1),
                     Text(
                       'Станьте курьером или заказчиком',
-                      style: AppText.regular(
-                        fontSize: 11,
-                        color: c.inkMuted,
-                      ),
+                      style: AppText.regular(fontSize: 11, color: c.inkMuted),
                     ),
                   ],
                 ),
@@ -964,7 +906,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 12,
-                  color: c.emerald,
+                  color: c.ink,
                 ),
               ),
             ],
@@ -1029,11 +971,7 @@ class _MenuTileState extends State<_MenuTile> {
                 style: AppText.medium(fontSize: 14, color: c.ink),
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: c.inkSoft,
-            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: c.inkSoft),
           ],
         ),
       ),
@@ -1135,7 +1073,7 @@ class _SupportModalState extends State<_SupportModal> {
             'Сообщение отправлено',
             style: AppText.medium(fontSize: 13, color: Colors.white),
           ),
-          backgroundColor: c.emerald,
+          backgroundColor: c.ink,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1210,7 +1148,7 @@ class _SupportModalState extends State<_SupportModal> {
                   ),
                   child: Icon(
                     Icons.headset_mic_outlined,
-                    color: c.emerald,
+                    color: c.ink,
                     size: 18,
                   ),
                 ),
@@ -1221,17 +1159,11 @@ class _SupportModalState extends State<_SupportModal> {
                     children: [
                       Text(
                         'Служба поддержки',
-                        style: AppText.serif(
-                          fontSize: 17,
-                          color: c.ink,
-                        ),
+                        style: AppText.serif(fontSize: 17, color: c.ink),
                       ),
                       Text(
                         'Мы на связи и готовы помочь вам с любым вопросом',
-                        style: AppText.regular(
-                          fontSize: 11,
-                          color: c.inkMuted,
-                        ),
+                        style: AppText.regular(fontSize: 11, color: c.inkMuted),
                       ),
                     ],
                   ),
@@ -1247,9 +1179,7 @@ class _SupportModalState extends State<_SupportModal> {
               children: _categories.map((cat) {
                 final sel = _category == cat;
                 return GestureDetector(
-                  onTap: () => setState(
-                    () => _category = sel ? null : cat,
-                  ),
+                  onTap: () => setState(() => _category = sel ? null : cat),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 160),
                     padding: const EdgeInsets.symmetric(
@@ -1261,7 +1191,7 @@ class _SupportModalState extends State<_SupportModal> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: sel
-                            ? c.emerald.withValues(alpha: 0.35)
+                            ? c.ink.withValues(alpha: 0.35)
                             : Colors.transparent,
                       ),
                     ),
@@ -1269,7 +1199,7 @@ class _SupportModalState extends State<_SupportModal> {
                       cat,
                       style: AppText.medium(
                         fontSize: 12,
-                        color: sel ? c.emerald : c.inkMuted,
+                        color: sel ? c.ink : c.inkMuted,
                       ),
                     ),
                   ),
@@ -1289,10 +1219,7 @@ class _SupportModalState extends State<_SupportModal> {
               style: AppText.regular(fontSize: 14, color: c.ink),
               decoration: InputDecoration(
                 hintText: 'Опишите ваш вопрос...',
-                hintStyle: AppText.regular(
-                  fontSize: 14,
-                  color: c.inkSoft,
-                ),
+                hintStyle: AppText.regular(fontSize: 14, color: c.inkSoft),
                 filled: true,
                 fillColor: c.bg,
                 contentPadding: const EdgeInsets.all(12),
@@ -1306,10 +1233,7 @@ class _SupportModalState extends State<_SupportModal> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: c.emerald,
-                    width: 1.5,
-                  ),
+                  borderSide: BorderSide(color: c.ink, width: 1.5),
                 ),
               ),
             ),
@@ -1338,10 +1262,7 @@ class _SupportModalState extends State<_SupportModal> {
                 const SizedBox(width: 10),
                 // Send button
                 Expanded(
-                  child: _SendButton(
-                    isLoading: _isLoading,
-                    onTap: _submit,
-                  ),
+                  child: _SendButton(isLoading: _isLoading, onTap: _submit),
                 ),
               ],
             ),
@@ -1385,15 +1306,13 @@ class _SendButtonState extends State<_SendButton> {
           duration: const Duration(milliseconds: 160),
           height: 46,
           decoration: BoxDecoration(
-            color: widget.isLoading
-                ? c.emerald.withValues(alpha: 0.5)
-                : c.emerald,
+            color: widget.isLoading ? c.ink.withValues(alpha: 0.5) : c.ink,
             borderRadius: BorderRadius.circular(12),
             boxShadow: widget.isLoading
                 ? null
                 : [
                     BoxShadow(
-                      color: c.emerald.withValues(alpha: 0.22),
+                      color: c.ink.withValues(alpha: 0.22),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1478,11 +1397,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                 color: c.errorTint,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.logout_rounded,
-                color: c.errorMuted,
-                size: 24,
-              ),
+              child: Icon(Icons.logout_rounded, color: c.errorMuted, size: 24),
             ),
             const SizedBox(height: 16),
 
@@ -1517,8 +1432,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                       setState(() => _cancelPressed = false);
                       Navigator.pop(context);
                     },
-                    onTapCancel: () =>
-                        setState(() => _cancelPressed = false),
+                    onTapCancel: () => setState(() => _cancelPressed = false),
                     child: AnimatedScale(
                       scale: _cancelPressed ? 0.97 : 1.0,
                       duration: const Duration(milliseconds: 120),
@@ -1532,10 +1446,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                         alignment: Alignment.center,
                         child: Text(
                           'Остаться',
-                          style: AppText.medium(
-                            fontSize: 14,
-                            color: c.ink,
-                          ),
+                          style: AppText.medium(fontSize: 14, color: c.ink),
                         ),
                       ),
                     ),
@@ -1553,8 +1464,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                       Navigator.pop(context);
                       widget.onConfirm();
                     },
-                    onTapCancel: () =>
-                        setState(() => _confirmPressed = false),
+                    onTapCancel: () => setState(() => _confirmPressed = false),
                     child: AnimatedScale(
                       scale: _confirmPressed ? 0.97 : 1.0,
                       duration: const Duration(milliseconds: 120),

@@ -87,7 +87,7 @@ class UserTypeSelectionScreen extends StatelessWidget {
                 desc: words.roleCourierDesc,
                 roleId: 'courier',
                 asset: 'assets/images/onboarding/courier_welcome.png',
-                placeholderColor: const Color(0xFFE6E0D3),
+                placeholderColor: AppColors.of(context).bannerBg,
                 placeholderIcon: Icons.pedal_bike_outlined,
                 isSelected: roleProv.selectedRole == 'courier',
                 onTap: () => roleProv.selectRole('courier'),
@@ -181,9 +181,7 @@ class _RoleCardState extends State<_RoleCard> {
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: AppColors.of(
-                        context,
-                      ).emerald.withValues(alpha: 0.10),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.10),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -219,9 +217,7 @@ class _RoleCardState extends State<_RoleCard> {
                           child: Icon(
                             widget.placeholderIcon,
                             size: 30,
-                            color: AppColors.of(
-                              context,
-                            ).ink.withValues(alpha: 0.3),
+                            color: AppColors.of(context).ink,
                           ),
                         ),
                       ),
@@ -271,7 +267,7 @@ class _RoleCardState extends State<_RoleCard> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: widget.isSelected
-                        ? AppColors.of(context).emerald
+                        ? AppColors.of(context).ink
                         : AppColors.of(context).border,
                     width: 1.5,
                   ),

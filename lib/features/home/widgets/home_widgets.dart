@@ -46,7 +46,7 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
             color: has ? c.emeraldTint : c.bg,
             borderRadius: BorderRadius.circular(11),
             border: Border.all(
-              color: has ? c.emerald.withValues(alpha: 0.35) : c.border,
+              color: has ? c.ink.withValues(alpha: 0.35) : c.border,
             ),
           ),
           child: Stack(
@@ -55,7 +55,7 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
               Icon(
                 Icons.tune_rounded,
                 size: 18,
-                color: has ? c.emerald : c.inkSoft,
+                color: has ? c.ink : c.inkSoft,
               ),
               if (has)
                 Positioned(
@@ -65,7 +65,7 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
                     width: 13,
                     height: 13,
                     decoration: BoxDecoration(
-                      color: c.emerald,
+                      color: c.ink,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -129,7 +129,7 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: c.emerald,
+                  color: c.ink,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -166,7 +166,7 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 12,
-                  color: c.emerald,
+                  color: c.ink,
                 ),
               ),
             ],
@@ -191,7 +191,7 @@ class ActiveOrdersCounter extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
     final bool isFull = current >= max;
-    final Color c = isFull ? palette.errorMuted : palette.emerald;
+    final Color c = isFull ? palette.errorMuted : palette.ink;
     final Color bg = isFull ? palette.errorTint : palette.emeraldTint;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -236,7 +236,7 @@ class GradientText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Text(text, style: style.copyWith(color: AppColors.of(context).emerald));
+      Text(text, style: style.copyWith(color: AppColors.of(context).ink));
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -261,11 +261,7 @@ class HomeEmptyState extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: c.border),
             ),
-            child: Icon(
-              icon,
-              size: 28,
-              color: c.emerald.withValues(alpha: 0.3),
-            ),
+            child: Icon(icon, size: 28, color: c.ink.withValues(alpha: 0.3)),
           ),
         ),
         const SizedBox(height: 14),

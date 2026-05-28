@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'tour_manager.dart';
@@ -23,44 +25,98 @@ import 'tour_manager.dart';
 /// }
 /// ```
 mixin AppTourMixin<T extends StatefulWidget> on State<T> {
+  // Global lock — only one tour at a time across all screens.
+  static bool _isAnyTourRunning = false;
+
   TutorialCoachMark? _coachMark;
+  Timer? _tourRetryTimer;
 
   /// Запускает тур, если экран ещё не пройден.
   ///
-  /// [screenKey]      — ключ из TourKeys.
-  /// [targetsBuilder] — ленивая функция, строящая шаги только после
-  ///                    завершения первого кадра (GlobalKey гарантированно
-  ///                    прикреплены к дереву).
-  /// [forceShow]      — показать несмотря на сохранённое состояние
-  ///                    (удобно для кнопки «Повторить гид»).
+  /// Если виджет находится в неактивном `Offstage`-табе (MainShell), тур
+  /// откладывается и запускается автоматически, когда таб становится видимым.
   void startTourIfNeeded({
     required String screenKey,
     required List<TargetFocus> Function() targetsBuilder,
     bool forceShow = false,
   }) {
-    if (!forceShow && TourManager.instance.isSeen(screenKey)) {
-      debugPrint('🗺️  [$screenKey] тур пропущен — уже пройден');
-      return;
-    }
+    if (!forceShow && TourManager.instance.isSeen(screenKey)) return;
 
-    debugPrint('🗺️  [$screenKey] планируем запуск тура (forceShow=$forceShow)');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        debugPrint('🗺️  [$screenKey] отменено — виджет уже не mounted');
+      if (!mounted) return;
+      if (!_isVisible()) {
+        _scheduleRetry(
+          screenKey: screenKey,
+          targetsBuilder: targetsBuilder,
+          forceShow: forceShow,
+        );
         return;
       }
-      final targets = targetsBuilder();
-      debugPrint('🗺️  [$screenKey] шагов: ${targets.length}');
-      if (targets.isEmpty) return;
-      _launch(screenKey: screenKey, targets: targets);
+      _tryLaunch(
+        screenKey: screenKey,
+        targetsBuilder: targetsBuilder,
+        forceShow: forceShow,
+      );
     });
+  }
+
+  // Polls every 300 ms until the tab becomes visible, then launches the tour.
+  void _scheduleRetry({
+    required String screenKey,
+    required List<TargetFocus> Function() targetsBuilder,
+    required bool forceShow,
+  }) {
+    _tourRetryTimer?.cancel();
+    _tourRetryTimer = Timer.periodic(const Duration(milliseconds: 300), (_) {
+      if (!mounted) {
+        _tourRetryTimer?.cancel();
+        return;
+      }
+      if (_isAnyTourRunning) return;
+      if (!_isVisible()) return;
+      _tourRetryTimer?.cancel();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _tryLaunch(
+          screenKey: screenKey,
+          targetsBuilder: targetsBuilder,
+          forceShow: forceShow,
+        );
+      });
+    });
+  }
+
+  void _tryLaunch({
+    required String screenKey,
+    required List<TargetFocus> Function() targetsBuilder,
+    required bool forceShow,
+  }) {
+    if (!forceShow && TourManager.instance.isSeen(screenKey)) return;
+    if (_isAnyTourRunning) return;
+    final targets = targetsBuilder();
+    if (targets.isEmpty) return;
+    _launch(screenKey: screenKey, targets: targets);
+  }
+
+  // Returns false if any ancestor RenderOffstage has offstage == true.
+  bool _isVisible() {
+    try {
+      RenderObject? obj = context.findRenderObject();
+      while (obj != null) {
+        if (obj is RenderOffstage && obj.offstage) return false;
+        obj = obj.parent as RenderObject?;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
   }
 
   void _launch({
     required String screenKey,
     required List<TargetFocus> targets,
   }) {
-    debugPrint('🗺️  [$screenKey] тур запущен');
+    _isAnyTourRunning = true;
     final isRu = context.read<LanguageProvider>().isRu;
     _coachMark = TutorialCoachMark(
       targets: targets,
@@ -69,17 +125,22 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
       paddingFocus: 10,
       focusAnimationDuration: const Duration(milliseconds: 350),
       pulseAnimationDuration: const Duration(milliseconds: 900),
-      skipWidget: _TourSkipButton(isRu: isRu),
+      alignSkip: Alignment.bottomRight,
+      useSafeArea: true,
+      skipWidget: Padding(
+        padding: const EdgeInsets.only(bottom: 120, right: 8),
+        child: _TourSkipButton(isRu: isRu),
+      ),
       onFinish: () {
-        debugPrint('🗺️  [$screenKey] тур завершён (finish)');
+        _isAnyTourRunning = false;
         TourManager.instance.markSeen(screenKey);
       },
       onSkip: () {
-        debugPrint('🗺️  [$screenKey] тур пропущен (skip)');
+        _isAnyTourRunning = false;
         TourManager.instance.markSeen(screenKey);
         return true;
       },
-    )..show(context: context);
+    )..show(context: context, rootOverlay: true);
   }
 
   /// Программный сброс и повторный запуск тура (например, из меню настроек).
@@ -87,7 +148,6 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
     required String screenKey,
     required List<TargetFocus> Function() targetsBuilder,
   }) async {
-    debugPrint('🗺️  [$screenKey] replayTour — сброс и перезапуск');
     await TourManager.instance.resetScreen(screenKey);
     startTourIfNeeded(
       screenKey: screenKey,
@@ -98,7 +158,11 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
 
   @override
   void dispose() {
-    _coachMark?.skip();
+    _tourRetryTimer?.cancel();
+    if (_coachMark != null) {
+      _isAnyTourRunning = false;
+      _coachMark?.skip();
+    }
     super.dispose();
   }
 }
@@ -127,7 +191,10 @@ class _TourSkipButton extends StatelessWidget {
       ),
       child: Text(
         isRu ? 'Пропустить' : 'Geç',
-        style: AppText.medium(fontSize: 13, color: AppColors.of(context).inkMuted),
+        style: AppText.medium(
+          fontSize: 13,
+          color: AppColors.of(context).inkMuted,
+        ),
       ),
     );
   }

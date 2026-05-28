@@ -132,8 +132,7 @@ void showCourierFilterModal({
   required void Function(CourierFilters) onApply,
   required VoidCallback onClear,
 }) {
-  final renderBox =
-      buttonKey?.currentContext?.findRenderObject() as RenderBox?;
+  final renderBox = buttonKey?.currentContext?.findRenderObject() as RenderBox?;
   final buttonCenter = renderBox?.localToGlobal(
     Offset(renderBox.size.width / 2, renderBox.size.height / 2),
   );
@@ -225,9 +224,10 @@ class _FilterOverlayState extends State<_FilterOverlay>
     );
 
     // Modal scale: starts very small (button-like) → full size
-    _scale = Tween<double>(begin: 0.08, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
-    );
+    _scale = Tween<double>(
+      begin: 0.08,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
 
     // Modal fades in during the first half of the animation
     _modalFade = CurvedAnimation(
@@ -282,9 +282,7 @@ class _FilterOverlayState extends State<_FilterOverlay>
               onTap: _close,
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.38),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.38)),
               ),
             ),
           ),
@@ -364,7 +362,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
   bool _loadingAny = false;
   bool _defaultsApplied = false;
   final _transportKey = GlobalKey();
-  final _applyKey     = GlobalKey();
+  final _applyKey = GlobalKey();
 
   List<(String, IconData, String)> _transportOptions() => [
     ('any', Icons.directions_run_rounded, widget.words.filterTransportAny),
@@ -388,8 +386,10 @@ class _CourierFilterModalState extends State<CourierFilterModal>
       key: _transportKey,
       titleRu: 'Вид транспорта',
       titleTk: 'Ulag görnüşi',
-      bodyRu:  'Фильтруйте курьеров по типу транспорта: пешком, авто или грузовик.',
-      bodyTk:  'Kurýerleri ulag görnüşi boýunça süzüň: pyýada, awtoulag ýa-da ýük ulagy.',
+      bodyRu:
+          'Фильтруйте курьеров по типу транспорта: пешком, авто или грузовик.',
+      bodyTk:
+          'Kurýerleri ulag görnüşi boýunça süzüň: pyýada, awtoulag ýa-da ýük ulagy.',
       isRu: widget.isRu,
       align: ContentAlign.bottom,
     ),
@@ -397,8 +397,10 @@ class _CourierFilterModalState extends State<CourierFilterModal>
       key: _applyKey,
       titleRu: 'Применить фильтры',
       titleTk: 'Süzgüçleri ulan',
-      bodyRu:  'Нажмите чтобы применить выбранные фильтры и найти подходящих курьеров.',
-      bodyTk:  'Saýlanan süzgüçleri ulanmak we laýyk kurýerleri tapmak üçin basyň.',
+      bodyRu:
+          'Нажмите чтобы применить выбранные фильтры и найти подходящих курьеров.',
+      bodyTk:
+          'Saýlanan süzgüçleri ulanmak we laýyk kurýerleri tapmak üçin basyň.',
       isRu: widget.isRu,
       align: ContentAlign.top,
     ),
@@ -436,12 +438,13 @@ class _CourierFilterModalState extends State<CourierFilterModal>
     setState(() => _loadingAny = true);
     try {
       final resp = await widget.authRepo.getProvinces();
-      final items = resp
-          .map<CourierFilterItem>(
-            (p) => CourierFilterItem(id: p.id, label: p.label(widget.isRu)),
-          )
-          .toList()
-        ..sort((a, b) => a.label.compareTo(b.label));
+      final items =
+          resp
+              .map<CourierFilterItem>(
+                (p) => CourierFilterItem(id: p.id, label: p.label(widget.isRu)),
+              )
+              .toList()
+            ..sort((a, b) => a.label.compareTo(b.label));
       widget.cache.provinces = items;
       return items;
     } catch (_) {
@@ -458,12 +461,13 @@ class _CourierFilterModalState extends State<CourierFilterModal>
     setState(() => _loadingAny = true);
     try {
       final list = await widget.authRepo.getEtrapsByProvince(provinceId);
-      final items = list
-          .map<CourierFilterItem>(
-            (e) => CourierFilterItem(id: e.id, label: e.label(widget.isRu)),
-          )
-          .toList()
-        ..sort((a, b) => a.label.compareTo(b.label));
+      final items =
+          list
+              .map<CourierFilterItem>(
+                (e) => CourierFilterItem(id: e.id, label: e.label(widget.isRu)),
+              )
+              .toList()
+            ..sort((a, b) => a.label.compareTo(b.label));
       widget.cache.etraps[provinceId] = items;
       return items;
     } catch (_) {
@@ -480,12 +484,13 @@ class _CourierFilterModalState extends State<CourierFilterModal>
     setState(() => _loadingAny = true);
     try {
       final list = await widget.authRepo.getDistrictsByEtrap(etrapId);
-      final items = list
-          .map<CourierFilterItem>(
-            (d) => CourierFilterItem(id: d.id, label: d.label(widget.isRu)),
-          )
-          .toList()
-        ..sort((a, b) => a.label.compareTo(b.label));
+      final items =
+          list
+              .map<CourierFilterItem>(
+                (d) => CourierFilterItem(id: d.id, label: d.label(widget.isRu)),
+              )
+              .toList()
+            ..sort((a, b) => a.label.compareTo(b.label));
       widget.cache.districts[etrapId] = items;
       return items;
     } catch (_) {
@@ -544,7 +549,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
             width: 2.5,
             height: 12,
             decoration: BoxDecoration(
-              color: c.emerald.withValues(alpha: 0.55),
+              color: c.ink.withValues(alpha: 0.55),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -585,7 +590,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: has && !disabled
-                ? c.emerald.withValues(alpha: 0.35)
+                ? c.ink.withValues(alpha: 0.35)
                 : c.borderSoft,
           ),
         ),
@@ -597,7 +602,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
               color: disabled
                   ? c.border
                   : has
-                  ? c.emerald
+                  ? c.ink
                   : c.inkSoft,
             ),
             const SizedBox(width: 8),
@@ -608,7 +613,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                 style: disabled
                     ? AppText.regular(fontSize: 13, color: c.border)
                     : has
-                    ? AppText.semiBold(fontSize: 13, color: c.emerald)
+                    ? AppText.semiBold(fontSize: 13, color: c.ink)
                     : AppText.regular(fontSize: 13, color: c.inkSoft),
               ),
             ),
@@ -618,11 +623,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                 onTap: onClear,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 6),
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 14,
-                    color: c.inkSoft,
-                  ),
+                  child: Icon(Icons.close_rounded, size: 14, color: c.inkSoft),
                 ),
               )
             else
@@ -692,13 +693,14 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                       height: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 1.5,
-                        color: c.emerald,
+                        color: c.ink,
                       ),
                     )
                   else if (_draft.activeCount > 0)
                     _ResetButton(
                       label: w.filterReset,
-                      onTap: () => setState(() => _draft = const CourierFilters()),
+                      onTap: () =>
+                          setState(() => _draft = const CourierFilters()),
                     ),
                 ],
               ),
@@ -929,9 +931,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                   );
                 },
                 onClear: _draft.shop != null
-                    ? () => setState(
-                        () => _draft = _draft.copyWith(shop: null),
-                      )
+                    ? () => setState(() => _draft = _draft.copyWith(shop: null))
                     : null,
               ),
               const SizedBox(height: 18),
@@ -999,7 +999,7 @@ class _TransportTagState extends State<_TransportTag> {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: widget.selected
-                  ? c.emerald.withValues(alpha: 0.35)
+                  ? c.ink.withValues(alpha: 0.35)
                   : c.borderSoft,
             ),
           ),
@@ -1009,14 +1009,14 @@ class _TransportTagState extends State<_TransportTag> {
               Icon(
                 widget.icon,
                 size: 18,
-                color: widget.selected ? c.emerald : c.inkSoft,
+                color: widget.selected ? c.ink : c.inkSoft,
               ),
               const SizedBox(height: 4),
               Text(
                 widget.label,
                 textAlign: TextAlign.center,
                 style: widget.selected
-                    ? AppText.semiBold(fontSize: 11, color: c.emerald)
+                    ? AppText.semiBold(fontSize: 11, color: c.ink)
                     : AppText.regular(fontSize: 11, color: c.inkSoft),
               ),
             ],
@@ -1058,20 +1058,22 @@ class _ResetButtonState extends State<_ResetButton> {
         scale: _pressed ? 0.95 : 1.0,
         duration: const Duration(milliseconds: 100),
         curve: Curves.easeOut,
-        child: Builder(builder: (context) {
-          final c = AppColors.of(context);
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: c.errorTint,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Text(
-              widget.label,
-              style: AppText.medium(fontSize: 12, color: c.errorMuted),
-            ),
-          );
-        }),
+        child: Builder(
+          builder: (context) {
+            final c = AppColors.of(context);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: c.errorTint,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Text(
+                widget.label,
+                style: AppText.medium(fontSize: 12, color: c.errorMuted),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1113,15 +1115,13 @@ class _ApplyButtonState extends State<_ApplyButton> {
           duration: const Duration(milliseconds: 140),
           height: 50,
           decoration: BoxDecoration(
-            color: _pressed
-                ? c.emerald.withValues(alpha: 0.85)
-                : c.emerald,
+            color: _pressed ? c.ink.withValues(alpha: 0.85) : c.ink,
             borderRadius: BorderRadius.circular(12),
             boxShadow: _pressed
                 ? null
                 : [
                     BoxShadow(
-                      color: c.emerald.withValues(alpha: 0.2),
+                      color: c.ink.withValues(alpha: 0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1242,10 +1242,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                   style: AppText.regular(fontSize: 14, color: c.ink),
                   decoration: InputDecoration(
                     hintText: w.filterSearchHint,
-                    hintStyle: AppText.regular(
-                      fontSize: 13,
-                      color: c.inkSoft,
-                    ),
+                    hintStyle: AppText.regular(fontSize: 13, color: c.inkSoft),
                     prefixIcon: Icon(
                       Icons.search_rounded,
                       color: c.inkSoft,
@@ -1281,7 +1278,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(
-                        color: c.emerald.withValues(alpha: 0.45),
+                        color: c.ink.withValues(alpha: 0.45),
                       ),
                     ),
                   ),
@@ -1314,7 +1311,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                           final isActive = item.id == widget.selectedId;
                           return InkWell(
                             onTap: () => widget.onSelect(item.id),
-                            splashColor: c.emerald.withValues(alpha: 0.05),
+                            splashColor: c.ink.withValues(alpha: 0.05),
                             highlightColor: Colors.transparent,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1327,9 +1324,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                     width: 28,
                                     height: 28,
                                     decoration: BoxDecoration(
-                                      color: isActive
-                                          ? c.emeraldTint
-                                          : c.bg,
+                                      color: isActive ? c.emeraldTint : c.bg,
                                       borderRadius: BorderRadius.circular(7),
                                     ),
                                     child: Icon(
@@ -1337,9 +1332,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                           ? Icons.check_rounded
                                           : Icons.location_on_outlined,
                                       size: 14,
-                                      color: isActive
-                                          ? c.emerald
-                                          : c.inkSoft,
+                                      color: isActive ? c.ink : c.inkSoft,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -1362,7 +1355,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                       width: 6,
                                       height: 6,
                                       decoration: BoxDecoration(
-                                        color: c.emerald,
+                                        color: c.ink,
                                         shape: BoxShape.circle,
                                       ),
                                     ),

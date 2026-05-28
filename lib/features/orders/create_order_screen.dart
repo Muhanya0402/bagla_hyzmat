@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
@@ -204,7 +204,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       lastDate: DateTime.now().add(const Duration(days: 14)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.of(context).emerald),
+          colorScheme: ColorScheme.light(primary: AppColors.of(context).ink),
         ),
         child: child!,
       ),
@@ -215,7 +215,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       initialTime: TimeOfDay.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.of(context).emerald),
+          colorScheme: ColorScheme.light(primary: AppColors.of(context).ink),
         ),
         child: child!,
       ),
@@ -304,7 +304,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text, style: AppText.regular(fontSize: 13)),
-        backgroundColor: isError ? AppColors.of(context).errorMuted : AppColors.of(context).emerald,
+        backgroundColor: isError
+            ? AppColors.of(context).errorMuted
+            : AppColors.of(context).ink,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -422,7 +424,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               color: Colors.black.withValues(alpha: 0.12),
               child: Center(
                 child: CircularProgressIndicator(
-                  color: AppColors.of(context).emerald,
+                  color: AppColors.of(context).ink,
                   strokeWidth: 2.5,
                 ),
               ),
@@ -462,7 +464,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 width: 3,
                 height: 13,
                 decoration: BoxDecoration(
-                  color: AppColors.of(context).emerald,
+                  color: AppColors.of(context).ink,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -512,7 +514,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   color: AppColors.of(context).bg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.of(context).emerald.withValues(alpha: 0.3),
+                    color: AppColors.of(context).ink.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
@@ -521,7 +523,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   children: [
                     Icon(
                       Icons.add_photo_alternate_outlined,
-                      color: AppColors.of(context).emerald.withValues(alpha: 0.6),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.6),
                       size: 22,
                     ),
                     const SizedBox(height: 4),
@@ -586,10 +588,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String? suffixText,
   }) => InputDecoration(
     hintText: hint,
-    hintStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+    hintStyle: AppText.regular(
+      fontSize: 14,
+      color: AppColors.of(context).inkSoft,
+    ),
     prefixIcon: prefix,
     suffixText: suffixText,
-    suffixStyle: AppText.regular(fontSize: 13, color: AppColors.of(context).inkSoft),
+    suffixStyle: AppText.regular(
+      fontSize: 13,
+      color: AppColors.of(context).inkSoft,
+    ),
     filled: true,
     fillColor: AppColors.of(context).borderSoft,
     border: OutlineInputBorder(
@@ -603,7 +611,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.of(context).emerald.withValues(alpha: 0.55),
+        color: AppColors.of(context).ink.withValues(alpha: 0.55),
         width: 1.5,
       ),
     ),
@@ -620,7 +628,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         width: 1.5,
       ),
     ),
-    errorStyle: AppText.regular(fontSize: 11, color: AppColors.of(context).errorMuted),
+    errorStyle: AppText.regular(
+      fontSize: 11,
+      color: AppColors.of(context).errorMuted,
+    ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
   );
 
@@ -640,12 +651,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             hint: words.clientPhone,
             prefix: Icon(
               Icons.phone_android_outlined,
-              color: AppColors.of(context).emerald,
+              color: AppColors.of(context).ink,
               size: 18,
             ),
           ).copyWith(
             prefixText: '+993 ',
-            prefixStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
+            prefixStyle: AppText.regular(
+              fontSize: 14,
+              color: AppColors.of(context).ink,
+            ),
           ),
       validator: (v) => (v == null || v.length < 8) ? words.phoneShort : null,
     );
@@ -668,7 +682,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               height: 34,
               decoration: BoxDecoration(
                 color: _selectedDateTime != null
-                    ? AppColors.of(context).emerald.withValues(alpha: 0.1)
+                    ? AppColors.of(context).ink.withValues(alpha: 0.1)
                     : AppColors.of(context).border,
                 borderRadius: BorderRadius.circular(9),
               ),
@@ -676,7 +690,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 Icons.calendar_today_outlined,
                 size: 16,
                 color: _selectedDateTime != null
-                    ? AppColors.of(context).emerald
+                    ? AppColors.of(context).ink
                     : AppColors.of(context).inkSoft,
               ),
             ),
@@ -720,7 +734,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   width: 26,
                   height: 26,
                   decoration: BoxDecoration(
-                    color: AppColors.of(context).errorMuted.withValues(alpha: 0.08),
+                    color: AppColors.of(
+                      context,
+                    ).errorMuted.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -757,7 +773,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         hint: words.itemPriceHint,
         prefix: Icon(
           Icons.payments_outlined,
-          color: AppColors.of(context).emerald,
+          color: AppColors.of(context).ink,
           size: 18,
         ),
         suffixText: 'TMT',
@@ -780,7 +796,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         hint: words.deliveryPriceHint,
         prefix: Icon(
           Icons.delivery_dining_outlined,
-          color: AppColors.of(context).emerald,
+          color: AppColors.of(context).ink,
           size: 18,
         ),
         suffixText: 'TMT',
@@ -808,7 +824,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? AppColors.of(context).emerald.withValues(alpha: 0.4)
+                    ? AppColors.of(context).ink.withValues(alpha: 0.4)
                     : AppColors.of(context).border,
                 width: isSelected ? 1.5 : 1,
               ),
@@ -820,14 +836,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   height: 34,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.of(context).emerald.withValues(alpha: 0.12)
+                        ? AppColors.of(context).ink.withValues(alpha: 0.12)
                         : AppColors.of(context).border,
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(
                     icon,
                     size: 17,
-                    color: isSelected ? AppColors.of(context).emerald : AppColors.of(context).inkSoft,
+                    color: isSelected
+                        ? AppColors.of(context).ink
+                        : AppColors.of(context).inkSoft,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -836,7 +854,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     label,
                     style: AppText.medium(
                       fontSize: 14,
-                      color: isSelected ? AppColors.of(context).ink : AppColors.of(context).inkMuted,
+                      color: isSelected
+                          ? AppColors.of(context).ink
+                          : AppColors.of(context).inkMuted,
                     ),
                   ),
                 ),
@@ -846,17 +866,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   height: 20,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected ? AppColors.of(context).emerald : Colors.transparent,
+                    color: isSelected
+                        ? AppColors.of(context).ink
+                        : Colors.transparent,
                     border: isSelected
                         ? null
-                        : Border.all(color: AppColors.of(context).border, width: 1.5),
+                        : Border.all(
+                            color: AppColors.of(context).border,
+                            width: 1.5,
+                          ),
                   ),
                   child: isSelected
-                      ? Icon(
-                          Icons.check_rounded,
-                          color: Colors.white,
-                          size: 12,
-                        )
+                      ? Icon(Icons.check_rounded, color: Colors.white, size: 12)
                       : null,
                 ),
               ],
@@ -913,7 +934,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         height: 3,
                         decoration: BoxDecoration(
                           color: (isDone || isActive)
-                              ? AppColors.of(context).emerald
+                              ? AppColors.of(context).ink
                               : AppColors.of(context).border,
                           borderRadius: BorderRadius.circular(2),
                         ),
@@ -978,7 +999,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       style: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
       decoration: InputDecoration(
         hintText: hints[_locationStep],
-        hintStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+        hintStyle: AppText.regular(
+          fontSize: 14,
+          color: AppColors.of(context).inkSoft,
+        ),
         prefixIcon: Icon(
           Icons.search_rounded,
           color: AppColors.of(context).inkSoft,
@@ -1010,7 +1034,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: AppColors.of(context).emerald.withValues(alpha: 0.5),
+            color: AppColors.of(context).ink.withValues(alpha: 0.5),
             width: 1.5,
           ),
         ),
@@ -1055,7 +1079,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             child: Text(
               p.label(isRu),
               textAlign: TextAlign.center,
-              style: AppText.semiBold(fontSize: 13, color: AppColors.of(context).ink),
+              style: AppText.semiBold(
+                fontSize: 13,
+                color: AppColors.of(context).ink,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1103,7 +1130,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         alignment: Alignment.center,
         child: Text(
           _searchQuery.isEmpty ? words.noData : words.filterNotFound,
-          style: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+          style: AppText.regular(
+            fontSize: 14,
+            color: AppColors.of(context).inkSoft,
+          ),
         ),
       );
     }
@@ -1168,7 +1198,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         decoration: BoxDecoration(
           color: AppColors.of(context).emeraldTint,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.of(context).emerald.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: AppColors.of(context).ink.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           children: [
@@ -1176,7 +1208,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppColors.of(context).emerald,
+                color: AppColors.of(context).ink,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: Icon(Icons.check, color: Colors.white, size: 17),
@@ -1226,7 +1258,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       height: 64,
       alignment: Alignment.center,
       child: CircularProgressIndicator(
-        color: AppColors.of(context).emerald,
+        color: AppColors.of(context).ink,
         strokeWidth: 2,
       ),
     );
@@ -1431,9 +1463,13 @@ class _BreadcrumbChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.of(context).emerald : AppColors.of(context).borderSoft,
+          color: isSelected
+              ? AppColors.of(context).ink
+              : AppColors.of(context).borderSoft,
           borderRadius: BorderRadius.circular(20),
-          border: isSelected ? null : Border.all(color: AppColors.of(context).border),
+          border: isSelected
+              ? null
+              : Border.all(color: AppColors.of(context).border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

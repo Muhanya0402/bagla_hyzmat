@@ -21,7 +21,8 @@ void showLevelDetailsSheet(
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
-    builder: (_) => _LevelDetailsSheet(provider: provider, w: words, isRu: isRu),
+    builder: (_) =>
+        _LevelDetailsSheet(provider: provider, w: words, isRu: isRu),
   );
 }
 
@@ -174,7 +175,10 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                               Flexible(
                                 child: Text(
                                   level.title(isRu),
-                                  style: AppText.serif(fontSize: 15, color: c.ink),
+                                  style: AppText.serif(
+                                    fontSize: 15,
+                                    color: c.ink,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -192,7 +196,10 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                                   ),
                                 ),
                                 child: Text(
-                                  w.levelLabel.replaceAll('{n}', '${level.levelNumber}'),
+                                  w.levelLabel.replaceAll(
+                                    '{n}',
+                                    '${level.levelNumber}',
+                                  ),
                                   style: AppText.semiBold(
                                     fontSize: 10,
                                     color: c.amber,
@@ -237,7 +244,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                               w.levelMaxReached,
                               style: AppText.semiBold(
                                 fontSize: 11,
-                                color: c.emerald,
+                                color: c.ink,
                               ),
                             ),
                         ],
@@ -461,8 +468,10 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                 children: [
                   Text(
                     w.levelNewLevel,
-                    style: AppText.bold(fontSize: 11, color: c.amber)
-                        .copyWith(letterSpacing: 2),
+                    style: AppText.bold(
+                      fontSize: 11,
+                      color: c.amber,
+                    ).copyWith(letterSpacing: 2),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -499,9 +508,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                     decoration: BoxDecoration(
                       color: c.amberTint,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: c.amber.withValues(alpha: 0.3),
-                      ),
+                      border: Border.all(color: c.amber.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -509,7 +516,10 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                         Icon(Icons.bolt_rounded, color: c.amber, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          w.levelNowDaily.replaceAll('{n}', '${widget.dailyBonus}'),
+                          w.levelNowDaily.replaceAll(
+                            '{n}',
+                            '${widget.dailyBonus}',
+                          ),
                           style: AppText.bold(fontSize: 14, color: c.ink),
                         ),
                       ],
@@ -531,25 +541,30 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       style: AppText.regular(fontSize: 12, color: c.inkMuted),
                     ),
                     const SizedBox(height: 8),
-                    ...widget.bonuses.take(3).map(
-                      (b) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(b.icon, style: const TextStyle(fontSize: 16)),
-                            const SizedBox(width: 8),
-                            Text(
-                              b.labelRu,
-                              style: AppText.semiBold(
-                                fontSize: 13,
-                                color: c.ink,
-                              ),
+                    ...widget.bonuses
+                        .take(3)
+                        .map(
+                          (b) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  b.icon,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  b.labelRu,
+                                  style: AppText.semiBold(
+                                    fontSize: 13,
+                                    color: c.ink,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
                   ],
 
                   const SizedBox(height: 24),
@@ -574,8 +589,10 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                         onPressed: widget.onDismiss,
                         child: Text(
                           w.great,
-                          style: AppText.bold(fontSize: 15, color: Colors.white)
-                              .copyWith(letterSpacing: 1),
+                          style: AppText.bold(
+                            fontSize: 15,
+                            color: Colors.white,
+                          ).copyWith(letterSpacing: 1),
                         ),
                       ),
                     ),
@@ -668,7 +685,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            w.levelLabel.replaceAll('{n}', '${current.levelNumber}'),
+                            w.levelLabel.replaceAll(
+                              '{n}',
+                              '${current.levelNumber}',
+                            ),
                             style: AppText.medium(
                               fontSize: 12,
                               color: c.inkMuted,
@@ -686,7 +706,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                         ),
                         Text(
                           'XP',
-                          style: AppText.regular(fontSize: 11, color: c.inkSoft),
+                          style: AppText.regular(
+                            fontSize: 11,
+                            color: c.inkSoft,
+                          ),
                         ),
                       ],
                     ),
@@ -756,8 +779,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                             const SizedBox(width: 8),
                             Text(
                               w.levelBonusHeader,
-                              style: AppText.bold(fontSize: 10, color: c.inkSoft)
-                                  .copyWith(letterSpacing: 0.8),
+                              style: AppText.bold(
+                                fontSize: 10,
+                                color: c.inkSoft,
+                              ).copyWith(letterSpacing: 0.8),
                             ),
                           ],
                         ),
@@ -779,9 +804,12 @@ class _LevelDetailsSheet extends StatelessWidget {
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (i > 0) Container(height: 0.5, color: c.borderSoft),
+                            if (i > 0)
+                              Container(height: 0.5, color: c.borderSoft),
                             Container(
-                              color: isCurrent ? c.amberTint : Colors.transparent,
+                              color: isCurrent
+                                  ? c.amberTint
+                                  : Colors.transparent,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -794,19 +822,24 @@ class _LevelDetailsSheet extends StatelessWidget {
                                           ? Icons.check_circle_rounded
                                           : Icons.lock_outline_rounded,
                                       size: 14,
-                                      color: isUnlocked
-                                          ? c.emerald
-                                          : c.inkSoft,
+                                      color: isUnlocked ? c.ink : c.inkSoft,
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             w.levelRow
-                                                .replaceAll('{n}', '${l.levelNumber}')
-                                                .replaceAll('{title}', l.title(isRu)),
+                                                .replaceAll(
+                                                  '{n}',
+                                                  '${l.levelNumber}',
+                                                )
+                                                .replaceAll(
+                                                  '{title}',
+                                                  l.title(isRu),
+                                                ),
                                             style: isCurrent
                                                 ? AppText.semiBold(
                                                     fontSize: 13,
@@ -820,7 +853,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                                                   ),
                                           ),
                                           Text(
-                                            w.levelFromXp.replaceAll('{n}', '${l.xpRequired}'),
+                                            w.levelFromXp.replaceAll(
+                                              '{n}',
+                                              '${l.xpRequired}',
+                                            ),
                                             style: AppText.regular(
                                               fontSize: 10,
                                               color: c.inkSoft,
@@ -843,13 +879,16 @@ class _LevelDetailsSheet extends StatelessWidget {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
-                                        w.levelPerDay.replaceAll('{n}', '$bonus'),
+                                        w.levelPerDay.replaceAll(
+                                          '{n}',
+                                          '$bonus',
+                                        ),
                                         style: AppText.semiBold(
                                           fontSize: 12,
                                           color: isCurrent
                                               ? c.amber
                                               : isUnlocked
-                                              ? c.emerald
+                                              ? c.ink
                                               : c.inkSoft,
                                         ),
                                       ),
@@ -920,23 +959,17 @@ class _SupportRowState extends State<_SupportRow> {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.headset_mic_outlined,
-                size: 16,
-                color: c.inkSoft,
-              ),
+              Icon(Icons.headset_mic_outlined, size: 16, color: c.inkSoft),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  widget.isRu ? 'Связаться с поддержкой' : 'Goldaw bilen habarlaşmak',
+                  widget.isRu
+                      ? 'Связаться с поддержкой'
+                      : 'Goldaw bilen habarlaşmak',
                   style: AppText.medium(fontSize: 13, color: c.ink),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 11,
-                color: c.inkSoft,
-              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 11, color: c.inkSoft),
             ],
           ),
         ),

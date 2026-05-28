@@ -54,9 +54,7 @@ class OrderCard extends StatelessWidget {
         children: [
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.28),
-            ),
+            child: Container(color: Colors.black.withValues(alpha: 0.28)),
           ),
           Center(
             child: _ConfirmDialog(
@@ -73,9 +71,10 @@ class OrderCard extends StatelessWidget {
       transitionBuilder: (_, anim, _, child) => FadeTransition(
         opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
         child: ScaleTransition(
-          scale: Tween<double>(begin: 0.94, end: 1.0).animate(
-            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-          ),
+          scale: Tween<double>(
+            begin: 0.94,
+            end: 1.0,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
       ),
@@ -168,7 +167,7 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          splashColor: c.emerald.withValues(alpha: 0.04),
+          splashColor: c.ink.withValues(alpha: 0.04),
           highlightColor: Colors.transparent,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -201,7 +200,7 @@ class OrderCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 _buildAddressRow(
                   icon: Icons.location_on_outlined,
-                  iconColor: c.emerald,
+                  iconColor: c.ink,
                   address: langProvider.isRu
                       ? (order['adress_of_delivery'] ?? 'Адрес доставки')
                       : (order['adress_of_deliverytk'] ??
@@ -255,7 +254,10 @@ class OrderCard extends StatelessWidget {
         Expanded(
           child: Text(
             address,
-            style: AppText.regular(fontSize: 12, color: c.ink).copyWith(height: 1.4),
+            style: AppText.regular(
+              fontSize: 12,
+              color: c.ink,
+            ).copyWith(height: 1.4),
           ),
         ),
       ],
@@ -270,7 +272,7 @@ class OrderCard extends StatelessWidget {
     switch (transportType) {
       case 'car':
         icon = Icons.directions_car_rounded;
-        color = c.emerald;
+        color = c.ink;
       case 'truck':
         icon = Icons.local_shipping_rounded;
         color = c.errorMuted;
@@ -364,14 +366,14 @@ class OrderCard extends StatelessWidget {
           children: [
             Text(
               amount.toStringAsFixed(0),
-              style: AppText.semiBold(fontSize: 20, color: c.emerald),
+              style: AppText.semiBold(fontSize: 20, color: c.ink),
             ),
             const SizedBox(width: 3),
             Text(
               'TMT',
               style: AppText.regular(
                 fontSize: 10,
-                color: c.emerald.withValues(alpha: 0.5),
+                color: c.ink.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -563,7 +565,7 @@ class _ActionButtonState extends State<_ActionButton> {
         child: Container(
           height: 36,
           decoration: BoxDecoration(
-            color: c.emerald.withValues(alpha: 0.8),
+            color: c.ink.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -725,7 +727,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   ),
                   const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: c.bg,
                       borderRadius: BorderRadius.circular(10),
@@ -739,7 +744,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                             children: [
                               Text(
                                 widget.words.deliveryFee,
-                                style: AppText.regular(fontSize: 10, color: c.inkSoft),
+                                style: AppText.regular(
+                                  fontSize: 10,
+                                  color: c.inkSoft,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Row(
@@ -748,14 +756,17 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                                 children: [
                                   Text(
                                     '+${widget.deliveryAmount.toStringAsFixed(0)}',
-                                    style: AppText.semiBold(fontSize: 18, color: c.emerald),
+                                    style: AppText.semiBold(
+                                      fontSize: 18,
+                                      color: c.ink,
+                                    ),
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
                                     'TMT',
                                     style: AppText.regular(
                                       fontSize: 10,
-                                      color: c.emerald.withValues(alpha: 0.55),
+                                      color: c.ink.withValues(alpha: 0.55),
                                     ),
                                   ),
                                 ],
@@ -771,7 +782,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                             margin: const EdgeInsets.symmetric(horizontal: 10),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: c.amberTint,
                               borderRadius: BorderRadius.circular(8),
@@ -779,11 +793,18 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.toll_rounded, size: 13, color: c.amber),
+                                Icon(
+                                  Icons.toll_rounded,
+                                  size: 13,
+                                  color: c.amber,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '-${widget.points}',
-                                  style: AppText.semiBold(fontSize: 13, color: c.amber),
+                                  style: AppText.semiBold(
+                                    fontSize: 13,
+                                    color: c.amber,
+                                  ),
                                 ),
                               ],
                             ),
@@ -798,13 +819,20 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
-                        child: Icon(Icons.route_outlined, size: 12, color: c.inkSoft),
+                        child: Icon(
+                          Icons.route_outlined,
+                          size: 12,
+                          color: c.inkSoft,
+                        ),
                       ),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
                           'ID: ${widget.shortOrderId} • ${widget.address}',
-                          style: AppText.regular(fontSize: 11, color: c.inkMuted).copyWith(height: 1.4),
+                          style: AppText.regular(
+                            fontSize: 11,
+                            color: c.inkMuted,
+                          ).copyWith(height: 1.4),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -841,7 +869,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                         alignment: Alignment.center,
                         child: Text(
                           widget.words.back,
-                          style: AppText.medium(fontSize: 13, color: c.inkMuted),
+                          style: AppText.medium(
+                            fontSize: 13,
+                            color: c.inkMuted,
+                          ),
                         ),
                       ),
                     ),
@@ -855,7 +886,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                         setState(() => _confirmPressed = false);
                         Navigator.pop(context, true);
                       },
-                      onTapCancel: () => setState(() => _confirmPressed = false),
+                      onTapCancel: () =>
+                          setState(() => _confirmPressed = false),
                       child: AnimatedScale(
                         scale: _confirmPressed ? 0.97 : 1.0,
                         duration: const Duration(milliseconds: 120),
@@ -865,14 +897,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                           height: 44,
                           decoration: BoxDecoration(
                             color: _confirmPressed
-                                ? c.emerald.withValues(alpha: 0.85)
-                                : c.emerald,
+                                ? c.ink.withValues(alpha: 0.85)
+                                : c.ink,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: _confirmPressed
                                 ? null
                                 : [
                                     BoxShadow(
-                                      color: c.emerald.withValues(alpha: 0.22),
+                                      color: c.ink.withValues(alpha: 0.22),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -881,7 +913,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                           alignment: Alignment.center,
                           child: Text(
                             widget.words.takeOrder,
-                            style: AppText.semiBold(fontSize: 13, color: Colors.white),
+                            style: AppText.semiBold(
+                              fontSize: 13,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),

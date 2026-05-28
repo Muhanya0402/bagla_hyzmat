@@ -44,7 +44,7 @@ class RolePickerEmbedded extends StatelessWidget {
               ),
               child: Icon(
                 Icons.swap_horiz_rounded,
-                color: AppColors.of(context).emerald,
+                color: AppColors.of(context).ink,
                 size: 26,
               ),
             ),
@@ -161,7 +161,7 @@ class _RoleOptionState extends State<_RoleOption> {
                 ),
                 child: Icon(
                   widget.icon,
-                  color: AppColors.of(context).emerald,
+                  color: AppColors.of(context).ink,
                   size: 20,
                 ),
               ),

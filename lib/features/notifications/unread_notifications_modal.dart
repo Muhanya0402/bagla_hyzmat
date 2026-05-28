@@ -92,7 +92,10 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
             color: AppColors.of(context).bg,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             border: Border(
-              top: BorderSide(color: AppColors.of(context).borderSoft, width: 1),
+              top: BorderSide(
+                color: AppColors.of(context).borderSoft,
+                width: 1,
+              ),
             ),
           ),
           child: Column(
@@ -219,14 +222,26 @@ class _NotifRowState extends State<_NotifRow> {
   ({Color icon, Color bg}) _style(String type) {
     switch (type) {
       case 'daily_bonus':
-        return (icon: AppColors.of(context).amber, bg: AppColors.of(context).amberTint);
+        return (
+          icon: AppColors.of(context).amber,
+          bg: AppColors.of(context).amberTint,
+        );
       case 'new_order':
       case 'order_status':
-        return (icon: AppColors.of(context).emerald, bg: AppColors.of(context).emeraldTint);
+        return (
+          icon: AppColors.of(context).ink,
+          bg: AppColors.of(context).emeraldTint,
+        );
       case 'account_status':
-        return (icon: AppColors.of(context).errorMuted, bg: AppColors.of(context).errorTint);
+        return (
+          icon: AppColors.of(context).errorMuted,
+          bg: AppColors.of(context).errorTint,
+        );
       default:
-        return (icon: AppColors.of(context).inkSoft, bg: AppColors.of(context).borderSoft);
+        return (
+          icon: AppColors.of(context).inkSoft,
+          bg: AppColors.of(context).borderSoft,
+        );
     }
   }
 
@@ -372,17 +387,17 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-                            Icon(
+              Icon(
                 Icons.done_all_rounded,
                 size: 13,
-                color: AppColors.of(context).emerald,
+                color: AppColors.of(context).ink,
               ),
               const SizedBox(width: 5),
               Text(
                 widget.label,
                 style: AppText.semiBold(
                   fontSize: 12,
-                  color: AppColors.of(context).emerald,
+                  color: AppColors.of(context).ink,
                 ),
               ),
             ],
@@ -432,7 +447,10 @@ class _CloseButtonState extends State<_CloseButton> {
           alignment: Alignment.center,
           child: Text(
             widget.label,
-            style: AppText.medium(fontSize: 14, color: AppColors.of(context).inkMuted),
+            style: AppText.medium(
+              fontSize: 14,
+              color: AppColors.of(context).inkMuted,
+            ),
           ),
         ),
       ),

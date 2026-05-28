@@ -264,7 +264,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       );
 
       if (!success) {
-        _showToast('Не удалось сохранить данные. Попробуйте ещё раз через мгновение.');
+        _showToast(
+          'Не удалось сохранить данные. Попробуйте ещё раз через мгновение.',
+        );
         return;
       }
 
@@ -277,8 +279,6 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       } catch (_) {}
       if (!mounted) return;
       _showToast('Данные отправлены. Ожидайте подтверждения', isSuccess: true);
-      await Future.delayed(const Duration(milliseconds: 800));
-      if (!mounted) return;
       Navigator.of(
         context,
         rootNavigator: true,
@@ -300,7 +300,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             Icon(
               isSuccess ? Icons.check_circle_outline : Icons.info_outline,
               size: 17,
-              color: isSuccess ? AppColors.of(context).emerald : AppColors.of(context).errorMuted,
+              color: isSuccess
+                  ? AppColors.of(context).ink
+                  : AppColors.of(context).errorMuted,
             ),
             SizedBox(width: 10),
             Expanded(
@@ -308,7 +310,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                 msg,
                 style: AppText.regular(
                   fontSize: 13,
-                  color: isSuccess ? AppColors.of(context).emerald : AppColors.of(context).ink,
+                  color: isSuccess
+                      ? AppColors.of(context).ink
+                      : AppColors.of(context).ink,
                 ).copyWith(height: 1.4),
               ),
             ),
@@ -324,7 +328,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
             color: isSuccess
-                ? AppColors.of(context).emerald.withValues(alpha: 0.25)
+                ? AppColors.of(context).ink.withValues(alpha: 0.25)
                 : AppColors.of(context).errorMuted.withValues(alpha: 0.25),
             width: 1,
           ),
@@ -347,7 +351,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.of(context).emeraldTint : AppColors.of(context).surface,
+              color: isSelected
+                  ? AppColors.of(context).emeraldTint
+                  : AppColors.of(context).surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
@@ -365,13 +371,15 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.of(context).ink.withValues(alpha: 0.12)
-                        : const Color(0xFFF4F0EA),
+                        : AppColors.of(context).surface,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
                     icon,
                     size: 18,
-                    color: isSelected ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
+                    color: isSelected
+                        ? AppColors.of(context).ink
+                        : AppColors.of(context).inkSoft,
                   ),
                 ),
                 SizedBox(width: 14),
@@ -380,7 +388,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     label,
                     style: AppText.medium(
                       fontSize: 14,
-                      color: isSelected ? AppColors.of(context).ink : AppColors.of(context).inkMuted,
+                      color: isSelected
+                          ? AppColors.of(context).ink
+                          : AppColors.of(context).inkMuted,
                     ),
                   ),
                 ),
@@ -390,18 +400,18 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   height: 22,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected ? AppColors.of(context).emerald : Colors.transparent,
+                    color: isSelected
+                        ? AppColors.of(context).ink
+                        : Colors.transparent,
                     border: Border.all(
-                      color: isSelected ? AppColors.of(context).ink : AppColors.of(context).border,
+                      color: isSelected
+                          ? AppColors.of(context).ink
+                          : AppColors.of(context).border,
                       width: 1.5,
                     ),
                   ),
                   child: isSelected
-                      ? Icon(
-                          Icons.check_rounded,
-                          color: Colors.white,
-                          size: 13,
-                        )
+                      ? Icon(Icons.check_rounded, color: Colors.white, size: 13)
                       : null,
                 ),
               ],
@@ -522,7 +532,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       style: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
       decoration: InputDecoration(
         hintText: hints[_locationStep],
-        hintStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+        hintStyle: AppText.regular(
+          fontSize: 14,
+          color: AppColors.of(context).inkSoft,
+        ),
         prefixIcon: Icon(
           Icons.search_rounded,
           color: AppColors.of(context).inkSoft,
@@ -542,7 +555,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               )
             : null,
         filled: true,
-        fillColor: const Color(0xFFF4F0EA),
+        fillColor: AppColors.of(context).surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -553,7 +566,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.of(context).emerald, width: 1.5),
+          borderSide: BorderSide(color: AppColors.of(context).ink, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -632,7 +645,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             child: Text(
               labelFn(item),
               textAlign: TextAlign.center,
-              style: AppText.medium(fontSize: 13, color: AppColors.of(context).ink),
+              style: AppText.medium(
+                fontSize: 13,
+                color: AppColors.of(context).ink,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -653,7 +669,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         alignment: Alignment.center,
         child: Text(
           _searchQuery.isEmpty ? 'Нет данных' : 'Ничего не найдено',
-          style: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+          style: AppText.regular(
+            fontSize: 14,
+            color: AppColors.of(context).inkSoft,
+          ),
         ),
       );
     }
@@ -698,7 +717,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         ),
                       ),
                     ),
-                                        Icon(
+                    Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 13,
                       color: AppColors.of(context).border,
@@ -721,7 +740,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         width: 22,
         height: 22,
         child: CircularProgressIndicator(
-          color: AppColors.of(context).emerald,
+          color: AppColors.of(context).ink,
           strokeWidth: 1.5,
         ),
       ),
@@ -737,7 +756,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         decoration: BoxDecoration(
           color: AppColors.of(context).emeraldTint,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.of(context).emerald.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: AppColors.of(context).ink.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           children: [
@@ -745,14 +766,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: AppColors.of(context).emerald,
+                color: AppColors.of(context).ink,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+              child: Icon(Icons.check_rounded, color: Colors.white, size: 18),
             ),
             SizedBox(width: 14),
             Expanded(
@@ -811,18 +828,17 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         scrolledUnderElevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
-          behavior: HitTestBehavior.opaque,
           child: Container(
-            margin: const EdgeInsets.all(12),
+            margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: AppColors.of(context).surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.of(context).border, width: 1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.of(context).border),
             ),
             child: Icon(
               Icons.arrow_back_ios_new,
               color: AppColors.of(context).ink,
-              size: 15,
+              size: 16,
             ),
           ),
         ),
@@ -988,7 +1004,7 @@ class _RoleChip extends StatelessWidget {
             color: AppColors.of(context).emeraldTint,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AppColors.of(context).emerald.withValues(alpha: 0.3),
+              color: AppColors.of(context).ink.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -998,7 +1014,7 @@ class _RoleChip extends StatelessWidget {
                 isCourier
                     ? Icons.electric_bike_outlined
                     : Icons.shopping_bag_outlined,
-                color: AppColors.of(context).emerald,
+                color: AppColors.of(context).ink,
                 size: 14,
               ),
               SizedBox(width: 6),
@@ -1006,7 +1022,7 @@ class _RoleChip extends StatelessWidget {
                 isCourier ? 'Курьер' : 'Магазин',
                 style: AppText.semiBold(
                   fontSize: 12.5,
-                  color: AppColors.of(context).emerald,
+                  color: AppColors.of(context).ink,
                 ).copyWith(letterSpacing: 0.1),
               ),
             ],
@@ -1031,7 +1047,7 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 14,
           decoration: BoxDecoration(
-            color: AppColors.of(context).emerald,
+            color: AppColors.of(context).ink,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -1096,18 +1112,25 @@ class _InputFieldState extends State<_InputField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
-        hintStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+        hintStyle: AppText.regular(
+          fontSize: 14,
+          color: AppColors.of(context).inkSoft,
+        ),
         labelStyle: AppText.regular(
           fontSize: 13.5,
-          color: _hasFocus ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
+          color: _hasFocus
+              ? AppColors.of(context).ink
+              : AppColors.of(context).inkSoft,
         ),
         prefixIcon: Icon(
           widget.icon,
           size: 18,
-          color: _hasFocus ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
+          color: _hasFocus
+              ? AppColors.of(context).ink
+              : AppColors.of(context).inkSoft,
         ),
         filled: true,
-        fillColor: const Color(0xFFF4F0EA),
+        fillColor: AppColors.of(context).surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -1122,7 +1145,10 @@ class _InputFieldState extends State<_InputField> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.of(context).errorMuted, width: 1),
+          borderSide: BorderSide(
+            color: AppColors.of(context).errorMuted,
+            width: 1,
+          ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1161,7 +1187,7 @@ class _PhotoBox extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           height: 148,
           decoration: BoxDecoration(
-            color: file == null ? const Color(0xFFF4F0EA) : null,
+            color: file == null ? AppColors.of(context).surface : null,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: file != null
@@ -1181,7 +1207,9 @@ class _PhotoBox extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AppColors.of(context).ink.withValues(alpha: 0.10),
+                        color: AppColors.of(
+                          context,
+                        ).ink.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(13),
                       ),
                       child: Icon(
@@ -1220,7 +1248,7 @@ class _PhotoBox extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.check_circle_rounded,
-                        color: Colors.white,
+                        color: AppColors.of(context).ink,
                         size: 15,
                       ),
                       SizedBox(width: 5),
@@ -1258,7 +1286,9 @@ class _Chip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.of(context).emeraldTint : AppColors.of(context).surface,
+          color: isSelected
+              ? AppColors.of(context).emeraldTint
+              : AppColors.of(context).surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
@@ -1273,12 +1303,14 @@ class _Chip extends StatelessWidget {
               label,
               style: AppText.medium(
                 fontSize: 12,
-                color: isSelected ? AppColors.of(context).emerald : AppColors.of(context).inkMuted,
+                color: isSelected
+                    ? AppColors.of(context).ink
+                    : AppColors.of(context).inkMuted,
               ),
             ),
             if (!isSelected) ...[
               SizedBox(width: 4),
-                            Icon(
+              Icon(
                 Icons.close_rounded,
                 size: 12,
                 color: AppColors.of(context).inkSoft,

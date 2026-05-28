@@ -97,7 +97,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     }
   }
 
-  void _onFabPanUpdate(DragUpdateDetails d, Size screen, double minY, double maxY) {
+  void _onFabPanUpdate(
+    DragUpdateDetails d,
+    Size screen,
+    double minY,
+    double maxY,
+  ) {
     setState(() {
       _isFabDragging = true;
       final dx = (_fabOffset!.dx + d.delta.dx).clamp(0.0, screen.width - _fabW);
@@ -143,10 +148,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     final fabMinY = mq.padding.top + kToolbarHeight + 54.0;
     final fabMaxY = screenSize.height - _fabH - 66.0 - bottomOffset - 8.0;
 
-    _fabOffset ??= Offset(
-      screenSize.width - _fabW - 20.0,
-      fabMaxY,
-    );
+    _fabOffset ??= Offset(screenSize.width - _fabW - 20.0, fabMaxY);
 
     final isTopRoute = ModalRoute.of(context)?.isCurrent ?? true;
     final showNav = _navVisible && isTopRoute;
@@ -195,8 +197,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                 top: _fabOffset!.dy,
                 child: GestureDetector(
                   onPanStart: (_) => setState(() => _isFabDragging = true),
-                  onPanUpdate: (d) => _onFabPanUpdate(d, screenSize, fabMinY, fabMaxY),
-                  onPanEnd: (d) => _onFabPanEnd(d, screenSize, fabMinY, fabMaxY),
+                  onPanUpdate: (d) =>
+                      _onFabPanUpdate(d, screenSize, fabMinY, fabMaxY),
+                  onPanEnd: (d) =>
+                      _onFabPanEnd(d, screenSize, fabMinY, fabMaxY),
                   onTap: () => _navigatorKeys[0].currentState?.push(
                     MaterialPageRoute(
                       builder: (_) => const CreateOrderScreen(),
@@ -414,9 +418,7 @@ class _NavItemState extends State<_NavItem> {
                   width: 46,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: widget.isActive
-                        ? c.emeraldTint
-                        : Colors.transparent,
+                    color: widget.isActive ? c.emeraldTint : Colors.transparent,
                     borderRadius: BorderRadius.circular(13),
                   ),
                 ),
@@ -437,7 +439,7 @@ class _NavItemState extends State<_NavItem> {
                     widget.isActive ? widget.activeIcon : widget.icon,
                     key: ValueKey(widget.isActive),
                     size: 22,
-                    color: widget.isActive ? c.emerald : c.inkSoft,
+                    color: widget.isActive ? c.ink : c.inkSoft,
                   ),
                 ),
 
@@ -450,7 +452,7 @@ class _NavItemState extends State<_NavItem> {
                     width: widget.isActive ? 16.0 : 0.0,
                     height: 2,
                     decoration: BoxDecoration(
-                      color: c.emerald,
+                      color: c.ink,
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),

@@ -140,7 +140,7 @@ const Map<String, String> stringsRu = {
   'roleSubtitle': 'Кем вы хотите быть в системе?',
   'saveBtn': 'Сохранить изменения',
   'roleClient': 'Я Заказчик',
-  'roleCourier': 'Я Доставщик',
+  'roleCourier': 'Я Курьер',
   'roleClientDesc': 'Хочу заказывать товары',
   'roleCourierDesc': 'Хочу зарабатывать на доставке',
   'emptyList': 'Список пуст',

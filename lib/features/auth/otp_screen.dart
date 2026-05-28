@@ -32,7 +32,7 @@ class _OtpScreenState extends State<OtpScreen>
   // ── Error UX state ───────────────────────────────────────────────────────
   String? _otpError;
   bool _forceError = false; // подсветка через errorPinTheme
-  bool _disabled = false;   // кнопка временно неактивна после ошибки
+  bool _disabled = false; // кнопка временно неактивна после ошибки
 
   // Горизонтальный shake всего пин-блока
   late final AnimationController _shakeCtrl;
@@ -185,52 +185,52 @@ class _OtpScreenState extends State<OtpScreen>
 
   // ── Pin themes — принимают AppColors, не обращаются к static constants ───
   PinTheme _defaultTheme(AppColors c) => PinTheme(
-        width: 56,
-        height: 64,
-        textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.border, width: 1),
-        ),
-      );
+    width: 56,
+    height: 64,
+    textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
+    decoration: BoxDecoration(
+      color: c.surface,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: c.border, width: 1),
+    ),
+  );
 
   PinTheme _focusedTheme(AppColors c) => _defaultTheme(c).copyWith(
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.ink, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: c.ink.withValues(alpha: 0.10),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    decoration: BoxDecoration(
+      color: c.surface,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: c.ink, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: c.ink.withValues(alpha: 0.10),
+          blurRadius: 14,
+          offset: const Offset(0, 4),
         ),
-      );
+      ],
+    ),
+  );
 
   PinTheme _submittedTheme(AppColors c) => _defaultTheme(c).copyWith(
-        textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
-        decoration: BoxDecoration(
-          color: c.borderSoft,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.accent, width: 1),
-        ),
-      );
+    textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
+    decoration: BoxDecoration(
+      color: c.borderSoft,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: c.accent, width: 1),
+    ),
+  );
 
   PinTheme _errorTheme(AppColors c) => _defaultTheme(c).copyWith(
-        textStyle: AppText.serif(
-          fontSize: 26,
-          letterSpacing: 0,
-          color: c.errorMuted,
-        ),
-        decoration: BoxDecoration(
-          color: c.errorTint,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.errorMuted, width: 1.5),
-        ),
-      );
+    textStyle: AppText.serif(
+      fontSize: 26,
+      letterSpacing: 0,
+      color: c.errorMuted,
+    ),
+    decoration: BoxDecoration(
+      color: c.errorTint,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: c.errorMuted, width: 1.5),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -259,8 +259,6 @@ class _OtpScreenState extends State<OtpScreen>
                   children: [
                     const AuthBackButton(),
                     const Spacer(),
-                    const BaglaLogo(width: 56, height: 28),
-                    const Spacer(),
                     AuthLangSwitcher(
                       isRu: lang.isRu,
                       onToggle: lang.toggleLanguage,
@@ -273,10 +271,7 @@ class _OtpScreenState extends State<OtpScreen>
                 const Spacer(flex: 2),
 
                 // ── Title (calm serif) ─────────────────────────────────────
-                Text(
-                  words.authOtpTitle,
-                  style: AppText.serif(fontSize: 34),
-                ),
+                Text(words.authOtpTitle, style: AppText.serif(fontSize: 34)),
                 const SizedBox(height: 12),
                 RichText(
                   text: TextSpan(
@@ -327,8 +322,7 @@ class _OtpScreenState extends State<OtpScreen>
                           borderRadius: BorderRadius.circular(1),
                         ),
                       ),
-                      onCompleted: (_) =>
-                          _onVerify(fromAutoComplete: true),
+                      onCompleted: (_) => _onVerify(fromAutoComplete: true),
                     ),
                   ),
                 ),
@@ -429,10 +423,7 @@ class _ResendLink extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Text(
           words.authOtpResendLink,
-          style: AppText.semiBold(
-            fontSize: 13.5,
-            color: c.ink,
-          ).copyWith(
+          style: AppText.semiBold(fontSize: 13.5, color: c.ink).copyWith(
             decoration: TextDecoration.underline,
             decorationColor: c.ink,
             decorationThickness: 1.2,

@@ -27,7 +27,7 @@ class TourTarget {
     required bool isRu,
     ShapeLightFocus shape = ShapeLightFocus.RRect,
     double radius = 12,
-    ContentAlign align = ContentAlign.bottom,
+    ContentAlign align = ContentAlign.top,
   }) {
     return TargetFocus(
       identify: key.hashCode.toString(),

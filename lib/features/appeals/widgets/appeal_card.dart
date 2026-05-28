@@ -183,9 +183,9 @@ class _AppealCardState extends State<AppealCard> {
       case 'resolved':
       case 'closed':
         return _StatusCfg(
-          accent: AppColors.of(context).emerald,
+          accent: AppColors.of(context).ink,
           bg: AppColors.of(context).emeraldTint,
-          text: AppColors.of(context).emerald,
+          text: AppColors.of(context).ink,
           label: widget.words.appealsStatusClosed,
         );
       default:
@@ -263,23 +263,19 @@ class _HasReplyBadge extends StatelessWidget {
         color: AppColors.of(context).emeraldTint,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppColors.of(context).emerald.withValues(alpha: 0.2),
+          color: AppColors.of(context).ink.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.reply_rounded,
-            size: 10,
-            color: AppColors.of(context).emerald,
-          ),
+          Icon(Icons.reply_rounded, size: 10, color: AppColors.of(context).ink),
           const SizedBox(width: 4),
           Text(
             label,
             style: AppText.semiBold(
               fontSize: 10,
-              color: AppColors.of(context).emerald,
+              color: AppColors.of(context).ink,
             ),
           ),
         ],

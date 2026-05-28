@@ -285,8 +285,6 @@ class AuthProvider extends ChangeNotifier {
     if (!context.mounted) return;
 
     Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-
-    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 
   // ── Skip onboarding ────────────────────────────────────────────────────────
