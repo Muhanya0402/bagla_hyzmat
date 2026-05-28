@@ -1,6 +1,6 @@
 import 'dart:ui';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/appeals/appeals_screen.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
 import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/features/home/widgets/home_create_button.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
@@ -133,24 +133,21 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final c = AppColors.of(context);
 
     final mq = MediaQuery.of(context);
     final bottomPadding = mq.padding.bottom;
     final bottomOffset = bottomPadding > 0 ? bottomPadding + 4.0 : 20.0;
     final screenSize = mq.size;
 
-    // Bounds: below AppBar + HomeStatusFilter → just above floating nav (66px tall)
     final fabMinY = mq.padding.top + kToolbarHeight + 54.0;
     final fabMaxY = screenSize.height - _fabH - 66.0 - bottomOffset - 8.0;
 
-    // Lazy-init FAB position: bottom-right, just above the floating nav
     _fabOffset ??= Offset(
       screenSize.width - _fabW - 20.0,
       fabMaxY,
     );
 
-    // isCurrent becomes false when any root-navigator dialog/sheet is shown
-    // on top of MainShell (e.g. support modal, logout dialog, role picker).
     final isTopRoute = ModalRoute.of(context)?.isCurrent ?? true;
     final showNav = _navVisible && isTopRoute;
 
@@ -167,7 +164,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         if (shouldPop && context.mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: c.bg,
         body: Stack(
           children: [
             _buildTab(0, const HomeScreen()),
@@ -256,7 +253,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Navigator depth observer (unchanged)
+// Navigator depth observer
 // ─────────────────────────────────────────────────────────────────────────────
 class _DepthObserver extends NavigatorObserver {
   final void Function(int depth) onDepthChanged;
@@ -292,7 +289,7 @@ class _DepthObserver extends NavigatorObserver {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Floating nav — Anthropic warm-paper glassmorphism pill
+// Floating nav — glassmorphism pill
 // ─────────────────────────────────────────────────────────────────────────────
 class _FloatingNav extends StatelessWidget {
   final int currentIndex;
@@ -307,6 +304,7 @@ class _FloatingNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: BackdropFilter(
@@ -314,18 +312,18 @@ class _FloatingNav extends StatelessWidget {
         child: Container(
           height: 66,
           decoration: BoxDecoration(
-            color: AuthColors.surface.withValues(alpha: 0.97),
+            color: c.surface.withValues(alpha: 0.97),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AuthColors.border, width: 1),
+            border: Border.all(color: c.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: AuthColors.ink.withValues(alpha: 0.09),
+                color: c.ink.withValues(alpha: 0.09),
                 blurRadius: 28,
                 spreadRadius: -2,
                 offset: const Offset(0, 10),
               ),
               BoxShadow(
-                color: AuthColors.ink.withValues(alpha: 0.04),
+                color: c.ink.withValues(alpha: 0.04),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -362,7 +360,7 @@ class _FloatingNav extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Single nav item — soft emerald tint pill + animated press scale
+// Single nav item
 // ─────────────────────────────────────────────────────────────────────────────
 class _NavItem extends StatefulWidget {
   final IconData icon;
@@ -386,13 +384,9 @@ class _NavItem extends StatefulWidget {
 class _NavItemState extends State<_NavItem> {
   bool _pressed = false;
 
-  static const _emerald = Color(0xFF2D5A27);
-  static const _emeraldTint = Color(0xFFE9EFE5);
-  static const _inkSoft = Color(0xFF9A958D);
-  static const _errorMuted = Color(0xFFC85A53);
-
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -413,19 +407,21 @@ class _NavItemState extends State<_NavItem> {
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                // ── Background tint pill ──────────────────────────────
+                // Background tint pill
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeOutCubic,
                   width: 46,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: widget.isActive ? _emeraldTint : Colors.transparent,
+                    color: widget.isActive
+                        ? c.emeraldTint
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(13),
                   ),
                 ),
 
-                // ── Icon ─────────────────────────────────────────────
+                // Icon
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   switchInCurve: Curves.easeOut,
@@ -441,11 +437,11 @@ class _NavItemState extends State<_NavItem> {
                     widget.isActive ? widget.activeIcon : widget.icon,
                     key: ValueKey(widget.isActive),
                     size: 22,
-                    color: widget.isActive ? _emerald : _inkSoft,
+                    color: widget.isActive ? c.emerald : c.inkSoft,
                   ),
                 ),
 
-                // ── Bottom line indicator ─────────────────────────────
+                // Bottom line indicator
                 Positioned(
                   bottom: 7,
                   child: AnimatedContainer(
@@ -454,13 +450,13 @@ class _NavItemState extends State<_NavItem> {
                     width: widget.isActive ? 16.0 : 0.0,
                     height: 2,
                     decoration: BoxDecoration(
-                      color: _emerald,
+                      color: c.emerald,
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),
                 ),
 
-                // ── Badge ─────────────────────────────────────────────
+                // Badge
                 if (widget.badge > 0)
                   Positioned(
                     top: 8,
@@ -472,7 +468,7 @@ class _NavItemState extends State<_NavItem> {
                       ),
                       constraints: const BoxConstraints(minWidth: 14),
                       decoration: BoxDecoration(
-                        color: _errorMuted,
+                        color: c.errorMuted,
                         borderRadius: BorderRadius.circular(7),
                       ),
                       alignment: Alignment.center,

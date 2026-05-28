@@ -1,6 +1,8 @@
 import 'package:bagla/core/app_settings_provider.dart';
+import 'package:bagla/core/theme/app_theme.dart';
+import 'package:bagla/core/theme/theme_provider.dart';
+import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/appeals/appeals_screen.dart';
-import 'package:bagla/features/auth/onboarding_screen.dart';
 import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
@@ -46,11 +48,13 @@ void main() async {
   await langProvider.loadSavedLanguage();
 
   final prefs = await SharedPreferences.getInstance();
+  final themeProvider = ThemeProvider.fromPrefs(prefs);
+  await TourManager.instance.init();
+
   final bool loggedIn = await AuthRepository.checkAuthStatus();
-  final bool onboardingDone = prefs.getBool('onboarding_done') ?? false;
-  final String status = prefs.getString('status') ?? 'pending';
-  final bool showOnboarding =
-      loggedIn && !onboardingDone && status == 'pending';
+  // Роль считается выбранной, если она сохранена и не пустая.
+  final String savedRole = prefs.getString('role') ?? '';
+  final bool needsRoleSelection = loggedIn && savedRole.isEmpty;
 
   if (loggedIn) {
     await PushNotificationService().initialize();
@@ -64,33 +68,36 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LevelProvider()),
         ChangeNotifierProvider(create: (_) => AppSettingsProvider()),
         ChangeNotifierProvider.value(value: langProvider),
+        ChangeNotifierProvider.value(value: themeProvider),
       ],
-      child: MyApp(isLoggedIn: loggedIn, showOnboarding: showOnboarding),
+      child: MyApp(isLoggedIn: loggedIn, needsRoleSelection: needsRoleSelection),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
-  final bool showOnboarding;
+  final bool needsRoleSelection;
 
   const MyApp({
     super.key,
     required this.isLoggedIn,
-    required this.showOnboarding,
+    required this.needsRoleSelection,
   });
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Главная обёртка теперь MainShell (содержит Home + Notifications + Profile)
     Widget home;
     if (!isLoggedIn) {
       home = const PhoneScreen();
-    } else if (showOnboarding) {
-      home = const OnboardingScreen();
+    } else if (needsRoleSelection) {
+      // Первый вход: пользователь выбирает роль, затем попадает в MainShell.
+      home = const UserTypeSelectionScreen();
     } else {
-      home = const MainShell(); // ← было HomeScreen()
+      home = const MainShell();
     }
+
+    final themeMode = context.watch<ThemeProvider>().themeMode;
 
     return MaterialApp(
       navigatorKey: navigatorKey,
@@ -105,51 +112,9 @@ class MyApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale('ru'), Locale('tk'), Locale('en')],
 
-      // ─────────────────────────────────────────────────────────────────────
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Nunito',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B3A6B),
-          primary: const Color(0xFF1B3A6B),
-        ),
-        scaffoldBackgroundColor: Colors.white,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(fontFamily: 'Nunito'),
-          bodyMedium: TextStyle(fontFamily: 'Nunito'),
-          bodySmall: TextStyle(fontFamily: 'Nunito'),
-          titleLarge: TextStyle(fontFamily: 'Nunito'),
-          titleMedium: TextStyle(fontFamily: 'Nunito'),
-          titleSmall: TextStyle(fontFamily: 'Nunito'),
-          labelLarge: TextStyle(fontFamily: 'Nunito'),
-          labelMedium: TextStyle(fontFamily: 'Nunito'),
-          labelSmall: TextStyle(fontFamily: 'Nunito'),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          titleTextStyle: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF0F1117),
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            textStyle: const TextStyle(
-              fontFamily: 'Nunito',
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          hintStyle: TextStyle(
-            fontFamily: 'Nunito',
-            color: Colors.grey.shade400,
-          ),
-        ),
-      ),
+      theme:     AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       home: home,
       onGenerateRoute: (settings) {
         if (settings.name == '/registration_details') {
@@ -173,9 +138,6 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (_) => const MainShell(initialIndex: 2),
           );
-        }
-        if (settings.name == '/onboarding') {
-          return MaterialPageRoute(builder: (_) => const OnboardingScreen());
         }
         if (settings.name == '/notifications') {
           return MaterialPageRoute(

@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/home/widgets/home_level_bar.dart';
 import 'package:bagla/features/levels/level_provider.dart';
@@ -18,6 +18,7 @@ class HomeAppBarIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -25,11 +26,11 @@ class HomeAppBarIcon extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: AuthColors.bg,
+          color: c.bg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AuthColors.border),
+          border: Border.all(color: c.border),
         ),
-        child: Icon(icon, color: AuthColors.inkMuted, size: 19),
+        child: Icon(icon, color: c.inkMuted, size: 19),
       ),
     );
   }
@@ -53,6 +54,7 @@ class HomeLogoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    final c = AppColors.of(context);
     final bool isCourier = authProv.role == 'courier';
     final bool isClient = authProv.role == 'client';
     final bool needsRoleSelection =
@@ -76,8 +78,8 @@ class HomeLogoRow extends StatelessWidget {
         child: _BalanceChip(
           icon: Icons.toll_rounded,
           label: authProv.balancePoints.toDouble().toStringAsFixed(0),
-          chipColor: AuthColors.amber,
-          tintColor: AuthColors.amberTint,
+          chipColor: c.amber,
+          tintColor: c.amberTint,
         ),
       );
     } else {
@@ -89,13 +91,13 @@ class HomeLogoRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
-          color: AuthColors.bg,
+          color: c.bg,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AuthColors.border),
+          border: Border.all(color: c.border),
         ),
         child: Text(
           lang.label,
-          style: AppText.semiBold(fontSize: 12, color: AuthColors.inkMuted),
+          style: AppText.semiBold(fontSize: 12, color: c.inkMuted),
         ),
       ),
     );
@@ -103,10 +105,7 @@ class HomeLogoRow extends StatelessWidget {
     if (showLevelBar) {
       return Row(
         children: [
-          Text(
-            'Bagla',
-            style: AppText.serif(fontSize: 19, color: AuthColors.ink),
-          ),
+          Text('Bagla', style: AppText.serif(fontSize: 19, color: c.ink)),
           const SizedBox(width: 10),
           Expanded(child: HomeLevelBar(provider: levelProvider!)),
           const SizedBox(width: 8),
@@ -120,10 +119,7 @@ class HomeLogoRow extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Bagla',
-          style: AppText.serif(fontSize: 19, color: AuthColors.ink),
-        ),
+        Text('Bagla', style: AppText.serif(fontSize: 19, color: c.ink)),
         const SizedBox(width: 10),
         balanceChip,
         const SizedBox(width: 8),
@@ -160,17 +156,14 @@ class _BalanceChip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: chipColor),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: AppText.semiBold(fontSize: 12, color: chipColor),
-          ),
+          Text(label, style: AppText.semiBold(fontSize: 12, color: chipColor)),
         ],
       ),
     );
   }
 }
 
-/// Offline banner — insert at top of screen body; animates in/out smoothly
+/// Offline banner — animates in/out smoothly
 class HomeNetworkBanner extends StatelessWidget {
   final bool isConnected;
 
@@ -178,6 +171,7 @@ class HomeNetworkBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
@@ -185,27 +179,25 @@ class HomeNetworkBanner extends StatelessWidget {
           ? const SizedBox.shrink()
           : Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: const BoxDecoration(
-                color: AuthColors.bannerBg,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: c.bannerBg,
                 border: Border(
-                  bottom: BorderSide(color: AuthColors.bannerBorder),
+                  bottom: BorderSide(color: c.bannerBorder),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.wifi_off_rounded,
                     size: 14,
-                    color: AuthColors.errorMuted,
+                    color: c.errorMuted,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Нет соединения с сервером',
-                    style: AppText.regular(
-                      fontSize: 12,
-                      color: AuthColors.errorMuted,
-                    ),
+                    style: AppText.regular(fontSize: 12, color: c.errorMuted),
                   ),
                 ],
               ),

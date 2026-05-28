@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -40,101 +40,74 @@ class RestrictedAccessView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Material(
       color: Colors.transparent,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Status card ──────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: AuthColors.surface,
+              color: c.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AuthColors.border),
+              border: Border.all(color: c.border),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Icon ──────────────────────────────────────────────────
                 Container(
                   width: 58,
                   height: 58,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AuthColors.errorTint,
+                    color: c.errorTint,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.lock_person_outlined,
                     size: 26,
-                    color: AuthColors.errorMuted,
+                    color: c.errorMuted,
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // ── Title ─────────────────────────────────────────────────
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                  style: AppText.serif(fontSize: 17, color: c.ink),
                 ),
                 const SizedBox(height: 8),
-
-                // ── Description ───────────────────────────────────────────
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: AppText.regular(
-                    fontSize: 13,
-                    color: AuthColors.inkMuted,
-                  ).copyWith(height: 1.55),
+                  style: AppText.regular(fontSize: 13, color: c.inkMuted).copyWith(height: 1.55),
                 ),
                 const SizedBox(height: 14),
-
-                // ── Status tag ────────────────────────────────────────────
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AuthColors.bannerBg,
+                    color: c.bannerBg,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AuthColors.bannerBorder),
+                    border: Border.all(color: c.bannerBorder),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.access_time_rounded,
-                        size: 13,
-                        color: AuthColors.amber,
-                      ),
+                      Icon(Icons.access_time_rounded, size: 13, color: c.amber),
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
                           statusHint,
-                          style: AppText.medium(
-                            fontSize: 12,
-                            color: AuthColors.amber,
-                          ),
+                          style: AppText.medium(fontSize: 12, color: c.amber),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // ── Divider ───────────────────────────────────────────────
-                Container(height: 0.5, color: AuthColors.borderSoft),
+                Container(height: 0.5, color: c.borderSoft),
                 const SizedBox(height: 16),
-
-                // ── Primary action ────────────────────────────────────────
-                _ActionButton(
-                  label: buttonText,
-                  onTap: onActionPressed,
-                ),
+                _ActionButton(label: buttonText, onTap: onActionPressed),
               ],
             ),
           ),
@@ -167,6 +140,7 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -184,15 +158,13 @@ class _ActionButtonState extends State<_ActionButton> {
           height: 48,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: _pressed
-                ? AuthColors.ink.withValues(alpha: 0.82)
-                : AuthColors.ink,
+            color: _pressed ? c.ink.withValues(alpha: 0.82) : c.ink,
             borderRadius: BorderRadius.circular(12),
             boxShadow: _pressed
                 ? null
                 : [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.14),
+                      color: c.ink.withValues(alpha: 0.14),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -243,7 +215,7 @@ class _SignOutButtonState extends State<_SignOutButton> {
             duration: const Duration(milliseconds: 140),
             style: AppText.medium(
               fontSize: 13,
-              color: _pressed ? AuthColors.errorMuted : AuthColors.inkSoft,
+              color: _pressed ? AppColors.of(context).errorMuted : AppColors.of(context).inkSoft,
             ),
             child: const Text('Выйти из системы'),
           ),

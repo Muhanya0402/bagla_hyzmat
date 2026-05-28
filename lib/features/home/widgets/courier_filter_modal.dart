@@ -1,10 +1,14 @@
 import 'dart:ui';
 
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public data models
@@ -354,10 +358,13 @@ class CourierFilterModal extends StatefulWidget {
   State<CourierFilterModal> createState() => _CourierFilterModalState();
 }
 
-class _CourierFilterModalState extends State<CourierFilterModal> {
+class _CourierFilterModalState extends State<CourierFilterModal>
+    with AppTourMixin<CourierFilterModal> {
   late CourierFilters _draft;
   bool _loadingAny = false;
   bool _defaultsApplied = false;
+  final _transportKey = GlobalKey();
+  final _applyKey     = GlobalKey();
 
   List<(String, IconData, String)> _transportOptions() => [
     ('any', Icons.directions_run_rounded, widget.words.filterTransportAny),
@@ -370,7 +377,32 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     super.initState();
     _draft = widget.initial;
     _applyDefaults();
+    startTourIfNeeded(
+      screenKey: TourKeys.courierFilter,
+      targetsBuilder: _buildTourTargets,
+    );
   }
+
+  List<TargetFocus> _buildTourTargets() => [
+    TourTarget.build(
+      key: _transportKey,
+      titleRu: 'Вид транспорта',
+      titleTk: 'Ulag görnüşi',
+      bodyRu:  'Фильтруйте курьеров по типу транспорта: пешком, авто или грузовик.',
+      bodyTk:  'Kurýerleri ulag görnüşi boýunça süzüň: pyýada, awtoulag ýa-da ýük ulagy.',
+      isRu: widget.isRu,
+      align: ContentAlign.bottom,
+    ),
+    TourTarget.build(
+      key: _applyKey,
+      titleRu: 'Применить фильтры',
+      titleTk: 'Süzgüçleri ulan',
+      bodyRu:  'Нажмите чтобы применить выбранные фильтры и найти подходящих курьеров.',
+      bodyTk:  'Saýlanan süzgüçleri ulanmak we laýyk kurýerleri tapmak üçin basyň.',
+      isRu: widget.isRu,
+      align: ContentAlign.top,
+    ),
+  ];
 
   void _applyDefaults() {
     if (_defaultsApplied) return;
@@ -502,29 +534,32 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  Widget _sectionLabel(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 7),
-    child: Row(
-      children: [
-        Container(
-          width: 2.5,
-          height: 12,
-          decoration: BoxDecoration(
-            color: AuthColors.emerald.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(2),
+  Widget _sectionLabel(String text) {
+    final c = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        children: [
+          Container(
+            width: 2.5,
+            height: 12,
+            decoration: BoxDecoration(
+              color: c.emerald.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: AppText.semiBold(
-            fontSize: 11,
-            color: AuthColors.inkMuted,
-          ).copyWith(letterSpacing: 0.2),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: AppText.semiBold(
+              fontSize: 11,
+              color: c.inkMuted,
+            ).copyWith(letterSpacing: 0.2),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _pickerTile({
     required IconData icon,
@@ -534,6 +569,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     VoidCallback? onClear,
     bool disabled = false,
   }) {
+    final c = AppColors.of(context);
     final bool has = selected != null;
     return GestureDetector(
       onTap: disabled ? null : onTap,
@@ -542,15 +578,15 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
         decoration: BoxDecoration(
           color: disabled
-              ? AuthColors.borderSoft.withValues(alpha: 0.5)
+              ? c.borderSoft.withValues(alpha: 0.5)
               : has
-              ? AuthColors.emeraldTint
-              : AuthColors.bg,
+              ? c.emeraldTint
+              : c.bg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: has && !disabled
-                ? AuthColors.emerald.withValues(alpha: 0.35)
-                : AuthColors.borderSoft,
+                ? c.emerald.withValues(alpha: 0.35)
+                : c.borderSoft,
           ),
         ),
         child: Row(
@@ -559,10 +595,10 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
               icon,
               size: 14,
               color: disabled
-                  ? AuthColors.border
+                  ? c.border
                   : has
-                  ? AuthColors.emerald
-                  : AuthColors.inkSoft,
+                  ? c.emerald
+                  : c.inkSoft,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -570,10 +606,10 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
                 has ? selected.label : hint,
                 overflow: TextOverflow.ellipsis,
                 style: disabled
-                    ? AppText.regular(fontSize: 13, color: AuthColors.border)
+                    ? AppText.regular(fontSize: 13, color: c.border)
                     : has
-                    ? AppText.semiBold(fontSize: 13, color: AuthColors.emerald)
-                    : AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
+                    ? AppText.semiBold(fontSize: 13, color: c.emerald)
+                    : AppText.regular(fontSize: 13, color: c.inkSoft),
               ),
             ),
             if (has && !disabled && onClear != null)
@@ -585,7 +621,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
                   child: Icon(
                     Icons.close_rounded,
                     size: 14,
-                    color: AuthColors.inkSoft,
+                    color: c.inkSoft,
                   ),
                 ),
               )
@@ -593,7 +629,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
               Icon(
                 Icons.chevron_right_rounded,
                 size: 14,
-                color: disabled ? AuthColors.border : AuthColors.inkSoft,
+                color: disabled ? c.border : c.inkSoft,
               ),
           ],
         ),
@@ -605,6 +641,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final w = widget.words;
     final transportOptions = _transportOptions();
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -613,9 +650,9 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
-          color: AuthColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: EdgeInsets.fromLTRB(
           20,
@@ -634,7 +671,7 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
                   width: 32,
                   height: 3.5,
                   decoration: BoxDecoration(
-                    color: AuthColors.border,
+                    color: c.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -646,16 +683,16 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
                 children: [
                   Text(
                     w.filterTitle,
-                    style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                    style: AppText.serif(fontSize: 17, color: c.ink),
                   ),
                   const Spacer(),
                   if (_loadingAny)
-                    const SizedBox(
+                    SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 1.5,
-                        color: AuthColors.emerald,
+                        color: c.emerald,
                       ),
                     )
                   else if (_draft.activeCount > 0)
@@ -669,28 +706,31 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
 
               // ── Transport ────────────────────────────────────────────────
               _sectionLabel(w.transportSection),
-              Row(
-                children: transportOptions.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final opt = entry.value;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: i < transportOptions.length - 1 ? 6 : 0,
-                      ),
-                      child: _TransportTag(
-                        selected: _draft.transportFilter == opt.$1,
-                        icon: opt.$2,
-                        label: opt.$3,
-                        onTap: () => setState(
-                          () => _draft = _draft.copyWith(
-                            transportFilter: opt.$1,
+              KeyedSubtree(
+                key: _transportKey,
+                child: Row(
+                  children: transportOptions.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final opt = entry.value;
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: i < transportOptions.length - 1 ? 6 : 0,
+                        ),
+                        child: _TransportTag(
+                          selected: _draft.transportFilter == opt.$1,
+                          icon: opt.$2,
+                          label: opt.$3,
+                          onTap: () => setState(
+                            () => _draft = _draft.copyWith(
+                              transportFilter: opt.$1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -897,9 +937,12 @@ class _CourierFilterModalState extends State<CourierFilterModal> {
               const SizedBox(height: 18),
 
               // ── Apply ─────────────────────────────────────────────────────
-              _ApplyButton(
-                label: w.filterApply,
-                onTap: () => widget.onApply(_draft),
+              KeyedSubtree(
+                key: _applyKey,
+                child: _ApplyButton(
+                  label: w.filterApply,
+                  onTap: () => widget.onApply(_draft),
+                ),
               ),
             ],
           ),
@@ -935,6 +978,7 @@ class _TransportTagState extends State<_TransportTag> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -951,12 +995,12 @@ class _TransportTagState extends State<_TransportTag> {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: widget.selected ? AuthColors.emeraldTint : AuthColors.bg,
+            color: widget.selected ? c.emeraldTint : c.bg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: widget.selected
-                  ? AuthColors.emerald.withValues(alpha: 0.35)
-                  : AuthColors.borderSoft,
+                  ? c.emerald.withValues(alpha: 0.35)
+                  : c.borderSoft,
             ),
           ),
           child: Column(
@@ -965,15 +1009,15 @@ class _TransportTagState extends State<_TransportTag> {
               Icon(
                 widget.icon,
                 size: 18,
-                color: widget.selected ? AuthColors.emerald : AuthColors.inkSoft,
+                color: widget.selected ? c.emerald : c.inkSoft,
               ),
               const SizedBox(height: 4),
               Text(
                 widget.label,
                 textAlign: TextAlign.center,
                 style: widget.selected
-                    ? AppText.semiBold(fontSize: 11, color: AuthColors.emerald)
-                    : AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+                    ? AppText.semiBold(fontSize: 11, color: c.emerald)
+                    : AppText.regular(fontSize: 11, color: c.inkSoft),
               ),
             ],
           ),
@@ -1014,17 +1058,20 @@ class _ResetButtonState extends State<_ResetButton> {
         scale: _pressed ? 0.95 : 1.0,
         duration: const Duration(milliseconds: 100),
         curve: Curves.easeOut,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: AuthColors.errorTint,
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Text(
-            widget.label,
-            style: AppText.medium(fontSize: 12, color: AuthColors.errorMuted),
-          ),
-        ),
+        child: Builder(builder: (context) {
+          final c = AppColors.of(context);
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: c.errorTint,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Text(
+              widget.label,
+              style: AppText.medium(fontSize: 12, color: c.errorMuted),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -1049,6 +1096,7 @@ class _ApplyButtonState extends State<_ApplyButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -1066,14 +1114,14 @@ class _ApplyButtonState extends State<_ApplyButton> {
           height: 50,
           decoration: BoxDecoration(
             color: _pressed
-                ? AuthColors.emerald.withValues(alpha: 0.85)
-                : AuthColors.emerald,
+                ? c.emerald.withValues(alpha: 0.85)
+                : c.emerald,
             borderRadius: BorderRadius.circular(12),
             boxShadow: _pressed
                 ? null
                 : [
                     BoxShadow(
-                      color: AuthColors.emerald.withValues(alpha: 0.2),
+                      color: c.emerald.withValues(alpha: 0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1127,6 +1175,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final w = widget.words;
     final filtered = widget.items
         .where((i) => i.label.toLowerCase().contains(_q))
@@ -1140,9 +1189,9 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
         maxChildSize: 0.9,
         expand: false,
         builder: (_, sc) => Container(
-          decoration: const BoxDecoration(
-            color: AuthColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
@@ -1153,7 +1202,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                   width: 32,
                   height: 3.5,
                   decoration: BoxDecoration(
-                    color: AuthColors.border,
+                    color: c.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1166,7 +1215,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                   children: [
                     Text(
                       widget.title,
-                      style: AppText.serif(fontSize: 16, color: AuthColors.ink),
+                      style: AppText.serif(fontSize: 16, color: c.ink),
                     ),
                     const Spacer(),
                     if (widget.onClear != null)
@@ -1176,7 +1225,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                           w.filterReset,
                           style: AppText.medium(
                             fontSize: 12,
-                            color: AuthColors.errorMuted,
+                            color: c.errorMuted,
                           ),
                         ),
                       ),
@@ -1190,16 +1239,16 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: (v) => setState(() => _q = v.toLowerCase()),
-                  style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+                  style: AppText.regular(fontSize: 14, color: c.ink),
                   decoration: InputDecoration(
                     hintText: w.filterSearchHint,
                     hintStyle: AppText.regular(
                       fontSize: 13,
-                      color: AuthColors.inkSoft,
+                      color: c.inkSoft,
                     ),
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.search_rounded,
-                      color: AuthColors.inkSoft,
+                      color: c.inkSoft,
                       size: 18,
                     ),
                     suffixIcon: _q.isNotEmpty
@@ -1208,38 +1257,38 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                               _searchCtrl.clear();
                               setState(() => _q = '');
                             },
-                            child: const Icon(
+                            child: Icon(
                               Icons.close_rounded,
                               size: 16,
-                              color: AuthColors.inkSoft,
+                              color: c.inkSoft,
                             ),
                           )
                         : null,
                     filled: true,
-                    fillColor: AuthColors.bg,
+                    fillColor: c.bg,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 11,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AuthColors.borderSoft),
+                      borderSide: BorderSide(color: c.borderSoft),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AuthColors.borderSoft),
+                      borderSide: BorderSide(color: c.borderSoft),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(
-                        color: AuthColors.emerald.withValues(alpha: 0.45),
+                        color: c.emerald.withValues(alpha: 0.45),
                       ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 6),
-              Container(height: 0.5, color: AuthColors.borderSoft),
+              Container(height: 0.5, color: c.borderSoft),
               Expanded(
                 child: filtered.isEmpty
                     ? Center(
@@ -1247,7 +1296,7 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                           w.filterNotFound,
                           style: AppText.regular(
                             fontSize: 14,
-                            color: AuthColors.inkSoft,
+                            color: c.inkSoft,
                           ),
                         ),
                       )
@@ -1258,15 +1307,14 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                         separatorBuilder: (_, _) => Container(
                           height: 0.5,
                           margin: const EdgeInsets.only(left: 48),
-                          color: AuthColors.borderSoft,
+                          color: c.borderSoft,
                         ),
                         itemBuilder: (_, i) {
                           final item = filtered[i];
                           final isActive = item.id == widget.selectedId;
                           return InkWell(
                             onTap: () => widget.onSelect(item.id),
-                            splashColor:
-                                AuthColors.emerald.withValues(alpha: 0.05),
+                            splashColor: c.emerald.withValues(alpha: 0.05),
                             highlightColor: Colors.transparent,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1280,8 +1328,8 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                     height: 28,
                                     decoration: BoxDecoration(
                                       color: isActive
-                                          ? AuthColors.emeraldTint
-                                          : AuthColors.bg,
+                                          ? c.emeraldTint
+                                          : c.bg,
                                       borderRadius: BorderRadius.circular(7),
                                     ),
                                     child: Icon(
@@ -1290,8 +1338,8 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                           : Icons.location_on_outlined,
                                       size: 14,
                                       color: isActive
-                                          ? AuthColors.emerald
-                                          : AuthColors.inkSoft,
+                                          ? c.emerald
+                                          : c.inkSoft,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -1301,11 +1349,11 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                       style: isActive
                                           ? AppText.semiBold(
                                               fontSize: 14,
-                                              color: AuthColors.ink,
+                                              color: c.ink,
                                             )
                                           : AppText.regular(
                                               fontSize: 14,
-                                              color: AuthColors.ink,
+                                              color: c.ink,
                                             ),
                                     ),
                                   ),
@@ -1313,8 +1361,8 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                     Container(
                                       width: 6,
                                       height: 6,
-                                      decoration: const BoxDecoration(
-                                        color: AuthColors.emerald,
+                                      decoration: BoxDecoration(
+                                        color: c.emerald,
                                         shape: BoxShape.circle,
                                       ),
                                     ),

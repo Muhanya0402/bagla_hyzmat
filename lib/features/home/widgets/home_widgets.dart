@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/language_provider.dart';
 
 // ── Filter icon button ────────────────────────────────────────────────────────
@@ -24,6 +24,7 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final bool has = widget.activeCount > 0;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -42,12 +43,10 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: has ? AuthColors.emeraldTint : AuthColors.bg,
+            color: has ? c.emeraldTint : c.bg,
             borderRadius: BorderRadius.circular(11),
             border: Border.all(
-              color: has
-                  ? AuthColors.emerald.withValues(alpha: 0.35)
-                  : AuthColors.border,
+              color: has ? c.emerald.withValues(alpha: 0.35) : c.border,
             ),
           ),
           child: Stack(
@@ -56,7 +55,7 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
               Icon(
                 Icons.tune_rounded,
                 size: 18,
-                color: has ? AuthColors.emerald : AuthColors.inkSoft,
+                color: has ? c.emerald : c.inkSoft,
               ),
               if (has)
                 Positioned(
@@ -65,8 +64,8 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
                   child: Container(
                     width: 13,
                     height: 13,
-                    decoration: const BoxDecoration(
-                      color: AuthColors.emerald,
+                    decoration: BoxDecoration(
+                      color: c.emerald,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -103,6 +102,7 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final words = context.watch<LanguageProvider>().words;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -119,11 +119,9 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: AuthColors.amberTint,
+            color: c.amberTint,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AuthColors.amber.withValues(alpha: 0.25),
-            ),
+            border: Border.all(color: c.amber.withValues(alpha: 0.25)),
           ),
           child: Row(
             children: [
@@ -131,7 +129,7 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -147,18 +145,12 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
                   children: [
                     Text(
                       words.roleSelectionTitle,
-                      style: AppText.semiBold(
-                        fontSize: 13,
-                        color: AuthColors.ink,
-                      ),
+                      style: AppText.semiBold(fontSize: 13, color: c.ink),
                     ),
                     const SizedBox(height: 1),
                     Text(
                       words.roleActionPrompt,
-                      style: AppText.regular(
-                        fontSize: 11,
-                        color: AuthColors.inkMuted,
-                      ),
+                      style: AppText.regular(fontSize: 11, color: c.inkMuted),
                     ),
                   ],
                 ),
@@ -168,13 +160,13 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: AuthColors.emeraldTint,
+                  color: c.emeraldTint,
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 12,
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                 ),
               ),
             ],
@@ -197,9 +189,10 @@ class ActiveOrdersCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
     final bool isFull = current >= max;
-    final Color c = isFull ? AuthColors.errorMuted : AuthColors.emerald;
-    final Color bg = isFull ? AuthColors.errorTint : AuthColors.emeraldTint;
+    final Color c = isFull ? palette.errorMuted : palette.emerald;
+    final Color bg = isFull ? palette.errorTint : palette.emeraldTint;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -243,7 +236,7 @@ class GradientText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Text(text, style: style.copyWith(color: AuthColors.emerald));
+      Text(text, style: style.copyWith(color: AppColors.of(context).emerald));
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -254,6 +247,7 @@ class HomeEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
@@ -263,14 +257,14 @@ class HomeEmptyState extends StatelessWidget {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: AuthColors.bg,
+              color: c.bg,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AuthColors.border),
+              border: Border.all(color: c.border),
             ),
             child: Icon(
               icon,
               size: 28,
-              color: AuthColors.emerald.withValues(alpha: 0.3),
+              color: c.emerald.withValues(alpha: 0.3),
             ),
           ),
         ),
@@ -278,7 +272,7 @@ class HomeEmptyState extends StatelessWidget {
         Center(
           child: Text(
             text,
-            style: AppText.medium(fontSize: 13, color: AuthColors.inkSoft),
+            style: AppText.medium(fontSize: 13, color: c.inkSoft),
           ),
         ),
       ],

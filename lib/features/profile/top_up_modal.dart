@@ -1,10 +1,14 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/bank_picker.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../features/auth/auth_repository.dart';
 
 // ─── Token package presets ────────────────────────────────────────────────────
@@ -46,9 +50,12 @@ class TopUpModal extends StatefulWidget {
   State<TopUpModal> createState() => _TopUpModalState();
 }
 
-class _TopUpModalState extends State<TopUpModal> {
+class _TopUpModalState extends State<TopUpModal>
+    with AppTourMixin<TopUpModal> {
   final TextEditingController _controller = TextEditingController();
   final AuthRepository _authRepo = AuthRepository();
+  final _packagesKey = GlobalKey();
+  final _payKey      = GlobalKey();
 
   int _points = 0;
   int? _selectedPackageIndex;
@@ -60,7 +67,32 @@ class _TopUpModalState extends State<TopUpModal> {
   void initState() {
     super.initState();
     _loadRate();
+    startTourIfNeeded(
+      screenKey: TourKeys.topUpModal,
+      targetsBuilder: _buildTourTargets,
+    );
   }
+
+  List<TargetFocus> _buildTourTargets() => [
+    TourTarget.build(
+      key: _packagesKey,
+      titleRu: 'Пакеты жетонов',
+      titleTk: 'Nişan paketleri',
+      bodyRu:  'Выберите готовый пакет или введите своё количество.',
+      bodyTk:  'Taýyn paketi saýlaň ýa-da öz mukdaryňyzy giriziň.',
+      isRu: widget.isRu,
+      align: ContentAlign.top,
+    ),
+    TourTarget.build(
+      key: _payKey,
+      titleRu: 'Оплата',
+      titleTk: 'Töleg',
+      bodyRu:  'Выберите банк и нажмите кнопку для перехода к оплате.',
+      bodyTk:  'Banky saýlaň we töleg etmek üçin düwmä basyň.',
+      isRu: widget.isRu,
+      align: ContentAlign.top,
+    ),
+  ];
 
   Future<void> _loadRate() async {
     final rate = await _authRepo.fetchTokenRate();
@@ -121,10 +153,11 @@ class _TopUpModalState extends State<TopUpModal> {
         ? bottomInset + 16
         : bottomPadding + 24;
 
+    final c = AppColors.of(context);
     return Container(
-      decoration: const BoxDecoration(
-        color: AuthColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
         top: false,
@@ -183,12 +216,15 @@ class _TopUpModalState extends State<TopUpModal> {
                             : 'NIŞAN MUKDARY',
                       ),
                       const SizedBox(height: 10),
-                      _PackagesGrid(
-                        packages: _kPackages,
-                        selectedIndex: _selectedPackageIndex,
-                        rate: _rate,
-                        isRu: widget.isRu,
-                        onSelect: _selectPackage,
+                      KeyedSubtree(
+                        key: _packagesKey,
+                        child: _PackagesGrid(
+                          packages: _kPackages,
+                          selectedIndex: _selectedPackageIndex,
+                          rate: _rate,
+                          isRu: widget.isRu,
+                          onSelect: _selectPackage,
+                        ),
                       ),
                       const SizedBox(height: 10),
 
@@ -219,11 +255,14 @@ class _TopUpModalState extends State<TopUpModal> {
                       const SizedBox(height: 22),
 
                       // Pay button
-                      _PayButton(
-                        enabled: _canSubmit,
-                        isLoading: _isLoading,
-                        isRu: widget.isRu,
-                        onTap: _submit,
+                      KeyedSubtree(
+                        key: _payKey,
+                        child: _PayButton(
+                          enabled: _canSubmit,
+                          isLoading: _isLoading,
+                          isRu: widget.isRu,
+                          onTap: _submit,
+                        ),
                       ),
                       const SizedBox(height: 12),
 
@@ -252,6 +291,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -261,17 +301,14 @@ class _Header extends StatelessWidget {
             children: [
               Text(
                 isRu ? 'Пополнение баланса' : 'Balans doldur',
-                style: AppText.serif(fontSize: 20, color: AuthColors.ink),
+                style: AppText.serif(fontSize: 20, color: c.ink),
               ),
               const SizedBox(height: 4),
               Text(
                 isRu
                     ? 'Жетоны нужны для принятия заказов'
                     : 'Sargytlary kabul etmek üçin nişanlar gerek',
-                style: AppText.regular(
-                  fontSize: 13,
-                  color: AuthColors.inkMuted,
-                ),
+                style: AppText.regular(fontSize: 13, color: c.inkMuted),
               ),
             ],
           ),
@@ -283,16 +320,12 @@ class _Header extends StatelessWidget {
           child: Container(
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
-              color: AuthColors.borderSoft,
+            decoration: BoxDecoration(
+              color: c.borderSoft,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: AuthColors.inkMuted,
-            ),
+            child: Icon(Icons.close_rounded, size: 16, color: c.inkMuted),
           ),
         ),
       ],
@@ -310,13 +343,14 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Row(
       children: [
         Container(
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            color: AuthColors.accent,
+            color: c.accent,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -325,7 +359,7 @@ class _SectionLabel extends StatelessWidget {
           text,
           style: AppText.semiBold(
             fontSize: 10,
-            color: AuthColors.inkSoft,
+            color: c.inkSoft,
           ).copyWith(letterSpacing: 0.8),
         ),
       ],
@@ -344,31 +378,32 @@ class _BalanceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AuthColors.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AuthColors.borderSoft),
+        border: Border.all(color: c.borderSoft),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.toll_rounded, size: 15, color: AuthColors.accent),
+          Icon(Icons.toll_rounded, size: 15, color: c.accent),
           const SizedBox(width: 7),
           Text(
             isRu ? 'Текущий баланс:' : 'Häzirki balans:',
-            style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+            style: AppText.regular(fontSize: 13, color: c.inkMuted),
           ),
           const SizedBox(width: 6),
           Text(
             '$balance',
-            style: AppText.semiBold(fontSize: 14, color: AuthColors.ink),
+            style: AppText.semiBold(fontSize: 14, color: c.ink),
           ),
           const SizedBox(width: 4),
           Text(
             isRu ? 'жет.' : 'nişan',
-            style: AppText.regular(fontSize: 12, color: AuthColors.inkSoft),
+            style: AppText.regular(fontSize: 12, color: c.inkSoft),
           ),
         ],
       ),
@@ -450,6 +485,7 @@ class _PackageCardState extends State<_PackageCard> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final badge = widget.isRu ? widget.package.badgeRu : widget.package.badgeTk;
     final price = widget.package.tokens * widget.rate;
 
@@ -470,17 +506,17 @@ class _PackageCardState extends State<_PackageCard> {
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? AuthColors.accent.withValues(alpha: 0.05)
-                : AuthColors.surface,
+                ? c.accent.withValues(alpha: 0.05)
+                : c.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: widget.isSelected ? AuthColors.accent : AuthColors.border,
+              color: widget.isSelected ? c.accent : c.border,
               width: widget.isSelected ? 2.0 : 1.0,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: AuthColors.accent.withValues(alpha: 0.1),
+                      color: c.accent.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -490,7 +526,6 @@ class _PackageCardState extends State<_PackageCard> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // ── Token count + price ─────────────────────────────────
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -502,9 +537,7 @@ class _PackageCardState extends State<_PackageCard> {
                         '${widget.package.tokens}',
                         style: AppText.bold(
                           fontSize: 26,
-                          color: widget.isSelected
-                              ? AuthColors.accent
-                              : AuthColors.ink,
+                          color: widget.isSelected ? c.accent : c.ink,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -512,10 +545,7 @@ class _PackageCardState extends State<_PackageCard> {
                         padding: const EdgeInsets.only(bottom: 3),
                         child: Text(
                           widget.isRu ? 'жет.' : 'nşn.',
-                          style: AppText.regular(
-                            fontSize: 11,
-                            color: AuthColors.inkSoft,
-                          ),
+                          style: AppText.regular(fontSize: 11, color: c.inkSoft),
                         ),
                       ),
                     ],
@@ -525,34 +555,24 @@ class _PackageCardState extends State<_PackageCard> {
                     _formatPrice(price),
                     style: AppText.semiBold(
                       fontSize: 13,
-                      color: widget.isSelected
-                          ? AuthColors.ink
-                          : AuthColors.inkMuted,
+                      color: widget.isSelected ? c.ink : c.inkMuted,
                     ),
                   ),
                 ],
               ),
-
-              // ── Badge (top-right) ──────────────────────────────────
               if (badge != null)
                 Positioned(
                   top: -2,
                   right: -2,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AuthColors.emeraldTint,
+                      color: c.emeraldTint,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       badge,
-                      style: AppText.semiBold(
-                        fontSize: 9,
-                        color: AuthColors.emerald,
-                      ),
+                      style: AppText.semiBold(fontSize: 9, color: c.emerald),
                     ),
                   ),
                 ),
@@ -583,48 +603,42 @@ class _CustomAmountField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: AppText.medium(fontSize: 15, color: AuthColors.ink),
+      style: AppText.medium(fontSize: 15, color: c.ink),
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: isRu
             ? 'Или введите своё количество...'
             : 'Ýa-da öz mukdaryňyzy giriziň...',
-        hintStyle: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
+        hintStyle: AppText.regular(fontSize: 13, color: c.inkSoft),
         prefixIcon: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Icon(
             Icons.edit_outlined,
             size: 16,
-            color: isActive ? AuthColors.accent : AuthColors.inkSoft,
+            color: isActive ? c.accent : c.inkSoft,
           ),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
-        fillColor: isActive
-            ? AuthColors.accent.withValues(alpha: 0.04)
-            : AuthColors.bg,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
+        fillColor: isActive ? c.accent.withValues(alpha: 0.04) : c.bg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AuthColors.border),
+          borderSide: BorderSide(color: c.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: isActive ? AuthColors.accent : AuthColors.border,
-          ),
+          borderSide: BorderSide(color: isActive ? c.accent : c.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: AuthColors.accent.withValues(alpha: 0.65),
+            color: c.accent.withValues(alpha: 0.65),
             width: 1.5,
           ),
         ),
@@ -654,46 +668,41 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final amount = points * rate;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AuthColors.accent.withValues(alpha: 0.05),
+        color: c.accent.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AuthColors.accent.withValues(alpha: 0.18)),
+        border: Border.all(color: c.accent.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             isRu ? 'Вы получите' : 'Alarsyňyz',
-            style: AppText.regular(fontSize: 14, color: AuthColors.inkMuted),
+            style: AppText.regular(fontSize: 14, color: c.inkMuted),
           ),
           RichText(
             text: TextSpan(
               children: [
                 TextSpan(
                   text: '$points',
-                  style: AppText.bold(fontSize: 17, color: AuthColors.accent),
+                  style: AppText.bold(fontSize: 17, color: c.accent),
                 ),
                 TextSpan(
                   text: isRu ? ' жет.' : ' nşn.',
-                  style: AppText.regular(
-                    fontSize: 13,
-                    color: AuthColors.inkMuted,
-                  ),
+                  style: AppText.regular(fontSize: 13, color: c.inkMuted),
                 ),
                 TextSpan(
                   text: '  ·  ',
-                  style: AppText.regular(
-                    fontSize: 13,
-                    color: AuthColors.borderSoft,
-                  ),
+                  style: AppText.regular(fontSize: 13, color: c.borderSoft),
                 ),
                 TextSpan(
                   text: _formatAmount(amount),
-                  style: AppText.semiBold(fontSize: 15, color: AuthColors.ink),
+                  style: AppText.semiBold(fontSize: 15, color: c.ink),
                 ),
               ],
             ),
@@ -730,6 +739,7 @@ class _PayButtonState extends State<_PayButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final active = widget.enabled && !widget.isLoading;
 
     return GestureDetector(
@@ -751,12 +761,12 @@ class _PayButtonState extends State<_PayButton> {
           height: 52,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: widget.enabled ? AuthColors.ink : AuthColors.borderSoft,
+            color: widget.enabled ? c.ink : c.borderSoft,
             borderRadius: BorderRadius.circular(14),
             boxShadow: active
                 ? [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.14),
+                      color: c.ink.withValues(alpha: 0.14),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -768,16 +778,13 @@ class _PayButtonState extends State<_PayButton> {
               ? SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AuthColors.bg,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: c.bg),
                 )
               : Text(
                   widget.isRu ? 'Перейти к оплате' : 'Töleg etmek',
                   style: AppText.semiBold(
                     fontSize: 14,
-                    color: widget.enabled ? AuthColors.bg : AuthColors.inkSoft,
+                    color: widget.enabled ? c.bg : c.inkSoft,
                   ).copyWith(letterSpacing: 0.3),
                 ),
         ),
@@ -796,18 +803,15 @@ class _SecurityNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(
-          Icons.lock_outline_rounded,
-          size: 11,
-          color: AuthColors.inkSoft,
-        ),
+        Icon(Icons.lock_outline_rounded, size: 11, color: c.inkSoft),
         const SizedBox(width: 5),
         Text(
           isRu ? 'Безопасная оплата через банк' : 'Bank arkaly howpsuz töleg',
-          style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+          style: AppText.regular(fontSize: 11, color: c.inkSoft),
         ),
       ],
     );
@@ -823,6 +827,7 @@ class _SheetHandle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Center(
@@ -830,7 +835,7 @@ class _SheetHandle extends StatelessWidget {
           width: 32,
           height: 3.5,
           decoration: BoxDecoration(
-            color: AuthColors.border,
+            color: c.border,
             borderRadius: BorderRadius.circular(2),
           ),
         ),

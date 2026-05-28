@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -88,11 +88,11 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
         child: Container(
-          decoration: const BoxDecoration(
-            color: AuthColors.bg,
+          decoration: BoxDecoration(
+            color: AppColors.of(context).bg,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             border: Border(
-              top: BorderSide(color: AuthColors.borderSoft, width: 1),
+              top: BorderSide(color: AppColors.of(context).borderSoft, width: 1),
             ),
           ),
           child: Column(
@@ -105,7 +105,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AuthColors.border,
+                    color: AppColors.of(context).border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -135,7 +135,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                             '${_items.length}',
                             style: AppText.semiBold(
                               fontSize: 15,
-                              color: AuthColors.accent,
+                              color: AppColors.of(context).accent,
                             ),
                           ),
                         ],
@@ -151,7 +151,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
               const SizedBox(height: 12),
 
               // ── Divider ────────────────────────────────────────────────
-              Container(height: 0.5, color: AuthColors.borderSoft),
+              Container(height: 0.5, color: AppColors.of(context).borderSoft),
 
               // ── List ───────────────────────────────────────────────────
               ConstrainedBox(
@@ -163,7 +163,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                   separatorBuilder: (_, _) => Container(
                     height: 0.5,
                     margin: const EdgeInsets.only(left: 64),
-                    color: AuthColors.borderSoft,
+                    color: AppColors.of(context).borderSoft,
                   ),
                   itemBuilder: (_, i) => _NotifRow(
                     notif: _items[i],
@@ -175,7 +175,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
               ),
 
               // ── Divider ────────────────────────────────────────────────
-              Container(height: 0.5, color: AuthColors.borderSoft),
+              Container(height: 0.5, color: AppColors.of(context).borderSoft),
               const SizedBox(height: 12),
 
               // ── Close button ───────────────────────────────────────────
@@ -219,14 +219,14 @@ class _NotifRowState extends State<_NotifRow> {
   ({Color icon, Color bg}) _style(String type) {
     switch (type) {
       case 'daily_bonus':
-        return (icon: AuthColors.amber, bg: AuthColors.amberTint);
+        return (icon: AppColors.of(context).amber, bg: AppColors.of(context).amberTint);
       case 'new_order':
       case 'order_status':
-        return (icon: AuthColors.emerald, bg: AuthColors.emeraldTint);
+        return (icon: AppColors.of(context).emerald, bg: AppColors.of(context).emeraldTint);
       case 'account_status':
-        return (icon: AuthColors.errorMuted, bg: AuthColors.errorTint);
+        return (icon: AppColors.of(context).errorMuted, bg: AppColors.of(context).errorTint);
       default:
-        return (icon: AuthColors.inkSoft, bg: AuthColors.borderSoft);
+        return (icon: AppColors.of(context).inkSoft, bg: AppColors.of(context).borderSoft);
     }
   }
 
@@ -286,7 +286,7 @@ class _NotifRowState extends State<_NotifRow> {
                       title,
                       style: AppText.semiBold(
                         fontSize: 13,
-                        color: AuthColors.ink,
+                        color: AppColors.of(context).ink,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -297,7 +297,7 @@ class _NotifRowState extends State<_NotifRow> {
                         body,
                         style: AppText.regular(
                           fontSize: 12,
-                          color: AuthColors.inkMuted,
+                          color: AppColors.of(context).inkMuted,
                         ).copyWith(height: 1.3),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -317,15 +317,15 @@ class _NotifRowState extends State<_NotifRow> {
                     timeStr,
                     style: AppText.regular(
                       fontSize: 10,
-                      color: AuthColors.inkSoft,
+                      color: AppColors.of(context).inkSoft,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
-                      color: AuthColors.accent,
+                    decoration: BoxDecoration(
+                      color: AppColors.of(context).accent,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -372,17 +372,17 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+                            Icon(
                 Icons.done_all_rounded,
                 size: 13,
-                color: AuthColors.emerald,
+                color: AppColors.of(context).emerald,
               ),
               const SizedBox(width: 5),
               Text(
                 widget.label,
                 style: AppText.semiBold(
                   fontSize: 12,
-                  color: AuthColors.emerald,
+                  color: AppColors.of(context).emerald,
                 ),
               ),
             ],
@@ -425,14 +425,14 @@ class _CloseButtonState extends State<_CloseButton> {
           width: double.infinity,
           height: 46,
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AuthColors.border),
+            border: Border.all(color: AppColors.of(context).border),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
-            style: AppText.medium(fontSize: 14, color: AuthColors.inkMuted),
+            style: AppText.medium(fontSize: 14, color: AppColors.of(context).inkMuted),
           ),
         ),
       ),

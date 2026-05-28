@@ -1,5 +1,8 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
@@ -7,20 +10,21 @@ import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 // ─── Type → visual style ───────────────────────────────────────────────────────
 
-({Color bg, Color icon}) _typeStyle(String type) {
+({Color bg, Color icon}) _typeStyle(String type, AppColors c) {
   switch (type) {
     case 'daily_bonus':
-      return (bg: AuthColors.amberTint, icon: AuthColors.amber);
+      return (bg: c.amberTint, icon: c.amber);
     case 'new_order':
     case 'order_status':
-      return (bg: AuthColors.emeraldTint, icon: AuthColors.emerald);
+      return (bg: c.emeraldTint, icon: c.emerald);
     case 'account_status':
-      return (bg: AuthColors.errorTint, icon: AuthColors.errorMuted);
+      return (bg: c.errorTint, icon: c.errorMuted);
     default:
-      return (bg: AuthColors.borderSoft, icon: AuthColors.inkSoft);
+      return (bg: c.borderSoft, icon: c.inkSoft);
   }
 }
 
@@ -33,8 +37,12 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => NotificationsScreenState();
 }
 
-class NotificationsScreenState extends State<NotificationsScreen> {
+class NotificationsScreenState extends State<NotificationsScreen>
+    with AppTourMixin<NotificationsScreen> {
   final NotificationService _service = NotificationService();
+
+  final _titleKey = GlobalKey();
+  final _listKey  = GlobalKey();
 
   List<dynamic> _items = [];
   bool _isLoading = true;
@@ -45,6 +53,11 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     final auth = context.read<AuthProvider>();
     _userId = auth.userId;
+
+    startTourIfNeeded(
+      screenKey: TourKeys.notifications,
+      targetsBuilder: _buildTourTargets,
+    );
 
     if (_userId.isNotEmpty) {
       _loadNotifications();
@@ -126,26 +139,54 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     return (today: today, yesterday: yesterday, earlier: earlier);
   }
 
+  List<TargetFocus> _buildTourTargets() {
+    final lang = context.read<LanguageProvider>();
+    return [
+      TourTarget.build(
+        key: _titleKey,
+        titleRu: 'Уведомления',
+        titleTk: 'Habarnamalar',
+        bodyRu:  'Здесь появляются все системные уведомления — новые заказы, статусы и бонусы.',
+        bodyTk:  'Bu ýerde ähli ulgam habarlary görkezilýär — täze sargytlar, statuslar we bonuslar.',
+        isRu: lang.isRu,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _listKey,
+        titleRu: 'Список уведомлений',
+        titleTk: 'Habarnamalar sanawy',
+        bodyRu:  'Нажмите на уведомление чтобы отметить его как прочитанное.',
+        bodyTk:  'Habarnama basyň — ol okalandy diýip belleniler.',
+        isRu: lang.isRu,
+        align: ContentAlign.top,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final words = context.watch<LanguageProvider>().words;
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       appBar: AppBar(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: c.bg,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: Text(
-          words.notifTitle,
-          style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
+        title: KeyedSubtree(
+          key: _titleKey,
+          child: Text(
+            words.notifTitle,
+            style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
+          ),
         ),
         actions: [
           _MarkAllButton(onTap: _markAllRead, label: words.notifMarkAll),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AuthColors.border),
+          child: Container(height: 0.5, color: c.border),
         ),
       ),
       body: _buildBody(words),
@@ -153,12 +194,10 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildBody(AppLocalizations words) {
+    final c = AppColors.of(context);
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: AuthColors.emerald,
-          strokeWidth: 2,
-        ),
+      return Center(
+        child: CircularProgressIndicator(color: c.emerald, strokeWidth: 2),
       );
     }
     if (_items.isEmpty) return _buildEmpty(words);
@@ -166,8 +205,9 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     final groups = _groupItems();
 
     return RefreshIndicator(
-      color: AuthColors.emerald,
-      backgroundColor: AuthColors.surface,
+      key: _listKey,
+      color: c.emerald,
+      backgroundColor: c.surface,
       onRefresh: _refresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -220,6 +260,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmpty(AppLocalizations words) {
+    final c = AppColors.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -230,29 +271,23 @@ class NotificationsScreenState extends State<NotificationsScreen> {
               width: 68,
               height: 68,
               decoration: BoxDecoration(
-                color: AuthColors.surface,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AuthColors.border),
+                border: Border.all(color: c.border),
               ),
               child: Icon(
                 Icons.notification_important_outlined,
                 size: 28,
-                color: AuthColors.inkSoft.withValues(alpha: 0.6),
+                color: c.inkSoft.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 14),
-            Text(
-              words.notifEmpty,
-              style: AppText.semiBold(fontSize: 15, color: AuthColors.ink),
-            ),
+            Text(words.notifEmpty, style: AppText.semiBold(fontSize: 15, color: c.ink)),
             const SizedBox(height: 6),
             Text(
               words.notifEmptyDesc,
               textAlign: TextAlign.center,
-              style: AppText.regular(
-                fontSize: 13,
-                color: AuthColors.inkMuted,
-              ).copyWith(height: 1.5),
+              style: AppText.regular(fontSize: 13, color: c.inkMuted).copyWith(height: 1.5),
             ),
           ],
         ),
@@ -269,6 +304,7 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 2, bottom: 2),
       child: Row(
@@ -277,17 +313,14 @@ class _SectionLabel extends StatelessWidget {
             width: 3,
             height: 11,
             decoration: BoxDecoration(
-              color: AuthColors.emerald,
+              color: c.emerald,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(width: 7),
           Text(
             text.toUpperCase(),
-            style: AppText.semiBold(
-              fontSize: 10,
-              color: AuthColors.inkSoft,
-            ).copyWith(letterSpacing: 0.8),
+            style: AppText.semiBold(fontSize: 10, color: c.inkSoft).copyWith(letterSpacing: 0.8),
           ),
         ],
       ),
@@ -319,40 +352,31 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
         widget.onTap();
       },
       onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: Container(
-          margin: const EdgeInsets.only(right: 16),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: AuthColors.emeraldTint,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AuthColors.emerald.withValues(alpha: 0.25),
+      child: Builder(builder: (context) {
+        final c = AppColors.of(context);
+        return AnimatedScale(
+          scale: _pressed ? 0.95 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            decoration: BoxDecoration(
+              color: c.emeraldTint,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: c.emerald.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.done_all_rounded, color: c.emerald, size: 13),
+                const SizedBox(width: 5),
+                Text(widget.label, style: AppText.semiBold(fontSize: 12, color: c.emerald)),
+              ],
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.done_all_rounded,
-                color: AuthColors.emerald,
-                size: 13,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                widget.label,
-                style: AppText.semiBold(
-                  fontSize: 12,
-                  color: AuthColors.emerald,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
@@ -378,7 +402,8 @@ class _NotifCardState extends State<_NotifCard> {
     final words = lang.words;
     final bool isRead = widget.notif['is_read'] == true;
     final String type = widget.notif['type'] ?? '';
-    final style = _typeStyle(type);
+    final c = AppColors.of(context);
+    final style = _typeStyle(type, c);
 
     final String title =
         widget.notif[lang.isRu ? 'title_ru' : 'title_tk'] ??
@@ -408,12 +433,12 @@ class _NotifCardState extends State<_NotifCard> {
           margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
             color: isRead
-                ? AuthColors.surface
+                ? c.surface
                 : style.icon.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isRead
-                  ? AuthColors.borderSoft
+                  ? c.borderSoft
                   : style.icon.withValues(alpha: 0.18),
             ),
           ),
@@ -467,11 +492,11 @@ class _NotifCardState extends State<_NotifCard> {
                               style: isRead
                                   ? AppText.medium(
                                       fontSize: 13,
-                                      color: AuthColors.ink,
+                                      color: c.ink,
                                     )
                                   : AppText.semiBold(
                                       fontSize: 13,
-                                      color: AuthColors.ink,
+                                      color: c.ink,
                                     ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -485,7 +510,7 @@ class _NotifCardState extends State<_NotifCard> {
                                 timeStr,
                                 style: AppText.regular(
                                   fontSize: 11,
-                                  color: AuthColors.inkSoft,
+                                  color: c.inkSoft,
                                 ),
                               ),
                               if (!isRead) ...[
@@ -509,7 +534,7 @@ class _NotifCardState extends State<_NotifCard> {
                           body,
                           style: AppText.regular(
                             fontSize: 12,
-                            color: AuthColors.inkMuted,
+                            color: c.inkMuted,
                           ).copyWith(height: 1.4),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

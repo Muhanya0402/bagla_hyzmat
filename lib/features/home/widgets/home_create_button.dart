@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 /// Visual-only sticker FAB.
@@ -16,6 +16,7 @@ class HomeCreateFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return AnimatedScale(
       scale: isDragging ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 180),
@@ -24,14 +25,14 @@ class HomeCreateFab extends StatelessWidget {
           width: 162,
           height: 52,
           decoration: BoxDecoration(
-            color: AuthColors.ink,
+            color: c.ink,
             borderRadius: BorderRadius.circular(13),
-            border: const Border(
-              top: BorderSide(color: AuthColors.accent, width: 3),
+            border: Border(
+              top: BorderSide(color: c.accent, width: 3),
             ),
             boxShadow: [
               BoxShadow(
-                color: AuthColors.ink.withValues(
+                color: c.ink.withValues(
                   alpha: isDragging ? 0.35 : 0.22,
                 ),
                 blurRadius: isDragging ? 20 : 14,

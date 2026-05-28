@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -263,22 +263,26 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         data: updateData,
       );
 
-      if (success) {
-        if (!mounted) return;
-        if (widget.role != 'courier') {
-          context.read<AuthProvider>().updateShopAddress(_c2.text.trim());
-        }
-        await context.read<AuthProvider>().refreshProfile();
-        _showToast(
-          'Данные отправлены. Ожидайте подтверждения',
-          isSuccess: true,
-        );
-        if (!mounted) return;
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).pushNamedAndRemoveUntil('/home', (r) => false);
+      if (!success) {
+        _showToast('Не удалось сохранить данные. Попробуйте ещё раз через мгновение.');
+        return;
       }
+
+      if (!mounted) return;
+      if (widget.role != 'courier') {
+        context.read<AuthProvider>().updateShopAddress(_c2.text.trim());
+      }
+      try {
+        await context.read<AuthProvider>().refreshProfile();
+      } catch (_) {}
+      if (!mounted) return;
+      _showToast('Данные отправлены. Ожидайте подтверждения', isSuccess: true);
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pushNamedAndRemoveUntil('/home', (r) => false);
     } catch (e) {
       _showToast(
         'Не удалось сохранить данные. Попробуйте ещё раз через мгновение.',
@@ -296,23 +300,23 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             Icon(
               isSuccess ? Icons.check_circle_outline : Icons.info_outline,
               size: 17,
-              color: isSuccess ? AuthColors.emerald : AuthColors.errorMuted,
+              color: isSuccess ? AppColors.of(context).emerald : AppColors.of(context).errorMuted,
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Text(
                 msg,
                 style: AppText.regular(
                   fontSize: 13,
-                  color: isSuccess ? AuthColors.emerald : AuthColors.ink,
+                  color: isSuccess ? AppColors.of(context).emerald : AppColors.of(context).ink,
                 ).copyWith(height: 1.4),
               ),
             ),
           ],
         ),
         backgroundColor: isSuccess
-            ? AuthColors.emeraldTint
-            : AuthColors.errorTint,
+            ? AppColors.of(context).emeraldTint
+            : AppColors.of(context).errorTint,
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -320,8 +324,8 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
             color: isSuccess
-                ? AuthColors.emerald.withValues(alpha: 0.25)
-                : AuthColors.errorMuted.withValues(alpha: 0.25),
+                ? AppColors.of(context).emerald.withValues(alpha: 0.25)
+                : AppColors.of(context).errorMuted.withValues(alpha: 0.25),
             width: 1,
           ),
         ),
@@ -343,12 +347,12 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isSelected ? AuthColors.emeraldTint : AuthColors.surface,
+              color: isSelected ? AppColors.of(context).emeraldTint : AppColors.of(context).surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
-                    ? AuthColors.ink.withValues(alpha: 0.45)
-                    : AuthColors.border,
+                    ? AppColors.of(context).ink.withValues(alpha: 0.45)
+                    : AppColors.of(context).border,
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -360,23 +364,23 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   height: 38,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AuthColors.ink.withValues(alpha: 0.12)
+                        ? AppColors.of(context).ink.withValues(alpha: 0.12)
                         : const Color(0xFFF4F0EA),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
                     icon,
                     size: 18,
-                    color: isSelected ? AuthColors.ink : AuthColors.inkSoft,
+                    color: isSelected ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     label,
                     style: AppText.medium(
                       fontSize: 14,
-                      color: isSelected ? AuthColors.ink : AuthColors.inkMuted,
+                      color: isSelected ? AppColors.of(context).ink : AppColors.of(context).inkMuted,
                     ),
                   ),
                 ),
@@ -386,14 +390,14 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   height: 22,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected ? AuthColors.emerald : Colors.transparent,
+                    color: isSelected ? AppColors.of(context).emerald : Colors.transparent,
                     border: Border.all(
-                      color: isSelected ? AuthColors.ink : AuthColors.border,
+                      color: isSelected ? AppColors.of(context).ink : AppColors.of(context).border,
                       width: 1.5,
                     ),
                   ),
                   child: isSelected
-                      ? const Icon(
+                      ? Icon(
                           Icons.check_rounded,
                           color: Colors.white,
                           size: 13,
@@ -415,16 +419,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStepIndicator(),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         if (_selectedProvince != null ||
             _selectedEtrap != null ||
             _selectedDistrict != null)
           _buildBreadcrumb(isRu),
         if (_locationStep > 0 && !_locationSelected) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildSearchField(),
         ],
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         _locationSelected
             ? _buildLocationDone(isRu)
             : _buildCurrentStepList(isRu),
@@ -454,25 +458,25 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         height: 3,
                         decoration: BoxDecoration(
                           color: (isDone || isActive)
-                              ? AuthColors.ink
-                              : AuthColors.border,
+                              ? AppColors.of(context).ink
+                              : AppColors.of(context).border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         steps[i],
                         style: AppText.medium(
                           fontSize: 10.5,
                           color: isDone || isActive
-                              ? AuthColors.ink
-                              : AuthColors.inkSoft,
+                              ? AppColors.of(context).ink
+                              : AppColors.of(context).inkSoft,
                         ).copyWith(letterSpacing: 0.2),
                       ),
                     ],
                   ),
                 ),
-                if (i < 2) const SizedBox(width: 8),
+                if (i < 2) SizedBox(width: 8),
               ],
             ),
           ),
@@ -515,13 +519,13 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     final hints = ['', 'Поиск этрапа...', 'Поиск района...'];
     return TextField(
       controller: _searchController,
-      style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+      style: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
       decoration: InputDecoration(
         hintText: hints[_locationStep],
-        hintStyle: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
-        prefixIcon: const Icon(
+        hintStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
+        prefixIcon: Icon(
           Icons.search_rounded,
-          color: AuthColors.inkSoft,
+          color: AppColors.of(context).inkSoft,
           size: 20,
         ),
         suffixIcon: _searchQuery.isNotEmpty
@@ -530,10 +534,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                   _searchController.clear();
                   setState(() => _searchQuery = '');
                 },
-                child: const Icon(
+                child: Icon(
                   Icons.close_rounded,
                   size: 18,
-                  color: AuthColors.ink,
+                  color: AppColors.of(context).ink,
                 ),
               )
             : null,
@@ -545,11 +549,11 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AuthColors.border, width: 1),
+          borderSide: BorderSide(color: AppColors.of(context).border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AuthColors.emerald, width: 1.5),
+          borderSide: BorderSide(color: AppColors.of(context).emerald, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -619,16 +623,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           onTap: () => onTap(item),
           child: Container(
             decoration: BoxDecoration(
-              color: AuthColors.surface,
+              color: AppColors.of(context).surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AuthColors.border),
+              border: Border.all(color: AppColors.of(context).border),
             ),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               labelFn(item),
               textAlign: TextAlign.center,
-              style: AppText.medium(fontSize: 13, color: AuthColors.ink),
+              style: AppText.medium(fontSize: 13, color: AppColors.of(context).ink),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -649,16 +653,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         alignment: Alignment.center,
         child: Text(
           _searchQuery.isEmpty ? 'Нет данных' : 'Ничего не найдено',
-          style: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
+          style: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
         ),
       );
     }
     return Container(
       constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
-        color: AuthColors.surface,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: AppColors.of(context).border),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
@@ -666,17 +670,17 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: items.length,
-          separatorBuilder: (_, _) => const Divider(
+          separatorBuilder: (_, _) => Divider(
             height: 1,
             indent: 16,
             endIndent: 16,
-            color: AuthColors.borderSoft,
+            color: AppColors.of(context).borderSoft,
           ),
           itemBuilder: (_, i) {
             final item = items[i];
             return InkWell(
               onTap: () => onTap(item),
-              splashColor: AuthColors.ink.withValues(alpha: 0.05),
+              splashColor: AppColors.of(context).ink.withValues(alpha: 0.05),
               highlightColor: Colors.transparent,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -690,14 +694,14 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         labelFn(item),
                         style: AppText.medium(
                           fontSize: 14,
-                          color: AuthColors.ink,
+                          color: AppColors.of(context).ink,
                         ),
                       ),
                     ),
-                    const Icon(
+                                        Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 13,
-                      color: AuthColors.border,
+                      color: AppColors.of(context).border,
                     ),
                   ],
                 ),
@@ -713,11 +717,11 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     return Container(
       height: 80,
       alignment: Alignment.center,
-      child: const SizedBox(
+      child: SizedBox(
         width: 22,
         height: 22,
         child: CircularProgressIndicator(
-          color: AuthColors.emerald,
+          color: AppColors.of(context).emerald,
           strokeWidth: 1.5,
         ),
       ),
@@ -731,9 +735,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AuthColors.emeraldTint,
+          color: AppColors.of(context).emeraldTint,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AuthColors.emerald.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.of(context).emerald.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -741,16 +745,16 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: AuthColors.emerald,
+                color: AppColors.of(context).emerald,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.check_rounded,
                 color: Colors.white,
                 size: 18,
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,10 +766,10 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         '',
                     style: AppText.semiBold(
                       fontSize: 15,
-                      color: AuthColors.ink,
+                      color: AppColors.of(context).ink,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     [
                       _selectedProvince?.label(isRu),
@@ -773,7 +777,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     ].whereType<String>().join(' · '),
                     style: AppText.regular(
                       fontSize: 12,
-                      color: AuthColors.inkMuted,
+                      color: AppColors.of(context).inkMuted,
                     ),
                   ),
                 ],
@@ -782,7 +786,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             Icon(
               Icons.edit_outlined,
               size: 16,
-              color: AuthColors.ink.withValues(alpha: 0.7),
+              color: AppColors.of(context).ink.withValues(alpha: 0.7),
             ),
           ],
         ),
@@ -800,9 +804,9 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     final words = langProvider.words;
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: AppColors.of(context).bg,
       appBar: AppBar(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: AppColors.of(context).bg,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: GestureDetector(
@@ -811,20 +815,20 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           child: Container(
             margin: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AuthColors.surface,
+              color: AppColors.of(context).surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AuthColors.border, width: 1),
+              border: Border.all(color: AppColors.of(context).border, width: 1),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new,
-              color: AuthColors.ink,
+              color: AppColors.of(context).ink,
               size: 15,
             ),
           ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AuthColors.borderSoft),
+          child: Container(height: 1, color: AppColors.of(context).borderSoft),
         ),
       ),
       body: Form(
@@ -834,12 +838,12 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           children: [
             // ── Роль-чип + заголовок ───────────────────────────────────
             _RoleChip(isCourier: isCourier),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             Text(
               isCourier ? 'Расскажите о себе' : 'Ваша организация',
               style: AppText.serif(fontSize: 32, letterSpacing: -0.5),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               isCourier
                   ? 'Эти данные необходимы для оформления документов '
@@ -848,18 +852,18 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                         'и правильно оформить доставку.',
               style: AppText.regular(
                 fontSize: 14.5,
-                color: AuthColors.inkMuted,
+                color: AppColors.of(context).inkMuted,
               ).copyWith(height: 1.55, letterSpacing: 0.1),
             ),
 
-            const SizedBox(height: 36),
+            SizedBox(height: 36),
 
             // ── Личные данные / Организация ────────────────────────────
             _SectionLabel(
               icon: Icons.person_outline_rounded,
               label: isCourier ? 'ЛИЧНЫЕ ДАННЫЕ' : 'ОБ ОРГАНИЗАЦИИ',
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             if (!isCourier) ...[
               _InputField(
@@ -879,7 +883,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                 controller: _c1,
                 icon: Icons.badge_outlined,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _InputField(
                 label: 'Фамилия',
                 hint: 'Ваша фамилия',
@@ -887,7 +891,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                 controller: _c2,
                 icon: Icons.badge_outlined,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _InputField(
                 label: 'Отчество',
                 hint: 'Ваше отчество',
@@ -897,43 +901,43 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               ),
             ],
 
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
 
             // ── Местоположение ─────────────────────────────────────────
             _SectionLabel(
               icon: Icons.location_on_outlined,
               label: 'МЕСТОПОЛОЖЕНИЕ',
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildLocationStepper(isRu),
 
             if (isCourier) ...[
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // ── Вид транспорта ─────────────────────────────────────
               _SectionLabel(
                 icon: Icons.local_shipping_outlined,
                 label: 'ВИД ТРАНСПОРТА',
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _buildTransportPicker(),
 
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // ── Фото паспорта ──────────────────────────────────────
               _SectionLabel(
                 icon: Icons.document_scanner_outlined,
                 label: 'ФОТО ПАСПОРТА',
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Главная страница и страница с пропиской.',
                 style: AppText.regular(
                   fontSize: 13,
-                  color: AuthColors.inkSoft,
+                  color: AppColors.of(context).inkSoft,
                 ).copyWith(height: 1.4),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Row(
                 children: [
                   _PhotoBox(
@@ -941,7 +945,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
                     file: _passportFile,
                     onTap: () => _pickImage(true),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   _PhotoBox(
                     label: 'Прописка',
                     file: _addressFile,
@@ -951,7 +955,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               ),
             ],
 
-            const SizedBox(height: 44),
+            SizedBox(height: 44),
 
             // ── Кнопка ─────────────────────────────────────────────────
             _SubmitButton(
@@ -981,10 +985,10 @@ class _RoleChip extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AuthColors.emeraldTint,
+            color: AppColors.of(context).emeraldTint,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AuthColors.emerald.withValues(alpha: 0.3),
+              color: AppColors.of(context).emerald.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -994,15 +998,15 @@ class _RoleChip extends StatelessWidget {
                 isCourier
                     ? Icons.electric_bike_outlined
                     : Icons.shopping_bag_outlined,
-                color: AuthColors.emerald,
+                color: AppColors.of(context).emerald,
                 size: 14,
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 isCourier ? 'Курьер' : 'Магазин',
                 style: AppText.semiBold(
                   fontSize: 12.5,
-                  color: AuthColors.emerald,
+                  color: AppColors.of(context).emerald,
                 ).copyWith(letterSpacing: 0.1),
               ),
             ],
@@ -1027,18 +1031,18 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 14,
           decoration: BoxDecoration(
-            color: AuthColors.emerald,
+            color: AppColors.of(context).emerald,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 10),
-        Icon(icon, size: 15, color: AuthColors.inkMuted),
-        const SizedBox(width: 7),
+        SizedBox(width: 10),
+        Icon(icon, size: 15, color: AppColors.of(context).inkMuted),
+        SizedBox(width: 7),
         Text(
           label,
           style: AppText.bold(
             fontSize: 11,
-            color: AuthColors.ink,
+            color: AppColors.of(context).ink,
           ).copyWith(letterSpacing: 1.1),
         ),
       ],
@@ -1088,19 +1092,19 @@ class _InputFieldState extends State<_InputField> {
     return TextFormField(
       controller: widget.controller,
       focusNode: _focus,
-      style: AppText.regular(fontSize: 15, color: AuthColors.ink),
+      style: AppText.regular(fontSize: 15, color: AppColors.of(context).ink),
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
-        hintStyle: AppText.regular(fontSize: 14, color: AuthColors.inkSoft),
+        hintStyle: AppText.regular(fontSize: 14, color: AppColors.of(context).inkSoft),
         labelStyle: AppText.regular(
           fontSize: 13.5,
-          color: _hasFocus ? AuthColors.ink : AuthColors.inkSoft,
+          color: _hasFocus ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
         ),
         prefixIcon: Icon(
           widget.icon,
           size: 18,
-          color: _hasFocus ? AuthColors.ink : AuthColors.inkSoft,
+          color: _hasFocus ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
         ),
         filled: true,
         fillColor: const Color(0xFFF4F0EA),
@@ -1110,26 +1114,26 @@ class _InputFieldState extends State<_InputField> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AuthColors.border, width: 1),
+          borderSide: BorderSide(color: AppColors.of(context).border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AuthColors.ink, width: 1.5),
+          borderSide: BorderSide(color: AppColors.of(context).ink, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AuthColors.errorMuted, width: 1),
+          borderSide: BorderSide(color: AppColors.of(context).errorMuted, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: AuthColors.errorMuted,
+          borderSide: BorderSide(
+            color: AppColors.of(context).errorMuted,
             width: 1.5,
           ),
         ),
         errorStyle: AppText.regular(
           fontSize: 12,
-          color: AuthColors.errorMuted,
+          color: AppColors.of(context).errorMuted,
         ).copyWith(height: 1.4),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -1161,8 +1165,8 @@ class _PhotoBox extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: file != null
-                  ? AuthColors.ink.withValues(alpha: 0.5)
-                  : AuthColors.border,
+                  ? AppColors.of(context).ink.withValues(alpha: 0.5)
+                  : AppColors.of(context).border,
               width: file != null ? 1.5 : 1,
             ),
             image: file != null
@@ -1177,22 +1181,22 @@ class _PhotoBox extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AuthColors.ink.withValues(alpha: 0.10),
+                        color: AppColors.of(context).ink.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(13),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add_a_photo_outlined,
-                        color: AuthColors.ink,
+                        color: AppColors.of(context).ink,
                         size: 19,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Text(
                       label,
                       textAlign: TextAlign.center,
                       style: AppText.medium(
                         fontSize: 12.5,
-                        color: AuthColors.inkMuted,
+                        color: AppColors.of(context).inkMuted,
                       ).copyWith(height: 1.35),
                     ),
                   ],
@@ -1214,12 +1218,12 @@ class _PhotoBox extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.check_circle_rounded,
                         color: Colors.white,
                         size: 15,
                       ),
-                      const SizedBox(width: 5),
+                      SizedBox(width: 5),
                       Text(
                         'Загружено',
                         style: AppText.semiBold(
@@ -1254,12 +1258,12 @@ class _Chip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AuthColors.emeraldTint : AuthColors.surface,
+          color: isSelected ? AppColors.of(context).emeraldTint : AppColors.of(context).surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AuthColors.ink.withValues(alpha: 0.4)
-                : AuthColors.border,
+                ? AppColors.of(context).ink.withValues(alpha: 0.4)
+                : AppColors.of(context).border,
           ),
         ),
         child: Row(
@@ -1269,15 +1273,15 @@ class _Chip extends StatelessWidget {
               label,
               style: AppText.medium(
                 fontSize: 12,
-                color: isSelected ? AuthColors.emerald : AuthColors.inkMuted,
+                color: isSelected ? AppColors.of(context).emerald : AppColors.of(context).inkMuted,
               ),
             ),
             if (!isSelected) ...[
-              const SizedBox(width: 4),
-              const Icon(
+              SizedBox(width: 4),
+                            Icon(
                 Icons.close_rounded,
                 size: 12,
-                color: AuthColors.inkSoft,
+                color: AppColors.of(context).inkSoft,
               ),
             ],
           ],
@@ -1324,16 +1328,16 @@ class _SubmitButtonState extends State<_SubmitButton> {
           width: double.infinity,
           height: 58,
           decoration: BoxDecoration(
-            color: AuthColors.ink,
+            color: AppColors.of(context).ink,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AuthColors.ink.withValues(alpha: 0.22),
+                color: AppColors.of(context).ink.withValues(alpha: 0.22),
                 blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
               BoxShadow(
-                color: AuthColors.ink.withValues(alpha: 0.08),
+                color: AppColors.of(context).ink.withValues(alpha: 0.08),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -1411,7 +1415,7 @@ class _PulsingDotsState extends State<_PulsingDots>
               child: Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),

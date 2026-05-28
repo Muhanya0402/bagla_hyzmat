@@ -47,6 +47,11 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   int activeOrdersCount = 0;
   void initController() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final initAuth = context.read<AuthProvider>();
+      final initRole = initAuth.role.toLowerCase().trim();
+      if (initRole == 'shop' || initRole == 'business') {
+        selectedFilterIndex = 1;
+      }
       await initLocationFilter();
 
       // 1. Принудительно запускаем лоадер и загружаем данные по HTTP
@@ -87,8 +92,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
     try {
       final auth = context.read<AuthProvider>();
-      final isShop = auth.role == 'shop';
-      final myOrdersOnlyParam = isShop ? true : index == 1;
+      final myOrdersOnlyParam = index == 1;
 
       // 1. Скачиваем актуальные заказы для выбранной вкладки по HTTP
       final fetchedOrders = await orderService.getOrders(
@@ -246,7 +250,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     setState(() => loadingMore = true);
 
     final auth = context.read<AuthProvider>();
-    final isShop = auth.role == 'shop' || auth.role == 'business';
 
     try {
       // Корректный offset — это текущее количество элементов.
@@ -255,7 +258,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       final more = await orderService.getOrders(
         role: auth.role,
         userId: auth.userId,
-        myOrdersOnly: isShop ? true : selectedFilterIndex == 1,
+        myOrdersOnly: selectedFilterIndex == 1,
         offset: orders.length,
         limit: pageSize,
         transportFilter: filters.transportFilter,
@@ -312,7 +315,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     }
 
     setupRealtimeCallbacks();
-    final isShop = auth.role == 'shop' || auth.role == 'business';
 
     debugPrint(
       '🔌 HomeScreenController: Подключение к сокетам для пользователя ${auth.userId}',
@@ -320,7 +322,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     realtimeService.connect(
       role: auth.role,
       userId: auth.userId,
-      myOrdersOnly: isShop || selectedFilterIndex == 1,
+      myOrdersOnly: selectedFilterIndex == 1,
     );
   }
 
@@ -378,11 +380,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     setupRealtimeCallbacks();
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
-    final isShop = auth.role == 'shop';
     await realtimeService.connect(
       role: auth.role,
       userId: auth.userId,
-      myOrdersOnly: isShop || selectedFilterIndex == 1,
+      myOrdersOnly: selectedFilterIndex == 1,
     );
   }
 
@@ -397,11 +398,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       loadActiveOrdersCount(auth.userId);
     }
     try {
-      final isShop = auth.role == 'shop';
       final fetchedOrders = await orderService.getOrders(
         role: auth.role,
         userId: auth.userId,
-        myOrdersOnly: isShop ? true : selectedFilterIndex == 1,
+        myOrdersOnly: selectedFilterIndex == 1,
         transportFilter: filters.transportFilter,
         shopProvinceId: filters.shopProvince?.id,
         shopEtrapId: filters.shopEtrap?.id,

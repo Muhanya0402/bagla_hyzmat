@@ -1,6 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +54,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${words.error}: $e'),
-            backgroundColor: AuthColors.errorMuted,
+            backgroundColor: AppColors.of(context).errorMuted,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -82,8 +82,8 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Container(
-        decoration: const BoxDecoration(
-          color: AuthColors.bg,
+        decoration: BoxDecoration(
+          color: AppColors.of(context).bg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.fromLTRB(
@@ -104,7 +104,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AuthColors.border,
+                    color: AppColors.of(context).border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -121,7 +121,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
                 words.appealsCreateSubtitle,
                 style: AppText.regular(
                   fontSize: 13,
-                  color: AuthColors.inkMuted,
+                  color: AppColors.of(context).inkMuted,
                 ),
               ),
               const SizedBox(height: 18),
@@ -131,7 +131,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
                 words.appealsTopicLabel,
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: AuthColors.inkSoft,
+                  color: AppColors.of(context).inkSoft,
                 ).copyWith(letterSpacing: 0.8),
               ),
               const SizedBox(height: 8),
@@ -152,17 +152,21 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
                         vertical: 7,
                       ),
                       decoration: BoxDecoration(
-                        color: sel ? AuthColors.ink : AuthColors.surface,
+                        color: sel
+                            ? AppColors.of(context).ink
+                            : AppColors.of(context).surface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: sel ? AuthColors.ink : AuthColors.border,
+                          color: sel
+                              ? AppColors.of(context).ink
+                              : AppColors.of(context).border,
                         ),
                       ),
                       child: Text(
                         p,
                         style: AppText.semiBold(
                           fontSize: 12,
-                          color: sel ? Colors.white : AuthColors.ink,
+                          color: sel ? Colors.white : AppColors.of(context).ink,
                         ),
                       ),
                     ),
@@ -175,7 +179,10 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
               TextFormField(
                 controller: _subjectCtrl,
                 focusNode: _subjectFocus,
-                style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+                style: AppText.regular(
+                  fontSize: 14,
+                  color: AppColors.of(context).ink,
+                ),
                 decoration: _inputDeco(
                   hint: words.appealsTopicHint,
                   icon: Icons.edit_outlined,
@@ -197,7 +204,10 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
                 controller: _bodyCtrl,
                 focusNode: _bodyFocus,
                 maxLines: 4,
-                style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+                style: AppText.regular(
+                  fontSize: 14,
+                  color: AppColors.of(context).ink,
+                ),
                 decoration: _inputDeco(
                   hint: words.appealsBodyHint,
                   icon: Icons.description_outlined,
@@ -231,46 +241,48 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
+      hintStyle: AppText.regular(
+        fontSize: 13,
+        color: AppColors.of(context).inkSoft,
+      ),
       prefixIcon: Icon(
         icon,
-        color: focused ? AuthColors.emerald : AuthColors.inkSoft,
+        color: focused
+            ? AppColors.of(context).emerald
+            : AppColors.of(context).inkSoft,
         size: 17,
       ),
       filled: true,
-      fillColor: AuthColors.surface,
+      fillColor: AppColors.of(context).surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AuthColors.border),
+        borderSide: BorderSide(color: AppColors.of(context).border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
-          color: AuthColors.emerald.withValues(alpha: 0.5),
+          color: AppColors.of(context).emerald.withValues(alpha: 0.5),
           width: 1.5,
         ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
-          color: AuthColors.errorMuted.withValues(alpha: 0.5),
+          color: AppColors.of(context).errorMuted.withValues(alpha: 0.5),
         ),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: AuthColors.errorMuted,
+        borderSide: BorderSide(
+          color: AppColors.of(context).errorMuted,
           width: 1.5,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 13,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
     );
   }
 }
@@ -320,16 +332,18 @@ class _SubmitButtonState extends State<_SubmitButton> {
           width: double.infinity,
           height: 52,
           decoration: BoxDecoration(
-            color: widget.isLoading ? AuthColors.borderSoft : AuthColors.ink,
+            color: widget.isLoading
+                ? AppColors.of(context).borderSoft
+                : AppColors.of(context).ink,
             borderRadius: BorderRadius.circular(13),
           ),
           alignment: Alignment.center,
           child: widget.isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                    color: AuthColors.inkSoft,
+                    color: AppColors.of(context).inkSoft,
                     strokeWidth: 2,
                   ),
                 )

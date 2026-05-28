@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─── Логотип ──────────────────────────────────────────────────────────────────
@@ -28,21 +28,18 @@ class AuthBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       onTap: () => Navigator.pop(context),
       child: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: AuthColors.surface,
+          color: c.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AuthColors.border, width: 1.5),
+          border: Border.all(color: c.border, width: 1.5),
         ),
-        child: const Icon(
-          Icons.arrow_back_ios_new,
-          size: 14,
-          color: AuthColors.ink,
-        ),
+        child: Icon(Icons.arrow_back_ios_new, size: 14, color: c.ink),
       ),
     );
   }
@@ -62,15 +59,16 @@ class AuthLangSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       onTap: onToggle,
       child: Container(
         height: 36,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: AuthColors.surface,
+          color: c.surface,
           borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: AuthColors.border, width: 1.5),
+          border: Border.all(color: c.border, width: 1.5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -92,11 +90,12 @@ class _LangTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
       decoration: BoxDecoration(
-        color: active ? AuthColors.ink : Colors.transparent,
+        color: active ? c.ink : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -104,7 +103,7 @@ class _LangTab extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: active ? Colors.white : AuthColors.inkMuted,
+          color: active ? Colors.white : c.inkMuted,
           letterSpacing: 0.4,
         ),
       ),
@@ -130,6 +129,7 @@ class AuthGradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final bool active = enabled && !isLoading;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -141,12 +141,12 @@ class AuthGradientButton extends StatelessWidget {
         boxShadow: active
             ? [
                 BoxShadow(
-                  color: AuthColors.ink.withValues(alpha: 0.12),
+                  color: c.ink.withValues(alpha: 0.12),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
                 BoxShadow(
-                  color: AuthColors.ink.withValues(alpha: 0.05),
+                  color: c.ink.withValues(alpha: 0.05),
                   blurRadius: 3,
                   offset: const Offset(0, 1),
                 ),
@@ -156,8 +156,8 @@ class AuthGradientButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: active ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: active ? AuthColors.ink : const Color(0xFFE2DCD0),
-          disabledBackgroundColor: const Color(0xFFE2DCD0),
+          backgroundColor: active ? c.ink : c.border,
+          disabledBackgroundColor: c.border,
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -177,7 +177,7 @@ class AuthGradientButton extends StatelessWidget {
             : Text(
                 label,
                 style: TextStyle(
-                  color: active ? Colors.white : AuthColors.inkMuted,
+                  color: active ? Colors.white : c.inkMuted,
                   fontWeight: FontWeight.w600,
                   fontSize: 15.5,
                   letterSpacing: 0.1,
@@ -198,6 +198,7 @@ class AuthInlineError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return AnimatedSize(
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutCubic,
@@ -224,12 +225,12 @@ class AuthInlineError extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 2),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
                       child: Icon(
                         Icons.info_outline_rounded,
                         size: 14,
-                        color: AuthColors.errorMuted,
+                        color: c.errorMuted,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -238,7 +239,7 @@ class AuthInlineError extends StatelessWidget {
                         message!,
                         style: AppText.regular(
                           fontSize: 12.5,
-                          color: AuthColors.errorMuted,
+                          color: c.errorMuted,
                         ).copyWith(height: 1.5, letterSpacing: 0.1),
                       ),
                     ),
@@ -274,7 +275,6 @@ void showAuthNetworkBanner(
   );
   overlay.insert(entry);
 
-  // авто-скрытие
   Future.delayed(duration, () {
     if (controller.isMounted) controller.hide();
   });
@@ -346,6 +346,7 @@ class _AuthNetworkBannerState extends State<_AuthNetworkBanner>
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final top = MediaQuery.of(context).padding.top + 8;
     return Positioned(
       left: 16,
@@ -363,12 +364,12 @@ class _AuthNetworkBannerState extends State<_AuthNetworkBanner>
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                 decoration: BoxDecoration(
-                  color: AuthColors.bannerBg,
+                  color: c.bannerBg,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AuthColors.bannerBorder, width: 1),
+                  border: Border.all(color: c.bannerBorder, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.08),
+                      color: c.ink.withValues(alpha: 0.08),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -381,18 +382,15 @@ class _AuthNetworkBannerState extends State<_AuthNetworkBanner>
                       width: 30,
                       height: 30,
                       decoration: BoxDecoration(
-                        color: AuthColors.surface,
+                        color: c.surface,
                         borderRadius: BorderRadius.circular(9),
-                        border: Border.all(
-                          color: AuthColors.bannerBorder,
-                          width: 1,
-                        ),
+                        border: Border.all(color: c.bannerBorder, width: 1),
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.wifi_off_rounded,
                         size: 15,
-                        color: AuthColors.inkMuted,
+                        color: c.inkMuted,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -404,7 +402,7 @@ class _AuthNetworkBannerState extends State<_AuthNetworkBanner>
                             widget.title,
                             style: AppText.semiBold(
                               fontSize: 13.5,
-                              color: AuthColors.ink,
+                              color: c.ink,
                             ).copyWith(letterSpacing: 0.1),
                           ),
                           const SizedBox(height: 3),
@@ -412,7 +410,7 @@ class _AuthNetworkBannerState extends State<_AuthNetworkBanner>
                             widget.message,
                             style: AppText.regular(
                               fontSize: 12.5,
-                              color: AuthColors.inkMuted,
+                              color: c.inkMuted,
                             ).copyWith(height: 1.4, letterSpacing: 0.1),
                           ),
                         ],
@@ -424,7 +422,7 @@ class _AuthNetworkBannerState extends State<_AuthNetworkBanner>
                       child: Icon(
                         Icons.close_rounded,
                         size: 16,
-                        color: AuthColors.inkSoft,
+                        color: c.inkSoft,
                       ),
                     ),
                   ],

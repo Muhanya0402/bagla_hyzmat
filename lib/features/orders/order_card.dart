@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
@@ -87,16 +87,14 @@ class OrderCard extends StatelessWidget {
         if (onUpdate != null) onUpdate!();
       } catch (_) {
         if (context.mounted) {
+          final c = AppColors.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 'Ошибка сети. Попробуйте позже.',
-                style: AppText.regular(
-                  fontSize: 13,
-                  color: AuthColors.errorMuted,
-                ),
+                style: AppText.regular(fontSize: 13, color: c.errorMuted),
               ),
-              backgroundColor: AuthColors.errorTint,
+              backgroundColor: c.errorTint,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -113,32 +111,36 @@ class OrderCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-          24,
-          12,
-          24,
-          MediaQuery.of(ctx).padding.bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _sheetHandle(),
-            const SizedBox(height: 24),
-            RestrictedAccessView(onActionPressed: () => Navigator.pop(ctx)),
-          ],
-        ),
-      ),
+      builder: (ctx) {
+        final c = AppColors.of(ctx);
+        return Container(
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            12,
+            24,
+            MediaQuery.of(ctx).padding.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetHandle(c),
+              const SizedBox(height: 24),
+              RestrictedAccessView(onActionPressed: () => Navigator.pop(ctx)),
+            ],
+          ),
+        );
+      },
     ).then((_) => onUpdate?.call());
   }
 
   // ── Main build ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final langProvider = context.watch<LanguageProvider>();
 
     final words = langProvider.words;
@@ -151,12 +153,12 @@ class OrderCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: c.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: c.border),
         boxShadow: [
           BoxShadow(
-            color: AuthColors.ink.withValues(alpha: 0.03),
+            color: c.ink.withValues(alpha: 0.03),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -166,7 +168,7 @@ class OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          splashColor: AuthColors.emerald.withValues(alpha: 0.04),
+          splashColor: c.emerald.withValues(alpha: 0.04),
           highlightColor: Colors.transparent,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -177,9 +179,9 @@ class OrderCard extends StatelessWidget {
                 // ── Row 1: transport icon + ID + status badge ──────────
                 Row(
                   children: [
-                    _buildTransportIcon(),
+                    _buildTransportIcon(c),
                     const SizedBox(width: 6),
-                    _buildIdPill(),
+                    _buildIdPill(c),
                     const Spacer(),
                     _buildStatusBadge(status, words),
                   ],
@@ -190,30 +192,32 @@ class OrderCard extends StatelessWidget {
                 // ── Row 2-3: addresses ─────────────────────────────────
                 _buildAddressRow(
                   icon: Icons.inventory_2_outlined,
-                  iconColor: AuthColors.inkMuted,
+                  iconColor: c.inkMuted,
                   address: langProvider.isRu
                       ? (order['shop_adress'] ?? 'Адрес магазина')
                       : (order['shop_adresstk'] ?? 'Dükan salgysy'),
+                  c: c,
                 ),
                 const SizedBox(height: 4),
                 _buildAddressRow(
                   icon: Icons.location_on_outlined,
-                  iconColor: AuthColors.emerald,
+                  iconColor: c.emerald,
                   address: langProvider.isRu
                       ? (order['adress_of_delivery'] ?? 'Адрес доставки')
                       : (order['adress_of_deliverytk'] ??
                             'Eltip beriş salgysy'),
+                  c: c,
                 ),
 
                 const SizedBox(height: 8),
 
                 // ── Row 4: price + action button ───────────────────────
-                Divider(color: AuthColors.borderSoft, height: 1, thickness: 1),
+                Divider(color: c.borderSoft, height: 1, thickness: 1),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildPriceSection(isShop, order, words),
+                    _buildPriceSection(isShop, order, words, c),
                     _buildActionButtons(
                       context,
                       status,
@@ -238,6 +242,7 @@ class OrderCard extends StatelessWidget {
     required IconData icon,
     required Color iconColor,
     required String address,
+    required AppColors c,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,10 +255,7 @@ class OrderCard extends StatelessWidget {
         Expanded(
           child: Text(
             address,
-            style: AppText.regular(
-              fontSize: 12,
-              color: AuthColors.ink,
-            ).copyWith(height: 1.4),
+            style: AppText.regular(fontSize: 12, color: c.ink).copyWith(height: 1.4),
           ),
         ),
       ],
@@ -261,35 +263,35 @@ class OrderCard extends StatelessWidget {
   }
 
   // ── Transport icon ─────────────────────────────────────────────────────────
-  Widget _buildTransportIcon() {
+  Widget _buildTransportIcon(AppColors c) {
     final String? transportType = order['transport_type']?.toString();
     final IconData icon;
     final Color color;
     switch (transportType) {
       case 'car':
         icon = Icons.directions_car_rounded;
-        color = AuthColors.emerald;
+        color = c.emerald;
       case 'truck':
         icon = Icons.local_shipping_rounded;
-        color = AuthColors.errorMuted;
+        color = c.errorMuted;
       default:
         icon = Icons.directions_run_rounded;
-        color = AuthColors.inkSoft;
+        color = c.inkSoft;
     }
     return Icon(icon, size: 15, color: color);
   }
 
   // ── ID pill ────────────────────────────────────────────────────────────────
-  Widget _buildIdPill() {
+  Widget _buildIdPill(AppColors c) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AuthColors.borderSoft,
+        color: c.borderSoft,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         'ID: ${order['id'].toString().split('-').first.toUpperCase()}',
-        style: AppText.medium(fontSize: 10, color: AuthColors.inkSoft),
+        style: AppText.medium(fontSize: 10, color: c.inkSoft),
       ),
     );
   }
@@ -342,6 +344,7 @@ class OrderCard extends StatelessWidget {
     bool isShop,
     dynamic order,
     AppLocalizations words,
+    AppColors c,
   ) {
     final double total = (order['total_amount'] ?? 0.0).toDouble();
     final double delivery = (order['delivery_amount'] ?? 0.0).toDouble();
@@ -353,7 +356,7 @@ class OrderCard extends StatelessWidget {
       children: [
         Text(
           isShop ? words.toReceive : words.deliveryFee,
-          style: AppText.regular(fontSize: 10, color: AuthColors.inkSoft),
+          style: AppText.regular(fontSize: 10, color: c.inkSoft),
         ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -361,14 +364,14 @@ class OrderCard extends StatelessWidget {
           children: [
             Text(
               amount.toStringAsFixed(0),
-              style: AppText.semiBold(fontSize: 20, color: AuthColors.emerald),
+              style: AppText.semiBold(fontSize: 20, color: c.emerald),
             ),
             const SizedBox(width: 3),
             Text(
               'TMT',
               style: AppText.regular(
                 fontSize: 10,
-                color: AuthColors.emerald.withValues(alpha: 0.5),
+                color: c.emerald.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -422,16 +425,14 @@ class OrderCard extends StatelessWidget {
             );
             if (!context.mounted) return;
             if (activeCount >= 3) {
+              final c = AppColors.of(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
                     words.tooManyOrders,
-                    style: AppText.regular(
-                      fontSize: 13,
-                      color: AuthColors.errorMuted,
-                    ),
+                    style: AppText.regular(fontSize: 13, color: c.errorMuted),
                   ),
-                  backgroundColor: AuthColors.errorTint,
+                  backgroundColor: c.errorTint,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -515,11 +516,11 @@ class OrderCard extends StatelessWidget {
     ).then((_) => onUpdate?.call());
   }
 
-  Widget _sheetHandle() => Container(
+  Widget _sheetHandle(AppColors c) => Container(
     width: 36,
     height: 4,
     decoration: BoxDecoration(
-      color: AuthColors.border,
+      color: c.border,
       borderRadius: BorderRadius.circular(2),
     ),
   );
@@ -546,6 +547,7 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -561,7 +563,7 @@ class _ActionButtonState extends State<_ActionButton> {
         child: Container(
           height: 36,
           decoration: BoxDecoration(
-            color: AuthColors.emerald.withValues(alpha: 0.8),
+            color: c.emerald.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -574,7 +576,7 @@ class _ActionButtonState extends State<_ActionButton> {
                   style: AppText.semiBold(fontSize: 12, color: Colors.white),
                 ),
               ),
-              if (widget.points > 0) _amberBlock('${widget.points}'),
+              if (widget.points > 0) _amberBlock('${widget.points}', c),
             ],
           ),
         ),
@@ -582,13 +584,13 @@ class _ActionButtonState extends State<_ActionButton> {
     );
   }
 
-  Widget _amberBlock(String text) {
+  Widget _amberBlock(String text, AppColors c) {
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: const BoxDecoration(
-        color: AuthColors.amberTint,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: c.amberTint,
+        borderRadius: const BorderRadius.only(
           topRight: Radius.circular(10),
           bottomRight: Radius.circular(10),
         ),
@@ -597,12 +599,9 @@ class _ActionButtonState extends State<_ActionButton> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.toll_rounded, size: 13, color: AuthColors.amber),
+          Icon(Icons.toll_rounded, size: 13, color: c.amber),
           const SizedBox(width: 3),
-          Text(
-            text,
-            style: AppText.semiBold(fontSize: 12, color: AuthColors.amber),
-          ),
+          Text(text, style: AppText.semiBold(fontSize: 12, color: c.amber)),
         ],
       ),
     );
@@ -625,6 +624,7 @@ class _OutlineButtonState extends State<_OutlineButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -641,15 +641,13 @@ class _OutlineButtonState extends State<_OutlineButton> {
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: AuthColors.errorMuted.withValues(alpha: 0.4),
-            ),
+            border: Border.all(color: c.errorMuted.withValues(alpha: 0.4)),
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
-            style: AppText.medium(fontSize: 12, color: AuthColors.errorMuted),
+            style: AppText.medium(fontSize: 12, color: c.errorMuted),
           ),
         ),
       ),
@@ -696,17 +694,18 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Material(
       color: Colors.transparent,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 28),
         decoration: BoxDecoration(
-          color: AuthColors.surface,
+          color: c.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AuthColors.border),
+          border: Border.all(color: c.border),
           boxShadow: [
             BoxShadow(
-              color: AuthColors.ink.withValues(alpha: 0.08),
+              color: c.ink.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -715,43 +714,32 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Header ────────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
                   Text(
                     widget.title,
-                    style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                    style: AppText.serif(fontSize: 17, color: c.ink),
                   ),
                   const SizedBox(height: 10),
-
-                  // ── Economic block ────────────────────────────────────────
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: AuthColors.bg,
+                      color: c.bg,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AuthColors.borderSoft),
+                      border: Border.all(color: c.borderSoft),
                     ),
                     child: Row(
                       children: [
-                        // Delivery income
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 widget.words.deliveryFee,
-                                style: AppText.regular(
-                                  fontSize: 10,
-                                  color: AuthColors.inkSoft,
-                                ),
+                                style: AppText.regular(fontSize: 10, color: c.inkSoft),
                               ),
                               const SizedBox(height: 2),
                               Row(
@@ -760,19 +748,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                                 children: [
                                   Text(
                                     '+${widget.deliveryAmount.toStringAsFixed(0)}',
-                                    style: AppText.semiBold(
-                                      fontSize: 18,
-                                      color: AuthColors.emerald,
-                                    ),
+                                    style: AppText.semiBold(fontSize: 18, color: c.emerald),
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
                                     'TMT',
                                     style: AppText.regular(
                                       fontSize: 10,
-                                      color: AuthColors.emerald.withValues(
-                                        alpha: 0.55,
-                                      ),
+                                      color: c.emerald.withValues(alpha: 0.55),
                                     ),
                                   ),
                                 ],
@@ -780,39 +763,27 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                             ],
                           ),
                         ),
-
-                        // Points cost (shown only if > 0)
                         if (widget.points > 0) ...[
                           Container(
                             width: 0.5,
                             height: 32,
-                            color: AuthColors.borderSoft,
+                            color: c.borderSoft,
                             margin: const EdgeInsets.symmetric(horizontal: 10),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: AuthColors.amberTint,
+                              color: c.amberTint,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
-                                  Icons.toll_rounded,
-                                  size: 13,
-                                  color: AuthColors.amber,
-                                ),
+                                Icon(Icons.toll_rounded, size: 13, color: c.amber),
                                 const SizedBox(width: 4),
                                 Text(
                                   '-${widget.points}',
-                                  style: AppText.semiBold(
-                                    fontSize: 13,
-                                    color: AuthColors.amber,
-                                  ),
+                                  style: AppText.semiBold(fontSize: 13, color: c.amber),
                                 ),
                               ],
                             ),
@@ -822,27 +793,18 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // ── Route hint ────────────────────────────────────────────
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
-                        child: Icon(
-                          Icons.route_outlined,
-                          size: 12,
-                          color: AuthColors.inkSoft,
-                        ),
+                        child: Icon(Icons.route_outlined, size: 12, color: c.inkSoft),
                       ),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
                           'ID: ${widget.shortOrderId} • ${widget.address}',
-                          style: AppText.regular(
-                            fontSize: 11,
-                            color: AuthColors.inkMuted,
-                          ).copyWith(height: 1.4),
+                          style: AppText.regular(fontSize: 11, color: c.inkMuted).copyWith(height: 1.4),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -852,16 +814,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 ],
               ),
             ),
-
-            // ── Divider ───────────────────────────────────────────────────────
-            Container(height: 0.5, color: AuthColors.borderSoft),
-
-            // ── Actions ───────────────────────────────────────────────────────
+            Container(height: 0.5, color: c.borderSoft),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Row(
                 children: [
-                  // Cancel
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapDown: (_) => setState(() => _cancelPressed = true),
@@ -878,23 +835,18 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                         height: 44,
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         decoration: BoxDecoration(
-                          color: AuthColors.borderSoft,
+                          color: c.borderSoft,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           widget.words.back,
-                          style: AppText.medium(
-                            fontSize: 13,
-                            color: AuthColors.inkMuted,
-                          ),
+                          style: AppText.medium(fontSize: 13, color: c.inkMuted),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
-
-                  // Confirm
                   Expanded(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -903,8 +855,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                         setState(() => _confirmPressed = false);
                         Navigator.pop(context, true);
                       },
-                      onTapCancel: () =>
-                          setState(() => _confirmPressed = false),
+                      onTapCancel: () => setState(() => _confirmPressed = false),
                       child: AnimatedScale(
                         scale: _confirmPressed ? 0.97 : 1.0,
                         duration: const Duration(milliseconds: 120),
@@ -914,16 +865,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                           height: 44,
                           decoration: BoxDecoration(
                             color: _confirmPressed
-                                ? AuthColors.emerald.withValues(alpha: 0.85)
-                                : AuthColors.emerald,
+                                ? c.emerald.withValues(alpha: 0.85)
+                                : c.emerald,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: _confirmPressed
                                 ? null
                                 : [
                                     BoxShadow(
-                                      color: AuthColors.emerald.withValues(
-                                        alpha: 0.22,
-                                      ),
+                                      color: c.emerald.withValues(alpha: 0.22),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -932,10 +881,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                           alignment: Alignment.center,
                           child: Text(
                             widget.words.takeOrder,
-                            style: AppText.semiBold(
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
+                            style: AppText.semiBold(fontSize: 13, color: Colors.white),
                           ),
                         ),
                       ),

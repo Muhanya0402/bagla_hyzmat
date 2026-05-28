@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -28,8 +28,7 @@ class _AppealCardState extends State<AppealCard> {
     final String subject = (widget.appeal['subject'] ?? '').toString();
     final String body = (widget.appeal['body'] ?? '').toString();
     final String date = _formatDate(widget.appeal['date_created']);
-    final bool hasReply =
-        (widget.appeal['reply'] ?? '').toString().isNotEmpty;
+    final bool hasReply = (widget.appeal['reply'] ?? '').toString().isNotEmpty;
     final cfg = _statusCfg(status);
 
     return GestureDetector(
@@ -47,9 +46,9 @@ class _AppealCardState extends State<AppealCard> {
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AuthColors.border),
+            border: Border.all(color: AppColors.of(context).border),
           ),
           child: Row(
             children: [
@@ -82,7 +81,7 @@ class _AppealCardState extends State<AppealCard> {
                                   : subject,
                               style: AppText.semiBold(
                                 fontSize: 13,
-                                color: AuthColors.ink,
+                                color: AppColors.of(context).ink,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -98,7 +97,7 @@ class _AppealCardState extends State<AppealCard> {
                           body,
                           style: AppText.regular(
                             fontSize: 12,
-                            color: AuthColors.inkMuted,
+                            color: AppColors.of(context).inkMuted,
                           ).copyWith(height: 1.35),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -107,21 +106,22 @@ class _AppealCardState extends State<AppealCard> {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.access_time_rounded,
                             size: 11,
-                            color: AuthColors.inkSoft,
+                            color: AppColors.of(context).inkSoft,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             date,
                             style: AppText.regular(
                               fontSize: 11,
-                              color: AuthColors.inkSoft,
+                              color: AppColors.of(context).inkSoft,
                             ),
                           ),
                           const Spacer(),
-                          if (hasReply) _HasReplyBadge(label: widget.words.appealsHasReply),
+                          if (hasReply)
+                            _HasReplyBadge(label: widget.words.appealsHasReply),
                         ],
                       ),
                     ],
@@ -130,12 +130,12 @@ class _AppealCardState extends State<AppealCard> {
               ),
 
               // ── Chevron ──────────────────────────────────────────────
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(right: 12),
                 child: Icon(
                   Icons.chevron_right_rounded,
                   size: 16,
-                  color: AuthColors.inkSoft,
+                  color: AppColors.of(context).inkSoft,
                 ),
               ),
             ],
@@ -168,31 +168,31 @@ class _AppealCardState extends State<AppealCard> {
     switch (status.toLowerCase()) {
       case 'open':
         return _StatusCfg(
-          accent: AuthColors.amber,
-          bg: AuthColors.amberTint,
-          text: AuthColors.amber,
+          accent: AppColors.of(context).amber,
+          bg: AppColors.of(context).amberTint,
+          text: AppColors.of(context).amber,
           label: widget.words.appealsStatusOpen,
         );
       case 'in_progress':
         return _StatusCfg(
-          accent: AuthColors.amber,
-          bg: AuthColors.amberTint,
-          text: AuthColors.amber,
+          accent: AppColors.of(context).amber,
+          bg: AppColors.of(context).amberTint,
+          text: AppColors.of(context).amber,
           label: widget.words.appealsStatusProgress,
         );
       case 'resolved':
       case 'closed':
         return _StatusCfg(
-          accent: AuthColors.emerald,
-          bg: AuthColors.emeraldTint,
-          text: AuthColors.emerald,
+          accent: AppColors.of(context).emerald,
+          bg: AppColors.of(context).emeraldTint,
+          text: AppColors.of(context).emerald,
           label: widget.words.appealsStatusClosed,
         );
       default:
         return _StatusCfg(
-          accent: AuthColors.inkSoft,
-          bg: AuthColors.borderSoft,
-          text: AuthColors.inkSoft,
+          accent: AppColors.of(context).inkSoft,
+          bg: AppColors.of(context).borderSoft,
+          text: AppColors.of(context).inkSoft,
           label: status,
         );
     }
@@ -260,24 +260,27 @@ class _HasReplyBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AuthColors.emeraldTint,
+        color: AppColors.of(context).emeraldTint,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AuthColors.emerald.withValues(alpha: 0.2),
+          color: AppColors.of(context).emerald.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.reply_rounded,
             size: 10,
-            color: AuthColors.emerald,
+            color: AppColors.of(context).emerald,
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: AppText.semiBold(fontSize: 10, color: AuthColors.emerald),
+            style: AppText.semiBold(
+              fontSize: 10,
+              color: AppColors.of(context).emerald,
+            ),
           ),
         ],
       ),

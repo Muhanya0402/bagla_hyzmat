@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/theme/theme_toggle_button.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
@@ -25,10 +26,13 @@ class _OtpScreenState extends State<OtpScreen>
   Timer? _timer;
   DateTime? _backgroundTime;
 
+  // Кэшируем ссылку в initState, чтобы не обращаться к context в dispose().
+  late final TextEditingController _otpController;
+
   // ── Error UX state ───────────────────────────────────────────────────────
   String? _otpError;
   bool _forceError = false; // подсветка через errorPinTheme
-  bool _disabled = false; // кнопка временно неактивна после ошибки
+  bool _disabled = false;   // кнопка временно неактивна после ошибки
 
   // Горизонтальный shake всего пин-блока
   late final AnimationController _shakeCtrl;
@@ -40,11 +44,13 @@ class _OtpScreenState extends State<OtpScreen>
     WidgetsBinding.instance.addObserver(this);
     _startTimer();
 
+    _otpController = context.read<AuthProvider>().otpController;
+    _otpController.addListener(_onOtpChanged);
+
     _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 380),
     );
-    // несколько мягких качаний влево-вправо
     _shakeAnim = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 0, end: -7), weight: 1),
       TweenSequenceItem(tween: Tween(begin: -7, end: 7), weight: 2),
@@ -52,16 +58,10 @@ class _OtpScreenState extends State<OtpScreen>
       TweenSequenceItem(tween: Tween(begin: -5, end: 4), weight: 2),
       TweenSequenceItem(tween: Tween(begin: 4, end: 0), weight: 1),
     ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
-
-    // Очищаем ошибку при редактировании
-    context.read<AuthProvider>().otpController.addListener(_onOtpChanged);
   }
 
   void _onOtpChanged() {
-    // Сбрасываем сообщение об ошибке ТОЛЬКО когда пользователь начинает
-    // вводить новый код. Программный clear() после shake'а оставляет
-    // text='' — на него реагировать нельзя, иначе текст исчезнет мгновенно.
-    final text = context.read<AuthProvider>().otpController.text;
+    final text = _otpController.text;
     if (text.isNotEmpty && (_otpError != null || _forceError)) {
       setState(() {
         _otpError = null;
@@ -111,7 +111,7 @@ class _OtpScreenState extends State<OtpScreen>
 
   @override
   void dispose() {
-    context.read<AuthProvider>().otpController.removeListener(_onOtpChanged);
+    _otpController.removeListener(_onOtpChanged);
     WidgetsBinding.instance.removeObserver(this);
     _shakeCtrl.dispose();
     _timer?.cancel();
@@ -123,7 +123,6 @@ class _OtpScreenState extends State<OtpScreen>
     final lang = context.read<LanguageProvider>();
     final words = lang.words;
 
-    // Если ручной submit, но пина ещё нет — игнор
     if (!fromAutoComplete && auth.otpController.text.length < 4) return;
     if (_disabled) return;
 
@@ -131,7 +130,7 @@ class _OtpScreenState extends State<OtpScreen>
 
     if (!mounted) return;
 
-    if (ok) return; // успешно — навигация внутри AuthProvider
+    if (ok) return;
 
     // ── Ошибка ────────────────────────────────────────────────────────────
     if (auth.lastErrorKind == AuthErrorKind.network) {
@@ -184,26 +183,26 @@ class _OtpScreenState extends State<OtpScreen>
     }
   }
 
-  // ── Pin themes — минимальные «карточки бумаги», серифные цифры ──────────
-  PinTheme get _defaultTheme => PinTheme(
+  // ── Pin themes — принимают AppColors, не обращаются к static constants ───
+  PinTheme _defaultTheme(AppColors c) => PinTheme(
         width: 56,
         height: 64,
-        textStyle: AppText.serif(fontSize: 26, letterSpacing: 0),
+        textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
         decoration: BoxDecoration(
-          color: AuthColors.surface,
+          color: c.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AuthColors.border, width: 1),
+          border: Border.all(color: c.border, width: 1),
         ),
       );
 
-  PinTheme get _focusedTheme => _defaultTheme.copyWith(
+  PinTheme _focusedTheme(AppColors c) => _defaultTheme(c).copyWith(
         decoration: BoxDecoration(
-          color: AuthColors.surface,
+          color: c.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AuthColors.ink, width: 1.5),
+          border: Border.all(color: c.ink, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: AuthColors.ink.withValues(alpha: 0.10),
+              color: c.ink.withValues(alpha: 0.10),
               blurRadius: 14,
               offset: const Offset(0, 4),
             ),
@@ -211,25 +210,25 @@ class _OtpScreenState extends State<OtpScreen>
         ),
       );
 
-  PinTheme get _submittedTheme => _defaultTheme.copyWith(
+  PinTheme _submittedTheme(AppColors c) => _defaultTheme(c).copyWith(
+        textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
         decoration: BoxDecoration(
-          color: const Color(0xFFF6F0E8),
+          color: c.borderSoft,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AuthColors.accent, width: 1),
+          border: Border.all(color: c.accent, width: 1),
         ),
       );
 
-  // Muted terracotta вместо неонового красного.
-  PinTheme get _errorTheme => _defaultTheme.copyWith(
+  PinTheme _errorTheme(AppColors c) => _defaultTheme(c).copyWith(
         textStyle: AppText.serif(
           fontSize: 26,
           letterSpacing: 0,
-          color: AuthColors.errorMuted,
+          color: c.errorMuted,
         ),
         decoration: BoxDecoration(
-          color: AuthColors.errorTint,
+          color: c.errorTint,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AuthColors.errorMuted, width: 1.5),
+          border: Border.all(color: c.errorMuted, width: 1.5),
         ),
       );
 
@@ -239,11 +238,12 @@ class _OtpScreenState extends State<OtpScreen>
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
     final isLoading = context.select<AuthProvider, bool>((a) => a.isLoading);
+    final c = AppColors.of(context);
 
     final buttonDisabled = _disabled || isLoading;
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: ConstrainedBox(
@@ -265,6 +265,8 @@ class _OtpScreenState extends State<OtpScreen>
                       isRu: lang.isRu,
                       onToggle: lang.toggleLanguage,
                     ),
+                    const SizedBox(width: 8),
+                    const ThemeToggleIcon(),
                   ],
                 ),
 
@@ -280,7 +282,7 @@ class _OtpScreenState extends State<OtpScreen>
                   text: TextSpan(
                     style: AppText.regular(
                       fontSize: 14.5,
-                      color: AuthColors.inkMuted,
+                      color: c.inkMuted,
                     ).copyWith(height: 1.5, letterSpacing: 0.1),
                     children: [
                       TextSpan(text: words.authOtpSubtitle),
@@ -288,8 +290,8 @@ class _OtpScreenState extends State<OtpScreen>
                         text: auth.phoneController.text.isNotEmpty
                             ? '+993 ${auth.phoneController.text}'
                             : '+993 6X XX XX XX',
-                        style: const TextStyle(
-                          color: AuthColors.ink,
+                        style: TextStyle(
+                          color: c.ink,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -310,10 +312,10 @@ class _OtpScreenState extends State<OtpScreen>
                     child: Pinput(
                       length: 4,
                       controller: auth.otpController,
-                      defaultPinTheme: _defaultTheme,
-                      focusedPinTheme: _focusedTheme,
-                      submittedPinTheme: _submittedTheme,
-                      errorPinTheme: _errorTheme,
+                      defaultPinTheme: _defaultTheme(c),
+                      focusedPinTheme: _focusedTheme(c),
+                      submittedPinTheme: _submittedTheme(c),
+                      errorPinTheme: _errorTheme(c),
                       forceErrorState: _forceError,
                       separatorBuilder: (_) => const SizedBox(width: 12),
                       showCursor: true,
@@ -321,7 +323,7 @@ class _OtpScreenState extends State<OtpScreen>
                         width: 1.5,
                         height: 26,
                         decoration: BoxDecoration(
-                          color: AuthColors.ink,
+                          color: c.ink,
                           borderRadius: BorderRadius.circular(1),
                         ),
                       ),
@@ -386,22 +388,23 @@ class _SubtleTimer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
+    final c = AppColors.of(context);
     final mm = '0:${seconds.toString().padLeft(2, '0')}';
 
     return RichText(
       text: TextSpan(
         style: AppText.regular(
           fontSize: 13.5,
-          color: AuthColors.inkSoft,
+          color: c.inkSoft,
         ).copyWith(height: 1.4, letterSpacing: 0.1),
         children: [
           TextSpan(text: words.authOtpResendInPrefix),
           TextSpan(
             text: mm,
-            style: const TextStyle(
-              color: AuthColors.ink,
+            style: TextStyle(
+              color: c.ink,
               fontWeight: FontWeight.w600,
-              fontFeatures: [FontFeature.tabularFigures()],
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
@@ -417,6 +420,7 @@ class _ResendLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
+    final c = AppColors.of(context);
 
     return GestureDetector(
       onTap: onPressed,
@@ -427,10 +431,10 @@ class _ResendLink extends StatelessWidget {
           words.authOtpResendLink,
           style: AppText.semiBold(
             fontSize: 13.5,
-            color: AuthColors.ink,
+            color: c.ink,
           ).copyWith(
             decoration: TextDecoration.underline,
-            decorationColor: AuthColors.ink,
+            decorationColor: c.ink,
             decorationThickness: 1.2,
             letterSpacing: 0.1,
           ),

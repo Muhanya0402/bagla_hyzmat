@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -84,6 +84,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   }
 
   Widget _buildDebugEmpty(LevelProvider provider) {
+    final c = AppColors.of(context);
     final reason = provider.allLevels.isEmpty
         ? 'level_definitions пустой или нет прав доступа'
         : 'current_level_id не заполнен у курьера в Directus';
@@ -91,18 +92,18 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AuthColors.amberTint,
+        color: c.amberTint,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AuthColors.amber.withValues(alpha: 0.4)),
+        border: Border.all(color: c.amber.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AuthColors.amber, size: 20),
+          Icon(Icons.warning_amber_rounded, color: c.amber, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               reason,
-              style: AppText.medium(fontSize: 12, color: AuthColors.ink),
+              style: AppText.medium(fontSize: 12, color: c.ink),
             ),
           ),
         ],
@@ -111,6 +112,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   }
 
   Widget _buildCard(LevelProvider p, AppLocalizations w, bool isRu) {
+    final c = AppColors.of(context);
     final level = p.currentLevel!;
     final hasBonuses = level.bonuses.isNotEmpty;
 
@@ -131,9 +133,9 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: c.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AuthColors.border),
+            border: Border.all(color: c.border),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -148,16 +150,16 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                       height: 50,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AuthColors.amberTint,
+                        color: c.amberTint,
                         border: Border.all(
-                          color: AuthColors.amber.withValues(alpha: 0.35),
+                          color: c.amber.withValues(alpha: 0.35),
                           width: 1.5,
                         ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         '${level.levelNumber}',
-                        style: AppText.semiBold(fontSize: 22, color: AuthColors.amber),
+                        style: AppText.semiBold(fontSize: 22, color: c.amber),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -172,7 +174,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                               Flexible(
                                 child: Text(
                                   level.title(isRu),
-                                  style: AppText.serif(fontSize: 15, color: AuthColors.ink),
+                                  style: AppText.serif(fontSize: 15, color: c.ink),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -183,17 +185,17 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AuthColors.amberTint,
+                                  color: c.amberTint,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: AuthColors.amber.withValues(alpha: 0.3),
+                                    color: c.amber.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Text(
                                   w.levelLabel.replaceAll('{n}', '${level.levelNumber}'),
                                   style: AppText.semiBold(
                                     fontSize: 10,
-                                    color: AuthColors.amber,
+                                    color: c.amber,
                                   ),
                                 ),
                               ),
@@ -208,14 +210,14 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                                   '${p.currentXp} XP',
                                   style: AppText.semiBold(
                                     fontSize: 11,
-                                    color: AuthColors.ink,
+                                    color: c.ink,
                                   ),
                                 ),
                                 Text(
                                   '${p.xpToNextLevel} XP',
                                   style: AppText.regular(
                                     fontSize: 10,
-                                    color: AuthColors.inkSoft,
+                                    color: c.inkSoft,
                                   ),
                                 ),
                               ],
@@ -226,10 +228,8 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                               child: LinearProgressIndicator(
                                 value: p.progressInLevel.clamp(0.0, 1.0),
                                 minHeight: 4,
-                                backgroundColor: AuthColors.amberTint,
-                                valueColor: const AlwaysStoppedAnimation(
-                                  AuthColors.amber,
-                                ),
+                                backgroundColor: c.amberTint,
+                                valueColor: AlwaysStoppedAnimation(c.amber),
                               ),
                             ),
                           ] else
@@ -237,7 +237,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                               w.levelMaxReached,
                               style: AppText.semiBold(
                                 fontSize: 11,
-                                color: AuthColors.emerald,
+                                color: c.emerald,
                               ),
                             ),
                         ],
@@ -251,10 +251,10 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                         turns: _expanded ? 0.5 : 0.0,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.fastOutSlowIn,
-                        child: const Icon(
+                        child: Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 20,
-                          color: AuthColors.inkSoft,
+                          color: c.inkSoft,
                         ),
                       ),
                     ],
@@ -268,7 +268,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.fastOutSlowIn,
                   child: _expanded
-                      ? _buildExpandedContent(level.bonuses, isRu)
+                      ? _buildExpandedContent(level.bonuses, isRu, c)
                       : const SizedBox.shrink(),
                 ),
             ],
@@ -278,11 +278,11 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
     );
   }
 
-  Widget _buildExpandedContent(List bonuses, bool isRu) {
+  Widget _buildExpandedContent(List bonuses, bool isRu, AppColors c) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(height: 0.5, color: AuthColors.borderSoft),
+        Container(height: 0.5, color: c.borderSoft),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
           child: Column(
@@ -298,7 +298,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                       height: 30,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isToken ? AuthColors.amberTint : AuthColors.emeraldTint,
+                        color: isToken ? c.amberTint : c.emeraldTint,
                       ),
                       alignment: Alignment.center,
                       child: Text(b.icon, style: const TextStyle(fontSize: 14)),
@@ -307,7 +307,7 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
                     Expanded(
                       child: Text(
                         isRu ? b.labelRu : b.labelTk,
-                        style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+                        style: AppText.regular(fontSize: 13, color: c.inkMuted),
                       ),
                     ),
                   ],
@@ -321,11 +321,12 @@ class _LevelCardWidgetState extends State<LevelCardWidget> {
   }
 
   Widget _buildSkeleton() {
+    final c = AppColors.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       height: 78,
       decoration: BoxDecoration(
-        color: AuthColors.borderSoft,
+        color: c.borderSoft,
         borderRadius: BorderRadius.circular(16),
       ),
     );
@@ -425,6 +426,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final lang = context.read<LanguageProvider>();
     final w = lang.words;
 
@@ -444,11 +446,11 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
               margin: const EdgeInsets.symmetric(horizontal: 28),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: AuthColors.surface,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: AuthColors.amber.withValues(alpha: 0.22),
+                    color: c.amber.withValues(alpha: 0.22),
                     blurRadius: 40,
                     offset: const Offset(0, 12),
                   ),
@@ -459,13 +461,13 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                 children: [
                   Text(
                     w.levelNewLevel,
-                    style: AppText.bold(fontSize: 11, color: AuthColors.amber)
+                    style: AppText.bold(fontSize: 11, color: c.amber)
                         .copyWith(letterSpacing: 2),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${widget.levelIcon} ${widget.levelTitle}',
-                    style: AppText.serif(fontSize: 22, color: AuthColors.ink),
+                    style: AppText.serif(fontSize: 22, color: c.ink),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -477,12 +479,12 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: AuthColors.bg,
+                      color: c.bg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       w.levelXpEarned.replaceAll('{n}', '${widget.xpEarned}'),
-                      style: AppText.semiBold(fontSize: 13, color: AuthColors.ink),
+                      style: AppText.semiBold(fontSize: 13, color: c.ink),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -495,20 +497,20 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: AuthColors.amberTint,
+                      color: c.amberTint,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: AuthColors.amber.withValues(alpha: 0.3),
+                        color: c.amber.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.bolt_rounded, color: AuthColors.amber, size: 18),
+                        Icon(Icons.bolt_rounded, color: c.amber, size: 18),
                         const SizedBox(width: 8),
                         Text(
                           w.levelNowDaily.replaceAll('{n}', '${widget.dailyBonus}'),
-                          style: AppText.bold(fontSize: 14, color: AuthColors.ink),
+                          style: AppText.bold(fontSize: 14, color: c.ink),
                         ),
                       ],
                     ),
@@ -516,17 +518,17 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                   const SizedBox(height: 6),
                   Text(
                     w.levelTokensAuto,
-                    style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+                    style: AppText.regular(fontSize: 11, color: c.inkSoft),
                   ),
 
                   // Bonuses
                   if (widget.bonuses.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Container(height: 0.5, color: AuthColors.borderSoft),
+                    Container(height: 0.5, color: c.borderSoft),
                     const SizedBox(height: 8),
                     Text(
                       w.levelNewBonuses,
-                      style: AppText.regular(fontSize: 12, color: AuthColors.inkMuted),
+                      style: AppText.regular(fontSize: 12, color: c.inkMuted),
                     ),
                     const SizedBox(height: 8),
                     ...widget.bonuses.take(3).map(
@@ -541,7 +543,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                               b.labelRu,
                               style: AppText.semiBold(
                                 fontSize: 13,
-                                color: AuthColors.ink,
+                                color: c.ink,
                               ),
                             ),
                           ],
@@ -558,7 +560,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                     height: 52,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: AuthColors.ink,
+                        color: c.ink,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: ElevatedButton(
@@ -605,15 +607,16 @@ class _LevelDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final current = provider.currentLevel;
     if (current == null) return const SizedBox.shrink();
 
     return Material(
       color: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
-          color: AuthColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -625,7 +628,7 @@ class _LevelDetailsSheet extends StatelessWidget {
                   width: 32,
                   height: 3.5,
                   decoration: BoxDecoration(
-                    color: AuthColors.border,
+                    color: c.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -642,16 +645,16 @@ class _LevelDetailsSheet extends StatelessWidget {
                       height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AuthColors.amberTint,
+                        color: c.amberTint,
                         border: Border.all(
-                          color: AuthColors.amber.withValues(alpha: 0.35),
+                          color: c.amber.withValues(alpha: 0.35),
                           width: 1.5,
                         ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         '${current.levelNumber}',
-                        style: AppText.semiBold(fontSize: 22, color: AuthColors.amber),
+                        style: AppText.semiBold(fontSize: 22, color: c.amber),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -661,14 +664,14 @@ class _LevelDetailsSheet extends StatelessWidget {
                         children: [
                           Text(
                             current.title(isRu),
-                            style: AppText.serif(fontSize: 18, color: AuthColors.ink),
+                            style: AppText.serif(fontSize: 18, color: c.ink),
                           ),
                           const SizedBox(height: 3),
                           Text(
                             w.levelLabel.replaceAll('{n}', '${current.levelNumber}'),
                             style: AppText.medium(
                               fontSize: 12,
-                              color: AuthColors.inkMuted,
+                              color: c.inkMuted,
                             ),
                           ),
                         ],
@@ -679,11 +682,11 @@ class _LevelDetailsSheet extends StatelessWidget {
                       children: [
                         Text(
                           '${provider.currentXp}',
-                          style: AppText.bold(fontSize: 20, color: AuthColors.ink),
+                          style: AppText.bold(fontSize: 20, color: c.ink),
                         ),
                         Text(
                           'XP',
-                          style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+                          style: AppText.regular(fontSize: 11, color: c.inkSoft),
                         ),
                       ],
                     ),
@@ -705,14 +708,14 @@ class _LevelDetailsSheet extends StatelessWidget {
                             w.levelToNextShort,
                             style: AppText.regular(
                               fontSize: 12,
-                              color: AuthColors.inkMuted,
+                              color: c.inkMuted,
                             ),
                           ),
                           Text(
                             '${provider.xpToNextLevel} XP',
                             style: AppText.semiBold(
                               fontSize: 12,
-                              color: AuthColors.amber,
+                              color: c.amber,
                             ),
                           ),
                         ],
@@ -723,8 +726,8 @@ class _LevelDetailsSheet extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: provider.progressInLevel,
                           minHeight: 8,
-                          backgroundColor: AuthColors.amberTint,
-                          valueColor: const AlwaysStoppedAnimation(AuthColors.amber),
+                          backgroundColor: c.amberTint,
+                          valueColor: AlwaysStoppedAnimation(c.amber),
                         ),
                       ),
                     ],
@@ -739,9 +742,9 @@ class _LevelDetailsSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AuthColors.bg,
+                    color: c.bg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AuthColors.border),
+                    border: Border.all(color: c.border),
                   ),
                   child: Column(
                     children: [
@@ -749,25 +752,25 @@ class _LevelDetailsSheet extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                         child: Row(
                           children: [
-                            const Icon(Icons.bolt_rounded, color: AuthColors.amber, size: 16),
+                            Icon(Icons.bolt_rounded, color: c.amber, size: 16),
                             const SizedBox(width: 8),
                             Text(
                               w.levelBonusHeader,
-                              style: AppText.bold(fontSize: 10, color: AuthColors.inkSoft)
+                              style: AppText.bold(fontSize: 10, color: c.inkSoft)
                                   .copyWith(letterSpacing: 0.8),
                             ),
                           ],
                         ),
                       ),
-                      Container(height: 0.5, color: AuthColors.border),
+                      Container(height: 0.5, color: c.border),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: Text(
                           w.levelTokensAuto,
-                          style: AppText.medium(fontSize: 13, color: AuthColors.ink),
+                          style: AppText.medium(fontSize: 13, color: c.ink),
                         ),
                       ),
-                      Container(height: 0.5, color: AuthColors.border),
+                      Container(height: 0.5, color: c.border),
                       ...List.generate(provider.allLevels.length, (i) {
                         final l = provider.allLevels[i];
                         final bonus = l.dailyTokens;
@@ -776,9 +779,9 @@ class _LevelDetailsSheet extends StatelessWidget {
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (i > 0) Container(height: 0.5, color: AuthColors.borderSoft),
+                            if (i > 0) Container(height: 0.5, color: c.borderSoft),
                             Container(
-                              color: isCurrent ? AuthColors.amberTint : Colors.transparent,
+                              color: isCurrent ? c.amberTint : Colors.transparent,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -792,8 +795,8 @@ class _LevelDetailsSheet extends StatelessWidget {
                                           : Icons.lock_outline_rounded,
                                       size: 14,
                                       color: isUnlocked
-                                          ? AuthColors.emerald
-                                          : AuthColors.inkSoft,
+                                          ? c.emerald
+                                          : c.inkSoft,
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
@@ -807,20 +810,20 @@ class _LevelDetailsSheet extends StatelessWidget {
                                             style: isCurrent
                                                 ? AppText.semiBold(
                                                     fontSize: 13,
-                                                    color: AuthColors.amber,
+                                                    color: c.amber,
                                                   )
                                                 : AppText.regular(
                                                     fontSize: 13,
                                                     color: isUnlocked
-                                                        ? AuthColors.ink
-                                                        : AuthColors.inkSoft,
+                                                        ? c.ink
+                                                        : c.inkSoft,
                                                   ),
                                           ),
                                           Text(
                                             w.levelFromXp.replaceAll('{n}', '${l.xpRequired}'),
                                             style: AppText.regular(
                                               fontSize: 10,
-                                              color: AuthColors.inkSoft,
+                                              color: c.inkSoft,
                                             ),
                                           ),
                                         ],
@@ -833,10 +836,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                                       ),
                                       decoration: BoxDecoration(
                                         color: isCurrent
-                                            ? AuthColors.amber.withValues(alpha: 0.12)
+                                            ? c.amber.withValues(alpha: 0.12)
                                             : isUnlocked
-                                            ? AuthColors.emeraldTint
-                                            : AuthColors.borderSoft,
+                                            ? c.emeraldTint
+                                            : c.borderSoft,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
@@ -844,10 +847,10 @@ class _LevelDetailsSheet extends StatelessWidget {
                                         style: AppText.semiBold(
                                           fontSize: 12,
                                           color: isCurrent
-                                              ? AuthColors.amber
+                                              ? c.amber
                                               : isUnlocked
-                                              ? AuthColors.emerald
-                                              : AuthColors.inkSoft,
+                                              ? c.emerald
+                                              : c.inkSoft,
                                         ),
                                       ),
                                     ),
@@ -863,7 +866,77 @@ class _LevelDetailsSheet extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(height: 20),
+
+              // ── Support link ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: _SupportRow(isRu: isRu),
+              ),
+
               const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Support row ──────────────────────────────────────────────────────────────
+
+class _SupportRow extends StatefulWidget {
+  final bool isRu;
+  const _SupportRow({required this.isRu});
+
+  @override
+  State<_SupportRow> createState() => _SupportRowState();
+}
+
+class _SupportRowState extends State<_SupportRow> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        Navigator.pop(context);
+        Navigator.pushNamed(context, '/appeals');
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedOpacity(
+        opacity: _pressed ? 0.55 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: c.bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: c.border),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.headset_mic_outlined,
+                size: 16,
+                color: c.inkSoft,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.isRu ? 'Связаться с поддержкой' : 'Goldaw bilen habarlaşmak',
+                  style: AppText.medium(fontSize: 13, color: c.ink),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 11,
+                color: c.inkSoft,
+              ),
             ],
           ),
         ),
@@ -886,13 +959,13 @@ class _Particle {
       speedX = (rng.nextDouble() - 0.5) * 0.25,
       size = 5 + rng.nextDouble() * 7,
       rotation = rng.nextDouble() * pi * 2,
-      color = [
-        AuthColors.amber,
-        AuthColors.emerald,
-        const Color(0xFFD32F1E),
-        const Color(0xFF3498DB),
-        const Color(0xFF9B59B6),
-        const Color(0xFFE67E22),
+      color = const [
+        Color(0xFFD4876A),
+        Color(0xFF3E7C38),
+        Color(0xFFD32F1E),
+        Color(0xFF3498DB),
+        Color(0xFF9B59B6),
+        Color(0xFFE67E22),
       ][rng.nextInt(6)];
 }
 

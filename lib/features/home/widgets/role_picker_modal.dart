@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -13,8 +13,8 @@ class RolePickerEmbedded extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AuthColors.bg,
+      decoration: BoxDecoration(
+        color: AppColors.of(context).bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -29,7 +29,7 @@ class RolePickerEmbedded extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AuthColors.border,
+                color: AppColors.of(context).border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -39,12 +39,12 @@ class RolePickerEmbedded extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: AuthColors.emeraldTint,
+                color: AppColors.of(context).emeraldTint,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.swap_horiz_rounded,
-                color: AuthColors.emerald,
+                color: AppColors.of(context).emerald,
                 size: 26,
               ),
             ),
@@ -57,7 +57,10 @@ class RolePickerEmbedded extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Выберите роль, чтобы продолжить',
-              style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+              style: AppText.regular(
+                fontSize: 13,
+                color: AppColors.of(context).inkMuted,
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -84,8 +87,7 @@ class RolePickerEmbedded extends StatelessWidget {
               onTap: () => Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      const RegistrationDetailsScreen(role: 'shop'),
+                  builder: (_) => const RegistrationDetailsScreen(role: 'shop'),
                 ),
               ),
             ),
@@ -137,12 +139,12 @@ class _RoleOptionState extends State<_RoleOption> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AuthColors.borderSoft),
+            border: Border.all(color: AppColors.of(context).borderSoft),
             boxShadow: [
               BoxShadow(
-                color: AuthColors.ink.withValues(alpha: 0.04),
+                color: AppColors.of(context).ink.withValues(alpha: 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -154,12 +156,12 @@ class _RoleOptionState extends State<_RoleOption> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AuthColors.emeraldTint,
+                  color: AppColors.of(context).emeraldTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   widget.icon,
-                  color: AuthColors.emerald,
+                  color: AppColors.of(context).emerald,
                   size: 20,
                 ),
               ),
@@ -172,7 +174,7 @@ class _RoleOptionState extends State<_RoleOption> {
                       widget.title,
                       style: AppText.semiBold(
                         fontSize: 14,
-                        color: AuthColors.ink,
+                        color: AppColors.of(context).ink,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -180,16 +182,16 @@ class _RoleOptionState extends State<_RoleOption> {
                       widget.description,
                       style: AppText.regular(
                         fontSize: 12,
-                        color: AuthColors.inkMuted,
+                        color: AppColors.of(context).inkMuted,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 12,
-                color: AuthColors.inkSoft,
+                color: AppColors.of(context).inkSoft,
               ),
             ],
           ),

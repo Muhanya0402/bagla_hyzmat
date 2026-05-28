@@ -2,18 +2,79 @@ import 'dart:ui';
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_settings_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/theme/theme_toggle_button.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/language_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen>
+    with AppTourMixin<ProfileScreen> {
+  final _topCardKey = GlobalKey();
+  final _tokensKey  = GlobalKey();
+  final _menuKey    = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    startTourIfNeeded(
+      screenKey: TourKeys.profile,
+      targetsBuilder: _buildTourTargets,
+    );
+  }
+
+  List<TargetFocus> _buildTourTargets() {
+    final lang    = context.read<LanguageProvider>();
+    final auth    = context.read<AuthProvider>();
+    final targets = <TargetFocus>[
+      TourTarget.build(
+        key: _topCardKey,
+        titleRu: 'Ваш профиль',
+        titleTk: 'Siziň profiliniz',
+        bodyRu:  'Здесь отображается ваш статус, имя и роль в системе.',
+        bodyTk:  'Bu ýerde siziň ýagdaýyňyz, adyňyz we sistemadaky roluňyz görkezilýär.',
+        isRu: lang.isRu,
+        align: ContentAlign.bottom,
+      ),
+    ];
+    if (auth.role == 'courier') {
+      targets.add(TourTarget.build(
+        key: _tokensKey,
+        titleRu: 'Мои жетоны',
+        titleTk: 'Meniň žetonlarym',
+        bodyRu:  'Жетоны списываются при принятии заказа. Здесь можно пополнить баланс.',
+        bodyTk:  'Sargyt kabul edilende žetonlar hasapdan çykarylýar. Bu ýerde balans doldurylýar.',
+        isRu: lang.isRu,
+        align: ContentAlign.bottom,
+      ));
+    }
+    targets.add(TourTarget.build(
+      key: _menuKey,
+      titleRu: 'Меню',
+      titleTk: 'Menýu',
+      bodyRu:  'Обращения в поддержку, условия использования и другие настройки.',
+      bodyTk:  'Goldaw ýüztutmalary, ulanylyş şertleri we beýleki sazlamalar.',
+      isRu: lang.isRu,
+      align: ContentAlign.top,
+    ));
+    return targets;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +82,7 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final settings = context.watch<AppSettingsProvider>();
     final words = lang.words;
+    final c = AppColors.of(context);
 
     final String fullName = (auth.name.isEmpty && auth.surname.isEmpty)
         ? words.user
@@ -33,11 +95,11 @@ class ProfileScreen extends StatelessWidget {
         isClient && auth.status.toLowerCase() == 'published';
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       appBar: _buildAppBar(context, lang),
       body: RefreshIndicator(
-        color: AuthColors.emerald,
-        backgroundColor: Colors.white,
+        color: c.emerald,
+        backgroundColor: c.surface,
         onRefresh: () => Future.wait([
           auth.refreshProfile(),
           context.read<AppSettingsProvider>().load(),
@@ -48,6 +110,7 @@ class ProfileScreen extends StatelessWidget {
             // ── Top card: avatar + name + level (courier) ──────────────────
             SliverToBoxAdapter(
               child: Padding(
+                key: _topCardKey,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _ProfileTopCard(
                   auth: auth,
@@ -73,6 +136,7 @@ class ProfileScreen extends StatelessWidget {
             if (isCourier)
               SliverToBoxAdapter(
                 child: Padding(
+                  key: _tokensKey,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: _PointsCard(
                     balance: auth.balancePoints.toDouble(),
@@ -84,6 +148,7 @@ class ProfileScreen extends StatelessWidget {
             // ── Menu ───────────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
+                key: _menuKey,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _buildMenu(
                   context: context,
@@ -113,48 +178,51 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ── AppBar ──────────────────────────────────────────────────────────────────
-  AppBar _buildAppBar(BuildContext context, LanguageProvider lang) => AppBar(
-    backgroundColor: AuthColors.bg,
-    elevation: 0,
-    centerTitle: false,
-    automaticallyImplyLeading: false,
-    title: Text(
-      'Профиль',
-      style: AppText.serif(fontSize: 18, color: AuthColors.ink),
-    ),
-    actions: [
-      GestureDetector(
-        onTap: lang.toggleLanguage,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          decoration: BoxDecoration(
-            color: AuthColors.bg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AuthColors.border),
-          ),
-          child: Text(
-            lang.label,
-            style: AppText.semiBold(fontSize: 12, color: AuthColors.inkMuted),
+  AppBar _buildAppBar(BuildContext context, LanguageProvider lang) {
+    final c = AppColors.of(context);
+    return AppBar(
+      backgroundColor: c.bg,
+      elevation: 0,
+      centerTitle: false,
+      automaticallyImplyLeading: false,
+      title: Text(
+        'Профиль',
+        style: AppText.serif(fontSize: 18, color: c.ink),
+      ),
+      actions: [
+        GestureDetector(
+          onTap: lang.toggleLanguage,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: c.bg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: c.border),
+            ),
+            child: Text(
+              lang.label,
+              style: AppText.semiBold(fontSize: 12, color: c.inkMuted),
+            ),
           ),
         ),
-      ),
-      const SizedBox(width: 8),
-      GestureDetector(
-        onTap: () => _showLogoutConfirm(context),
-        child: Padding(
-          padding: const EdgeInsets.only(right: 16, left: 4),
-          child: Text(
-            'Выйти',
-            style: AppText.medium(fontSize: 13, color: AuthColors.errorMuted),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => _showLogoutConfirm(context),
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16, left: 4),
+            child: Text(
+              'Выйти',
+              style: AppText.medium(fontSize: 13, color: c.errorMuted),
+            ),
           ),
         ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(0.5),
+        child: Container(height: 0.5, color: c.border),
       ),
-    ],
-    bottom: PreferredSize(
-      preferredSize: const Size.fromHeight(0.5),
-      child: Container(height: 0.5, color: AuthColors.border),
-    ),
-  );
+    );
+  }
 
   // ── Menu ────────────────────────────────────────────────────────────────────
   Widget _buildMenu({
@@ -165,6 +233,7 @@ class ProfileScreen extends StatelessWidget {
     required bool isShop,
     required String supportPhone,
   }) {
+    final c = AppColors.of(context);
     final items = <Widget>[];
 
     items.add(_MenuTile(
@@ -174,11 +243,11 @@ class ProfileScreen extends StatelessWidget {
     ));
 
     if (isShop || (isCourier && auth.status != 'published')) {
-      items.add(const Divider(
+      items.add(Divider(
         height: 1,
         thickness: 0.8,
         indent: 52,
-        color: AuthColors.borderSoft,
+        color: c.borderSoft,
       ));
       items.add(_MenuTile(
         icon: Icons.description_outlined,
@@ -187,11 +256,11 @@ class ProfileScreen extends StatelessWidget {
       ));
     }
 
-    items.add(const Divider(
+    items.add(Divider(
       height: 1,
       thickness: 0.8,
       indent: 52,
-      color: AuthColors.borderSoft,
+      color: c.borderSoft,
     ));
     items.add(_MenuTile(
       icon: Icons.headset_mic_outlined,
@@ -199,11 +268,19 @@ class ProfileScreen extends StatelessWidget {
       onTap: () => _showSupportModal(context, supportPhone),
     ));
 
+    items.add(Divider(
+      height: 1,
+      thickness: 0.8,
+      indent: 52,
+      color: c.borderSoft,
+    ));
+    items.add(const ThemeToggleTile());
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: c.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: c.border),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
@@ -257,8 +334,6 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
-    // Capture navigator ref BEFORE the async gap — context may be deactivated
-    // after logout() calls notifyListeners() and rebuilds the widget tree.
     final navigator = Navigator.of(context, rootNavigator: true);
     await context.read<AuthProvider>().logout();
     navigator.pushNamedAndRemoveUntil('/login', (r) => false);
@@ -321,36 +396,36 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
     }
   }
 
-  _StatusCfg _cfg(String s) {
+  _StatusCfg _cfg(String s, AppColors c) {
     switch (s.toLowerCase()) {
       case 'active':
         return _StatusCfg(
-          color: AuthColors.emerald,
-          bg: AuthColors.emeraldTint,
+          color: c.emerald,
+          bg: c.emeraldTint,
           label: 'Активен',
         );
       case 'pending':
         return _StatusCfg(
-          color: AuthColors.amber,
-          bg: AuthColors.amberTint,
+          color: c.amber,
+          bg: c.amberTint,
           label: 'Проверка',
         );
       case 'banned':
         return _StatusCfg(
-          color: AuthColors.errorMuted,
-          bg: AuthColors.errorTint,
+          color: c.errorMuted,
+          bg: c.errorTint,
           label: 'Блок',
         );
       case 'published':
         return _StatusCfg(
-          color: AuthColors.inkMuted,
-          bg: AuthColors.borderSoft,
+          color: c.inkMuted,
+          bg: c.borderSoft,
           label: 'Новый',
         );
       default:
         return _StatusCfg(
-          color: AuthColors.inkSoft,
-          bg: AuthColors.bg,
+          color: c.inkSoft,
+          bg: c.bg,
           label: s,
         );
     }
@@ -358,14 +433,15 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
 
   @override
   Widget build(BuildContext context) {
-    final cfg = _cfg(widget.auth.status);
+    final c = AppColors.of(context);
+    final cfg = _cfg(widget.auth.status, c);
     final lang = context.watch<LanguageProvider>();
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: c.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: c.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,8 +465,8 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                       ),
                       padding: const EdgeInsets.all(3),
                       child: Container(
-                        decoration: const BoxDecoration(
-                          color: AuthColors.emerald,
+                        decoration: BoxDecoration(
+                          color: c.emerald,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -419,7 +495,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                         decoration: BoxDecoration(
                           color: cfg.bg,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white, width: 1.5),
+                          border: Border.all(color: c.surface, width: 1.5),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -465,7 +541,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                               widget.fullName,
                               style: AppText.serif(
                                 fontSize: 17,
-                                color: AuthColors.ink,
+                                color: c.ink,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -477,14 +553,14 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AuthColors.emeraldTint,
+                              color: c.emeraldTint,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               _roleLabel,
                               style: AppText.semiBold(
                                 fontSize: 10,
-                                color: AuthColors.emerald,
+                                color: c.emerald,
                               ),
                             ),
                           ),
@@ -493,10 +569,10 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                       const SizedBox(height: 5),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.phone_outlined,
                             size: 11,
-                            color: AuthColors.inkSoft,
+                            color: c.inkSoft,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -505,7 +581,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                                 : '+993 ...',
                             style: AppText.regular(
                               fontSize: 12,
-                              color: AuthColors.inkSoft,
+                              color: c.inkSoft,
                             ),
                           ),
                         ],
@@ -521,13 +597,14 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
           if (widget.isCourier)
             Consumer<LevelProvider>(
               builder: (_, lp, _) {
+                final c = AppColors.of(context);
                 if (lp.isLoading || lp.currentLevel == null) {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                     child: Container(
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AuthColors.borderSoft,
+                        color: c.borderSoft,
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -547,10 +624,10 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                   ),
                   child: Column(
                     children: [
-                      const Divider(
+                      Divider(
                         height: 1,
                         thickness: 0.8,
-                        color: AuthColors.borderSoft,
+                        color: c.borderSoft,
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
@@ -559,17 +636,17 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                           children: [
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.emoji_events_outlined,
                                   size: 13,
-                                  color: AuthColors.amber,
+                                  color: c.amber,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   '${level.title(lang.isRu)}  •  Ур. ${level.levelNumber}',
                                   style: AppText.medium(
                                     fontSize: 12,
-                                    color: AuthColors.inkMuted,
+                                    color: c.inkMuted,
                                   ),
                                 ),
                                 const Spacer(),
@@ -579,7 +656,7 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                                       : '${lp.currentXp} XP',
                                   style: AppText.semiBold(
                                     fontSize: 11,
-                                    color: AuthColors.ink,
+                                    color: c.ink,
                                   ),
                                 ),
                               ],
@@ -590,10 +667,8 @@ class _ProfileTopCardState extends State<_ProfileTopCard> {
                               child: LinearProgressIndicator(
                                 value: progress,
                                 minHeight: 4,
-                                backgroundColor: AuthColors.amberTint,
-                                valueColor: const AlwaysStoppedAnimation(
-                                  AuthColors.amber,
-                                ),
+                                backgroundColor: c.amberTint,
+                                valueColor: AlwaysStoppedAnimation(c.amber),
                               ),
                             ),
                           ],
@@ -680,12 +755,13 @@ class _PointsCardState extends State<_PointsCard> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AuthColors.amberTint,
+        color: c.amberTint,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AuthColors.amber.withValues(alpha: 0.25)),
+        border: Border.all(color: c.amber.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,12 +774,12 @@ class _PointsCardState extends State<_PointsCard> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AuthColors.amber.withValues(alpha: 0.15),
+                  color: c.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.toll_rounded,
-                  color: AuthColors.amber,
+                  color: c.amber,
                   size: 20,
                 ),
               ),
@@ -716,7 +792,7 @@ class _PointsCardState extends State<_PointsCard> {
                       'Мои жетоны',
                       style: AppText.regular(
                         fontSize: 11,
-                        color: AuthColors.inkMuted,
+                        color: c.inkMuted,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -724,7 +800,7 @@ class _PointsCardState extends State<_PointsCard> {
                       widget.balance.toStringAsFixed(2),
                       style: AppText.bold(
                         fontSize: 22,
-                        color: AuthColors.ink,
+                        color: c.ink,
                       ).copyWith(letterSpacing: -0.5, height: 1.1),
                     ),
                   ],
@@ -749,26 +825,26 @@ class _PointsCardState extends State<_PointsCard> {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: AuthColors.emeraldTint,
+                      color: c.emeraldTint,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: AuthColors.emerald.withValues(alpha: 0.3),
+                        color: c.emerald.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.add_rounded,
                           size: 14,
-                          color: AuthColors.emerald,
+                          color: c.emerald,
                         ),
                         const SizedBox(width: 5),
                         Text(
                           'Пополнить',
                           style: AppText.semiBold(
                             fontSize: 12,
-                            color: AuthColors.emerald,
+                            color: c.emerald,
                           ),
                         ),
                       ],
@@ -782,17 +858,17 @@ class _PointsCardState extends State<_PointsCard> {
           // Hint
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.info_outline_rounded,
                 size: 11,
-                color: AuthColors.inkSoft,
+                color: c.inkSoft,
               ),
               const SizedBox(width: 5),
               Text(
                 'Жетоны списываются только при взятии заказа',
                 style: AppText.regular(
                   fontSize: 11,
-                  color: AuthColors.inkSoft,
+                  color: c.inkSoft,
                 ),
               ),
             ],
@@ -817,6 +893,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -832,10 +909,10 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: AuthColors.amberTint,
+            color: c.amberTint,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: AuthColors.amber.withValues(alpha: 0.25),
+              color: c.amber.withValues(alpha: 0.25),
             ),
           ),
           child: Row(
@@ -844,7 +921,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -862,7 +939,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                       'Выберите вашу роль',
                       style: AppText.semiBold(
                         fontSize: 13,
-                        color: AuthColors.ink,
+                        color: c.ink,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -870,7 +947,7 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                       'Станьте курьером или заказчиком',
                       style: AppText.regular(
                         fontSize: 11,
-                        color: AuthColors.inkMuted,
+                        color: c.inkMuted,
                       ),
                     ),
                   ],
@@ -881,13 +958,13 @@ class _RoleSelectionCardState extends State<_RoleSelectionCard> {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: AuthColors.emeraldTint,
+                  color: c.emeraldTint,
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 12,
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                 ),
               ),
             ],
@@ -919,6 +996,7 @@ class _MenuTileState extends State<_MenuTile> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -930,7 +1008,7 @@ class _MenuTileState extends State<_MenuTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         color: _pressed
-            ? AuthColors.emeraldTint.withValues(alpha: 0.6)
+            ? c.emeraldTint.withValues(alpha: 0.6)
             : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
@@ -939,22 +1017,22 @@ class _MenuTileState extends State<_MenuTile> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AuthColors.borderSoft,
+                color: c.borderSoft,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(widget.icon, size: 16, color: AuthColors.inkMuted),
+              child: Icon(widget.icon, size: 16, color: c.inkMuted),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 widget.title,
-                style: AppText.medium(fontSize: 14, color: AuthColors.ink),
+                style: AppText.medium(fontSize: 14, color: c.ink),
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
               size: 18,
-              color: AuthColors.inkSoft,
+              color: c.inkSoft,
             ),
           ],
         ),
@@ -971,25 +1049,26 @@ class _FooterSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Column(
       children: [
         Text(
           companyName.toUpperCase(),
           style: AppText.semiBold(
             fontSize: 11,
-            color: AuthColors.inkMuted,
+            color: c.inkMuted,
           ).copyWith(letterSpacing: 1.5),
         ),
         const SizedBox(height: 5),
         Text(
           '© 2024–2026. Все права защищены.',
-          style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+          style: AppText.regular(fontSize: 11, color: c.inkSoft),
         ),
         if (appVersion.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             'Версия $appVersion',
-            style: AppText.regular(fontSize: 10, color: AuthColors.border),
+            style: AppText.regular(fontSize: 10, color: c.border),
           ),
         ],
       ],
@@ -1032,9 +1111,12 @@ class _SupportModalState extends State<_SupportModal> {
       _focus.requestFocus();
       return;
     }
+    // Capture colors before async gap
+    final c = AppColors.of(context);
+    final auth = context.read<AuthProvider>();
+
     setState(() => _isLoading = true);
     try {
-      final auth = context.read<AuthProvider>();
       await ApiClient().dio.post(
         '/items/appeals',
         data: {
@@ -1053,7 +1135,7 @@ class _SupportModalState extends State<_SupportModal> {
             'Сообщение отправлено',
             style: AppText.medium(fontSize: 13, color: Colors.white),
           ),
-          backgroundColor: AuthColors.emerald,
+          backgroundColor: c.emerald,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1068,7 +1150,7 @@ class _SupportModalState extends State<_SupportModal> {
             'Ошибка отправки. Попробуйте позже.',
             style: AppText.medium(fontSize: 13, color: Colors.white),
           ),
-          backgroundColor: AuthColors.errorMuted,
+          backgroundColor: c.errorMuted,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1082,15 +1164,16 @@ class _SupportModalState extends State<_SupportModal> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Material(
       color: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
-          color: AuthColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: EdgeInsets.fromLTRB(
           20,
@@ -1108,7 +1191,7 @@ class _SupportModalState extends State<_SupportModal> {
                 width: 32,
                 height: 3.5,
                 decoration: BoxDecoration(
-                  color: AuthColors.border,
+                  color: c.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1122,12 +1205,12 @@ class _SupportModalState extends State<_SupportModal> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: AuthColors.emeraldTint,
+                    color: c.emeraldTint,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.headset_mic_outlined,
-                    color: AuthColors.emerald,
+                    color: c.emerald,
                     size: 18,
                   ),
                 ),
@@ -1140,14 +1223,14 @@ class _SupportModalState extends State<_SupportModal> {
                         'Служба поддержки',
                         style: AppText.serif(
                           fontSize: 17,
-                          color: AuthColors.ink,
+                          color: c.ink,
                         ),
                       ),
                       Text(
                         'Мы на связи и готовы помочь вам с любым вопросом',
                         style: AppText.regular(
                           fontSize: 11,
-                          color: AuthColors.inkMuted,
+                          color: c.inkMuted,
                         ),
                       ),
                     ],
@@ -1174,13 +1257,11 @@ class _SupportModalState extends State<_SupportModal> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: sel
-                          ? AuthColors.emeraldTint
-                          : AuthColors.borderSoft,
+                      color: sel ? c.emeraldTint : c.borderSoft,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: sel
-                            ? AuthColors.emerald.withValues(alpha: 0.35)
+                            ? c.emerald.withValues(alpha: 0.35)
                             : Colors.transparent,
                       ),
                     ),
@@ -1188,9 +1269,7 @@ class _SupportModalState extends State<_SupportModal> {
                       cat,
                       style: AppText.medium(
                         fontSize: 12,
-                        color: sel
-                            ? AuthColors.emerald
-                            : AuthColors.inkMuted,
+                        color: sel ? c.emerald : c.inkMuted,
                       ),
                     ),
                   ),
@@ -1207,28 +1286,28 @@ class _SupportModalState extends State<_SupportModal> {
               maxLines: 4,
               minLines: 3,
               textInputAction: TextInputAction.newline,
-              style: AppText.regular(fontSize: 14, color: AuthColors.ink),
+              style: AppText.regular(fontSize: 14, color: c.ink),
               decoration: InputDecoration(
                 hintText: 'Опишите ваш вопрос...',
                 hintStyle: AppText.regular(
                   fontSize: 14,
-                  color: AuthColors.inkSoft,
+                  color: c.inkSoft,
                 ),
                 filled: true,
-                fillColor: AuthColors.bg,
+                fillColor: c.bg,
                 contentPadding: const EdgeInsets.all(12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AuthColors.border),
+                  borderSide: BorderSide(color: c.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AuthColors.border),
+                  borderSide: BorderSide(color: c.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AuthColors.emerald,
+                  borderSide: BorderSide(
+                    color: c.emerald,
                     width: 1.5,
                   ),
                 ),
@@ -1246,12 +1325,12 @@ class _SupportModalState extends State<_SupportModal> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: AuthColors.borderSoft,
+                      color: c.borderSoft,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.call_outlined,
-                      color: AuthColors.inkMuted,
+                      color: c.inkMuted,
                       size: 18,
                     ),
                   ),
@@ -1289,6 +1368,7 @@ class _SendButtonState extends State<_SendButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -1306,14 +1386,14 @@ class _SendButtonState extends State<_SendButton> {
           height: 46,
           decoration: BoxDecoration(
             color: widget.isLoading
-                ? AuthColors.emerald.withValues(alpha: 0.5)
-                : AuthColors.emerald,
+                ? c.emerald.withValues(alpha: 0.5)
+                : c.emerald,
             borderRadius: BorderRadius.circular(12),
             boxShadow: widget.isLoading
                 ? null
                 : [
                     BoxShadow(
-                      color: AuthColors.emerald.withValues(alpha: 0.22),
+                      color: c.emerald.withValues(alpha: 0.22),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1369,18 +1449,19 @@ class _LogoutDialogState extends State<_LogoutDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Material(
       color: Colors.transparent,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 28),
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         decoration: BoxDecoration(
-          color: AuthColors.bg,
+          color: c.bg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AuthColors.border),
+          border: Border.all(color: c.border),
           boxShadow: [
             BoxShadow(
-              color: AuthColors.ink.withValues(alpha: 0.1),
+              color: c.ink.withValues(alpha: 0.1),
               blurRadius: 40,
               offset: const Offset(0, 10),
             ),
@@ -1393,13 +1474,13 @@ class _LogoutDialogState extends State<_LogoutDialog> {
             Container(
               width: 56,
               height: 56,
-              decoration: const BoxDecoration(
-                color: AuthColors.errorTint,
+              decoration: BoxDecoration(
+                color: c.errorTint,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.logout_rounded,
-                color: AuthColors.errorMuted,
+                color: c.errorMuted,
                 size: 24,
               ),
             ),
@@ -1408,7 +1489,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
             // Title
             Text(
               'Выйти из профиля?',
-              style: AppText.serif(fontSize: 19, color: AuthColors.ink),
+              style: AppText.serif(fontSize: 19, color: c.ink),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
@@ -1418,7 +1499,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
               'Вы сможете войти снова в любой момент, используя свой номер телефона. Все ваши данные, жетоны и уровень (XP) будут сохранены.',
               style: AppText.regular(
                 fontSize: 13,
-                color: AuthColors.inkMuted,
+                color: c.inkMuted,
               ).copyWith(height: 1.55),
               textAlign: TextAlign.center,
             ),
@@ -1445,7 +1526,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: AuthColors.borderSoft,
+                          color: c.borderSoft,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
@@ -1453,7 +1534,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                           'Остаться',
                           style: AppText.medium(
                             fontSize: 14,
-                            color: AuthColors.ink,
+                            color: c.ink,
                           ),
                         ),
                       ),
@@ -1481,7 +1562,7 @@ class _LogoutDialogState extends State<_LogoutDialog> {
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: AuthColors.errorMuted,
+                          color: c.errorMuted,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,

@@ -6,13 +6,11 @@ class AppText {
   static const String _font = 'Nunito';
   static const String _serifFont = 'Lora';
 
-  /// Editorial serif для крупных заголовков (Anthropic / Claude.ai look).
-  /// Используй для display-текстов экранов авторизации, hero-заголовков,
-  /// модалок. Body / UI должны оставаться на Nunito для читабельности.
+  /// Editorial serif для крупных заголовков.
   static TextStyle serif({
     double fontSize = 28,
     FontWeight fontWeight = FontWeight.w500,
-    Color color = const Color(0xFF191919),
+    Color? color,
     double height = 1.1,
     double letterSpacing = -0.5,
   }) => TextStyle(
@@ -26,7 +24,7 @@ class AppText {
 
   static TextStyle regular({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,
@@ -36,7 +34,7 @@ class AppText {
 
   static TextStyle medium({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,
@@ -46,7 +44,7 @@ class AppText {
 
   static TextStyle semiBold({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,
@@ -56,7 +54,7 @@ class AppText {
 
   static TextStyle bold({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,
@@ -66,7 +64,7 @@ class AppText {
 
   static TextStyle extraBold({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,
@@ -76,7 +74,7 @@ class AppText {
 
   static TextStyle display({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,
@@ -86,7 +84,7 @@ class AppText {
 
   static TextStyle mono({
     double fontSize = 14,
-    Color color = const Color(0xFF0F1117),
+    Color? color,
   }) => TextStyle(
     fontFamily: _font,
     fontSize: fontSize,

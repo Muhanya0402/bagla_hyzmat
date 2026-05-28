@@ -1,4 +1,5 @@
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/theme/theme_toggle_button.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -45,7 +46,6 @@ class _PhoneScreenState extends State<PhoneScreen>
         .chain(CurveTween(curve: Curves.elasticIn))
         .animate(_shakeCtrl);
 
-    // Стартуем с пустого поля — не подтягиваем номер из прошлой сессии.
     final ctrl = context.read<AuthProvider>().phoneController;
     ctrl.clear();
     ctrl.addListener(_onPhoneChanged);
@@ -91,9 +91,10 @@ class _PhoneScreenState extends State<PhoneScreen>
   }
 
   void _openCountryPicker(BuildContext ctx) {
+    final c = AppColors.of(ctx);
     showModalBottomSheet(
       context: ctx,
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -142,7 +143,6 @@ class _PhoneScreenState extends State<PhoneScreen>
         message: words.errNetwork,
       );
     } else {
-      // server отказал — показываем рядом с полем
       setState(() => _phoneError = words.errPhoneFormat);
       _shake();
     }
@@ -154,11 +154,12 @@ class _PhoneScreenState extends State<PhoneScreen>
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
     final isLoading = context.select<AuthProvider, bool>((a) => a.isLoading);
+    final c = AppColors.of(context);
 
     final hasPhoneError = _phoneError != null;
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: ConstrainedBox(
@@ -178,6 +179,8 @@ class _PhoneScreenState extends State<PhoneScreen>
                       isRu: lang.isRu,
                       onToggle: lang.toggleLanguage,
                     ),
+                    const SizedBox(width: 8),
+                    const ThemeToggleIcon(),
                   ],
                 ),
 
@@ -193,7 +196,7 @@ class _PhoneScreenState extends State<PhoneScreen>
                   words.authPhoneSubtitle,
                   style: AppText.regular(
                     fontSize: 14.5,
-                    color: AuthColors.inkMuted,
+                    color: c.inkMuted,
                   ).copyWith(height: 1.5, letterSpacing: 0.1),
                 ),
 
@@ -204,7 +207,7 @@ class _PhoneScreenState extends State<PhoneScreen>
                   words.authPhoneFieldLabel,
                   style: AppText.medium(
                     fontSize: 12,
-                    color: AuthColors.inkMuted,
+                    color: c.inkMuted,
                   ).copyWith(letterSpacing: 0.3),
                 ),
                 const SizedBox(height: 8),
@@ -265,7 +268,7 @@ class _PhoneScreenState extends State<PhoneScreen>
                     textAlign: TextAlign.center,
                     style: AppText.regular(
                       fontSize: 11.5,
-                      color: AuthColors.inkSoft,
+                      color: c.inkSoft,
                     ).copyWith(height: 1.4),
                   ),
                 ),
@@ -299,11 +302,12 @@ class _PhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        hasError ? AuthColors.errorMuted : AuthColors.border;
-    final fillColor = hasError ? AuthColors.errorTint : AuthColors.surface;
-    final dividerColor =
-        hasError ? AuthColors.errorMuted.withValues(alpha: 0.35) : AuthColors.borderSoft;
+    final c = AppColors.of(context);
+    final borderColor = hasError ? c.errorMuted : c.border;
+    final fillColor   = hasError ? c.errorTint  : c.surface;
+    final dividerColor = hasError
+        ? c.errorMuted.withValues(alpha: 0.35)
+        : c.borderSoft;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -314,7 +318,7 @@ class _PhoneField extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: AuthColors.ink.withValues(alpha: 0.03),
+            color: c.ink.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -342,14 +346,14 @@ class _PhoneField extends StatelessWidget {
                     '+993',
                     style: AppText.semiBold(
                       fontSize: 15,
-                      color: AuthColors.ink,
+                      color: c.ink,
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.keyboard_arrow_down_rounded,
                     size: 18,
-                    color: AuthColors.inkMuted,
+                    color: c.inkMuted,
                   ),
                 ],
               ),
@@ -360,15 +364,15 @@ class _PhoneField extends StatelessWidget {
               controller: controller,
               keyboardType: TextInputType.phone,
               inputFormatters: [formatter],
-              style: AppText.medium(fontSize: 17, color: AuthColors.ink)
+              style: AppText.medium(fontSize: 17, color: c.ink)
                   .copyWith(letterSpacing: 0.4),
-              cursorColor: hasError ? AuthColors.errorMuted : AuthColors.ink,
+              cursorColor: hasError ? c.errorMuted : c.ink,
               cursorWidth: 1.5,
               decoration: InputDecoration(
                 hintText: '__ __ __ __',
                 hintStyle: AppText.regular(
                   fontSize: 17,
-                  color: AuthColors.inkSoft,
+                  color: c.inkSoft,
                 ).copyWith(letterSpacing: 0.4),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -399,12 +403,13 @@ class _PolicyCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
+    final c = AppColors.of(context);
 
     final boxBorder = accepted
-        ? AuthColors.ink
+        ? c.ink
         : hasError
-            ? AuthColors.errorMuted
-            : AuthColors.border;
+            ? c.errorMuted
+            : c.border;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,7 +422,7 @@ class _PolicyCheckbox extends StatelessWidget {
             height: 20,
             margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
-              color: accepted ? AuthColors.ink : AuthColors.surface,
+              color: accepted ? c.ink : c.surface,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: boxBorder, width: 1.2),
             ),
@@ -430,32 +435,32 @@ class _PolicyCheckbox extends StatelessWidget {
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 12.5,
-                color: AuthColors.inkMuted,
+                color: c.inkMuted,
                 height: 1.55,
               ),
               children: [
                 TextSpan(text: words.authPolicyAgreePrefix),
                 TextSpan(
                   text: words.authPolicyTerms,
-                  style: const TextStyle(
-                    color: AuthColors.ink,
+                  style: TextStyle(
+                    color: c.ink,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
-                    decorationColor: AuthColors.ink,
+                    decorationColor: c.ink,
                   ),
                   recognizer: TapGestureRecognizer()..onTap = onTapTerms,
                 ),
                 TextSpan(text: words.authPolicyAnd),
                 TextSpan(
                   text: words.authPolicyPrivacy,
-                  style: const TextStyle(
-                    color: AuthColors.ink,
+                  style: TextStyle(
+                    color: c.ink,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
-                    decorationColor: AuthColors.ink,
+                    decorationColor: c.ink,
                   ),
                   recognizer: TapGestureRecognizer()..onTap = onTapPrivacy,
                 ),
@@ -475,6 +480,7 @@ class _CountrySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
+    final c = AppColors.of(context);
 
     return SafeArea(
       child: Padding(
@@ -489,7 +495,7 @@ class _CountrySheet extends StatelessWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 18),
                 decoration: BoxDecoration(
-                  color: AuthColors.border,
+                  color: c.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -503,9 +509,9 @@ class _CountrySheet extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: AuthColors.surface,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AuthColors.border, width: 1),
+                border: Border.all(color: c.border, width: 1),
               ),
               child: Row(
                 children: [
@@ -519,7 +525,7 @@ class _CountrySheet extends StatelessWidget {
                           words.authCountryTurkmenistan,
                           style: AppText.semiBold(
                             fontSize: 15,
-                            color: AuthColors.ink,
+                            color: c.ink,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -527,7 +533,7 @@ class _CountrySheet extends StatelessWidget {
                           '+993',
                           style: AppText.regular(
                             fontSize: 13,
-                            color: AuthColors.inkMuted,
+                            color: c.inkMuted,
                           ),
                         ),
                       ],
@@ -536,8 +542,8 @@ class _CountrySheet extends StatelessWidget {
                   Container(
                     width: 22,
                     height: 22,
-                    decoration: const BoxDecoration(
-                      color: AuthColors.ink,
+                    decoration: BoxDecoration(
+                      color: c.ink,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -554,7 +560,7 @@ class _CountrySheet extends StatelessWidget {
               words.authCountryAvailability,
               style: AppText.regular(
                 fontSize: 12,
-                color: AuthColors.inkSoft,
+                color: c.inkSoft,
               ).copyWith(height: 1.4),
             ),
           ],

@@ -1,4 +1,4 @@
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,14 +22,19 @@ class PolicyScreen extends StatefulWidget {
 
 class _PolicyScreenState extends State<PolicyScreen> {
   static const _contentMaxWidth = 720.0;
-  static const _calloutBg = Color(0xFFF6F0E8); // тёплый бежевый callout
+  Color _calloutBg(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? const Color(0xFF2A2520) : const Color(0xFFF6F0E8);
+  }
 
   final _scrollCtrl = ScrollController();
   bool _hasScrolledToBottom = false;
 
   // GlobalKey'и для якорей секций — нужны для ensureVisible из TOC.
-  late final List<GlobalKey> _sectionKeys =
-      List.generate(6, (_) => GlobalKey());
+  late final List<GlobalKey> _sectionKeys = List.generate(
+    6,
+    (_) => GlobalKey(),
+  );
 
   @override
   void initState() {
@@ -76,7 +81,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
     final sections = _buildSections(words);
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: AppColors.of(context).bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -85,13 +90,10 @@ class _PolicyScreenState extends State<PolicyScreen> {
               padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
               child: Center(
                 child: ConstrainedBox(
-                  constraints:
-                      const BoxConstraints(maxWidth: _contentMaxWidth),
+                  constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
                   child: Row(
                     children: [
                       const AuthBackButton(),
-                      const Spacer(),
-                      const BaglaLogo(width: 56, height: 28),
                       const Spacer(),
                       AuthLangSwitcher(
                         isRu: lang.isRu,
@@ -109,11 +111,11 @@ class _PolicyScreenState extends State<PolicyScreen> {
                 controller: _scrollCtrl,
                 child: Center(
                   child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: _contentMaxWidth),
+                    constraints: const BoxConstraints(
+                      maxWidth: _contentMaxWidth,
+                    ),
                     child: Padding(
-                      padding:
-                          const EdgeInsets.fromLTRB(28, 36, 28, 24),
+                      padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -124,10 +126,10 @@ class _PolicyScreenState extends State<PolicyScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: AuthColors.surface,
+                              color: AppColors.of(context).surface,
                               borderRadius: BorderRadius.circular(100),
                               border: Border.all(
-                                color: AuthColors.border,
+                                color: AppColors.of(context).border,
                                 width: 1,
                               ),
                             ),
@@ -135,7 +137,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                               words.policyLastUpdated,
                               style: AppText.medium(
                                 fontSize: 11.5,
-                                color: AuthColors.inkMuted,
+                                color: AppColors.of(context).inkMuted,
                               ).copyWith(letterSpacing: 0.2),
                             ),
                           ),
@@ -160,7 +162,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                             style: AppText.serif(
                               fontSize: 17,
                               fontWeight: FontWeight.w400,
-                              color: AuthColors.inkMuted,
+                              color: AppColors.of(context).inkMuted,
                               height: 1.55,
                               letterSpacing: 0,
                             ),
@@ -182,7 +184,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                           // ── Hairline divider ──────────────────────────
                           Container(
                             height: 1,
-                            color: AuthColors.border,
+                            color: AppColors.of(context).border,
                           ),
 
                           const SizedBox(height: 28),
@@ -193,14 +195,14 @@ class _PolicyScreenState extends State<PolicyScreen> {
                               key: _sectionKeys[i],
                               index: i + 1,
                               section: sections[i],
-                              calloutBg: _calloutBg,
+                              calloutBg: _calloutBg(context),
                               calloutLabel: words.policyInPlainEnglish,
                             ),
                             if (i < sections.length - 1) ...[
                               const SizedBox(height: 28),
                               Container(
                                 height: 1,
-                                color: AuthColors.borderSoft,
+                                color: AppColors.of(context).borderSoft,
                               ),
                               const SizedBox(height: 28),
                             ],
@@ -217,17 +219,19 @@ class _PolicyScreenState extends State<PolicyScreen> {
 
             // ── Accept footer ──────────────────────────────────────────────
             Container(
-              decoration: const BoxDecoration(
-                color: AuthColors.bg,
+              decoration: BoxDecoration(
+                color: AppColors.of(context).bg,
                 border: Border(
-                  top: BorderSide(color: AuthColors.borderSoft, width: 1),
+                  top: BorderSide(
+                    color: AppColors.of(context).borderSoft,
+                    width: 1,
+                  ),
                 ),
               ),
               padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
               child: Center(
                 child: ConstrainedBox(
-                  constraints:
-                      const BoxConstraints(maxWidth: _contentMaxWidth),
+                  constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
                   child: Column(
                     children: [
                       AnimatedOpacity(
@@ -239,7 +243,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                             words.policyScrollHint,
                             style: AppText.regular(
                               fontSize: 12,
-                              color: AuthColors.inkSoft,
+                              color: AppColors.of(context).inkSoft,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -262,13 +266,13 @@ class _PolicyScreenState extends State<PolicyScreen> {
   }
 
   List<_SectionData> _buildSections(AppLocalizations w) => [
-        _SectionData(w.policySec1Title, w.policySec1Plain, w.policySec1Body),
-        _SectionData(w.policySec2Title, w.policySec2Plain, w.policySec2Body),
-        _SectionData(w.policySec3Title, w.policySec3Plain, w.policySec3Body),
-        _SectionData(w.policySec4Title, w.policySec4Plain, w.policySec4Body),
-        _SectionData(w.policySec5Title, w.policySec5Plain, w.policySec5Body),
-        _SectionData(w.policySec6Title, w.policySec6Plain, w.policySec6Body),
-      ];
+    _SectionData(w.policySec1Title, w.policySec1Plain, w.policySec1Body),
+    _SectionData(w.policySec2Title, w.policySec2Plain, w.policySec2Body),
+    _SectionData(w.policySec3Title, w.policySec3Plain, w.policySec3Body),
+    _SectionData(w.policySec4Title, w.policySec4Plain, w.policySec4Body),
+    _SectionData(w.policySec5Title, w.policySec5Plain, w.policySec5Body),
+    _SectionData(w.policySec6Title, w.policySec6Plain, w.policySec6Body),
+  ];
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -306,7 +310,7 @@ class _TableOfContents extends StatelessWidget {
           title.toUpperCase(),
           style: AppText.semiBold(
             fontSize: 11,
-            color: AuthColors.inkSoft,
+            color: AppColors.of(context).inkSoft,
           ).copyWith(letterSpacing: 1.4),
         ),
         const SizedBox(height: 12),
@@ -315,11 +319,7 @@ class _TableOfContents extends StatelessWidget {
           runSpacing: 8,
           children: [
             for (var i = 0; i < items.length; i++)
-              _TocChip(
-                index: i + 1,
-                label: items[i],
-                onTap: () => onTap(i),
-              ),
+              _TocChip(index: i + 1, label: items[i], onTap: () => onTap(i)),
           ],
         ),
       ],
@@ -346,9 +346,9 @@ class _TocChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AuthColors.surface,
+          color: AppColors.of(context).surface,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: AuthColors.border, width: 1),
+          border: Border.all(color: AppColors.of(context).border, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -357,17 +357,15 @@ class _TocChip extends StatelessWidget {
               '$index',
               style: AppText.semiBold(
                 fontSize: 11.5,
-                color: AuthColors.inkSoft,
-              ).copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+                color: AppColors.of(context).inkSoft,
+              ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: AppText.medium(
                 fontSize: 12.5,
-                color: AuthColors.ink,
+                color: AppColors.of(context).ink,
               ).copyWith(letterSpacing: 0.1),
             ),
           ],
@@ -403,24 +401,21 @@ class _PolicySection extends StatelessWidget {
         // Number label (small caps)
         Text(
           'S· ${index.toString().padLeft(2, '0')}',
-          style: AppText.semiBold(
-            fontSize: 11,
-            color: AuthColors.inkSoft,
-          ).copyWith(
-            letterSpacing: 1.6,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
+          style:
+              AppText.semiBold(
+                fontSize: 11,
+                color: AppColors.of(context).inkSoft,
+              ).copyWith(
+                letterSpacing: 1.6,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
         ),
         const SizedBox(height: 10),
 
         // Serif title
         Text(
           section.title,
-          style: AppText.serif(
-            fontSize: 24,
-            letterSpacing: -0.3,
-            height: 1.2,
-          ),
+          style: AppText.serif(fontSize: 24, letterSpacing: -0.3, height: 1.2),
         ),
 
         const SizedBox(height: 18),
@@ -439,7 +434,7 @@ class _PolicySection extends StatelessWidget {
           section.body,
           style: AppText.regular(
             fontSize: 15,
-            color: AuthColors.ink,
+            color: AppColors.of(context).ink,
           ).copyWith(height: 1.7, letterSpacing: 0.1),
         ),
       ],
@@ -466,7 +461,7 @@ class _PlainEnglishCallout extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AuthColors.accent.withValues(alpha: 0.25),
+          color: AppColors.of(context).accent.withValues(alpha: 0.25),
           width: 1,
         ),
       ),
@@ -479,7 +474,7 @@ class _PlainEnglishCallout extends StatelessWidget {
                 width: 4,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: AuthColors.accent,
+                  color: AppColors.of(context).accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -488,7 +483,7 @@ class _PlainEnglishCallout extends StatelessWidget {
                 label,
                 style: AppText.semiBold(
                   fontSize: 11.5,
-                  color: AuthColors.accent,
+                  color: AppColors.of(context).accent,
                 ).copyWith(letterSpacing: 1.0),
               ),
             ],
@@ -500,7 +495,7 @@ class _PlainEnglishCallout extends StatelessWidget {
             style: AppText.serif(
               fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: AuthColors.ink,
+              color: AppColors.of(context).ink,
               height: 1.55,
               letterSpacing: 0,
             ),

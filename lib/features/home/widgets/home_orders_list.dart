@@ -48,6 +48,9 @@ class HomeOrdersList extends StatelessWidget {
   final AuthProvider authProv;
   final AppLocalizations words;
   final VoidCallback onRefresh;
+  final bool swipeEnabled;
+  final int selectedFilterIndex;
+  final ValueChanged<int>? onSwipe;
 
   const HomeOrdersList({
     super.key,
@@ -61,10 +64,31 @@ class HomeOrdersList extends StatelessWidget {
     required this.authProv,
     required this.words,
     required this.onRefresh,
+    this.swipeEnabled = false,
+    this.selectedFilterIndex = 0,
+    this.onSwipe,
   });
 
   @override
   Widget build(BuildContext context) {
+    final content = _buildContent(context);
+    if (!swipeEnabled || onSwipe == null) return content;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v < -300 && selectedFilterIndex == 0) {
+          onSwipe!(1);
+        } else if (v > 300 && selectedFilterIndex == 1) {
+          onSwipe!(0);
+        }
+      },
+      child: content,
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     if (isLoading) {
       return const Center(
         child: CircularProgressIndicator(

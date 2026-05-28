@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 
 class HomeSegmentedFilter extends StatelessWidget {
@@ -9,6 +9,7 @@ class HomeSegmentedFilter extends StatelessWidget {
   final int filterActiveCount;
   final VoidCallback onFilterTap;
   final AppLocalizations words;
+  final bool showFilter;
 
   const HomeSegmentedFilter({
     super.key,
@@ -17,10 +18,12 @@ class HomeSegmentedFilter extends StatelessWidget {
     required this.filterActiveCount,
     required this.onFilterTap,
     required this.words,
+    this.showFilter = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Row(
       children: [
         Expanded(
@@ -28,7 +31,7 @@ class HomeSegmentedFilter extends StatelessWidget {
             height: 42,
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: AuthColors.borderSoft,
+              color: c.borderSoft,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -49,8 +52,10 @@ class HomeSegmentedFilter extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        _FilterIconButton(activeCount: filterActiveCount, onTap: onFilterTap),
+        if (showFilter) ...[
+          const SizedBox(width: 8),
+          _FilterIconButton(activeCount: filterActiveCount, onTap: onFilterTap),
+        ],
       ],
     );
   }
@@ -80,6 +85,7 @@ class _FilterTabState extends State<_FilterTab> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final bool sel = widget.selectedIndex == widget.index;
     return Expanded(
       child: GestureDetector(
@@ -99,12 +105,12 @@ class _FilterTabState extends State<_FilterTab> {
             curve: Curves.easeOutCubic,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: sel ? AuthColors.surface : Colors.transparent,
+              color: sel ? c.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(9),
               boxShadow: sel
                   ? [
                       BoxShadow(
-                        color: AuthColors.ink.withValues(alpha: 0.07),
+                        color: c.ink.withValues(alpha: 0.07),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -115,8 +121,8 @@ class _FilterTabState extends State<_FilterTab> {
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               style: sel
-                  ? AppText.semiBold(fontSize: 13, color: AuthColors.ink)
-                  : AppText.medium(fontSize: 13, color: AuthColors.inkSoft),
+                  ? AppText.semiBold(fontSize: 13, color: c.ink)
+                  : AppText.medium(fontSize: 13, color: c.inkSoft),
               child: Text(widget.label),
             ),
           ),
@@ -146,6 +152,7 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final bool has = widget.activeCount > 0;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -164,12 +171,12 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: has ? AuthColors.emeraldTint : AuthColors.borderSoft,
+            color: has ? c.emeraldTint : c.borderSoft,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: has
-                  ? AuthColors.emerald.withValues(alpha: 0.3)
-                  : AuthColors.border,
+                  ? c.emerald.withValues(alpha: 0.3)
+                  : c.border,
             ),
           ),
           child: Stack(
@@ -178,7 +185,7 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
               Icon(
                 Icons.tune_rounded,
                 size: 18,
-                color: has ? AuthColors.emerald : AuthColors.inkSoft,
+                color: has ? c.emerald : c.inkSoft,
               ),
               if (has)
                 Positioned(
@@ -187,8 +194,8 @@ class _FilterIconButtonState extends State<_FilterIconButton> {
                   child: Container(
                     width: 13,
                     height: 13,
-                    decoration: const BoxDecoration(
-                      color: AuthColors.emerald,
+                    decoration: BoxDecoration(
+                      color: c.emerald,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,

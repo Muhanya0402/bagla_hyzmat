@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -15,18 +15,18 @@ class AppealDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String subject =
-        (appeal['subject'] ?? words.appealsNoSubject).toString();
+    final String subject = (appeal['subject'] ?? words.appealsNoSubject)
+        .toString();
     final String body = (appeal['body'] ?? '').toString();
     final String reply = (appeal['reply'] ?? '').toString();
     final String status = (appeal['status'] ?? 'open').toString();
     final String date = _formatDate(appeal['date_created']);
     final bool hasReply = reply.isNotEmpty;
-    final cfg = _statusCfg(status);
+    final cfg = _statusCfg(status, context);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AuthColors.bg,
+      decoration: BoxDecoration(
+        color: AppColors.of(context).bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
@@ -46,7 +46,7 @@ class AppealDetailSheet extends StatelessWidget {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AuthColors.border,
+                  color: AppColors.of(context).border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -70,17 +70,17 @@ class AppealDetailSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.access_time_rounded,
                   size: 11,
-                  color: AuthColors.inkSoft,
+                  color: AppColors.of(context).inkSoft,
                 ),
                 const SizedBox(width: 5),
                 Text(
                   date,
                   style: AppText.regular(
                     fontSize: 12,
-                    color: AuthColors.inkSoft,
+                    color: AppColors.of(context).inkSoft,
                   ),
                 ),
               ],
@@ -88,7 +88,7 @@ class AppealDetailSheet extends StatelessWidget {
             const SizedBox(height: 16),
 
             // ── Divider ──────────────────────────────────────────────────
-            Container(height: 0.5, color: AuthColors.border),
+            Container(height: 0.5, color: AppColors.of(context).border),
             const SizedBox(height: 16),
 
             // ── Your request ─────────────────────────────────────────────
@@ -98,15 +98,15 @@ class AppealDetailSheet extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AuthColors.surface,
+                color: AppColors.of(context).surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AuthColors.border),
+                border: Border.all(color: AppColors.of(context).border),
               ),
               child: Text(
                 body,
                 style: AppText.regular(
                   fontSize: 14,
-                  color: AuthColors.ink,
+                  color: AppColors.of(context).ink,
                 ).copyWith(height: 1.5),
               ),
             ),
@@ -120,10 +120,10 @@ class AppealDetailSheet extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AuthColors.emeraldTint,
+                  color: AppColors.of(context).emeraldTint,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AuthColors.emerald.withValues(alpha: 0.2),
+                    color: AppColors.of(context).emerald.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -133,10 +133,10 @@ class AppealDetailSheet extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: AuthColors.emerald,
+                        color: AppColors.of(context).emerald,
                         borderRadius: BorderRadius.circular(9),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.support_agent_rounded,
                         color: Colors.white,
                         size: 16,
@@ -148,7 +148,7 @@ class AppealDetailSheet extends StatelessWidget {
                         reply,
                         style: AppText.regular(
                           fontSize: 14,
-                          color: AuthColors.ink,
+                          color: AppColors.of(context).ink,
                         ).copyWith(height: 1.5),
                       ),
                     ),
@@ -164,17 +164,17 @@ class AppealDetailSheet extends StatelessWidget {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AuthColors.amberTint,
+                  color: AppColors.of(context).amberTint,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AuthColors.amber.withValues(alpha: 0.25),
+                    color: AppColors.of(context).amber.withValues(alpha: 0.25),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.access_time_rounded,
-                      color: AuthColors.amber,
+                      color: AppColors.of(context).amber,
                       size: 15,
                     ),
                     const SizedBox(width: 10),
@@ -182,7 +182,7 @@ class AppealDetailSheet extends StatelessWidget {
                       words.appealsWaitingReply,
                       style: AppText.medium(
                         fontSize: 13,
-                        color: AuthColors.amber,
+                        color: AppColors.of(context).amber,
                       ),
                     ),
                   ],
@@ -216,35 +216,35 @@ class AppealDetailSheet extends StatelessWidget {
     }
   }
 
-  _StatusCfg _statusCfg(String status) {
+  _StatusCfg _statusCfg(String status, BuildContext context) {
     switch (status.toLowerCase()) {
       case 'open':
         return _StatusCfg(
-          accent: AuthColors.amber,
-          bg: AuthColors.amberTint,
-          text: AuthColors.amber,
+          accent: AppColors.of(context).amber,
+          bg: AppColors.of(context).amberTint,
+          text: AppColors.of(context).amber,
           label: words.appealsStatusOpen,
         );
       case 'in_progress':
         return _StatusCfg(
-          accent: AuthColors.amber,
-          bg: AuthColors.amberTint,
-          text: AuthColors.amber,
+          accent: AppColors.of(context).amber,
+          bg: AppColors.of(context).amberTint,
+          text: AppColors.of(context).amber,
           label: words.appealsStatusProgress,
         );
       case 'resolved':
       case 'closed':
         return _StatusCfg(
-          accent: AuthColors.emerald,
-          bg: AuthColors.emeraldTint,
-          text: AuthColors.emerald,
+          accent: AppColors.of(context).emerald,
+          bg: AppColors.of(context).emeraldTint,
+          text: AppColors.of(context).emerald,
           label: words.appealsStatusClosed,
         );
       default:
         return _StatusCfg(
-          accent: AuthColors.inkSoft,
-          bg: AuthColors.borderSoft,
-          text: AuthColors.inkSoft,
+          accent: AppColors.of(context).inkSoft,
+          bg: AppColors.of(context).borderSoft,
+          text: AppColors.of(context).inkSoft,
           label: status,
         );
     }
@@ -280,7 +280,7 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 10,
           decoration: BoxDecoration(
-            color: AuthColors.emerald,
+            color: AppColors.of(context).emerald,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -289,7 +289,7 @@ class _SectionLabel extends StatelessWidget {
           text,
           style: AppText.semiBold(
             fontSize: 10,
-            color: AuthColors.inkSoft,
+            color: AppColors.of(context).inkSoft,
           ).copyWith(letterSpacing: 0.8),
         ),
       ],
@@ -362,16 +362,16 @@ class _CloseButtonState extends State<_CloseButton> {
           width: double.infinity,
           height: 50,
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: AuthColors.border),
+            border: Border.all(color: AppColors.of(context).border),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
             style: AppText.medium(
               fontSize: 14,
-              color: AuthColors.inkMuted,
+              color: AppColors.of(context).inkMuted,
             ),
           ),
         ),

@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -12,6 +15,7 @@ import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -33,14 +37,41 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AppTourMixin<OrderDetailScreen> {
   static const String _baseUrl = BaseUrl.url;
+
+  final _routeKey  = GlobalKey();
+  final _actionKey = GlobalKey();
 
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
   bool _isExpired = false;
 
   late final AnimationController _animCtrl;
+
+  List<TargetFocus> _buildTourTargets() {
+    final lang = context.read<LanguageProvider>();
+    return [
+      TourTarget.build(
+        key: _routeKey,
+        titleRu: 'Маршрут',
+        titleTk: 'Ugur',
+        bodyRu:  'Здесь отображается откуда и куда доставить заказ.',
+        bodyTk:  'Bu ýerde sargydyň nireden we nirä gowşuryljakdygy görkezilýär.',
+        isRu: lang.isRu,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _actionKey,
+        titleRu: 'Действие',
+        titleTk: 'Hereket',
+        bodyRu:  'Нажмите чтобы принять или завершить заказ.',
+        bodyTk:  'Sargyt kabul etmek ýa-da tamamlamak üçin basyň.',
+        isRu: lang.isRu,
+        align: ContentAlign.top,
+      ),
+    ];
+  }
 
   String _transportLabel(String? type, AppLocalizations words) {
     switch (type) {
@@ -73,6 +104,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     );
     _startCountdown();
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
+    startTourIfNeeded(
+      screenKey: TourKeys.orderDetail,
+      targetsBuilder: _buildTourTargets,
+    );
   }
 
   void _startCountdown() {
@@ -151,10 +186,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     required Future<void> Function() action,
     required AppLocalizations words,
   }) async {
+    final c = AppColors.of(context);
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: c.bg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -165,7 +201,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -176,7 +212,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 message,
                 style: AppText.regular(
                   fontSize: 14,
-                  color: AuthColors.inkSoft,
+                  color: c.inkSoft,
                 ).copyWith(height: 1.5),
               ),
               const SizedBox(height: 24),
@@ -188,13 +224,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       child: Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          border: Border.all(color: AuthColors.border),
+                          border: Border.all(color: c.border),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           words.dialogBack,
-                          style: AppText.medium(color: AuthColors.inkMuted),
+                          style: AppText.medium(color: c.inkMuted),
                         ),
                       ),
                     ),
@@ -235,7 +271,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(words.error),
-              backgroundColor: AuthColors.errorMuted,
+              backgroundColor: c.errorMuted,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -254,11 +290,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     int xpEarned,
     AppLocalizations words,
   ) {
+    final c = AppColors.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        backgroundColor: AuthColors.surface,
+        backgroundColor: c.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -269,24 +306,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AuthColors.emeraldTint,
+                  color: c.emeraldTint,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_circle_rounded,
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                   size: 40,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 words.orderDone,
-                style: AppText.serif(fontSize: 20, color: AuthColors.ink),
+                style: AppText.serif(fontSize: 20, color: c.ink),
               ),
               const SizedBox(height: 8),
               Text(
                 words.deliveredOnTime,
-                style: AppText.regular(fontSize: 13, color: AuthColors.inkSoft),
+                style: AppText.regular(fontSize: 13, color: c.inkSoft),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -297,9 +334,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AuthColors.amberTint,
+                  color: c.amberTint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AuthColors.border),
+                  border: Border.all(color: c.border),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -309,9 +346,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       width: 24,
                       height: 24,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(
+                      errorBuilder: (_, _, _) => Icon(
                         Icons.toll_rounded,
-                        color: AuthColors.amber,
+                        color: c.amber,
                         size: 24,
                       ),
                     ),
@@ -320,7 +357,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       '+${points.toDouble()} ${words.tokens}',
                       style: AppText.semiBold(
                         fontSize: 20,
-                        color: AuthColors.amber,
+                        color: c.amber,
                       ),
                     ),
                   ],
@@ -364,12 +401,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               const SizedBox(height: 6),
               Text(
                 words.deliveryOnTimeSub,
-                style: AppText.regular(fontSize: 12, color: AuthColors.inkSoft),
+                style: AppText.regular(fontSize: 12, color: c.inkSoft),
               ),
               const SizedBox(height: 20),
               _DetailActionButton(
                 label: words.great,
-                color: AuthColors.emerald,
+                color: c.emerald,
                 filled: true,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -400,22 +437,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         ? widget.order['pictures']
         : [];
 
+    final c = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       appBar: AppBar(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: c.bg,
         elevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AuthColors.borderSoft,
+              color: c.borderSoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: AuthColors.inkMuted,
+              color: c.inkMuted,
               size: 16,
             ),
           ),
@@ -426,7 +464,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             Flexible(
               child: Text(
                 '${words.order} #${orderId.split('-').first.toUpperCase()}',
-                style: AppText.serif(fontSize: 18, color: AuthColors.ink),
+                style: AppText.serif(fontSize: 18, color: c.ink),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -436,7 +474,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AuthColors.border),
+          child: Container(height: 0.5, color: c.border),
         ),
       ),
       body: ListView(
@@ -448,12 +486,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           if (!isShop) const SizedBox(height: 10),
 
           // ── Route timeline ───────────────────────────────────────────────
-          _animated(
-            _section(
-              title: words.routeSection,
-              child: _buildRouteBlock(isDataLocked, langProvider),
+          KeyedSubtree(
+            key: _routeKey,
+            child: _animated(
+              _section(
+                title: words.routeSection,
+                child: _buildRouteBlock(isDataLocked, langProvider),
+              ),
+              _itemAnim(isShop ? 0.0 : 0.1, isShop ? 0.45 : 0.55),
             ),
-            _itemAnim(isShop ? 0.0 : 0.1, isShop ? 0.45 : 0.55),
           ),
           const SizedBox(height: 10),
 
@@ -498,7 +539,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   widget.order['comment'].toString(),
                   style: AppText.regular(
                     fontSize: 13,
-                    color: AuthColors.ink,
+                    color: c.ink,
                   ).copyWith(height: 1.5),
                 ),
               ),
@@ -509,6 +550,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
+          key: _actionKey,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: _animated(
             _buildActionButton(context, status, orderId, isShop, words),
@@ -521,26 +563,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
   // ── Status chip ────────────────────────────────────────────────────────────
   Widget _statusChip(String status, AppLocalizations words) {
+    final c = AppColors.of(context);
     final Color color;
     final Color bg;
     final String label;
 
     switch (status) {
       case 'published':
-        color = AuthColors.yellow;
-        bg = AuthColors.errorTint;
+        color = const Color(0xFFFFC107);
+        bg = c.errorTint;
         label = words.statusFree;
       case 'active':
-        color = AuthColors.dark;
-        bg = AuthColors.amberTint;
+        color = c.ink;
+        bg = c.amberTint;
         label = words.statusActive;
       case 'completed':
-        color = AuthColors.emerald;
-        bg = AuthColors.emeraldTint;
+        color = c.emerald;
+        bg = c.emeraldTint;
         label = words.statusDone;
       default:
-        color = AuthColors.red;
-        bg = AuthColors.borderSoft;
+        color = c.errorMuted;
+        bg = c.borderSoft;
         label = words.statusCanceled;
     }
 
@@ -557,15 +600,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
   // ── Section wrapper ────────────────────────────────────────────────────────
   Widget _section({required String title, required Widget child}) {
+    final c = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AuthColors.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: c.border),
         boxShadow: [
           BoxShadow(
-            color: AuthColors.ink.withValues(alpha: 0.03),
+            color: c.ink.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -580,7 +624,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 width: 3,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: AuthColors.emerald,
+                  color: c.emerald,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -589,7 +633,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 title.toUpperCase(),
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: AuthColors.inkSoft,
+                  color: c.inkSoft,
                 ).copyWith(letterSpacing: 0.8),
               ),
             ],
@@ -603,9 +647,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
   // ── Countdown strip ────────────────────────────────────────────────────────
   Widget _buildCountdownCard(AppLocalizations words) {
+    final c = AppColors.of(context);
     final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
-    final Color color = _isExpired ? AuthColors.errorMuted : AuthColors.emerald;
-    final Color bg = _isExpired ? AuthColors.errorTint : AuthColors.emeraldTint;
+    final Color color = _isExpired ? c.errorMuted : c.emerald;
+    final Color bg = _isExpired ? c.errorTint : c.emeraldTint;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -642,9 +687,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AuthColors.amberTint,
+                color: c.amberTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AuthColors.border),
+                border: Border.all(color: c.border),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -654,10 +699,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     width: 16,
                     height: 16,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(
+                    errorBuilder: (_, _, _) => Icon(
                       Icons.toll_rounded,
                       size: 16,
-                      color: AuthColors.amber,
+                      color: c.amber,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -665,7 +710,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     '+${cashback.toDouble()}',
                     style: AppText.semiBold(
                       fontSize: 13,
-                      color: AuthColors.amber,
+                      color: c.amber,
                     ),
                   ),
                 ],
@@ -679,6 +724,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
   // ── Route timeline ─────────────────────────────────────────────────────────
   Widget _buildRouteBlock(bool isLocked, LanguageProvider langProvider) {
+    final c = AppColors.of(context);
     final fromAddr = langProvider.isRu
         ? (widget.order['shop_adress'] ?? 'Адрес магазина')
         : (widget.order['shop_adresstk'] ?? 'Dükan salgysy');
@@ -699,7 +745,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: AuthColors.accent,
+                    color: c.accent,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -709,7 +755,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       width: 1.5,
                       margin: const EdgeInsets.symmetric(vertical: 3),
                       decoration: BoxDecoration(
-                        color: AuthColors.borderSoft,
+                        color: c.borderSoft,
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
@@ -719,7 +765,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: AuthColors.emerald,
+                    color: c.emerald,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -744,20 +790,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
   }
 
   Widget _routePoint({required String label, required String value}) {
+    final c = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
-          style: AppText.regular(fontSize: 10, color: AuthColors.inkSoft),
+          style: AppText.regular(fontSize: 10, color: c.inkSoft),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: AppText.medium(
             fontSize: 13,
-            color: AuthColors.ink,
+            color: c.ink,
           ).copyWith(height: 1.4),
         ),
       ],
@@ -770,6 +817,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     bool isShop,
     AppLocalizations words,
   ) {
+    final c = AppColors.of(context);
     final String? transportType = widget.order['transport_type']?.toString();
     final String phone = (widget.order['client_phone'] ?? '').toString();
     final String? counterPhone = isShop
@@ -783,20 +831,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         _detailRow(
           icon: _transportIcon(transportType),
           iconColor: transportType == 'truck'
-              ? AuthColors.errorMuted
-              : AuthColors.emerald,
+              ? c.errorMuted
+              : c.emerald,
           label: words.transportRequirement,
           value: _transportLabel(transportType, words),
         ),
 
         const SizedBox(height: 10),
-        Container(height: 0.5, color: AuthColors.borderSoft),
+        Container(height: 0.5, color: c.borderSoft),
         const SizedBox(height: 10),
 
         // Recipient row
         _detailRow(
           icon: Icons.person_outline_rounded,
-          iconColor: AuthColors.emerald,
+          iconColor: c.emerald,
           label: isLocked ? words.phoneHidden : words.clientPhone,
           value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
           trailing: phone.isNotEmpty && !isLocked ? _callButton(phone) : null,
@@ -805,13 +853,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         // Counterparty row (if available)
         if (!isLocked && counterPhone != null && counterPhone.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Container(height: 0.5, color: AuthColors.borderSoft),
+          Container(height: 0.5, color: c.borderSoft),
           const SizedBox(height: 10),
           _detailRow(
             icon: isShop
                 ? Icons.delivery_dining_outlined
                 : Icons.storefront_outlined,
-            iconColor: AuthColors.inkMuted,
+            iconColor: c.inkMuted,
             label: isShop
                 ? (courierName.isNotEmpty
                       ? '${words.courier} — $courierName'
@@ -832,6 +880,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     required String value,
     Widget? trailing,
   }) {
+    final c = AppColors.of(context);
     return Row(
       children: [
         Container(
@@ -851,12 +900,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             children: [
               Text(
                 label,
-                style: AppText.regular(fontSize: 10, color: AuthColors.inkSoft),
+                style: AppText.regular(fontSize: 10, color: c.inkSoft),
               ),
               const SizedBox(height: 1),
               Text(
                 value,
-                style: AppText.medium(fontSize: 13, color: AuthColors.ink),
+                style: AppText.medium(fontSize: 13, color: c.ink),
               ),
             ],
           ),
@@ -867,13 +916,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
   }
 
   Widget _callButton(String phone) {
+    final c = AppColors.of(context);
     return GestureDetector(
       onTap: () => _makePhoneCall(phone),
       child: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: AuthColors.emerald,
+          color: c.emerald,
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Icon(Icons.call, color: Colors.white, size: 18),
@@ -888,6 +938,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     double delivery,
     AppLocalizations words,
   ) {
+    final c = AppColors.of(context);
     final double itemPrice = total - delivery;
     final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
 
@@ -896,39 +947,39 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         _priceRow(
           words.itemPrice,
           '${itemPrice.toStringAsFixed(0)} TMT',
-          AuthColors.ink,
+          c.ink,
         ),
         const SizedBox(height: 8),
         _priceRow(
           words.delivery,
           '${delivery.toStringAsFixed(0)} TMT',
-          AuthColors.emerald,
+          c.emerald,
         ),
         if (!isShop && cashback > 0) ...[
           const SizedBox(height: 8),
           _priceRow(
             words.cashbackPercent,
             '+${cashback.toDouble()} ${words.tokens}',
-            AuthColors.amber,
+            c.amber,
           ),
         ],
         Container(
           height: 0.5,
           margin: const EdgeInsets.symmetric(vertical: 10),
-          color: AuthColors.borderSoft,
+          color: c.borderSoft,
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               isShop ? words.toShopReceive : words.courierPayout,
-              style: AppText.semiBold(fontSize: 13, color: AuthColors.ink),
+              style: AppText.semiBold(fontSize: 13, color: c.ink),
             ),
             Text(
               isShop
                   ? '${itemPrice.toStringAsFixed(0)} TMT'
                   : '${delivery.toStringAsFixed(0)} TMT',
-              style: AppText.semiBold(fontSize: 17, color: AuthColors.emerald),
+              style: AppText.semiBold(fontSize: 17, color: c.emerald),
             ),
           ],
         ),
@@ -937,12 +988,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
   }
 
   Widget _priceRow(String label, String value, Color valueColor) {
+    final c = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: AppText.regular(fontSize: 13, color: AuthColors.inkMuted),
+          style: AppText.regular(fontSize: 13, color: c.inkMuted),
         ),
         Text(value, style: AppText.medium(fontSize: 13, color: valueColor)),
       ],
@@ -971,13 +1023,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   width: 100,
                   height: 100,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 100,
-                    color: AuthColors.borderSoft,
-                    child: const Icon(
-                      Icons.broken_image_outlined,
-                      color: AuthColors.inkSoft,
-                    ),
+                  errorBuilder: (_, _, _) => Builder(
+                    builder: (ctx) {
+                      final c = AppColors.of(ctx);
+                      return Container(
+                        width: 100,
+                        color: c.borderSoft,
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: c.inkSoft,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -1011,6 +1068,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     bool isShop,
     AppLocalizations words,
   ) {
+    final c = AppColors.of(context);
     final service = OrderService();
     if (status == 'completed' || status == 'canceled') {
       return const SizedBox.shrink();
@@ -1019,7 +1077,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     if (isShop && (status == 'published' || status == 'active')) {
       return _DetailActionButton(
         label: words.cancelOrderBtn,
-        color: AuthColors.errorMuted,
+        color: c.errorMuted,
         filled: false,
         onTap: () => _showCancelReasonModal(context, orderId, service, words),
       );
@@ -1038,7 +1096,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
         return _DetailActionButton(
           label: words.takeOrder,
-          color: AuthColors.ink,
+          color: c.ink,
           filled: true,
           onTap: () async {
             if (isRestricted) {
@@ -1080,7 +1138,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(words.tooManyOrders),
-                    backgroundColor: AuthColors.errorMuted,
+                    backgroundColor: c.errorMuted,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1099,7 +1157,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                           '$points',
                         )
                       : words.confirmNoPoints,
-                  actionColor: AuthColors.emerald,
+                  actionColor: c.emerald,
                   words: words,
                   action: () => service.updateStatus(
                     orderId,
@@ -1153,7 +1211,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   '${cashback.toDouble()}',
                 )
               : words.finishOrder,
-          color: AuthColors.ink,
+          color: c.ink,
           filled: true,
           onTap: () => _showDeliveryCodeModal(context, orderId, service, words),
         );
@@ -1170,6 +1228,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     OrderService service,
     AppLocalizations words,
   ) async {
+    final c = AppColors.of(context);
     final codeCtrl = TextEditingController();
     bool isLoading = false;
     bool codeSent = false;
@@ -1184,9 +1243,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
           child: Container(
-            decoration: const BoxDecoration(
-              color: AuthColors.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: EdgeInsets.fromLTRB(
               24,
@@ -1204,8 +1263,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   height: 60,
                   decoration: BoxDecoration(
                     color: codeSent
-                        ? AuthColors.emeraldTint
-                        : AuthColors.errorTint,
+                        ? c.emeraldTint
+                        : c.errorTint,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
@@ -1213,22 +1272,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                         ? Icons.dialpad_rounded
                         : Icons.lock_outline_rounded,
                     color: codeSent
-                        ? AuthColors.emerald
-                        : AuthColors.errorMuted,
+                        ? c.emerald
+                        : c.errorMuted,
                     size: 28,
                   ),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   words.confirmDelivery,
-                  style: AppText.serif(fontSize: 18, color: AuthColors.ink),
+                  style: AppText.serif(fontSize: 18, color: c.ink),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   codeSent ? words.enterCodeHint : words.sendCodeHint,
                   style: AppText.regular(
                     fontSize: 13,
-                    color: AuthColors.inkSoft,
+                    color: c.inkSoft,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -1237,7 +1296,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 if (!codeSent) ...[
                   _DetailActionButton(
                     label: words.sendCodeBtn,
-                    color: AuthColors.ink,
+                    color: c.ink,
                     filled: true,
                     isLoading: isLoading,
                     onTap: () async {
@@ -1255,7 +1314,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           SnackBar(
                             content: Text(words.codeSendError),
-                            backgroundColor: AuthColors.errorMuted,
+                            backgroundColor: c.errorMuted,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -1273,17 +1332,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     textAlign: TextAlign.center,
                     style: AppText.semiBold(
                       fontSize: 28,
-                      color: AuthColors.ink,
+                      color: c.ink,
                     ).copyWith(letterSpacing: 8),
                     decoration: InputDecoration(
                       counterText: '',
                       hintText: '• • • •',
                       hintStyle: AppText.regular(
                         fontSize: 28,
-                        color: AuthColors.border,
+                        color: c.border,
                       ).copyWith(letterSpacing: 8),
                       filled: true,
-                      fillColor: AuthColors.borderSoft,
+                      fillColor: c.borderSoft,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
@@ -1294,7 +1353,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   const SizedBox(height: 14),
                   _DetailActionButton(
                     label: words.confirmBtn2,
-                    color: AuthColors.emerald,
+                    color: c.emerald,
                     filled: true,
                     isLoading: isLoading,
                     onTap: () async {
@@ -1340,7 +1399,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                               content: Text(
                                 result['message'] ?? words.wrongCode,
                               ),
-                              backgroundColor: AuthColors.errorMuted,
+                              backgroundColor: c.errorMuted,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1363,7 +1422,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       words.resendCode,
                       style: AppText.regular(
                         fontSize: 13,
-                        color: AuthColors.inkSoft,
+                        color: c.inkSoft,
                       ),
                     ),
                   ),
@@ -1397,16 +1456,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     ).then((_) => widget.onUpdate?.call());
   }
 
-  static Widget _handle() => Center(
-    child: Container(
-      width: 36,
-      height: 4,
-      decoration: BoxDecoration(
-        color: AuthColors.border,
-        borderRadius: BorderRadius.circular(2),
+  Widget _handle() {
+    final c = AppColors.of(context);
+    return Center(
+      child: Container(
+        width: 36,
+        height: 4,
+        decoration: BoxDecoration(
+          color: c.border,
+          borderRadius: BorderRadius.circular(2),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 // ── Detail action button — spring press ──────────────────────────────────────
@@ -1603,7 +1665,7 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
                                 ? progress.cumulativeBytesLoaded /
                                       progress.expectedTotalBytes!
                                 : null,
-                            color: AuthColors.emerald,
+                            color: AppColors.of(context).emerald,
                             strokeWidth: 2,
                           ),
                         );

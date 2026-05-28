@@ -24,7 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -139,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final isLastStep = _currentStep == _stepCount - 1;
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: AppColors.of(context).bg,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Center(
@@ -164,10 +164,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       // ── Шаг 0: Быстрая доставка ─────────────────────────
                       _FeatureSlide(
                         heroIcon: Icons.local_shipping_outlined,
-                        heroBg: AuthColors.emeraldTint,
-                        heroColor: AuthColors.emerald,
+                        heroBg: AppColors.of(context).emeraldTint,
+                        heroColor: AppColors.of(context).emerald,
                         tag: words.onboardingTag1,
-                        tagColor: AuthColors.emerald,
+                        tagColor: AppColors.of(context).emerald,
                         title: words.onboardingTitle1,
                         subtitle: words.get('onboardingSubtitle1'),
                         pills: [
@@ -182,7 +182,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         heroBg: const Color(0xFFECE9F5),
                         heroColor: const Color(0xFF5B4B8A),
                         tag: words.onboardingTag2,
-                        tagColor: AuthColors.accent,
+                        tagColor: AppColors.of(context).accent,
                         title: words.onboardingTitle2,
                         subtitle: words.get('onboardingSubtitle2'),
                         pills: [
@@ -193,10 +193,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       // ── Шаг 2: Жетоны и уровни ──────────────────────────
                       _FeatureSlide(
                         heroIcon: Icons.toll_outlined,
-                        heroBg: AuthColors.amberTint,
-                        heroColor: AuthColors.amber,
+                        heroBg: AppColors.of(context).amberTint,
+                        heroColor: AppColors.of(context).amber,
                         tag: words.onboardingTag3,
-                        tagColor: AuthColors.amber,
+                        tagColor: AppColors.of(context).amber,
                         title: words.onboardingTitle3,
                         subtitle: words.get('onboardingSubtitle3'),
                         pills: [
@@ -239,7 +239,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               words.skip,
                               style: AppText.medium(
                                 fontSize: 13,
-                                color: AuthColors.inkSoft,
+                                color: AppColors.of(context).inkSoft,
                               ).copyWith(letterSpacing: 0.1),
                             ),
                           ),
@@ -303,14 +303,17 @@ class _TopBar extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: AuthColors.surface,
+                    color: AppColors.of(context).surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AuthColors.border, width: 1),
+                    border: Border.all(
+                      color: AppColors.of(context).border,
+                      width: 1,
+                    ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_back_ios_new,
                     size: 14,
-                    color: AuthColors.ink,
+                    color: AppColors.of(context).ink,
                   ),
                 ),
               ),
@@ -344,7 +347,9 @@ class _ProgressDots extends StatelessWidget {
           width: active ? 22 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: active ? AuthColors.ink : AuthColors.border,
+            color: active
+                ? AppColors.of(context).ink
+                : AppColors.of(context).border,
             borderRadius: BorderRadius.circular(3),
           ),
         );
@@ -371,11 +376,13 @@ class _PrimaryCta extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool active = onPressed != null;
     final Color fill = active
-        ? (accentEmerald ? AuthColors.emerald : AuthColors.ink)
+        ? (accentEmerald
+              ? AppColors.of(context).emerald
+              : AppColors.of(context).ink)
         : const Color(0xFFE2DCD0);
     final Color shadowColor = accentEmerald
-        ? AuthColors.emerald
-        : AuthColors.ink;
+        ? AppColors.of(context).emerald
+        : AppColors.of(context).ink;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -414,7 +421,7 @@ class _PrimaryCta extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: active ? Colors.white : AuthColors.inkMuted,
+            color: active ? Colors.white : AppColors.of(context).inkMuted,
             fontWeight: FontWeight.w600,
             fontSize: 16,
             letterSpacing: 0.1,
@@ -465,7 +472,7 @@ class _FeatureSlide extends StatelessWidget {
           subtitle,
           style: AppText.regular(
             fontSize: 15,
-            color: AuthColors.inkMuted,
+            color: AppColors.of(context).inkMuted,
           ).copyWith(height: 1.6, letterSpacing: 0.1),
         ),
         const SizedBox(height: 24),
@@ -553,12 +560,12 @@ class _SlidePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
       decoration: BoxDecoration(
-        color: AuthColors.surface,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: AuthColors.border, width: 1),
+        border: Border.all(color: AppColors.of(context).border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: AuthColors.ink.withValues(alpha: 0.03),
+            color: AppColors.of(context).ink.withValues(alpha: 0.03),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -568,7 +575,7 @@ class _SlidePill extends StatelessWidget {
         label,
         style: AppText.medium(
           fontSize: 12.5,
-          color: AuthColors.ink,
+          color: AppColors.of(context).ink,
         ).copyWith(letterSpacing: 0.1),
       ),
     );
@@ -603,7 +610,7 @@ class _RoleStep extends StatelessWidget {
           words.obWelcomeSubtitle,
           style: AppText.regular(
             fontSize: 14.5,
-            color: AuthColors.inkMuted,
+            color: AppColors.of(context).inkMuted,
           ).copyWith(height: 1.5, letterSpacing: 0.1),
         ),
         const SizedBox(height: 32),
@@ -667,30 +674,34 @@ class _RoleCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        splashColor: AuthColors.ink.withValues(alpha: 0.04),
-        highlightColor: AuthColors.ink.withValues(alpha: 0.02),
+        splashColor: AppColors.of(context).ink.withValues(alpha: 0.04),
+        highlightColor: AppColors.of(context).ink.withValues(alpha: 0.02),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? AuthColors.emerald : AuthColors.border,
+              color: selected
+                  ? AppColors.of(context).emerald
+                  : AppColors.of(context).border,
               width: selected ? 1.5 : 1,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: AuthColors.emerald.withValues(alpha: 0.10),
+                      color: AppColors.of(
+                        context,
+                      ).emerald.withValues(alpha: 0.10),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.04),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -731,7 +742,7 @@ class _RoleCard extends StatelessWidget {
                         subtitle,
                         style: AppText.regular(
                           fontSize: 13,
-                          color: AuthColors.inkMuted,
+                          color: AppColors.of(context).inkMuted,
                         ).copyWith(height: 1.45),
                       ),
                     ],
@@ -744,15 +755,19 @@ class _RoleCard extends StatelessWidget {
                 height: 22,
                 margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
-                  color: selected ? AuthColors.emerald : Colors.transparent,
+                  color: selected
+                      ? AppColors.of(context).emerald
+                      : Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: selected ? AuthColors.emerald : AuthColors.border,
+                    color: selected
+                        ? AppColors.of(context).emerald
+                        : AppColors.of(context).border,
                     width: 1.5,
                   ),
                 ),
                 child: selected
-                    ? const Icon(Icons.check, size: 13, color: Colors.white)
+                    ? Icon(Icons.check, size: 13, color: Colors.white)
                     : null,
               ),
             ],
@@ -791,7 +806,7 @@ class _AssetImage extends StatelessWidget {
             child: Icon(
               placeholderIcon,
               size: 28,
-              color: AuthColors.ink.withValues(alpha: 0.35),
+              color: AppColors.of(context).ink.withValues(alpha: 0.35),
             ),
           ),
         ),

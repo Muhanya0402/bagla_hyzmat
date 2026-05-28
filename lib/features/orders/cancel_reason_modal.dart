@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -84,12 +84,13 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
+    final c = AppColors.of(context);
     return Material(
       color: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
-          color: AuthColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: EdgeInsets.fromLTRB(
           20,
@@ -101,20 +102,17 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Handle ────────────────────────────────────────────────────────
             Center(
               child: Container(
                 width: 32,
                 height: 3.5,
                 decoration: BoxDecoration(
-                  color: AuthColors.border,
+                  color: c.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-
-            // ── Title (errorMuted accent bar + serif) ─────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -122,7 +120,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                   width: 3,
                   height: 18,
                   decoration: BoxDecoration(
-                    color: AuthColors.errorMuted,
+                    color: c.errorMuted,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -130,45 +128,34 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 Expanded(
                   child: Text(
                     widget.words.cancelReasonTitle,
-                    style: AppText.serif(fontSize: 17, color: AuthColors.ink),
+                    style: AppText.serif(fontSize: 17, color: c.ink),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 7),
-
-            // ── Subtitle with accent icon ──────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 1.5),
-                  child: Icon(
-                    Icons.info_outline_rounded,
-                    size: 11,
-                    color: AuthColors.accent,
-                  ),
+                  child: Icon(Icons.info_outline_rounded, size: 11, color: c.accent),
                 ),
                 const SizedBox(width: 5),
                 Expanded(
                   child: Text(
                     widget.words.cancelReasonSubtitle,
-                    style: AppText.regular(
-                      fontSize: 12,
-                      color: AuthColors.inkMuted,
-                    ).copyWith(height: 1.45),
+                    style: AppText.regular(fontSize: 12, color: c.inkMuted).copyWith(height: 1.45),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-
-            // ── Reasons list ──────────────────────────────────────────────────
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: AuthColors.border),
+                  border: Border.all(color: c.border),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -180,7 +167,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (i > 0)
-                          Container(height: 0.5, color: AuthColors.borderSoft),
+                          Container(height: 0.5, color: c.borderSoft),
                         _ReasonTile(
                           reason: r,
                           isSelected: _selectedId == r.id,
@@ -192,8 +179,6 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 ),
               ),
             ),
-
-            // ── Comment field — shown only for 'other' ────────────────────────
             AnimatedSize(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
@@ -204,37 +189,25 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                         controller: _commentCtrl,
                         maxLines: 3,
                         autofocus: true,
-                        style: AppText.regular(
-                          fontSize: 14,
-                          color: AuthColors.ink,
-                        ),
+                        style: AppText.regular(fontSize: 14, color: c.ink),
                         decoration: InputDecoration(
                           hintText: widget.words.cancelReasonComment,
-                          hintStyle: AppText.regular(
-                            fontSize: 13,
-                            color: AuthColors.inkSoft,
-                          ),
+                          hintStyle: AppText.regular(fontSize: 13, color: c.inkSoft),
                           filled: true,
-                          fillColor: AuthColors.bg,
+                          fillColor: c.bg,
                           contentPadding: const EdgeInsets.all(12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AuthColors.border,
-                            ),
+                            borderSide: BorderSide(color: c.border),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AuthColors.border,
-                            ),
+                            borderSide: BorderSide(color: c.border),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AuthColors.errorMuted.withValues(
-                                alpha: 0.5,
-                              ),
+                              color: c.errorMuted.withValues(alpha: 0.5),
                               width: 1.5,
                             ),
                           ),
@@ -284,25 +257,25 @@ class _ReasonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        color: isSelected ? AuthColors.errorTint : Colors.transparent,
+        color: isSelected ? c.errorTint : Colors.transparent,
         child: Row(
           children: [
-            // Custom radio indicator
             AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               width: 18,
               height: 18,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? AuthColors.errorMuted : Colors.transparent,
+                color: isSelected ? c.errorMuted : Colors.transparent,
                 border: Border.all(
-                  color: isSelected ? AuthColors.errorMuted : AuthColors.border,
+                  color: isSelected ? c.errorMuted : c.border,
                   width: 1.5,
                 ),
               ),
@@ -314,18 +287,15 @@ class _ReasonTile extends StatelessWidget {
             Icon(
               reason.icon,
               size: 15,
-              color: isSelected ? AuthColors.errorMuted : AuthColors.inkSoft,
+              color: isSelected ? c.errorMuted : c.inkSoft,
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 reason.label,
                 style: isSelected
-                    ? AppText.medium(fontSize: 13, color: AuthColors.ink)
-                    : AppText.regular(
-                        fontSize: 13,
-                        color: AuthColors.inkMuted,
-                      ),
+                    ? AppText.medium(fontSize: 13, color: c.ink)
+                    : AppText.regular(fontSize: 13, color: c.inkMuted),
               ),
             ),
           ],
@@ -351,6 +321,7 @@ class _BackButtonState extends State<_BackButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -367,13 +338,13 @@ class _BackButtonState extends State<_BackButton> {
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 18),
           decoration: BoxDecoration(
-            border: Border.all(color: AuthColors.border),
+            border: Border.all(color: c.border),
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
-            style: AppText.medium(fontSize: 13, color: AuthColors.inkMuted),
+            style: AppText.medium(fontSize: 13, color: c.inkMuted),
           ),
         ),
       ),
@@ -404,6 +375,7 @@ class _ConfirmButtonState extends State<_ConfirmButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final active = widget.enabled && !widget.isLoading;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -424,15 +396,15 @@ class _ConfirmButtonState extends State<_ConfirmButton> {
           height: 48,
           decoration: BoxDecoration(
             color: !widget.enabled
-                ? AuthColors.errorMuted.withValues(alpha: 0.28)
+                ? c.errorMuted.withValues(alpha: 0.28)
                 : widget.isLoading
-                ? AuthColors.errorMuted.withValues(alpha: 0.5)
-                : AuthColors.errorMuted,
+                ? c.errorMuted.withValues(alpha: 0.5)
+                : c.errorMuted,
             borderRadius: BorderRadius.circular(12),
             boxShadow: active
                 ? [
                     BoxShadow(
-                      color: AuthColors.errorMuted.withValues(alpha: 0.22),
+                      color: c.errorMuted.withValues(alpha: 0.22),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

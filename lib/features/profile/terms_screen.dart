@@ -1,6 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -82,9 +82,9 @@ class _TermsScreenState extends State<TermsScreen> {
         : auth.phone;
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: AppColors.of(context).bg,
       appBar: AppBar(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: AppColors.of(context).bg,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: GestureDetector(
@@ -92,13 +92,13 @@ class _TermsScreenState extends State<TermsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AuthColors.surface,
+              color: AppColors.of(context).surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AuthColors.border),
+              border: Border.all(color: AppColors.of(context).border),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: AuthColors.ink,
+              color: AppColors.of(context).ink,
               size: 16,
             ),
           ),
@@ -109,7 +109,7 @@ class _TermsScreenState extends State<TermsScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AuthColors.border),
+          child: Container(height: 0.5, color: AppColors.of(context).border),
         ),
       ),
       body: _buildBody(isRu, fullName, words),
@@ -118,9 +118,9 @@ class _TermsScreenState extends State<TermsScreen> {
 
   Widget _buildBody(bool isRu, String fullName, AppLocalizations words) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
-          color: AuthColors.emerald,
+          color: AppColors.of(context).emerald,
           strokeWidth: 2,
         ),
       );
@@ -137,22 +137,22 @@ class _TermsScreenState extends State<TermsScreen> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: AuthColors.errorTint,
+                  color: AppColors.of(context).errorTint,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AuthColors.border),
+                  border: Border.all(color: AppColors.of(context).border),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.wifi_off_rounded,
-                  color: AuthColors.errorMuted,
+                  color: AppColors.of(context).errorMuted,
                   size: 26,
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Text(
                 words.downloadError,
-                style: AppText.semiBold(fontSize: 15, color: AuthColors.ink),
+                style: AppText.semiBold(fontSize: 15, color: AppColors.of(context).ink),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               _RetryButton(label: words.retry, onTap: _loadTerms),
             ],
           ),
@@ -169,13 +169,13 @@ class _TermsScreenState extends State<TermsScreen> {
             children: [
               // ── Quick summary ───────────────────────────────────────────
               _QuickSummary(isRu: isRu),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // ── Section label ───────────────────────────────────────────
               _SectionLabel(
                 text: isRu ? 'РАЗДЕЛЫ СОГЛАШЕНИЯ' : 'YLALAŞYK BÖLÜMLERI',
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // ── Term tiles ──────────────────────────────────────────────
               ..._items.asMap().entries.map(
@@ -191,10 +191,10 @@ class _TermsScreenState extends State<TermsScreen> {
               ),
 
               if (!_hasScrolledToBottom && _items.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _ScrollHint(isRu: isRu),
               ],
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
             ],
           ),
         ),
@@ -220,43 +220,43 @@ class _QuickSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = isRu
-        ? const [
+        ? [
             _SummaryItem(
               icon: Icons.bolt_rounded,
-              iconColor: AuthColors.amber,
-              iconBg: AuthColors.amberTint,
+              iconColor: AppColors.of(context).amber,
+              iconBg: AppColors.of(context).amberTint,
               text: '5 жетонов за выкуп заказа',
             ),
             _SummaryItem(
               icon: Icons.local_shipping_rounded,
-              iconColor: AuthColors.emerald,
-              iconBg: AuthColors.emeraldTint,
+              iconColor: AppColors.of(context).emerald,
+              iconBg: AppColors.of(context).emeraldTint,
               text: 'Доставка строго в срок',
             ),
             _SummaryItem(
               icon: Icons.warning_amber_rounded,
-              iconColor: AuthColors.errorMuted,
-              iconBg: AuthColors.errorTint,
+              iconColor: AppColors.of(context).errorMuted,
+              iconBg: AppColors.of(context).errorTint,
               text: 'Штраф за срыв доставки',
             ),
           ]
-        : const [
+        : [
             _SummaryItem(
               icon: Icons.bolt_rounded,
-              iconColor: AuthColors.amber,
-              iconBg: AuthColors.amberTint,
+              iconColor: AppColors.of(context).amber,
+              iconBg: AppColors.of(context).amberTint,
               text: 'Zakaz üçin 5 žeton',
             ),
             _SummaryItem(
               icon: Icons.local_shipping_rounded,
-              iconColor: AuthColors.emerald,
-              iconBg: AuthColors.emeraldTint,
+              iconColor: AppColors.of(context).emerald,
+              iconBg: AppColors.of(context).emeraldTint,
               text: 'Eltip bermek wagtynda',
             ),
             _SummaryItem(
               icon: Icons.warning_amber_rounded,
-              iconColor: AuthColors.errorMuted,
-              iconBg: AuthColors.errorTint,
+              iconColor: AppColors.of(context).errorMuted,
+              iconBg: AppColors.of(context).errorTint,
               text: 'Goýbolsun üçin jerime',
             ),
           ];
@@ -264,9 +264,9 @@ class _QuickSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AuthColors.surface,
+        color: AppColors.of(context).surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: AppColors.of(context).border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,21 +277,21 @@ class _QuickSummary extends StatelessWidget {
                 width: 3,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: AuthColors.accent,
+                  color: AppColors.of(context).accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 7),
+              SizedBox(width: 7),
               Text(
                 isRu ? 'ГЛАВНОЕ' : 'ESASY',
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: AuthColors.inkSoft,
+                  color: AppColors.of(context).inkSoft,
                 ).copyWith(letterSpacing: 0.9),
               ),
             ],
           ),
-          const SizedBox(height: 11),
+          SizedBox(height: 11),
           Row(
             children: items
                 .map((item) => Expanded(child: _SummaryCard(item: item)))
@@ -336,13 +336,13 @@ class _SummaryCard extends StatelessWidget {
             ),
             child: Icon(item.icon, color: item.iconColor, size: 16),
           ),
-          const SizedBox(height: 7),
+          SizedBox(height: 7),
           Text(
             item.text,
             textAlign: TextAlign.center,
             style: AppText.medium(
               fontSize: 11,
-              color: AuthColors.inkMuted,
+              color: AppColors.of(context).inkMuted,
             ).copyWith(height: 1.35),
             maxLines: 2,
           ),
@@ -366,16 +366,16 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 10,
           decoration: BoxDecoration(
-            color: AuthColors.emerald,
+            color: AppColors.of(context).emerald,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 7),
+        SizedBox(width: 7),
         Text(
           text,
           style: AppText.semiBold(
             fontSize: 10,
-            color: AuthColors.inkSoft,
+            color: AppColors.of(context).inkSoft,
           ).copyWith(letterSpacing: 0.9),
         ),
       ],
@@ -395,17 +395,17 @@ class _ScrollHint extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+                    Icon(
             Icons.keyboard_arrow_down_rounded,
             size: 15,
-            color: AuthColors.inkSoft,
+            color: AppColors.of(context).inkSoft,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             isRu
                 ? 'Прокрутите вниз для принятия'
                 : 'Kabul etmek üçin aşak aýlaň',
-            style: AppText.regular(fontSize: 11, color: AuthColors.inkSoft),
+            style: AppText.regular(fontSize: 11, color: AppColors.of(context).inkSoft),
           ),
         ],
       ),
@@ -432,13 +432,13 @@ class _SignatureFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AuthColors.surface,
-        border: const Border(
-          top: BorderSide(color: AuthColors.border, width: 0.5),
+        color: AppColors.of(context).surface,
+        border: Border(
+          top: BorderSide(color: AppColors.of(context).border, width: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: AuthColors.ink.withValues(alpha: 0.04),
+            color: AppColors.of(context).ink.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, -3),
           ),
@@ -459,12 +459,12 @@ class _SignatureFooter extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: canAccept ? AuthColors.emeraldTint : AuthColors.bg,
+              color: canAccept ? AppColors.of(context).emeraldTint : AppColors.of(context).bg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: canAccept
-                    ? AuthColors.ink.withValues(alpha: 0.3)
-                    : AuthColors.border,
+                    ? AppColors.of(context).ink.withValues(alpha: 0.3)
+                    : AppColors.of(context).border,
               ),
             ),
             child: Row(
@@ -475,17 +475,17 @@ class _SignatureFooter extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     color: canAccept
-                        ? AuthColors.ink.withValues(alpha: 0.12)
-                        : AuthColors.borderSoft,
+                        ? AppColors.of(context).ink.withValues(alpha: 0.12)
+                        : AppColors.of(context).borderSoft,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.person_outline_rounded,
-                    color: canAccept ? AuthColors.ink : AuthColors.inkSoft,
+                    color: canAccept ? AppColors.of(context).ink : AppColors.of(context).inkSoft,
                     size: 17,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,10 +494,10 @@ class _SignatureFooter extends StatelessWidget {
                         isRu ? 'Принял условия' : 'Kabul etdi',
                         style: AppText.regular(
                           fontSize: 11,
-                          color: AuthColors.inkSoft,
+                          color: AppColors.of(context).inkSoft,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         fullName.isNotEmpty
                             ? fullName
@@ -505,8 +505,8 @@ class _SignatureFooter extends StatelessWidget {
                         style: AppText.semiBold(
                           fontSize: 14,
                           color: canAccept
-                              ? AuthColors.ink
-                              : AuthColors.inkMuted,
+                              ? AppColors.of(context).ink
+                              : AppColors.of(context).inkMuted,
                         ),
                       ),
                     ],
@@ -521,11 +521,11 @@ class _SignatureFooter extends StatelessWidget {
                           key: const ValueKey('check'),
                           width: 28,
                           height: 28,
-                          decoration: const BoxDecoration(
-                            color: AuthColors.ink,
+                          decoration: BoxDecoration(
+                            color: AppColors.of(context).ink,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.check_rounded,
                             color: Colors.white,
                             size: 15,
@@ -536,13 +536,13 @@ class _SignatureFooter extends StatelessWidget {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: AuthColors.borderSoft,
+                            color: AppColors.of(context).borderSoft,
                             shape: BoxShape.circle,
-                            border: Border.all(color: AuthColors.border),
+                            border: Border.all(color: AppColors.of(context).border),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.lock_outline_rounded,
-                            color: AuthColors.inkSoft,
+                            color: AppColors.of(context).inkSoft,
                             size: 13,
                           ),
                         ),
@@ -551,7 +551,7 @@ class _SignatureFooter extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // ── Accept button ──────────────────────────────────────────
           _AcceptButton(
@@ -610,12 +610,12 @@ class _AcceptButtonState extends State<_AcceptButton> {
           width: double.infinity,
           height: 52,
           decoration: BoxDecoration(
-            color: widget.canAccept ? AuthColors.ink : AuthColors.borderSoft,
+            color: widget.canAccept ? AppColors.of(context).ink : AppColors.of(context).borderSoft,
             borderRadius: BorderRadius.circular(13),
             boxShadow: widget.canAccept
                 ? [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.22),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.22),
                       blurRadius: 14,
                       offset: const Offset(0, 4),
                     ),
@@ -629,12 +629,12 @@ class _AcceptButtonState extends State<_AcceptButton> {
                 duration: const Duration(milliseconds: 200),
                 style: AppText.semiBold(
                   fontSize: 14,
-                  color: widget.canAccept ? Colors.white : AuthColors.ink,
+                  color: widget.canAccept ? Colors.white : AppColors.of(context).ink,
                 ).copyWith(letterSpacing: 0.4),
                 child: Text(widget.isRu ? 'ПОНЯТНО' : 'DÜŞÜNDÜM'),
               ),
               if (widget.canAccept) ...[
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Container(
                   width: 22,
                   height: 22,
@@ -642,7 +642,7 @@ class _AcceptButtonState extends State<_AcceptButton> {
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(7),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_forward_rounded,
                     color: Colors.white,
                     size: 13,
@@ -688,15 +688,15 @@ class _RetryButtonState extends State<_RetryButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
-            color: AuthColors.emeraldTint,
+            color: AppColors.of(context).emeraldTint,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: AuthColors.emerald.withValues(alpha: 0.25),
+              color: AppColors.of(context).emerald.withValues(alpha: 0.25),
             ),
           ),
           child: Text(
             widget.label,
-            style: AppText.semiBold(fontSize: 13, color: AuthColors.emerald),
+            style: AppText.semiBold(fontSize: 13, color: AppColors.of(context).emerald),
           ),
         ),
       ),
@@ -757,12 +757,12 @@ class _TermTileState extends State<_TermTile> {
           duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: widget.isExpanded
-                  ? AuthColors.emerald.withValues(alpha: 0.3)
-                  : AuthColors.border,
+                  ? AppColors.of(context).emerald.withValues(alpha: 0.3)
+                  : AppColors.of(context).border,
             ),
           ),
           child: Column(
@@ -782,8 +782,8 @@ class _TermTileState extends State<_TermTile> {
                       height: 26,
                       decoration: BoxDecoration(
                         color: widget.isExpanded
-                            ? AuthColors.ink
-                            : AuthColors.borderSoft,
+                            ? AppColors.of(context).ink
+                            : AppColors.of(context).borderSoft,
                         borderRadius: BorderRadius.circular(7),
                       ),
                       alignment: Alignment.center,
@@ -793,29 +793,29 @@ class _TermTileState extends State<_TermTile> {
                           fontSize: 11,
                           color: widget.isExpanded
                               ? Colors.white
-                              : AuthColors.inkSoft,
+                              : AppColors.of(context).inkSoft,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 11),
+                    SizedBox(width: 11),
                     Expanded(
                       child: Text(
                         title.isEmpty ? fallbackTitle : title,
                         style: AppText.medium(
                           fontSize: 13,
-                          color: AuthColors.ink,
+                          color: AppColors.of(context).ink,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     AnimatedRotation(
                       turns: widget.isExpanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: widget.isExpanded
-                            ? AuthColors.emerald
-                            : AuthColors.inkSoft,
+                            ? AppColors.of(context).emerald
+                            : AppColors.of(context).inkSoft,
                         size: 20,
                       ),
                     ),
@@ -825,18 +825,18 @@ class _TermTileState extends State<_TermTile> {
 
               // ── Body ───────────────────────────────────────────────
               AnimatedCrossFade(
-                firstChild: const SizedBox(width: double.infinity),
+                firstChild: SizedBox(width: double.infinity),
                 secondChild: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(height: 0.5, color: AuthColors.borderSoft),
+                    Container(height: 0.5, color: AppColors.of(context).borderSoft),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                       child: Text(
                         body.isEmpty ? fallbackBody : body,
                         style: AppText.regular(
                           fontSize: 13,
-                          color: AuthColors.inkMuted,
+                          color: AppColors.of(context).inkMuted,
                         ).copyWith(height: 1.65),
                       ),
                     ),

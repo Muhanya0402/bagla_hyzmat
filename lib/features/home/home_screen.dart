@@ -1,5 +1,9 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/home/controllers/home_screen_controller.dart';
 import 'package:bagla/features/home/home_constants.dart';
 import 'package:bagla/features/home/widgets/home_app_bar.dart';
@@ -13,6 +17,7 @@ import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,11 +27,44 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with HomeScreenController<HomeScreen> {
+    with HomeScreenController<HomeScreen>, AppTourMixin<HomeScreen> {
+  final _logoKey = GlobalKey();
+  final _ordersKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     initController();
+    startTourIfNeeded(
+      screenKey: TourKeys.home,
+      targetsBuilder: _buildTourTargets,
+    );
+  }
+
+  List<TargetFocus> _buildTourTargets() {
+    final lang = context.read<LanguageProvider>();
+    return [
+      TourTarget.build(
+        key: _logoKey,
+        titleRu: 'Главная страница',
+        titleTk: 'Baş sahypa',
+        bodyRu:
+            'Здесь отображаются все ваши заказы. Потяните вниз чтобы обновить список.',
+        bodyTk:
+            'Bu ýerde ähli sargytlaryňyz görkezilýär. Sanawyny täzelemek üçin aşak çekiň.',
+        isRu: lang.isRu,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _ordersKey,
+        titleRu: 'Список заказов',
+        titleTk: 'Sargytlar sanawy',
+        bodyRu: 'Нажмите на заказ чтобы увидеть детали и принять его.',
+        bodyTk: 'Jikme-jikleri görmek we kabul etmek üçin sargyta basyň.',
+        isRu: lang.isRu,
+        align: ContentAlign.top,
+      ),
+    ];
   }
 
   @override
@@ -75,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     final filteredOrders = applyFilters(orders);
 
+    final c = AppColors.of(context);
+
     if (isCourier && levelProvider.pendingLevelUp != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _showLevelUp(context, levelProvider);
@@ -82,16 +122,19 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: c.bg,
       appBar: AppBar(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: c.bg,
         elevation: 0,
         centerTitle: false,
-        title: HomeLogoRow(
-          authProv: authProv,
-          realtimeService: realtimeService,
-          onRefresh: handleRefresh,
-          levelProvider: levelProvider,
+        title: KeyedSubtree(
+          key: _logoKey,
+          child: HomeLogoRow(
+            authProv: authProv,
+            realtimeService: realtimeService,
+            onRefresh: handleRefresh,
+            levelProvider: levelProvider,
+          ),
         ),
         actions: [
           if (isCourier)
@@ -102,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen>
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AuthColors.border),
+          child: Container(height: 0.5, color: c.border),
         ),
       ),
       body: Column(
@@ -120,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-          if (isCourier && isActive)
+          if ((isCourier) && isActive)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: HomeSegmentedFilter(
@@ -136,13 +179,14 @@ class _HomeScreenState extends State<HomeScreen>
                 filterActiveCount: filters.activeCount,
                 onFilterTap: showFilterModal,
                 words: words,
+                showFilter: isCourier,
               ),
             ),
 
           if (isBanned || isPending)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildStatusBanner(isBanned, words),
+              child: _buildStatusBanner(isBanned, words, c),
             ),
 
           if (isShop && isActive || selectedFilterIndex == 1)
@@ -165,8 +209,9 @@ class _HomeScreenState extends State<HomeScreen>
 
           Expanded(
             child: RefreshIndicator(
-              color: AuthColors.emerald,
-              backgroundColor: Colors.white,
+              key: _ordersKey,
+              color: c.emerald,
+              backgroundColor: c.surface,
               onRefresh: handleRefresh,
               child: HomeOrdersList(
                 orders: filteredOrders,
@@ -179,6 +224,18 @@ class _HomeScreenState extends State<HomeScreen>
                 authProv: authProv,
                 words: words,
                 onRefresh: handleRefresh,
+                swipeEnabled: isCourier && isActive,
+                selectedFilterIndex: selectedFilterIndex,
+                onSwipe: isCourier && isActive
+                    ? (i) {
+                        if (selectedFilterIndex == i) return;
+                        setState(() {
+                          changeFilterIndex(i);
+                          ordersLoading = true;
+                        });
+                        reconnectRealtime();
+                      }
+                    : null,
               ),
             ),
           ),
@@ -187,9 +244,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStatusBanner(bool isBanned, AppLocalizations words) {
-    final color = isBanned ? AuthColors.errorMuted : AuthColors.amber;
-    final bgColor = isBanned ? AuthColors.errorTint : AuthColors.amberTint;
+  Widget _buildStatusBanner(
+    bool isBanned,
+    AppLocalizations words,
+    AppColors c,
+  ) {
+    final color = isBanned ? c.errorMuted : c.amber;
+    final bgColor = isBanned ? c.errorTint : c.amberTint;
     final icon = isBanned ? Icons.block_rounded : Icons.access_time_rounded;
     final text = isBanned ? words.accountBanned : words.accountPending;
 

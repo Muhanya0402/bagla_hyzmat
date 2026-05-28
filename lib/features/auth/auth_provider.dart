@@ -168,7 +168,7 @@ class AuthProvider extends ChangeNotifier {
     _lastErrorKind = AuthErrorKind.none;
     try {
       final success = await _authRepo.sendOTP(
-        '+993${phoneController.text.trim()}',
+        '+993${phoneController.text.replaceAll(RegExp(r'\s+'), '')}',
       );
       if (!success) {
         _lastErrorKind = AuthErrorKind.serverBusy;
@@ -198,7 +198,7 @@ class AuthProvider extends ChangeNotifier {
     _lastErrorKind = AuthErrorKind.none;
     try {
       final user = await _authRepo.verifyOTP(
-        '+993${phoneController.text.trim()}',
+        '+993${phoneController.text.replaceAll(RegExp(r'\s+'), '')}',
         otpController.text.trim(),
       );
 
@@ -230,7 +230,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> handleAuth(BuildContext context, dynamic langProvider) async {
     final words = langProvider.words;
-    final phoneInput = phoneController.text.trim();
+    final phoneInput = phoneController.text.replaceAll(RegExp(r'\s+'), '');
 
     if (!phoneInput.startsWith('+993') || phoneInput.length < 12) {
       _showError(context, words.errorPhoneLength ?? 'Неверный формат номера');
@@ -284,15 +284,9 @@ class AuthProvider extends ChangeNotifier {
     // Always guard with mounted after every await
     if (!context.mounted) return;
 
-    if (isNewUser) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/onboarding',
-        (route) => false,
-      );
-    } else {
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-    }
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 
   // ── Skip onboarding ────────────────────────────────────────────────────────

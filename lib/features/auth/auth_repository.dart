@@ -20,6 +20,10 @@ class AuthRepository {
 
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
+      debugPrint('──────────────────────────────────────');
+      debugPrint('📤 SEND_OTP →  POST ${_api.dio.options.baseUrl}/items/otp_codes');
+      debugPrint('   payload: {identifier: $cleanPhone}');
+
       final response = await _api.dio.post(
         '/items/otp_codes',
         data: {'identifier': cleanPhone},
@@ -27,25 +31,42 @@ class AuthRepository {
           headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
         ),
       );
+
+      debugPrint('✅ SEND_OTP ← ${response.statusCode}  data: ${response.data}');
+      debugPrint('──────────────────────────────────────');
       return response.statusCode == 200 || response.statusCode == 204;
     } on DioException catch (e) {
-      debugPrint("Ошибка SEND_OTP: ${e.response?.data}");
+      debugPrint('❌ SEND_OTP ERROR');
+      debugPrint('   type   : ${e.type}');
+      debugPrint('   message: ${e.message}');
+      debugPrint('   status : ${e.response?.statusCode}');
+      debugPrint('   data   : ${e.response?.data}');
+      debugPrint('──────────────────────────────────────');
       return false;
     }
   }
 
   Future<Map<String, dynamic>?> verifyOTP(String phone, String code) async {
     try {
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
+      final cleanCode  = code.trim();
+      const flowPath   = '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73';
+
+      debugPrint('──────────────────────────────────────');
+      debugPrint('📤 VERIFY_OTP →  POST ${_api.dio.options.baseUrl}$flowPath');
+      debugPrint('   payload: {identifier: $cleanPhone, code: $cleanCode}');
+
       final response = await _api.dio.post(
-        '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73',
-        data: {
-          'identifier': phone.replaceAll(RegExp(r'\s+'), ''),
-          'code': code.trim(),
-        },
+        flowPath,
+        data: {'identifier': cleanPhone, 'code': cleanCode},
         options: Options(
           headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
         ),
       );
+
+      debugPrint('✅ VERIFY_OTP ← ${response.statusCode}');
+      debugPrint('   data keys: ${(response.data as Map?)?.keys.toList()}');
+      debugPrint('──────────────────────────────────────');
 
       final data = response.data as Map<String, dynamic>;
 
@@ -73,7 +94,12 @@ class AuthRepository {
       }
       return null;
     } on DioException catch (e) {
-      debugPrint("Ошибка verifyOTP: ${e.response?.data}");
+      debugPrint('❌ VERIFY_OTP ERROR');
+      debugPrint('   type   : ${e.type}');
+      debugPrint('   message: ${e.message}');
+      debugPrint('   status : ${e.response?.statusCode}');
+      debugPrint('   data   : ${e.response?.data}');
+      debugPrint('──────────────────────────────────────');
       return null;
     }
   }
@@ -141,10 +167,16 @@ class AuthRepository {
   /// Получение профиля — запрашиваем district, etrap, province вложенно с названиями
   Future<Map<String, dynamic>?> fetchProfileFromServer(String phone) async {
     try {
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
+
+      debugPrint('──────────────────────────────────────');
+      debugPrint('📤 FETCH_PROFILE →  GET ${_api.dio.options.baseUrl}/items/customers');
+      debugPrint('   filter phone: $cleanPhone');
+
       final response = await _api.dio.get(
         '/items/customers',
         queryParameters: {
-          'filter[phone][_eq]': phone.replaceAll(RegExp(r'\s+'), ''),
+          'filter[phone][_eq]': cleanPhone,
           'fields':
               'id,phone,name,surname,role,status,rating,balance_points,address,'
               'district.id,district.district_ru,district.district_tk,'
@@ -154,16 +186,25 @@ class AuthRepository {
         },
       );
 
+      debugPrint('✅ FETCH_PROFILE ← ${response.statusCode}');
       final List data = response.data['data'];
+      debugPrint('   records found: ${data.length}');
+
       if (data.isNotEmpty) {
         final user = data[0];
-        debugPrint("📡 Получен статус от сервера: ${user['status']}");
+        debugPrint('📡 Получен статус от сервера: ${user['status']}');
+        debugPrint('   id=${user['id']}  role=${user['role']}  name=${user['name']}');
+        debugPrint('──────────────────────────────────────');
         await _saveUserToLocal(user);
         return user;
       }
+      debugPrint('⚠️  FETCH_PROFILE — пользователь не найден');
+      debugPrint('──────────────────────────────────────');
       return null;
     } catch (e) {
-      debugPrint("Ошибка запроса профиля: $e");
+      debugPrint('❌ FETCH_PROFILE ERROR');
+      debugPrint('   $e');
+      debugPrint('──────────────────────────────────────');
       return null;
     }
   }

@@ -1,5 +1,5 @@
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/auth/auth_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,29 +18,29 @@ class UserTypeSelectionScreen extends StatelessWidget {
         roleProv.selectedRole == 'shop' || roleProv.selectedRole == 'courier';
 
     return Scaffold(
-      backgroundColor: AuthColors.bg,
+      backgroundColor: AppColors.of(context).bg,
       appBar: AppBar(
-        backgroundColor: AuthColors.bg,
+        backgroundColor: AppColors.of(context).bg,
         elevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AuthColors.surface,
+              color: AppColors.of(context).surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AuthColors.border),
+              border: Border.all(color: AppColors.of(context).border),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new,
-              color: AuthColors.ink,
+              color: AppColors.of(context).ink,
               size: 16,
             ),
           ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AuthColors.border),
+          child: Container(height: 0.5, color: AppColors.of(context).border),
         ),
       ),
       body: SafeArea(
@@ -61,7 +61,7 @@ class UserTypeSelectionScreen extends StatelessWidget {
                 words.roleSubtitle,
                 style: AppText.regular(
                   fontSize: 14,
-                  color: AuthColors.inkMuted,
+                  color: AppColors.of(context).inkMuted,
                 ).copyWith(height: 1.5),
               ),
 
@@ -73,7 +73,7 @@ class UserTypeSelectionScreen extends StatelessWidget {
                 desc: words.roleClientDesc,
                 roleId: 'shop',
                 asset: 'assets/images/onboarding/merchant_welcome.png',
-                placeholderColor: AuthColors.bannerBg,
+                placeholderColor: AppColors.of(context).bannerBg,
                 placeholderIcon: Icons.storefront_outlined,
                 isSelected: roleProv.selectedRole == 'shop',
                 onTap: () => roleProv.selectRole('shop'),
@@ -170,23 +170,27 @@ class _RoleCardState extends State<_RoleCard> {
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
-            color: AuthColors.surface,
+            color: AppColors.of(context).surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.isSelected ? AuthColors.ink : AuthColors.borderSoft,
+              color: widget.isSelected
+                  ? AppColors.of(context).ink
+                  : AppColors.of(context).borderSoft,
               width: widget.isSelected ? 1.5 : 1,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: AuthColors.emerald.withValues(alpha: 0.10),
+                      color: AppColors.of(
+                        context,
+                      ).emerald.withValues(alpha: 0.10),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.04),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -215,7 +219,9 @@ class _RoleCardState extends State<_RoleCard> {
                           child: Icon(
                             widget.placeholderIcon,
                             size: 30,
-                            color: AuthColors.ink.withValues(alpha: 0.3),
+                            color: AppColors.of(
+                              context,
+                            ).ink.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -236,7 +242,7 @@ class _RoleCardState extends State<_RoleCard> {
                         widget.title,
                         style: AppText.semiBold(
                           fontSize: 15,
-                          color: AuthColors.ink,
+                          color: AppColors.of(context).ink,
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -244,7 +250,7 @@ class _RoleCardState extends State<_RoleCard> {
                         widget.desc,
                         style: AppText.regular(
                           fontSize: 12,
-                          color: AuthColors.inkMuted,
+                          color: AppColors.of(context).inkMuted,
                         ).copyWith(height: 1.5),
                       ),
                     ],
@@ -260,18 +266,18 @@ class _RoleCardState extends State<_RoleCard> {
                 margin: const EdgeInsets.only(right: 14),
                 decoration: BoxDecoration(
                   color: widget.isSelected
-                      ? AuthColors.ink
+                      ? AppColors.of(context).ink
                       : Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: widget.isSelected
-                        ? AuthColors.emerald
-                        : AuthColors.border,
+                        ? AppColors.of(context).emerald
+                        : AppColors.of(context).border,
                     width: 1.5,
                   ),
                 ),
                 child: widget.isSelected
-                    ? const Icon(Icons.check, size: 13, color: Colors.white)
+                    ? Icon(Icons.check, size: 13, color: Colors.white)
                     : null,
               ),
             ],
@@ -328,12 +334,14 @@ class _ConfirmButtonState extends State<_ConfirmButton> {
           width: double.infinity,
           height: 56,
           decoration: BoxDecoration(
-            color: widget.enabled ? AuthColors.ink : AuthColors.borderSoft,
+            color: widget.enabled
+                ? AppColors.of(context).ink
+                : AppColors.of(context).borderSoft,
             borderRadius: BorderRadius.circular(14),
             boxShadow: widget.enabled
                 ? [
                     BoxShadow(
-                      color: AuthColors.ink.withValues(alpha: 0.20),
+                      color: AppColors.of(context).ink.withValues(alpha: 0.20),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -345,7 +353,9 @@ class _ConfirmButtonState extends State<_ConfirmButton> {
             duration: const Duration(milliseconds: 200),
             style: AppText.semiBold(
               fontSize: 15,
-              color: widget.enabled ? Colors.white : AuthColors.inkSoft,
+              color: widget.enabled
+                  ? Colors.white
+                  : AppColors.of(context).inkSoft,
             ),
             child: Text(widget.label),
           ),
