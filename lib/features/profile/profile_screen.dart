@@ -27,8 +27,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with AppTourMixin<ProfileScreen> {
   final _topCardKey = GlobalKey();
-  final _tokensKey = GlobalKey();
-  final _menuKey = GlobalKey();
+  final _tokensKey  = GlobalKey();
+  final _levelKey   = GlobalKey();
+  final _menuKey    = GlobalKey();
 
   @override
   void initState() {
@@ -64,6 +65,21 @@ class _ProfileScreenState extends State<ProfileScreen>
               'Жетоны списываются при принятии заказа. Здесь можно пополнить баланс.',
           bodyTk:
               'Sargyt kabul edilende žetonlar hasapdan çykarylýar. Bu ýerde balans doldurylýar.',
+          isRu: lang.isRu,
+          align: ContentAlign.bottom,
+        ),
+      );
+      targets.add(
+        TourTarget.build(
+          key: _levelKey,
+          titleRu: 'Мой уровень',
+          titleTk: 'Meniň derejem',
+          bodyRu:
+              'Выполняйте заказы — зарабатывайте XP и повышайте уровень. '
+              'Каждый уровень открывает новые бонусы. Нажмите на карточку чтобы увидеть подробности.',
+          bodyTk:
+              'Sargytlary ýerine ýetiriň — XP gazanyň we derejeňizi ýokarlandyryň. '
+              'Her dereje täze bonuslary açýar. Jikme-jikleri görmek üçin kartça basyň.',
           isRu: lang.isRu,
           align: ContentAlign.bottom,
         ),
@@ -150,6 +166,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                     balance: auth.balancePoints.toDouble(),
                     onTopUp: () => _openTopUp(context, auth),
                   ),
+                ),
+              ),
+
+            // ── Level card (courier) ────────────────────────────────────────
+            if (isCourier)
+              SliverToBoxAdapter(
+                child: Padding(
+                  key: _levelKey,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: const LevelCardWidget(),
                 ),
               ),
 

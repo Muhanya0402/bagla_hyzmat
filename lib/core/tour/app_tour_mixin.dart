@@ -52,11 +52,32 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
         );
         return;
       }
-      _tryLaunch(
-        screenKey: screenKey,
-        targetsBuilder: targetsBuilder,
-        forceShow: forceShow,
-      );
+      // If the screen is a pushed route still mid-transition, wait for the
+      // animation to complete before reading GlobalKey positions — otherwise
+      // localToGlobal returns positions that include the slide offset and the
+      // spotlight lands in the wrong place (e.g. at the top of the screen).
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation != null &&
+          animation.status != AnimationStatus.completed) {
+        void onStatus(AnimationStatus status) {
+          if (status == AnimationStatus.completed) {
+            animation.removeStatusListener(onStatus);
+            if (!mounted) return;
+            _tryLaunch(
+              screenKey: screenKey,
+              targetsBuilder: targetsBuilder,
+              forceShow: forceShow,
+            );
+          }
+        }
+        animation.addStatusListener(onStatus);
+      } else {
+        _tryLaunch(
+          screenKey: screenKey,
+          targetsBuilder: targetsBuilder,
+          forceShow: forceShow,
+        );
+      }
     });
   }
 
@@ -104,7 +125,8 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
       RenderObject? obj = context.findRenderObject();
       while (obj != null) {
         if (obj is RenderOffstage && obj.offstage) return false;
-        obj = obj.parent as RenderObject?;
+        final parent = obj.parent;
+        obj = parent is RenderObject ? parent : null;
       }
       return true;
     } catch (_) {
@@ -125,10 +147,13 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
       paddingFocus: 10,
       focusAnimationDuration: const Duration(milliseconds: 350),
       pulseAnimationDuration: const Duration(milliseconds: 900),
-      alignSkip: Alignment.bottomRight,
+      alignSkip: Alignment.topRight,
       useSafeArea: true,
       skipWidget: Padding(
-        padding: const EdgeInsets.only(bottom: 120, right: 8),
+        padding: EdgeInsets.only(
+          top: MediaQuery.paddingOf(context).top + 8,
+          right: 12,
+        ),
         child: _TourSkipButton(isRu: isRu),
       ),
       onFinish: () {

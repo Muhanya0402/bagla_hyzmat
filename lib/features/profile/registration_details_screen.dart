@@ -94,6 +94,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   }
 
   Future<void> _selectProvince(Province p) async {
+    FocusScope.of(context).unfocus();
     setState(() {
       _selectedProvince = p;
       _selectedEtrap = null;
@@ -122,6 +123,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   }
 
   Future<void> _selectEtrap(Etrap e) async {
+    FocusScope.of(context).unfocus();
     setState(() {
       _selectedEtrap = e;
       _selectedDistrict = null;
@@ -148,6 +150,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   }
 
   void _selectDistrict(District d) {
+    FocusScope.of(context).unfocus();
     setState(() {
       _selectedDistrict = d;
       _searchQuery = '';
@@ -685,7 +688,12 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: ListView.separated(
+        child: NotificationListener<ScrollStartNotification>(
+          onNotification: (_) {
+            FocusScope.of(context).unfocus();
+            return false;
+          },
+          child: ListView.separated(
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: items.length,
@@ -728,6 +736,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -842,19 +851,26 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             ),
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _RoleChip(isCourier: isCourier),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppColors.of(context).borderSoft),
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 52),
-          children: [
-            // ── Роль-чип + заголовок ───────────────────────────────────
-            _RoleChip(isCourier: isCourier),
-            SizedBox(height: 18),
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 110),
+              children: [
+            // ── Заголовок ──────────────────────────────────────────────
             Text(
               isCourier ? 'Расскажите о себе' : 'Ваша организация',
               style: AppText.serif(fontSize: 32, letterSpacing: -0.5),
@@ -971,16 +987,42 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               ),
             ],
 
-            SizedBox(height: 44),
-
-            // ── Кнопка ─────────────────────────────────────────────────
-            _SubmitButton(
-              label: words.saveBtn,
-              isLoading: _isLoading,
-              onPressed: _handleSubmit,
-            ),
           ],
         ),
+      ),
+
+          // ── Фиксированная кнопка поверх контента ──────────────────────
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.of(context).bg.withValues(alpha: 0),
+                    AppColors.of(context).bg.withValues(alpha: 0.96),
+                    AppColors.of(context).bg,
+                  ],
+                  stops: const [0, 0.35, 1],
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
+                  child: _SubmitButton(
+                    label: words.saveBtn,
+                    isLoading: _isLoading,
+                    onPressed: _handleSubmit,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

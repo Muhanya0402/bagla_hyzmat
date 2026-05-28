@@ -55,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen>
         isRu: lang.isRu,
         align: ContentAlign.bottom,
       ),
+      // _ordersKey wraps the full-screen RefreshIndicator, so auto-calculated
+      // ContentAlign.top would land off-screen. Pin the card above the nav bar.
       TourTarget.build(
         key: _ordersKey,
         titleRu: 'Список заказов',
@@ -62,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen>
         bodyRu: 'Нажмите на заказ чтобы увидеть детали и принять его.',
         bodyTk: 'Jikme-jikleri görmek we kabul etmek üçin sargyta basyň.',
         isRu: lang.isRu,
-        align: ContentAlign.top,
+        customPosition: CustomTargetContentPosition(bottom: 110),
       ),
     ];
   }

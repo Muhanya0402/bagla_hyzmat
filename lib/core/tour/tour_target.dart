@@ -28,7 +28,12 @@ class TourTarget {
     ShapeLightFocus shape = ShapeLightFocus.RRect,
     double radius = 12,
     ContentAlign align = ContentAlign.top,
+    // Use custom positioning when the target widget is very large (e.g. a full-
+    // screen list) and the auto-calculated position would land off-screen.
+    CustomTargetContentPosition? customPosition,
   }) {
+    final effectiveAlign =
+        customPosition != null ? ContentAlign.custom : align;
     return TargetFocus(
       identify: key.hashCode.toString(),
       keyTarget: key,
@@ -37,7 +42,8 @@ class TourTarget {
       paddingFocus: 10,
       contents: [
         TargetContent(
-          align: align,
+          align: effectiveAlign,
+          customPosition: customPosition,
           builder: (_, _) => _TourCard(
             title: isRu ? titleRu : titleTk,
             body: isRu ? bodyRu : bodyTk,
