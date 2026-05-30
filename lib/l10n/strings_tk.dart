@@ -434,6 +434,13 @@ const Map<String, String> stringsTk = {
   'tourNotifListTitle': 'Sanaw',
   'tourNotifListBody':
       'Karta bas — okaldy diýip belleniler. Täzelemek üçin aşak çekiň.',
+  // Order detail tour
+  'tourOrderRouteTitle': 'Ugur',
+  'tourOrderRouteBody':
+      'Haryt nireden alynýar we nirä gowşurylýar. Kurýer sargyt kabul edilenden soň takyk salgyny görýär.',
+  'tourOrderActionTitle': 'Hereket',
+  'tourOrderActionBody':
+      'Sargyt kabul etmek, tamamlamak ýa-da ýatyrmak — hereketler roluňyza we ýagdaýa görä üýtgeýär.',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

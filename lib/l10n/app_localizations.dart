@@ -398,6 +398,11 @@ class AppLocalizations {
   String get tourNotifMarkAllBody => get('tourNotifMarkAllBody');
   String get tourNotifListTitle => get('tourNotifListTitle');
   String get tourNotifListBody => get('tourNotifListBody');
+  // Order detail
+  String get tourOrderRouteTitle => get('tourOrderRouteTitle');
+  String get tourOrderRouteBody => get('tourOrderRouteBody');
+  String get tourOrderActionTitle => get('tourOrderActionTitle');
+  String get tourOrderActionBody => get('tourOrderActionBody');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

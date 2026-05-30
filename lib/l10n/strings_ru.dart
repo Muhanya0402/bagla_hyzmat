@@ -442,6 +442,13 @@ const Map<String, String> stringsRu = {
   'tourNotifListTitle': 'Список',
   'tourNotifListBody':
       'Тап по карточке отметит её как прочитанную. Потяните вниз для обновления.',
+  // Order detail tour
+  'tourOrderRouteTitle': 'Маршрут',
+  'tourOrderRouteBody':
+      'Откуда забрать товар и куда доставить. Курьер видит точный адрес после принятия заказа.',
+  'tourOrderActionTitle': 'Действие',
+  'tourOrderActionBody':
+      'Принять, завершить или отменить заказ — действия зависят от вашей роли и статуса.',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',
