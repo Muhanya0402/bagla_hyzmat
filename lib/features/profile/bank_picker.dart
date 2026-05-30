@@ -1,16 +1,14 @@
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Brand
+// Brand constants — intentional accent colours, not adapted to theme.
 // ─────────────────────────────────────────────────────────────────────────────
 const _kGreen = Color(0xFF1A7A3C);
 const _kRed = Color(0xFFD32F1E);
-const _kGrey = Color(0xFF9AA3AF);
-const _kBg = Color(0xFFF5F7FA);
-const _kBorder = Color(0xFFEEF0F3);
 const _kGradient = LinearGradient(colors: [_kGreen, _kRed]);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,7 +33,6 @@ class BankOption {
   });
 
   factory BankOption.fromJson(Map<String, dynamic> j) {
-    // Directus может вернуть logo как строку (UUID) или как объект {id: ...}
     String? logoId;
     final raw = j['logo'];
     if (raw is String) {
@@ -43,7 +40,6 @@ class BankOption {
     } else if (raw is Map) {
       logoId = raw['id']?.toString();
     }
-
     return BankOption(
       id: j['id'].toString(),
       nameRu: j['name_ru'] ?? '',
@@ -79,7 +75,6 @@ class BankService {
         queryParameters: {
           'filter[is_active][_eq]': true,
           'sort': 'sort_order',
-          // Подтягиваем поля файла чтобы получить UUID логотипа
           'fields': 'id,name_ru,name_tk,primary_color,is_active,logo.id',
         },
       );
@@ -123,9 +118,12 @@ class _BankPickerSectionState extends State<BankPickerSection> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Section header ───────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.only(left: 2, bottom: 10),
           child: Row(
@@ -143,7 +141,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
                 widget.isRu ? 'ВЫБЕРИТЕ БАНК' : 'BANK SAÝLAŇ',
                 style: AppText.semiBold(
                   fontSize: 10,
-                  color: _kGrey,
+                  color: c.inkSoft,
                 ).copyWith(letterSpacing: 0.8),
               ),
             ],
@@ -160,7 +158,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
                   scrollDirection: Axis.horizontal,
                   itemCount: 4,
                   separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (_, _) => const _BankSkeleton(),
+                  itemBuilder: (_, _) => _BankSkeleton(),
                 ),
               );
             }
@@ -171,17 +169,17 @@ class _BankPickerSectionState extends State<BankPickerSection> {
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _kBg,
+                  color: c.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _kBorder),
+                  border: Border.all(color: c.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: _kGrey, size: 18),
+                    Icon(Icons.info_outline, color: c.inkSoft, size: 18),
                     const SizedBox(width: 10),
                     Text(
                       widget.isRu ? 'Банки недоступны' : 'Banklar ýok',
-                      style: AppText.regular(fontSize: 13, color: _kGrey),
+                      style: AppText.regular(fontSize: 13, color: c.inkSoft),
                     ),
                   ],
                 ),
@@ -233,6 +231,7 @@ class _BankCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final color = bank.color;
     final name = isRu ? bank.nameRu : bank.nameTk;
 
@@ -243,10 +242,10 @@ class _BankCard extends StatelessWidget {
         width: 100,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.07) : Colors.white,
+          color: isSelected ? color.withValues(alpha: 0.08) : c.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color : _kBorder,
+            color: isSelected ? color : c.border,
             width: isSelected ? 1.8 : 1,
           ),
           boxShadow: isSelected
@@ -268,7 +267,7 @@ class _BankCard extends StatelessWidget {
               name,
               style: AppText.semiBold(
                 fontSize: 11,
-                color: isSelected ? color : const Color(0xFF0F1117),
+                color: isSelected ? color : c.ink,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -285,7 +284,6 @@ class _BankCard extends StatelessWidget {
       return _fallbackIcon(color);
     }
 
-    // Чистый URL без параметров трансформации
     final url = '$_baseUrl/assets/${bank.logoFileId}';
 
     return SizedBox(
@@ -296,7 +294,7 @@ class _BankCard extends StatelessWidget {
         width: 60,
         height: 32,
         fit: BoxFit.contain,
-        cacheWidth: 120, // кэшируем чтобы не перегружать при setState
+        cacheWidth: 120,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
           return Center(
@@ -335,13 +333,14 @@ class _BankSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Container(
       width: 100,
       height: 82,
       decoration: BoxDecoration(
-        color: _kBg,
+        color: c.borderSoft,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
+        border: Border.all(color: c.border),
       ),
     );
   }

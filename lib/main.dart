@@ -1,4 +1,5 @@
 import 'package:bagla/core/app_settings_provider.dart';
+import 'package:bagla/core/splash_screen.dart';
 import 'package:bagla/core/theme/app_theme.dart';
 import 'package:bagla/core/theme/theme_provider.dart';
 import 'package:bagla/core/tour/tour_manager.dart';
@@ -23,8 +24,6 @@ import 'l10n/language_provider.dart';
 import 'features/auth/auth_repository.dart';
 import 'features/auth/phone_screen.dart';
 
-// ✅ Новый импорт — главная обёртка с BottomNavigationBar
-
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
@@ -37,43 +36,108 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) print('Фоновое сообщение: ${message.messageId}');
 }
 
-void main() async {
+// ── Entry point ───────────────────────────────────────────────────────────────
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ru', null);
+  // runApp is called immediately — SplashScreen shows while everything loads.
+  runApp(const AppBootstrap());
+}
 
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+// ── Bootstrap widget ──────────────────────────────────────────────────────────
 
-  final langProvider = LanguageProvider();
-  await langProvider.loadSavedLanguage();
+class _AppData {
+  final LanguageProvider langProvider;
+  final ThemeProvider themeProvider;
+  final bool loggedIn;
+  final bool needsRoleSelection;
 
-  final prefs = await SharedPreferences.getInstance();
-  final themeProvider = ThemeProvider.fromPrefs(prefs);
-  await TourManager.instance.init();
+  const _AppData({
+    required this.langProvider,
+    required this.themeProvider,
+    required this.loggedIn,
+    required this.needsRoleSelection,
+  });
+}
 
-  final bool loggedIn = await AuthRepository.checkAuthStatus();
-  // Роль считается выбранной, если она сохранена и не пустая.
-  final String savedRole = prefs.getString('role') ?? '';
-  final bool needsRoleSelection = loggedIn && savedRole.isEmpty;
+class AppBootstrap extends StatefulWidget {
+  const AppBootstrap({super.key});
 
-  if (loggedIn) {
-    await PushNotificationService().initialize();
+  @override
+  State<AppBootstrap> createState() => _AppBootstrapState();
+}
+
+class _AppBootstrapState extends State<AppBootstrap> {
+  _AppData? _data;
+
+  /// All async initialisation. Runs while SplashScreen plays.
+  Future<void> _initialize(VoidCallback onSplashDone) async {
+    await initializeDateFormatting('ru', null);
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    final langProvider = LanguageProvider();
+    await langProvider.loadSavedLanguage();
+
+    final prefs = await SharedPreferences.getInstance();
+    final themeProvider = ThemeProvider.fromPrefs(prefs);
+    await TourManager.instance.init();
+
+    final bool loggedIn = await AuthRepository.checkAuthStatus();
+    final String savedRole = prefs.getString('role') ?? '';
+    final bool needsRoleSelection = loggedIn && savedRole.isEmpty;
+
+    if (loggedIn) {
+      await PushNotificationService().initialize();
+    }
+
+    final data = _AppData(
+      langProvider: langProvider,
+      themeProvider: themeProvider,
+      loggedIn: loggedIn,
+      needsRoleSelection: needsRoleSelection,
+    );
+
+    // Trigger SplashScreen exit animation, then switch to the full app.
+    onSplashDone();
+    await Future.delayed(const Duration(milliseconds: 400)); // fade-out time
+    if (mounted) setState(() => _data = data);
   }
 
-  runApp(
-    MultiProvider(
+  @override
+  Widget build(BuildContext context) {
+    final data = _data;
+
+    // ── Splash phase ─────────────────────────────────────────────────────────
+    if (data == null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.system,
+        home: SplashScreen(onReady: _initialize),
+      );
+    }
+
+    // ── App phase ────────────────────────────────────────────────────────────
+    return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),
         ChangeNotifierProvider(create: (_) => LevelProvider()),
         ChangeNotifierProvider(create: (_) => AppSettingsProvider()),
-        ChangeNotifierProvider.value(value: langProvider),
-        ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: data.langProvider),
+        ChangeNotifierProvider.value(value: data.themeProvider),
       ],
-      child: MyApp(isLoggedIn: loggedIn, needsRoleSelection: needsRoleSelection),
-    ),
-  );
+      child: MyApp(
+        isLoggedIn: data.loggedIn,
+        needsRoleSelection: data.needsRoleSelection,
+      ),
+    );
+  }
 }
+
+// ── Main app ──────────────────────────────────────────────────────────────────
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
@@ -91,7 +155,6 @@ class MyApp extends StatelessWidget {
     if (!isLoggedIn) {
       home = const PhoneScreen();
     } else if (needsRoleSelection) {
-      // Первый вход: пользователь выбирает роль, затем попадает в MainShell.
       home = const UserTypeSelectionScreen();
     } else {
       home = const MainShell();
@@ -103,15 +166,12 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Bagla',
-
-      // ── Локализации ──────────────────────────────────────────────────────
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('ru'), Locale('tk'), Locale('en')],
-
       theme:     AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,

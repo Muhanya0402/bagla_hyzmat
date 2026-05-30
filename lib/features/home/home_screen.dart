@@ -28,8 +28,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with HomeScreenController<HomeScreen>, AppTourMixin<HomeScreen> {
-  final _logoKey = GlobalKey();
-  final _ordersKey = GlobalKey();
+  // ── Tour anchors ──────────────────────────────────────────────────────────
+  final _logoKey = GlobalKey(); // приветствие / level bar
+  final _activeCounterKey = GlobalKey(); // ActiveOrdersCounter (courier)
+  final _segmentedKey = GlobalKey(); // HomeSegmentedFilter (courier active)
+  final _statusFilterKey = GlobalKey(); // HomeStatusFilter (shop / «Мои»)
+  final _ordersKey = GlobalKey(); // лента заказов
 
   @override
   void initState() {
@@ -42,30 +46,80 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<TargetFocus> _buildTourTargets() {
-    final lang = context.read<LanguageProvider>();
+    final auth = context.read<AuthProvider>();
+    final words = context.read<LanguageProvider>().words;
+
+    if (auth.shouldSkipTour) return const [];
+
+    final isCourier = auth.isCourier;
+    final isShop = auth.isShop;
+    final isActive = auth.isActive;
+    final showsStatusFilter =
+        (isShop && isActive) || selectedFilterIndex == 1;
+
+    // Спецификации — потом конвертируем с isLast на последнем элементе.
+    final specs =
+        <(GlobalKey, String, String, ContentAlign, CustomTargetContentPosition?)>[
+      (
+        _logoKey,
+        isCourier
+            ? words.tourHomeWelcomeCourierTitle
+            : words.tourHomeWelcomeShopTitle,
+        isCourier
+            ? words.tourHomeWelcomeCourierBody
+            : words.tourHomeWelcomeShopBody,
+        ContentAlign.bottom,
+        null,
+      ),
+      if (isCourier && isActive)
+        (
+          _activeCounterKey,
+          words.tourHomeActiveCounterTitle,
+          words.tourHomeActiveCounterBody,
+          ContentAlign.bottom,
+          null,
+        ),
+      if (isCourier && isActive)
+        (
+          _segmentedKey,
+          words.tourHomeSegmentedTitle,
+          words.tourHomeSegmentedBody,
+          ContentAlign.bottom,
+          null,
+        ),
+      if (showsStatusFilter)
+        (
+          _statusFilterKey,
+          words.tourHomeStatusFilterTitle,
+          words.tourHomeStatusFilterBody,
+          ContentAlign.bottom,
+          null,
+        ),
+      (
+        _ordersKey,
+        isCourier
+            ? words.tourHomeOrdersCourierTitle
+            : words.tourHomeOrdersShopTitle,
+        isCourier
+            ? words.tourHomeOrdersCourierBody
+            : words.tourHomeOrdersShopBody,
+        ContentAlign.top,
+        // Лента занимает почти весь экран — прибиваем карточку к низу
+        // над навбаром, иначе автопозиционирование уедет за пределы.
+        CustomTargetContentPosition(bottom: 110),
+      ),
+    ];
+
     return [
-      TourTarget.build(
-        key: _logoKey,
-        titleRu: 'Главная страница',
-        titleTk: 'Baş sahypa',
-        bodyRu:
-            'Здесь отображаются все ваши заказы. Потяните вниз чтобы обновить список.',
-        bodyTk:
-            'Bu ýerde ähli sargytlaryňyz görkezilýär. Sanawyny täzelemek üçin aşak çekiň.',
-        isRu: lang.isRu,
-        align: ContentAlign.bottom,
-      ),
-      // _ordersKey wraps the full-screen RefreshIndicator, so auto-calculated
-      // ContentAlign.top would land off-screen. Pin the card above the nav bar.
-      TourTarget.build(
-        key: _ordersKey,
-        titleRu: 'Список заказов',
-        titleTk: 'Sargytlar sanawy',
-        bodyRu: 'Нажмите на заказ чтобы увидеть детали и принять его.',
-        bodyTk: 'Jikme-jikleri görmek we kabul etmek üçin sargyta basyň.',
-        isRu: lang.isRu,
-        customPosition: CustomTargetContentPosition(bottom: 110),
-      ),
+      for (var i = 0; i < specs.length; i++)
+        TourTarget.build(
+          key: specs[i].$1,
+          title: specs[i].$2,
+          body: specs[i].$3,
+          align: specs[i].$4,
+          customPosition: specs[i].$5,
+          isLast: i == specs.length - 1,
+        ),
     ];
   }
 
@@ -102,16 +156,13 @@ class _HomeScreenState extends State<HomeScreen>
     final words = lang.words;
     final levelProvider = context.watch<LevelProvider>();
 
-    final String role = authProv.role.toLowerCase().trim();
-    final String currentStatus = authProv.status.toLowerCase().trim();
-
-    final bool isActive = currentStatus == 'active';
-    final bool isShop = role == 'shop' || role == 'business';
-    final bool isCourier = role == 'courier';
-    final bool isClient = role == 'client';
-    final bool isBanned = currentStatus == 'banned';
-    final bool isPending = currentStatus == 'pending' && (isCourier || isShop);
-    final bool needsRoleSelection = isClient && currentStatus == 'published';
+    // AuthProvider теперь нормализует role/status и предоставляет предикаты.
+    final bool isActive = authProv.isActive;
+    final bool isShop = authProv.isShop;
+    final bool isCourier = authProv.isCourier;
+    final bool isBanned = authProv.isBanned;
+    final bool isPending = authProv.isPending && (isCourier || isShop);
+    final bool needsRoleSelection = authProv.needsRoleSelection;
 
     final filteredOrders = applyFilters(orders);
 
@@ -142,7 +193,10 @@ class _HomeScreenState extends State<HomeScreen>
           if (isCourier)
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: ActiveOrdersCounter(current: activeOrdersCount, max: 3),
+              child: KeyedSubtree(
+                key: _activeCounterKey,
+                child: ActiveOrdersCounter(current: activeOrdersCount, max: 3),
+              ),
             ),
         ],
         bottom: PreferredSize(
@@ -168,16 +222,19 @@ class _HomeScreenState extends State<HomeScreen>
           if ((isCourier) && isActive)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-              child: HomeSegmentedFilter(
-                selectedIndex: selectedFilterIndex,
-                onChanged: (i) {
-                  if (selectedFilterIndex == i) return;
-                  changeFilterIndex(i);
-                },
-                filterActiveCount: filters.activeCount,
-                onFilterTap: showFilterModal,
-                words: words,
-                showFilter: isCourier,
+              child: KeyedSubtree(
+                key: _segmentedKey,
+                child: HomeSegmentedFilter(
+                  selectedIndex: selectedFilterIndex,
+                  onChanged: (i) {
+                    if (selectedFilterIndex == i) return;
+                    changeFilterIndex(i);
+                  },
+                  filterActiveCount: filters.activeCount,
+                  onFilterTap: showFilterModal,
+                  words: words,
+                  showFilter: isCourier,
+                ),
               ),
             ),
 
@@ -190,18 +247,21 @@ class _HomeScreenState extends State<HomeScreen>
           if (isShop && isActive || selectedFilterIndex == 1)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 0, 0),
-              child: HomeStatusFilter(
-                selectedStatus: selectedStatus,
-                onChanged: (v) => setState(() => selectedStatus = v),
-                counts: {
-                  for (final f in getStatusFilters(words))
-                    f.value: orders
-                        .where(
-                          (o) =>
-                              f.value == null || o['order_status'] == f.value,
-                        )
-                        .length,
-                },
+              child: KeyedSubtree(
+                key: _statusFilterKey,
+                child: HomeStatusFilter(
+                  selectedStatus: selectedStatus,
+                  onChanged: (v) => setState(() => selectedStatus = v),
+                  counts: {
+                    for (final f in getStatusFilters(words))
+                      f.value: orders
+                          .where(
+                            (o) =>
+                                f.value == null || o['order_status'] == f.value,
+                          )
+                          .length,
+                  },
+                ),
               ),
             ),
 
@@ -214,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: HomeOrdersList(
                 orders: filteredOrders,
                 isLoading: ordersLoading,
+                isReloading: ordersReloading,
                 hasError: ordersError,
                 isShop: isShop,
                 loadingMore: loadingMore,

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +9,11 @@ import 'package:flutter/material.dart';
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 class UnreadNotificationsModal extends StatelessWidget {
-  final List<Map<String, dynamic>> notifications;
+  final List<NotificationDto> notifications;
   final VoidCallback onMarkAllRead;
 
   /// Called after the sheet closes. Caller handles screen navigation.
-  final Function(Map<String, dynamic>)? onNotificationTap;
+  final void Function(NotificationDto)? onNotificationTap;
 
   final AppLocalizations words;
   final bool isRu;
@@ -41,9 +42,9 @@ class UnreadNotificationsModal extends StatelessWidget {
 // ─── Body (stateful for local read tracking) ──────────────────────────────────
 
 class _UnreadModalBody extends StatefulWidget {
-  final List<Map<String, dynamic>> notifications;
+  final List<NotificationDto> notifications;
   final VoidCallback onMarkAllRead;
-  final Function(Map<String, dynamic>)? onNotificationTap;
+  final void Function(NotificationDto)? onNotificationTap;
   final AppLocalizations words;
   final bool isRu;
 
@@ -60,12 +61,12 @@ class _UnreadModalBody extends StatefulWidget {
 }
 
 class _UnreadModalBodyState extends State<_UnreadModalBody> {
-  late final List<Map<String, dynamic>> _items;
+  late final List<NotificationDto> _items;
 
   @override
   void initState() {
     super.initState();
-    _items = List.from(widget.notifications);
+    _items = List<NotificationDto>.from(widget.notifications);
   }
 
   void _onMarkAll() {
@@ -73,7 +74,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
     if (mounted) Navigator.pop(context);
   }
 
-  void _onTap(Map<String, dynamic> notif) {
+  void _onTap(NotificationDto notif) {
     Navigator.pop(context);
     widget.onNotificationTap?.call(notif);
   }
@@ -82,6 +83,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).padding.bottom;
     final screenH = MediaQuery.of(context).size.height;
+    final c = AppColors.of(context);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -89,13 +91,12 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
         filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.of(context).bg,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            color: c.bg,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
             border: Border(
-              top: BorderSide(
-                color: AppColors.of(context).borderSoft,
-                width: 1,
-              ),
+              top: BorderSide(color: c.borderSoft, width: 1),
             ),
           ),
           child: Column(
@@ -108,7 +109,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.of(context).border,
+                    color: c.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -138,7 +139,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                             '${_items.length}',
                             style: AppText.semiBold(
                               fontSize: 15,
-                              color: AppColors.of(context).accent,
+                              color: c.accent,
                             ),
                           ),
                         ],
@@ -154,7 +155,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
               const SizedBox(height: 12),
 
               // ── Divider ────────────────────────────────────────────────
-              Container(height: 0.5, color: AppColors.of(context).borderSoft),
+              Container(height: 0.5, color: c.borderSoft),
 
               // ── List ───────────────────────────────────────────────────
               ConstrainedBox(
@@ -166,7 +167,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                   separatorBuilder: (_, _) => Container(
                     height: 0.5,
                     margin: const EdgeInsets.only(left: 64),
-                    color: AppColors.of(context).borderSoft,
+                    color: c.borderSoft,
                   ),
                   itemBuilder: (_, i) => _NotifRow(
                     notif: _items[i],
@@ -178,7 +179,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
               ),
 
               // ── Divider ────────────────────────────────────────────────
-              Container(height: 0.5, color: AppColors.of(context).borderSoft),
+              Container(height: 0.5, color: c.borderSoft),
               const SizedBox(height: 12),
 
               // ── Close button ───────────────────────────────────────────
@@ -200,7 +201,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
 // ─── Notification row ──────────────────────────────────────────────────────────
 
 class _NotifRow extends StatefulWidget {
-  final Map<String, dynamic> notif;
+  final NotificationDto notif;
   final bool isRu;
   final AppLocalizations words;
   final VoidCallback onTap;
@@ -219,46 +220,16 @@ class _NotifRow extends StatefulWidget {
 class _NotifRowState extends State<_NotifRow> {
   bool _pressed = false;
 
-  ({Color icon, Color bg}) _style(String type) {
-    switch (type) {
-      case 'daily_bonus':
-        return (
-          icon: AppColors.of(context).amber,
-          bg: AppColors.of(context).amberTint,
-        );
-      case 'new_order':
-      case 'order_status':
-        return (
-          icon: AppColors.of(context).ink,
-          bg: AppColors.of(context).emeraldTint,
-        );
-      case 'account_status':
-        return (
-          icon: AppColors.of(context).errorMuted,
-          bg: AppColors.of(context).errorTint,
-        );
-      default:
-        return (
-          icon: AppColors.of(context).inkSoft,
-          bg: AppColors.of(context).borderSoft,
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final type = (widget.notif['type'] ?? '').toString();
-    final s = _style(type);
-    final title =
-        widget.notif[widget.isRu ? 'title_ru' : 'title_tk']?.toString() ??
-        widget.notif['title']?.toString() ??
-        '';
-    final body =
-        widget.notif[widget.isRu ? 'body_ru' : 'body_tk']?.toString() ??
-        widget.notif['body']?.toString() ??
-        '';
+    final c = AppColors.of(context);
+    final n = widget.notif;
+    final s = notifTypeStyle(n.type, c);
+
+    final title = n.title(widget.isRu);
+    final body = n.body(widget.isRu);
     final timeStr = notifFormatDate(
-      widget.notif['date_created']?.toString(),
+      n.raw['date_created']?.toString(),
       widget.words,
     );
 
@@ -287,7 +258,7 @@ class _NotifRowState extends State<_NotifRow> {
                   color: s.bg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(notifTypeIcon(type), color: s.icon, size: 16),
+                child: Icon(notifTypeIcon(n.type), color: s.icon, size: 16),
               ),
               const SizedBox(width: 12),
 
@@ -299,10 +270,7 @@ class _NotifRowState extends State<_NotifRow> {
                   children: [
                     Text(
                       title,
-                      style: AppText.semiBold(
-                        fontSize: 13,
-                        color: AppColors.of(context).ink,
-                      ),
+                      style: AppText.semiBold(fontSize: 13, color: c.ink),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -310,10 +278,8 @@ class _NotifRowState extends State<_NotifRow> {
                       const SizedBox(height: 2),
                       Text(
                         body,
-                        style: AppText.regular(
-                          fontSize: 12,
-                          color: AppColors.of(context).inkMuted,
-                        ).copyWith(height: 1.3),
+                        style: AppText.regular(fontSize: 12, color: c.inkMuted)
+                            .copyWith(height: 1.3),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -330,17 +296,14 @@ class _NotifRowState extends State<_NotifRow> {
                 children: [
                   Text(
                     timeStr,
-                    style: AppText.regular(
-                      fontSize: 10,
-                      color: AppColors.of(context).inkSoft,
-                    ),
+                    style: AppText.regular(fontSize: 10, color: c.inkSoft),
                   ),
                   const SizedBox(height: 5),
                   Container(
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: AppColors.of(context).accent,
+                      color: c.accent,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -370,6 +333,7 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -387,18 +351,11 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.done_all_rounded,
-                size: 13,
-                color: AppColors.of(context).ink,
-              ),
+              Icon(Icons.done_all_rounded, size: 13, color: c.ink),
               const SizedBox(width: 5),
               Text(
                 widget.label,
-                style: AppText.semiBold(
-                  fontSize: 12,
-                  color: AppColors.of(context).ink,
-                ),
+                style: AppText.semiBold(fontSize: 12, color: c.ink),
               ),
             ],
           ),
@@ -424,6 +381,7 @@ class _CloseButtonState extends State<_CloseButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
@@ -440,17 +398,14 @@ class _CloseButtonState extends State<_CloseButton> {
           width: double.infinity,
           height: 46,
           decoration: BoxDecoration(
-            color: AppColors.of(context).surface,
+            color: c.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.of(context).border),
+            border: Border.all(color: c.border),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
-            style: AppText.medium(
-              fontSize: 14,
-              color: AppColors.of(context).inkMuted,
-            ),
+            style: AppText.medium(fontSize: 14, color: c.inkMuted),
           ),
         ),
       ),

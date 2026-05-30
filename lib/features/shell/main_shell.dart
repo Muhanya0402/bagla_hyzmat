@@ -19,6 +19,24 @@ class MainShell extends StatefulWidget {
 
   const MainShell({super.key, this.initialIndex = 0});
 
+  // ── Floating nav geometry — публичные константы ──────────────────────────
+  static const double navBarHeight = 66;
+  static const double navBarSideMargin = 32;
+  static const double _navBarGap = 12;
+
+  /// Сколько места снизу должен зарезервировать экран, чтобы навбар
+  /// не перекрывал контент. Учитывает SafeArea + высоту bar'а + зазор.
+  ///
+  /// Используй в `padding.bottom` у скроллов под навбаром:
+  /// ```dart
+  /// ListView(padding: EdgeInsets.fromLTRB(16, 12, 16, MainShell.bottomReserve(context)))
+  /// ```
+  static double bottomReserve(BuildContext context) {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final navOffset = safeBottom > 0 ? safeBottom + 4.0 : 20.0;
+    return navBarHeight + navOffset + _navBarGap;
+  }
+
   static void switchTab(BuildContext context, int index) {
     final state = context.findAncestorStateOfType<_MainShellState>();
     state?._onTabTapped(index);

@@ -146,7 +146,9 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
       opacityShadow: 0.80,
       paddingFocus: 10,
       focusAnimationDuration: const Duration(milliseconds: 350),
-      pulseAnimationDuration: const Duration(milliseconds: 900),
+      // Без пульсации — спокойный «editorial» вид без отвлекающего ритма.
+      pulseAnimationDuration: Duration.zero,
+      pulseEnable: false,
       alignSkip: Alignment.topRight,
       useSafeArea: true,
       skipWidget: Padding(

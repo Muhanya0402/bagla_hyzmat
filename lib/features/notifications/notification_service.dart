@@ -3,20 +3,21 @@ import 'package:bagla/core/api_client.dart';
 class NotificationService {
   final ApiClient _api = ApiClient();
 
-  Future<List<dynamic>> getNotifications(String customerId) async {
-    try {
-      final response = await _api.dio.get(
-        '/items/notifications',
-        queryParameters: {
-          'filter[customer_id][_eq]': customerId,
-          'sort': '-date_created',
-          'limit': 50,
-        },
-      );
-      return response.data['data'] as List<dynamic>;
-    } catch (e) {
-      return [];
-    }
+  Future<List<dynamic>> getNotifications(
+    String customerId, {
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    final response = await _api.dio.get(
+      '/items/notifications',
+      queryParameters: {
+        'filter[customer_id][_eq]': customerId,
+        'sort': '-date_created',
+        'limit': limit,
+        'offset': offset,
+      },
+    );
+    return response.data['data'] as List<dynamic>;
   }
 
   Future<void> markAsRead(String notificationId) async {

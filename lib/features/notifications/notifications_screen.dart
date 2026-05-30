@@ -1,34 +1,22 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
-import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
-import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
-// ─── Type → visual style ───────────────────────────────────────────────────────
-
-({Color bg, Color icon}) _typeStyle(String type, AppColors c) {
-  switch (type) {
-    case 'daily_bonus':
-      return (bg: c.amberTint, icon: c.amber);
-    case 'new_order':
-    case 'order_status':
-      return (bg: c.emeraldTint, icon: c.ink);
-    case 'account_status':
-      return (bg: c.errorTint, icon: c.errorMuted);
-    default:
-      return (bg: c.borderSoft, icon: c.inkSoft);
-  }
-}
-
-// ─── Screen ────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Screen
+// ═════════════════════════════════════════════════════════════════════════════
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -39,14 +27,23 @@ class NotificationsScreen extends StatefulWidget {
 
 class NotificationsScreenState extends State<NotificationsScreen>
     with AppTourMixin<NotificationsScreen> {
-  final NotificationService _service = NotificationService();
+  static const int _pageSize = 30;
 
+  final NotificationService _service = NotificationService();
+  final _scrollCtrl = ScrollController();
+
+  // Tour anchors.
   final _titleKey = GlobalKey();
+  final _markAllKey = GlobalKey();
   final _listKey = GlobalKey();
 
-  List<dynamic> _items = [];
+  List<NotificationDto> _items = [];
   bool _isLoading = true;
+  bool _hasError = false;
+  bool _loadingMore = false;
+  bool _hasMore = true;
   late String _userId;
+
   // IDs optimistically marked as read locally but not yet confirmed by server.
   // Prevents pull-to-refresh from reverting them before the PATCH resolves.
   final Set<String> _pendingRead = {};
@@ -61,6 +58,8 @@ class NotificationsScreenState extends State<NotificationsScreen>
       screenKey: TourKeys.notifications,
       targetsBuilder: _buildTourTargets,
     );
+
+    _scrollCtrl.addListener(_onScroll);
 
     if (_userId.isNotEmpty) {
       _loadNotifications();
@@ -78,110 +77,228 @@ class NotificationsScreenState extends State<NotificationsScreen>
     }
   }
 
+  @override
+  void dispose() {
+    _scrollCtrl
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  // ── Data ────────────────────────────────────────────────────────────────
+
   Future<void> _loadNotifications({bool silent = false}) async {
-    if (!silent && mounted) setState(() => _isLoading = true);
-    final data = await _service.getNotifications(_userId);
-    if (!mounted) return;
-    setState(() {
-      // Preserve any optimistic reads that the server hasn't confirmed yet.
-      _items = data.map<dynamic>((n) {
-        if (_pendingRead.contains(n['id'].toString())) {
-          return {...n as Map, 'is_read': true};
+    if (!silent && mounted) {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
+    }
+
+    try {
+      final data = await _service.getNotifications(
+        _userId,
+        limit: _pageSize,
+        offset: 0,
+      );
+      if (!mounted) return;
+      setState(() {
+        _items = data
+            .whereType<Map>()
+            .map((m) => NotificationDto.fromMap(Map<String, dynamic>.from(m)))
+            .map(
+              (n) => _pendingRead.contains(n.id) ? n.copyWith(isRead: true) : n,
+            )
+            .toList();
+        _isLoading = false;
+        _hasError = false;
+        _hasMore = data.length >= _pageSize;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _isLoading || _hasError) return;
+    setState(() => _loadingMore = true);
+    try {
+      final more = await _service.getNotifications(
+        _userId,
+        limit: _pageSize,
+        offset: _items.length,
+      );
+      if (!mounted) return;
+      setState(() {
+        for (final raw in more.whereType<Map>()) {
+          final dto = NotificationDto.fromMap(Map<String, dynamic>.from(raw));
+          if (_items.any((x) => x.id == dto.id)) continue;
+          _items.add(_pendingRead.contains(dto.id) ? dto.copyWith(isRead: true) : dto);
         }
-        return n;
-      }).toList();
-      _isLoading = false;
-    });
+        _hasMore = more.length >= _pageSize;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
   }
 
   Future<void> _refresh() => _loadNotifications(silent: true);
 
-  Future<void> _markAllRead() async {
-    final unread = _items
-        .where((n) => n['is_read'] != true)
-        .map((n) => n['id'].toString())
-        .toSet();
-    if (unread.isEmpty) return;
-
-    // Optimistic update first — UI reflects change immediately.
-    _pendingRead.addAll(unread);
-    setState(() {
-      _items = _items.map((n) => {...n as Map, 'is_read': true}).toList();
-    });
-
-    await _service.markAllAsRead(_userId);
-    _pendingRead.removeAll(unread);
-  }
-
   Future<void> _markRead(String id) async {
     _pendingRead.add(id);
     setState(() {
-      _items = _items.map((n) {
-        if (n['id'].toString() == id) return {...n as Map, 'is_read': true};
-        return n;
-      }).toList();
+      _items = _items
+          .map((n) => n.id == id ? n.copyWith(isRead: true) : n)
+          .toList();
     });
     await _service.markAsRead(id);
     _pendingRead.remove(id);
   }
 
+  /// Mark-all с оптимистичным апдейтом + toast «Отменить» (4 сек).
+  Future<void> _markAllRead() async {
+    final words = context.read<LanguageProvider>().words;
+
+    // Снимок «было прочитано» — для undo.
+    final snapshot = {for (final n in _items) n.id: n.isRead};
+    final unreadIds = _items
+        .where((n) => !n.isRead)
+        .map((n) => n.id)
+        .toSet();
+    if (unreadIds.isEmpty) return;
+
+    _pendingRead.addAll(unreadIds);
+    setState(() {
+      _items = _items.map((n) => n.copyWith(isRead: true)).toList();
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    final c = AppColors.of(context);
+
+    bool undone = false;
+    messenger
+        .showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              MainShell.bottomReserve(context),
+            ),
+            backgroundColor: c.ink,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            content: Text(
+              words.notifMarkAllToast.replaceAll(
+                '{n}',
+                '${unreadIds.length}',
+              ),
+              style: AppText.medium(fontSize: 13, color: Colors.white),
+            ),
+            action: SnackBarAction(
+              label: words.notifUndo,
+              textColor: c.amber,
+              onPressed: () {
+                undone = true;
+                _pendingRead.removeAll(unreadIds);
+                if (!mounted) return;
+                setState(() {
+                  _items = _items
+                      .map(
+                        (n) => snapshot.containsKey(n.id)
+                            ? n.copyWith(isRead: snapshot[n.id])
+                            : n,
+                      )
+                      .toList();
+                });
+              },
+            ),
+          ),
+        )
+        .closed
+        .then((_) async {
+      if (undone) return; // отменили — на сервер не шлём
+      await _service.markAllAsRead(_userId);
+      _pendingRead.removeAll(unreadIds);
+    });
+  }
+
   void refresh() => _loadNotifications(silent: true);
 
-  // ── Group into today / yesterday / earlier ─────────────────────────────────
+  // ── Group into today / yesterday / earlier ──────────────────────────────
 
-  ({List<dynamic> today, List<dynamic> yesterday, List<dynamic> earlier})
-  _groupItems() {
-    final today = <dynamic>[];
-    final yesterday = <dynamic>[];
-    final earlier = <dynamic>[];
+  ({List<NotificationDto> today, List<NotificationDto> yesterday, List<NotificationDto> earlier})
+      _groupItems() {
+    final today = <NotificationDto>[];
+    final yesterday = <NotificationDto>[];
+    final earlier = <NotificationDto>[];
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final yesterdayStart = todayStart.subtract(const Duration(days: 1));
 
     for (final n in _items) {
-      try {
-        final dt = DateTime.parse(
-          (n['date_created'] ?? '').toString(),
-        ).toLocal();
-        if (dt.isAfter(todayStart)) {
-          today.add(n);
-        } else if (dt.isAfter(yesterdayStart)) {
-          yesterday.add(n);
-        } else {
-          earlier.add(n);
-        }
-      } catch (_) {
+      final dt = n.createdAt;
+      if (dt == null) {
+        earlier.add(n);
+      } else if (dt.isAfter(todayStart)) {
+        today.add(n);
+      } else if (dt.isAfter(yesterdayStart)) {
+        yesterday.add(n);
+      } else {
         earlier.add(n);
       }
     }
     return (today: today, yesterday: yesterday, earlier: earlier);
   }
 
+  // ── Tour ────────────────────────────────────────────────────────────────
+
   List<TargetFocus> _buildTourTargets() {
-    final lang = context.read<LanguageProvider>();
+    final words = context.read<LanguageProvider>().words;
+    final auth = context.read<AuthProvider>();
+
+    if (auth.shouldSkipTour) return const [];
+
     return [
       TourTarget.build(
         key: _titleKey,
-        titleRu: 'Уведомления',
-        titleTk: 'Habarnamalar',
-        bodyRu:
-            'Здесь появляются все системные уведомления — новые заказы, статусы и бонусы.',
-        bodyTk:
-            'Bu ýerde ähli ulgam habarlary görkezilýär — täze sargytlar, statuslar we bonuslar.',
-        isRu: lang.isRu,
+        title: words.tourNotifTitleTitle,
+        body: words.tourNotifTitleBody,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _markAllKey,
+        title: words.tourNotifMarkAllTitle,
+        body: words.tourNotifMarkAllBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
         key: _listKey,
-        titleRu: 'Список уведомлений',
-        titleTk: 'Habarnamalar sanawy',
-        bodyRu: 'Нажмите на уведомление чтобы отметить его как прочитанное.',
-        bodyTk: 'Habarnama basyň — ol okalandy diýip belleniler.',
-        isRu: lang.isRu,
+        title: words.tourNotifListTitle,
+        body: words.tourNotifListBody,
+        isLast: true,
         align: ContentAlign.top,
       ),
     ];
   }
+
+  // ── Build ───────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +319,13 @@ class NotificationsScreenState extends State<NotificationsScreen>
           ),
         ),
         actions: [
-          _MarkAllButton(onTap: _markAllRead, label: words.notifMarkAll),
+          KeyedSubtree(
+            key: _markAllKey,
+            child: _MarkAllButton(
+              onTap: _markAllRead,
+              label: words.notifMarkAll,
+            ),
+          ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
@@ -220,9 +343,11 @@ class NotificationsScreenState extends State<NotificationsScreen>
         child: CircularProgressIndicator(color: c.ink, strokeWidth: 2),
       );
     }
+    if (_hasError && _items.isEmpty) return _buildError(words);
     if (_items.isEmpty) return _buildEmpty(words);
 
     final groups = _groupItems();
+    final bottomReserve = MainShell.bottomReserve(context) + 8;
 
     return RefreshIndicator(
       key: _listKey,
@@ -230,54 +355,65 @@ class NotificationsScreenState extends State<NotificationsScreen>
       backgroundColor: c.surface,
       onRefresh: _refresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+        controller: _scrollCtrl,
+        padding: EdgeInsets.fromLTRB(16, 12, 16, bottomReserve),
         children: [
           if (groups.today.isNotEmpty) ...[
             _SectionLabel(text: words.notifToday),
             const SizedBox(height: 6),
-            ...groups.today.map(
-              (n) => _NotifCard(
-                key: ValueKey(n['id']),
-                notif: n,
-                onTap: () {
-                  if (n['is_read'] != true) _markRead(n['id'].toString());
-                },
-              ),
-            ),
+            ...groups.today.map(_card),
           ],
           if (groups.yesterday.isNotEmpty) ...[
             if (groups.today.isNotEmpty) const SizedBox(height: 6),
             _SectionLabel(text: words.notifYesterday),
             const SizedBox(height: 6),
-            ...groups.yesterday.map(
-              (n) => _NotifCard(
-                key: ValueKey(n['id']),
-                notif: n,
-                onTap: () {
-                  if (n['is_read'] != true) _markRead(n['id'].toString());
-                },
-              ),
-            ),
+            ...groups.yesterday.map(_card),
           ],
           if (groups.earlier.isNotEmpty) ...[
             if (groups.today.isNotEmpty || groups.yesterday.isNotEmpty)
               const SizedBox(height: 6),
             _SectionLabel(text: words.notifEarlier),
             const SizedBox(height: 6),
-            ...groups.earlier.map(
-              (n) => _NotifCard(
-                key: ValueKey(n['id']),
-                notif: n,
-                onTap: () {
-                  if (n['is_read'] != true) _markRead(n['id'].toString());
-                },
+            ...groups.earlier.map(_card),
+          ],
+          if (_loadingMore)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: c.ink,
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            )
+          else if (!_hasMore && _items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text(
+                  words.notifAllLoaded,
+                  style: AppText.regular(fontSize: 11.5, color: c.inkSoft),
+                ),
               ),
             ),
-          ],
         ],
       ),
     );
   }
+
+  Widget _card(NotificationDto n) => _NotifCard(
+        key: ValueKey(n.id),
+        notif: n,
+        onTap: () {
+          if (!n.isRead) _markRead(n.id);
+        },
+      );
+
+  // ── Empty state ─────────────────────────────────────────────────────────
 
   Widget _buildEmpty(AppLocalizations words) {
     final c = AppColors.of(context);
@@ -310,10 +446,51 @@ class NotificationsScreenState extends State<NotificationsScreen>
             Text(
               words.notifEmptyDesc,
               textAlign: TextAlign.center,
-              style: AppText.regular(
-                fontSize: 13,
-                color: c.inkMuted,
-              ).copyWith(height: 1.5),
+              style: AppText.regular(fontSize: 13, color: c.inkMuted)
+                  .copyWith(height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Error state ─────────────────────────────────────────────────────────
+
+  Widget _buildError(AppLocalizations words) {
+    final c = AppColors.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                color: c.errorTint,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: c.errorMuted.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Icon(
+                Icons.cloud_off_rounded,
+                size: 28,
+                color: c.errorMuted,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              words.notifLoadError,
+              textAlign: TextAlign.center,
+              style: AppText.semiBold(fontSize: 15, color: c.ink),
+            ),
+            const SizedBox(height: 14),
+            _RetryButton(
+              label: words.notifRetry,
+              onPressed: () => _loadNotifications(),
             ),
           ],
         ),
@@ -322,7 +499,9 @@ class NotificationsScreenState extends State<NotificationsScreen>
   }
 }
 
-// ─── Section label ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Section label
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _SectionLabel extends StatelessWidget {
   final String text;
@@ -346,10 +525,8 @@ class _SectionLabel extends StatelessWidget {
           const SizedBox(width: 7),
           Text(
             text.toUpperCase(),
-            style: AppText.semiBold(
-              fontSize: 10,
-              color: c.inkSoft,
-            ).copyWith(letterSpacing: 0.8),
+            style: AppText.semiBold(fontSize: 10, color: c.inkSoft)
+                .copyWith(letterSpacing: 0.8),
           ),
         ],
       ),
@@ -357,7 +534,9 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-// ─── Mark-all button ───────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Mark-all button
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _MarkAllButton extends StatefulWidget {
   final VoidCallback onTap;
@@ -390,7 +569,8 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
             curve: Curves.easeOut,
             child: Container(
               margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
               decoration: BoxDecoration(
                 color: c.emeraldTint,
                 borderRadius: BorderRadius.circular(20),
@@ -415,10 +595,52 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
   }
 }
 
-// ─── Notification card ─────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Retry button (error state)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _RetryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  const _RetryButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: c.ink,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: AppText.semiBold(fontSize: 13, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Notification card
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _NotifCard extends StatefulWidget {
-  final dynamic notif;
+  final NotificationDto notif;
   final VoidCallback onTap;
 
   const _NotifCard({super.key, required this.notif, required this.onTap});
@@ -434,20 +656,14 @@ class _NotifCardState extends State<_NotifCard> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
-    final bool isRead = widget.notif['is_read'] == true;
-    final String type = widget.notif['type'] ?? '';
     final c = AppColors.of(context);
-    final style = _typeStyle(type, c);
+    final n = widget.notif;
+    final style = notifTypeStyle(n.type, c);
 
-    final String title =
-        widget.notif[lang.isRu ? 'title_ru' : 'title_tk'] ??
-        widget.notif['title'] ??
-        '';
-    final String body =
-        widget.notif[lang.isRu ? 'body_ru' : 'body_tk'] ??
-        widget.notif['body'] ??
-        '';
-    final String timeStr = notifFormatDate(widget.notif['date_created'], words);
+    final String timeStr = notifFormatDate(
+      n.raw['date_created']?.toString(),
+      words,
+    );
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -465,18 +681,19 @@ class _NotifCardState extends State<_NotifCard> {
           duration: const Duration(milliseconds: 250),
           margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
-            color: isRead ? c.surface : style.icon.withValues(alpha: 0.04),
+            color: n.isRead ? c.surface : style.icon.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isRead ? c.borderSoft : style.icon.withValues(alpha: 0.18),
+              color: n.isRead
+                  ? c.borderSoft
+                  : style.icon.withValues(alpha: 0.18),
             ),
           ),
           child: Row(
             children: [
-              // ── Unread accent bar ──────────────────────────────────
               AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
-                width: isRead ? 0 : 3,
+                width: n.isRead ? 0 : 3,
                 height: 56,
                 decoration: BoxDecoration(
                   color: style.icon,
@@ -486,8 +703,6 @@ class _NotifCardState extends State<_NotifCard> {
                   ),
                 ),
               ),
-
-              // ── Icon ──────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
                 child: Container(
@@ -497,11 +712,13 @@ class _NotifCardState extends State<_NotifCard> {
                     color: style.bg,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Icon(notifTypeIcon(type), color: style.icon, size: 18),
+                  child: Icon(
+                    notifTypeIcon(n.type),
+                    color: style.icon,
+                    size: 18,
+                  ),
                 ),
               ),
-
-              // ── Text content ───────────────────────────────────────
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
@@ -513,8 +730,8 @@ class _NotifCardState extends State<_NotifCard> {
                         children: [
                           Expanded(
                             child: Text(
-                              title,
-                              style: isRead
+                              n.title(lang.isRu),
+                              style: n.isRead
                                   ? AppText.medium(fontSize: 13, color: c.ink)
                                   : AppText.semiBold(
                                       fontSize: 13,
@@ -535,7 +752,7 @@ class _NotifCardState extends State<_NotifCard> {
                                   color: c.inkSoft,
                                 ),
                               ),
-                              if (!isRead) ...[
+                              if (!n.isRead) ...[
                                 const SizedBox(width: 6),
                                 Container(
                                   width: 6,
@@ -550,10 +767,10 @@ class _NotifCardState extends State<_NotifCard> {
                           ),
                         ],
                       ),
-                      if (body.isNotEmpty) ...[
+                      if (n.body(lang.isRu).isNotEmpty) ...[
                         const SizedBox(height: 3),
                         Text(
-                          body,
+                          n.body(lang.isRu),
                           style: AppText.regular(
                             fontSize: 12,
                             color: c.inkMuted,

@@ -344,6 +344,96 @@ const Map<String, String> stringsTk = {
   'notifNewNotifications': 'Täze habarlar',
   'notifUnreadCount': '{n} okalmandy',
   'notifClose': 'Ýapmak',
+  'notifMarkAllToast': '{n} habar okalan diýip bellenildi',
+  'notifUndo': 'Yzyna gaýtar',
+  'notifLoadError': 'Habarlary ýüklemek başartmady',
+  'notifRetry': 'Gaýtalamak',
+  'notifAllLoaded': 'Ähli habarlar ýüklendi',
+
+  // ── Profile screen ──────────────────────────────────────────────────────
+  'profileScreenTitle': 'Profil',
+  'profileLogout': 'Çykmak',
+  'roleCourierLabel': 'Kurýer',
+  'roleShopLabel': 'Sargytçy',
+  'roleObserverLabel': 'Synçy',
+  'statusActiveLabel': 'Işjeň',
+  'statusPendingLabel': 'Barlanýar',
+  'statusBannedLabel': 'Petik',
+  'statusPublishedLabel': 'Täze',
+  'profileLevelShort': 'Dereje',
+  'profileMyTokens': 'Tyllalarym',
+  'profileTopUp': 'Doldur',
+  'profileTokensHint':
+      'Tyllalar diňe sargyt alanyňyzda hasapdan çykarylýar',
+  'profileRolePickTitle': 'Roluňyzy saýlaň',
+  'profileRolePickSubtitle': 'Kurýer ýa-da sargytçy boluň',
+  'profileSupportContact': 'Goldaw bilen habarlaşmak',
+  'profileFooterCopyright': '© {y}. Ähli hukuklar goraglydyr.',
+  'profileFooterVersion': 'Wersiýa',
+  'supportTitle': 'Goldaw gullugy',
+  'supportSubtitle': 'Islendik sowal boýunça size kömek bermäge taýýar',
+  'supportHint': 'Soragyňyzy ýazyň...',
+  'supportSend': 'Habary ibermek',
+  'supportDefaultSubject': 'Goldawa ýüzlenme',
+  'supportSent': 'Habar iberildi',
+  'supportSendError': 'Iberme ýalňyşlygy. Soňra synanyşyň.',
+  'supportCatOrder': 'Sargyt bilen mesele',
+  'supportCatTokens': 'Tylla hasaplama',
+  'supportCatBug': 'Programmadaky ýalňyşlyk',
+  'supportCatIdea': 'Teklip',
+  'logoutTitle': 'Profilden çykmak?',
+  'logoutSubtitle':
+      'Telefon belgiňiz arkaly islän wagtyňyz täzeden girip bilersiňiz. '
+      'Maglumatlaryňyz, tyllalaryňyz we dereje (XP) saklanylar.',
+  'logoutStay': 'Galmak',
+  'logoutConfirm': 'Çykmak',
+  'tourProfileTitle': 'Siziň profiliňiz',
+  'tourProfileBody':
+      'Bu ýerde ýagdaýyňyz, adyňyz we ulgamdaky roluňyz görkezilýär.',
+  'tourProfileRolePickTitle': 'Roly saýlaň',
+  'tourProfileRolePickBody':
+      'Bir bas — hasaba alyş anketasy açylar. Rol saýlanmadyk bolsa sargytlar elýeterli däl.',
+  'tourProfileTopUpTitle': '«Doldur» düwmesi',
+  'tourProfileTopUpBody':
+      'Tyllalar sargyt almak üçin gerek. Bu ýerde paket satyn alýarsyňyz — bank arkaly töleg.',
+  'tourProfileMenuTitle': 'Menýu',
+  'tourProfileMenuBody':
+      'Goldaw ýüztutmalary, ulanylyş şertleri we tema saýlamasy.',
+  'tourProfileLogoutTitle': 'Howpsuz çykmak',
+  'tourProfileLogoutBody':
+      'Ähli maglumatlaryňyz, tyllalaryňyz we dereje (XP) saklanýar. Täzeden girseňiz — hemmesi ýerinde.',
+  // Home tour
+  'tourHomeWelcomeCourierTitle': 'Derejäňiz',
+  'tourHomeWelcomeCourierBody':
+      'Her eltip bermek XP goşýar. Her dereje günde awtomatik +0.5 tylla berýär.',
+  'tourHomeWelcomeShopTitle': 'Baş sahypa',
+  'tourHomeWelcomeShopBody':
+      'Bu ýerde ähli sargytlaryňyz — täzelerini ýerleşdiriň we ýagdaýy yzarlaň.',
+  'tourHomeActiveCounterTitle': 'Işjeň sargytlar',
+  'tourHomeActiveCounterBody':
+      'Bir wagtyň özünde 3-e çenli sargyt alyp bilersiňiz. Täzelerini almak üçin häzirkilerini tamamlaň.',
+  'tourHomeSegmentedTitle': 'Hemmesi ýa-da Meňkiler',
+  'tourHomeSegmentedBody':
+      'Çepde — boş sargytlar. Sagda — siz alanlar. Çepe-saga süýşürme hem işleýär.',
+  'tourHomeStatusFilterTitle': 'Ýagdaý boýunça süzgüç',
+  'tourHomeStatusFilterBody':
+      'Boş, işde, tamamlanan, ýatyrylan — bir basyşda geçiň.',
+  'tourHomeOrdersCourierTitle': 'Sargyt alyň',
+  'tourHomeOrdersCourierBody':
+      'Karta bas — jikme-jikler, marşrut we «Kabul et» düwmesi. Täzelemek üçin aşak çekiň.',
+  'tourHomeOrdersShopTitle': 'Sargytlaryňyz',
+  'tourHomeOrdersShopBody':
+      'Bas → jikme-jikler we häzirki ýagdaý. Sanawyny täzelemek üçin aşak çekiň.',
+  // Notifications tour
+  'tourNotifTitleTitle': 'Habarnamalar',
+  'tourNotifTitleBody':
+      'Ähli ulgam habarlary — täze sargytlar, statuslar we bonuslar. Sene boýunça toparlanan.',
+  'tourNotifMarkAllTitle': 'Hemmesini okady diýip belle',
+  'tourNotifMarkAllBody':
+      'Bir basyşda hemmesini okalandy diýip belläň. Ýalňyşsaňyz — yzyna gaýtarmak üçin 4 sekunt bar.',
+  'tourNotifListTitle': 'Sanaw',
+  'tourNotifListBody':
+      'Karta bas — okaldy diýip belleniler. Täzelemek üçin aşak çekiň.',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

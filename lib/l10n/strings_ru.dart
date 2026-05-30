@@ -343,6 +343,105 @@ const Map<String, String> stringsRu = {
   'notifNewNotifications': 'Новые уведомления',
   'notifUnreadCount': '{n} непрочитанных',
   'notifClose': 'Закрыть',
+  'notifMarkAllToast': 'Отмечено {n} как прочитанные',
+  'notifUndo': 'Отменить',
+  'notifLoadError': 'Не удалось загрузить уведомления',
+  'notifRetry': 'Повторить',
+  'notifAllLoaded': 'Все уведомления загружены',
+
+  // ── Profile screen ──────────────────────────────────────────────────────
+  'profileScreenTitle': 'Профиль',
+  'profileLogout': 'Выйти',
+  // Roles
+  'roleCourierLabel': 'Курьер',
+  'roleShopLabel': 'Заказчик',
+  'roleObserverLabel': 'Наблюдатель',
+  // Status badge labels
+  'statusActiveLabel': 'Активен',
+  'statusPendingLabel': 'Проверка',
+  'statusBannedLabel': 'Блок',
+  'statusPublishedLabel': 'Новый',
+  // Top card / level
+  'profileLevelShort': 'Ур.',
+  // Points card
+  'profileMyTokens': 'Мои жетоны',
+  'profileTopUp': 'Пополнить',
+  'profileTokensHint': 'Жетоны списываются только при взятии заказа',
+  // Role selection card
+  'profileRolePickTitle': 'Выберите вашу роль',
+  'profileRolePickSubtitle': 'Станьте курьером или заказчиком',
+  // Menu
+  'profileSupportContact': 'Связаться с поддержкой',
+  // Footer
+  'profileFooterCopyright': '© {y}. Все права защищены.',
+  'profileFooterVersion': 'Версия',
+  // Support modal
+  'supportTitle': 'Служба поддержки',
+  'supportSubtitle': 'Мы на связи и готовы помочь вам с любым вопросом',
+  'supportHint': 'Опишите ваш вопрос...',
+  'supportSend': 'Отправить сообщение',
+  'supportDefaultSubject': 'Обращение в поддержку',
+  'supportSent': 'Сообщение отправлено',
+  'supportSendError': 'Ошибка отправки. Попробуйте позже.',
+  'supportCatOrder': 'Проблема с заказом',
+  'supportCatTokens': 'Списание жетонов',
+  'supportCatBug': 'Ошибка в приложении',
+  'supportCatIdea': 'Предложение',
+  // Logout dialog
+  'logoutTitle': 'Выйти из профиля?',
+  'logoutSubtitle':
+      'Вы сможете войти снова в любой момент, используя свой номер телефона. '
+      'Все ваши данные, жетоны и уровень (XP) будут сохранены.',
+  'logoutStay': 'Остаться',
+  'logoutConfirm': 'Выйти',
+  // Tour
+  'tourProfileTitle': 'Ваш профиль',
+  'tourProfileBody':
+      'Здесь отображается ваш статус, имя и роль в системе.',
+  'tourProfileRolePickTitle': 'Выберите роль',
+  'tourProfileRolePickBody':
+      'Один тап — и откроется анкета регистрации. Без выбора роли заказы недоступны.',
+  'tourProfileTopUpTitle': 'Кнопка «Пополнить»',
+  'tourProfileTopUpBody':
+      'Жетоны нужны для взятия заказов. Здесь покупаете пакет — оплата через банк.',
+  'tourProfileMenuTitle': 'Меню',
+  'tourProfileMenuBody':
+      'Обращения в поддержку, условия использования и переключатель темы.',
+  'tourProfileLogoutTitle': 'Безопасный выход',
+  'tourProfileLogoutBody':
+      'Все ваши данные, жетоны и уровень (XP) сохраняются. Войдёте снова — всё на месте.',
+  // Home tour
+  'tourHomeWelcomeCourierTitle': 'Ваш уровень',
+  'tourHomeWelcomeCourierBody':
+      'Каждая доставка добавляет XP. Каждый уровень даёт +0.5 жетона в день автоматически.',
+  'tourHomeWelcomeShopTitle': 'Главная',
+  'tourHomeWelcomeShopBody':
+      'Здесь все ваши заказы — публикуйте новые и следите за статусом.',
+  'tourHomeActiveCounterTitle': 'Активные заказы',
+  'tourHomeActiveCounterBody':
+      'Одновременно можно вести до 3 заказов. Завершите текущие, чтобы взять новые.',
+  'tourHomeSegmentedTitle': 'Все или Мои',
+  'tourHomeSegmentedBody':
+      'Слева — все свободные заказы. Справа — те, что вы взяли. Свайп влево-вправо тоже работает.',
+  'tourHomeStatusFilterTitle': 'Фильтр по статусу',
+  'tourHomeStatusFilterBody':
+      'Свободные, в работе, выполненные, отменённые — переключайтесь одним тапом.',
+  'tourHomeOrdersCourierTitle': 'Возьмите заказ',
+  'tourHomeOrdersCourierBody':
+      'Тап по карточке — детали, маршрут и кнопка «Принять». Потяните вниз для обновления.',
+  'tourHomeOrdersShopTitle': 'Ваши заказы',
+  'tourHomeOrdersShopBody':
+      'Тап → детали и текущий статус. Потяните список вниз для обновления.',
+  // Notifications tour
+  'tourNotifTitleTitle': 'Уведомления',
+  'tourNotifTitleBody':
+      'Все системные уведомления — новые заказы, статусы и бонусы. Сгруппированы по дате.',
+  'tourNotifMarkAllTitle': 'Прочитать все',
+  'tourNotifMarkAllBody':
+      'Одним тапом отметить все как прочитанные. Если случайно — есть 4 секунды чтобы отменить.',
+  'tourNotifListTitle': 'Список',
+  'tourNotifListBody':
+      'Тап по карточке отметит её как прочитанную. Потяните вниз для обновления.',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',

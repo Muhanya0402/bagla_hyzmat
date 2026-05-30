@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:bagla/features/home/widgets/courier_filter_modal.dart';
+import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/unread_notifications_modal.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -37,6 +38,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
   List<dynamic> orders = [];
   bool ordersLoading = true;
+  bool ordersReloading = false; // true while switching tabs — shows shimmer
   bool ordersError = false;
   int httpOffset = 0;
   bool hasMore = true;
@@ -79,9 +81,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   Future<void> changeFilterIndex(int index) async {
     if (selectedFilterIndex == index) return;
 
-    // Keep old orders visible while the new tab's data loads — no empty flash.
+    // Show shimmer skeleton while the new tab's data loads — no empty flash.
     setState(() {
       selectedFilterIndex = index;
+      ordersReloading = true;
       httpOffset = 0;
       hasMore = true;
     });
@@ -110,6 +113,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         setState(() {
           orders = fetchedOrders;
           ordersLoading = false;
+          ordersReloading = false;
           ordersError = false;
           httpOffset = fetchedOrders.length;
         });
@@ -129,6 +133,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       if (mounted) {
         setState(() {
           ordersLoading = false;
+          ordersReloading = false;
           ordersError = true;
         });
       }
@@ -153,8 +158,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     if (auth.userId.isEmpty) return;
     try {
       final service = NotificationService();
-      final unread = await service.getUnread(auth.userId);
-      if (unread.isEmpty || !mounted) return;
+      final unreadRaw = await service.getUnread(auth.userId);
+      if (unreadRaw.isEmpty || !mounted) return;
+      final unread = unreadRaw.map(NotificationDto.fromMap).toList();
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       showModalBottomSheet(

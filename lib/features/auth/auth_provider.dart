@@ -50,8 +50,26 @@ class AuthProvider extends ChangeNotifier {
   String get districtId => _districtId;
   String get etraptId => _etraptId;
   String get provinceId => _provinceId;
-  String get role => _role;
-  String get status => _status;
+  String get role => _role.toLowerCase().trim();
+  String get status => _status.toLowerCase().trim();
+
+  // Производные предикаты (один источник истины для UI).
+  bool get isCourier => role == 'courier';
+  bool get isShop => role == 'shop' || role == 'business';
+  bool get isClient => role == 'client';
+  bool get isActive => status == 'active';
+  bool get isPending => status == 'pending';
+  bool get isBanned => status == 'banned';
+  bool get isPublished => status == 'published';
+
+  /// Клиент, прошедший регистрацию, но ещё не выбравший роль.
+  bool get needsRoleSelection => isClient && isPublished;
+
+  /// Стоит ли пропускать обучающий тур экранов.
+  /// Banned/pending пользователи получают громкие статус-баннеры — тур только
+  /// отвлекает их от понимания, что аккаунт ограничен.
+  bool get shouldSkipTour =>
+      isBanned || (isPending && (isCourier || isShop));
   double get rating => _rating;
   // int cast so widgets can do "${auth.balancePoints}" without ".0"
   double get balancePoints => _balancePoints;
@@ -277,13 +295,7 @@ class AuthProvider extends ChangeNotifier {
   // ── Navigation after login ─────────────────────────────────────────────────
 
   Future<void> _navigate(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
-    final isNewUser = _status == 'published' && !onboardingDone;
-
-    // Always guard with mounted after every await
     if (!context.mounted) return;
-
     Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 

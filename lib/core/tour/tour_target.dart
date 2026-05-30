@@ -1,17 +1,28 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
-/// Фабрика шагов тура с единым стилем (AuthColors + AppText).
+/// Фабрика шагов тура с единым стилем (AppColors + AppText).
 ///
-/// Использование:
+/// Рекомендуемый способ — передавать уже локализованные строки:
+/// ```dart
+/// TourTarget.build(
+///   key: _filterKey,
+///   title: words.tourFiltersTitle,
+///   body:  words.tourFiltersBody,
+///   isLast: true,
+/// )
+/// ```
+///
+/// Legacy-режим (для экранов с хардкод-строками, ещё не переведённых в l10n):
 /// ```dart
 /// TourTarget.build(
 ///   key: _filterKey,
 ///   titleRu: 'Фильтры', titleTk: 'Süzgüçler',
-///   bodyRu:  'Фильтруй заказы по городу и типу.',
-///   bodyTk:  'Sargytlary şäher we görnüş boýunça süzüň.',
+///   bodyRu:  '...',     bodyTk:  '...',
 ///   isRu: isRu,
 /// )
 /// ```
@@ -20,11 +31,16 @@ class TourTarget {
 
   static TargetFocus build({
     required GlobalKey key,
-    required String titleRu,
-    required String titleTk,
-    required String bodyRu,
-    required String bodyTk,
-    required bool isRu,
+    // ── New (preferred) — single localized string ──────────────────────────
+    String? title,
+    String? body,
+    // ── Legacy — RU/TK split, выбор по isRu ──────────────────────────────
+    String? titleRu,
+    String? titleTk,
+    String? bodyRu,
+    String? bodyTk,
+    bool isRu = true,
+    bool isLast = false,
     ShapeLightFocus shape = ShapeLightFocus.RRect,
     double radius = 12,
     ContentAlign align = ContentAlign.top,
@@ -32,21 +48,32 @@ class TourTarget {
     // screen list) and the auto-calculated position would land off-screen.
     CustomTargetContentPosition? customPosition,
   }) {
-    final effectiveAlign =
-        customPosition != null ? ContentAlign.custom : align;
+    final String effectiveTitle =
+        title ?? (isRu ? (titleRu ?? '') : (titleTk ?? ''));
+    final String effectiveBody =
+        body ?? (isRu ? (bodyRu ?? '') : (bodyTk ?? ''));
+
+    final effectiveAlign = customPosition != null
+        ? ContentAlign.custom
+        : align;
     return TargetFocus(
       identify: key.hashCode.toString(),
       keyTarget: key,
       shape: shape,
       radius: radius,
       paddingFocus: 10,
+      // Тап по подсветке больше не продвигает тур — только кнопка «Далее».
+      enableTargetTab: false,
+      enableOverlayTab: false,
       contents: [
         TargetContent(
           align: effectiveAlign,
           customPosition: customPosition,
-          builder: (_, _) => _TourCard(
-            title: isRu ? titleRu : titleTk,
-            body: isRu ? bodyRu : bodyTk,
+          builder: (_, controller) => _TourCard(
+            title: effectiveTitle,
+            body: effectiveBody,
+            isLast: isLast,
+            onNext: controller.next,
           ),
         ),
       ],
@@ -59,20 +86,35 @@ class TourTarget {
 class _TourCard extends StatelessWidget {
   final String title;
   final String body;
-  const _TourCard({required this.title, required this.body});
+  final bool isLast;
+  final VoidCallback onNext;
+
+  const _TourCard({
+    required this.title,
+    required this.body,
+    required this.isLast,
+    required this.onNext,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    // Читаем язык из провайдера — кнопке нужны Далее/Indiki или Понятно/Düşnükli.
+    final isRu = context.watch<LanguageProvider>().isRu;
+    final nextLabel = isLast
+        ? (isRu ? 'Понятно' : 'Düşnükli')
+        : (isRu ? 'Далее' : 'Indiki');
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
-        color: AppColors.of(context).surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.of(context).border),
+        border: Border.all(color: c.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.of(context).ink.withValues(alpha: 0.10),
+            color: c.ink.withValues(alpha: 0.10),
             blurRadius: 24,
             offset: const Offset(0, 6),
           ),
@@ -84,15 +126,50 @@ class _TourCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppText.serif(fontSize: 15, color: AppColors.of(context).ink),
+            style: AppText.serif(fontSize: 15, color: c.ink),
           ),
           const SizedBox(height: 6),
           Text(
             body,
-            style: AppText.regular(fontSize: 13, color: AppColors.of(context).inkMuted)
+            style: AppText.regular(fontSize: 13, color: c.inkMuted)
                 .copyWith(height: 1.5),
           ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _TourNextButton(label: nextLabel, onPressed: onNext),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _TourNextButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  const _TourNextButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: c.ink,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: AppText.semiBold(fontSize: 13, color: Colors.white)
+                .copyWith(letterSpacing: 0.1),
+          ),
+        ),
       ),
     );
   }

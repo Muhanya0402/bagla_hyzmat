@@ -1,28 +1,20 @@
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
-const Color kNotifGreen = Color(0xFF1A7A3C);
-const Color kNotifRed = Color(0xFFD32F1E);
-const Color kNotifGrey = Color(0xFF9AA3AF);
-const Color kNotifOrange = Color(0xFFE67E22);
-const Color kNotifPurple = Color(0xFF7C3AED);
-
-const LinearGradient kNotifGradient = LinearGradient(
-  colors: [kNotifGreen, kNotifRed],
-);
-
-Color notifTypeColor(String type) {
+/// Цвета фона и иконки для типа уведомления — **единственный** источник
+/// истины. Использует AppColors через BuildContext.
+({Color bg, Color icon}) notifTypeStyle(String type, AppColors c) {
   switch (type) {
-    case 'account_status':
-      return kNotifPurple;
-    case 'new_order':
-      return kNotifGreen;
-    case 'order_status':
-      return kNotifRed;
     case 'daily_bonus':
-      return kNotifOrange;
+      return (bg: c.amberTint, icon: c.amber);
+    case 'new_order':
+    case 'order_status':
+      return (bg: c.emeraldTint, icon: c.ink);
+    case 'account_status':
+      return (bg: c.errorTint, icon: c.errorMuted);
     default:
-      return kNotifGrey;
+      return (bg: c.borderSoft, icon: c.inkSoft);
   }
 }
 
@@ -38,21 +30,6 @@ IconData notifTypeIcon(String type) {
       return Icons.bolt_rounded;
     default:
       return Icons.notifications_rounded;
-  }
-}
-
-String notifTypeLabel(String type, AppLocalizations w) {
-  switch (type) {
-    case 'account_status':
-      return w.notifAccount;
-    case 'new_order':
-      return w.notifNewOrder;
-    case 'order_status':
-      return w.notifOrderStatus;
-    case 'daily_bonus':
-      return w.notifDailyBonus;
-    default:
-      return w.notifDefault;
   }
 }
 
