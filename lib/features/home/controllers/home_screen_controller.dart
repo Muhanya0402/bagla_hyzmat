@@ -77,15 +77,11 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> changeFilterIndex(int index) async {
-    if (selectedFilterIndex == index) {
-      return; // Если нажали на ту же вкладку — ничего не делаем
-    }
+    if (selectedFilterIndex == index) return;
 
+    // Keep old orders visible while the new tab's data loads — no empty flash.
     setState(() {
       selectedFilterIndex = index;
-      ordersLoading =
-          true; // Показываем красивый лоадер, пока грузятся новые данные
-      orders = []; // Очищаем старые заказы, чтобы списки не смешивались
       httpOffset = 0;
       hasMore = true;
     });

@@ -172,11 +172,7 @@ class _HomeScreenState extends State<HomeScreen>
                 selectedIndex: selectedFilterIndex,
                 onChanged: (i) {
                   if (selectedFilterIndex == i) return;
-                  setState(() {
-                    changeFilterIndex(i);
-                    ordersLoading = true;
-                  });
-                  reconnectRealtime();
+                  changeFilterIndex(i);
                 },
                 filterActiveCount: filters.activeCount,
                 onFilterTap: showFilterModal,
@@ -231,11 +227,7 @@ class _HomeScreenState extends State<HomeScreen>
                 onSwipe: isCourier && isActive
                     ? (i) {
                         if (selectedFilterIndex == i) return;
-                        setState(() {
-                          changeFilterIndex(i);
-                          ordersLoading = true;
-                        });
-                        reconnectRealtime();
+                        changeFilterIndex(i);
                       }
                     : null,
               ),

@@ -155,13 +155,6 @@ class OrderCard extends StatelessWidget {
         color: c.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: c.border),
-        boxShadow: [
-          BoxShadow(
-            color: c.ink.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
-import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 
 class HomeLevelBar extends StatelessWidget {
@@ -9,127 +9,134 @@ class HomeLevelBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🔍 currentXp: ${provider.currentXp}');
-    debugPrint(
-      '🔍 currentLevel.xpRequired: ${provider.currentLevel?.xpRequired}',
-    );
-    debugPrint('🔍 nextLevel.xpRequired: ${provider.nextLevel?.xpRequired}');
-    debugPrint('🔍 progressInLevel: ${provider.progressInLevel}');
+    final c = AppColors.of(context);
     final int level = provider.currentLevel?.levelNumber ?? 1;
-    final double progress = provider.progressInLevel;
+    final double progress = provider.progressInLevel.clamp(0.0, 1.0);
 
-    // XP внутри текущего уровня
-    final int xpEarned =
-        provider.currentXp - (provider.currentLevel?.xpRequired ?? 0);
-    // Сколько нужно для следующего уровня
-    final int xpRange = provider.nextLevel != null
-        ? (provider.nextLevel!.xpRequired -
-              (provider.currentLevel?.xpRequired ?? 0))
-        : 0;
+    final int currentXp = provider.currentXp;
+    final int? nextLevelXp = provider.nextLevel?.xpRequired;
 
-    return Container(
-      height: 24,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F4F7),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Stack(
-        alignment: Alignment.centerLeft,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeOutCubic,
-            width: MediaQuery.of(context).size.width * 0.42 * progress,
-            height: 24,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [HomeColors.green, Color(0xFF2BBE63)],
+    return Row(
+      children: [
+        // ── Level badge — outside the track ────────────────────────────
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: c.amber,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: c.amber.withValues(alpha: 0.35),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
               ),
-              borderRadius: BorderRadius.circular(100),
-              boxShadow: [
-                BoxShadow(
-                  color: HomeColors.green.withValues(alpha: 0.18),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '$level',
-                    style: AppText.extraBold(
-                      fontSize: 9,
-                      color: HomeColors.green,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '$xpEarned/$xpRange XP',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.semiBold(
-                        fontSize: 9,
-                        color: progress > 0.55
-                            ? Colors.white
-                            : const Color(0xFF64748B),
-                      ),
-                    ),
+          alignment: Alignment.center,
+          child: Text(
+            '$level',
+            style: AppText.extraBold(fontSize: 9, color: Colors.white),
+          ),
+        ),
+
+        const SizedBox(width: 6),
+
+        // ── Progress track ──────────────────────────────────────────────
+        Expanded(
+          child: LayoutBuilder(
+            builder: (_, constraints) {
+              final double w = constraints.maxWidth;
+              // Always show at least a 22 px pill so the bar is never empty.
+              final double fill = progress > 0
+                  ? (w * progress).clamp(22.0, w)
+                  : 0.0;
+              // White on fill (amber bg), ink on unfilled (amberTint bg).
+              // Never use c.amber for text — low contrast on amberTint.
+              final bool onFill = fill > w * 0.55;
+
+              return Container(
+                height: 22,
+                decoration: BoxDecoration(
+                  color: c.amberTint,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: c.amber.withValues(alpha: 0.18),
                   ),
                 ),
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: progress > 0.88
-                        ? Colors.white.withValues(alpha: 0.16)
-                        : HomeColors.green.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        size: 10,
-                        color: progress > 0.88
-                            ? Colors.white
-                            : HomeColors.green,
-                      ),
-                      Text(
-                        '${level + 1}',
-                        style: AppText.extraBold(
-                          fontSize: 8,
-                          color: progress > 0.88
-                              ? Colors.white
-                              : HomeColors.green,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    // Fill
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      width: fill,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            c.amber,
+                            c.amber.withValues(alpha: 0.72),
+                          ],
                         ),
+                        borderRadius: BorderRadius.circular(100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: c.amber.withValues(alpha: 0.22),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // Labels
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              nextLevelXp != null
+                                  ? '$currentXp / $nextLevelXp XP'
+                                  : '$currentXp XP',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.semiBold(
+                                fontSize: 9,
+                                color: onFill ? Colors.white : c.ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.keyboard_arrow_up_rounded,
+                                size: 10,
+                                color: onFill ? Colors.white : c.ink,
+                              ),
+                              Text(
+                                '${level + 1}',
+                                style: AppText.extraBold(
+                                  fontSize: 8,
+                                  color: onFill ? Colors.white : c.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -140,16 +147,15 @@ class HomeProgressTrack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final double filledWidth = (constraints.maxWidth * progress).clamp(
-          0.0,
-          constraints.maxWidth,
-        );
+      builder: (_, constraints) {
+        final double filled =
+            (constraints.maxWidth * progress).clamp(0.0, constraints.maxWidth);
         return Container(
           height: 8,
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F4F8),
+            color: c.amberTint,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Stack(
@@ -157,15 +163,15 @@ class HomeProgressTrack extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.easeOutCubic,
-                width: filledWidth,
+                width: filled,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [HomeColors.green, Color(0xFF34D46A)],
+                  gradient: LinearGradient(
+                    colors: [c.amber, c.amber.withValues(alpha: 0.75)],
                   ),
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
-                      color: HomeColors.green.withValues(alpha: 0.35),
+                      color: c.amber.withValues(alpha: 0.35),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),

@@ -43,11 +43,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
   final _routeKey = GlobalKey();
   final _actionKey = GlobalKey();
 
-  Timer? _timer;
-  Duration _timeLeft = Duration.zero;
+  // Updated at most once (when the deadline passes); never on every tick.
   bool _isExpired = false;
 
   late final AnimationController _animCtrl;
+
+  // Pre-cached interval animations — avoids CurvedAnimation allocations on
+  // every build() call. _a0 = countdown, _a1 = route, _a2 = details,
+  // _a3 = price, _a4 = photos, _a5 = comment.
+  late final Animation<double> _a0, _a1, _a2, _a3, _a4, _a5;
 
   List<TargetFocus> _buildTourTargets() {
     final lang = context.read<LanguageProvider>();
@@ -101,9 +105,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 280),
     );
-    _startCountdown();
+    // Pre-cache all animations once — build() never allocates new objects.
+    final s = widget.role == 'shop';
+    _a0 = _ia(0.0,          0.45);
+    _a1 = _ia(s ? 0.0 : 0.1, s ? 0.45 : 0.55);
+    _a2 = _ia(s ? 0.1 : 0.2, s ? 0.55 : 0.65);
+    _a3 = _ia(s ? 0.2 : 0.3, s ? 0.65 : 0.75);
+    _a4 = _ia(s ? 0.3 : 0.4, s ? 0.75 : 0.85);
+    _a5 = _ia(s ? 0.35 : 0.45, s ? 0.8 : 0.9);
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
     startTourIfNeeded(
       screenKey: TourKeys.orderDetail,
@@ -111,47 +122,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     );
   }
 
-  void _startCountdown() {
-    final String? t = widget.order['time_of_delivery'];
-    if (t == null || t.isEmpty) return;
-    final deadline = DateTime.parse(t).toLocal();
-    _updateTimeLeft(deadline);
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => _updateTimeLeft(deadline),
-    );
-  }
-
-  void _updateTimeLeft(DateTime deadline) {
-    final diff = deadline.difference(DateTime.now());
-    if (mounted) {
-      setState(() {
-        if (diff.isNegative) {
-          _timeLeft = Duration.zero;
-          _isExpired = true;
-        } else {
-          _timeLeft = diff;
-          _isExpired = false;
-        }
-      });
-    }
+  // Called by _CountdownCard exactly once when the deadline passes.
+  void _onDeadlineExpired() {
+    if (!_isExpired && mounted) setState(() => _isExpired = true);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _animCtrl.dispose();
     super.dispose();
   }
 
-  String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
-  }
-
-  Animation<double> _itemAnim(double start, double end) {
+  // Only called during initState — never inside build().
+  Animation<double> _ia(double start, double end) {
     return CurvedAnimation(
       parent: _animCtrl,
       curve: Interval(start, end, curve: Curves.easeOutCubic),
@@ -471,31 +454,47 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
-          // ── Countdown (courier + has deadline) ──────────────────────────
+          // ── Countdown (courier) — own StatefulWidget, never triggers
+          //    parent setState; calls _onDeadlineExpired() exactly once.
           if (!isShop)
-            _animated(_buildCountdownCard(words), _itemAnim(0.0, 0.45)),
+            _animated(
+              RepaintBoundary(
+                child: _CountdownCard(
+                  timeOfDelivery: widget.order['time_of_delivery']?.toString(),
+                  cashback:
+                      (widget.order['cashback_amount'] ?? 0.0).toDouble(),
+                  words: words,
+                  onExpired: _onDeadlineExpired,
+                ),
+              ),
+              _a0,
+            ),
           if (!isShop) const SizedBox(height: 10),
 
           // ── Route timeline ───────────────────────────────────────────────
           KeyedSubtree(
             key: _routeKey,
             child: _animated(
-              _section(
-                title: words.routeSection,
-                child: _buildRouteBlock(isDataLocked, langProvider),
+              RepaintBoundary(
+                child: _section(
+                  title: words.routeSection,
+                  child: _buildRouteBlock(isDataLocked, langProvider),
+                ),
               ),
-              _itemAnim(isShop ? 0.0 : 0.1, isShop ? 0.45 : 0.55),
+              _a1,
             ),
           ),
           const SizedBox(height: 10),
 
-          // ── Details (transport + contacts) ───────────────────────────────
+          // ── Details ──────────────────────────────────────────────────────
           _animated(
-            _section(
-              title: words.recipientSection,
-              child: _buildDetailsBlock(isDataLocked, isShop, words),
+            RepaintBoundary(
+              child: _section(
+                title: words.recipientSection,
+                child: _buildDetailsBlock(isDataLocked, isShop, words),
+              ),
             ),
-            _itemAnim(isShop ? 0.1 : 0.2, isShop ? 0.55 : 0.65),
+            _a2,
           ),
           const SizedBox(height: 10),
 
@@ -505,7 +504,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               title: words.priceSection,
               child: _buildPriceBlock(isShop, total, delivery, words),
             ),
-            _itemAnim(isShop ? 0.2 : 0.3, isShop ? 0.65 : 0.75),
+            _a3,
           ),
 
           // ── Photos ───────────────────────────────────────────────────────
@@ -516,7 +515,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 title: words.photoSection,
                 child: _buildImagesBlock(pictures),
               ),
-              _itemAnim(isShop ? 0.3 : 0.4, isShop ? 0.75 : 0.85),
+              _a4,
             ),
           ],
 
@@ -528,13 +527,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 title: words.commentSection,
                 child: Text(
                   widget.order['comment'].toString(),
-                  style: AppText.regular(
-                    fontSize: 13,
-                    color: c.ink,
-                  ).copyWith(height: 1.5),
+                  style: AppText.regular(fontSize: 13, color: c.ink)
+                      .copyWith(height: 1.5),
                 ),
               ),
-              _itemAnim(isShop ? 0.35 : 0.45, isShop ? 0.8 : 0.9),
+              _a5,
             ),
           ],
         ],
@@ -545,7 +542,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: _animated(
             _buildActionButton(context, status, orderId, isShop, words),
-            _itemAnim(isShop ? 0.4 : 0.5, 1.0),
+            _a5,
           ),
         ),
       ),
@@ -631,77 +628,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           ),
           const SizedBox(height: 12),
           child,
-        ],
-      ),
-    );
-  }
-
-  // ── Countdown strip ────────────────────────────────────────────────────────
-  Widget _buildCountdownCard(AppLocalizations words) {
-    final c = AppColors.of(context);
-    final double cashback = (widget.order['cashback_amount'] ?? 0.0).toDouble();
-    final Color color = _isExpired ? c.errorMuted : c.ink;
-    final Color bg = _isExpired ? c.errorTint : c.emeraldTint;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
-            color: color,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _isExpired ? words.timerExpired : words.timerLabel,
-                  style: AppText.regular(fontSize: 10, color: color),
-                ),
-                Text(
-                  _isExpired ? words.cashbackNone : _formatDuration(_timeLeft),
-                  style: AppText.semiBold(fontSize: 16, color: color),
-                ),
-              ],
-            ),
-          ),
-          if (!_isExpired && cashback > 0) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: c.amberTint,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: c.border),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/point_icon.png',
-                    width: 16,
-                    height: 16,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) =>
-                        Icon(Icons.toll_rounded, size: 16, color: c.amber),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '+${cashback.toDouble()}',
-                    style: AppText.semiBold(fontSize: 13, color: c.amber),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1665,6 +1591,139 @@ class _PhotoViewerScreenState extends State<_PhotoViewerScreen> {
                     ),
                   );
                 }),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Countdown card — isolated StatefulWidget with its own 1-second timer.
+// Only THIS widget rebuilds every second; OrderDetailScreen stays still.
+// ═══════════════════════════════════════════════════════════════════════════
+class _CountdownCard extends StatefulWidget {
+  final String? timeOfDelivery;
+  final double cashback;
+  final AppLocalizations words;
+  final VoidCallback onExpired;
+
+  const _CountdownCard({
+    required this.timeOfDelivery,
+    required this.cashback,
+    required this.words,
+    required this.onExpired,
+  });
+
+  @override
+  State<_CountdownCard> createState() => _CountdownCardState();
+}
+
+class _CountdownCardState extends State<_CountdownCard> {
+  Timer? _timer;
+  Duration _timeLeft = Duration.zero;
+  bool _isExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final String? t = widget.timeOfDelivery;
+    if (t == null || t.isEmpty) return;
+    final deadline = DateTime.parse(t).toLocal();
+    _tick(deadline);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick(deadline));
+  }
+
+  void _tick(DateTime deadline) {
+    final diff = deadline.difference(DateTime.now());
+    if (!mounted) return;
+    final expired = diff.isNegative;
+    setState(() {
+      _timeLeft = expired ? Duration.zero : diff;
+      _isExpired = expired;
+    });
+    if (expired) {
+      _timer?.cancel();
+      widget.onExpired();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _fmt(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final color = _isExpired ? c.errorMuted : c.ink;
+    final bg    = _isExpired ? c.errorTint   : c.emeraldTint;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
+            color: color,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _isExpired ? widget.words.timerExpired : widget.words.timerLabel,
+                  style: AppText.regular(fontSize: 10, color: color),
+                ),
+                Text(
+                  _isExpired ? widget.words.cashbackNone : _fmt(_timeLeft),
+                  style: AppText.semiBold(fontSize: 16, color: color),
+                ),
+              ],
+            ),
+          ),
+          if (!_isExpired && widget.cashback > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: c.amberTint,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: c.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/point_icon.png',
+                    width: 16,
+                    height: 16,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) =>
+                        Icon(Icons.toll_rounded, size: 16, color: c.amber),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '+${widget.cashback}',
+                    style: AppText.semiBold(fontSize: 13, color: c.amber),
+                  ),
+                ],
               ),
             ),
         ],

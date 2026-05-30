@@ -47,6 +47,9 @@ class NotificationsScreenState extends State<NotificationsScreen>
   List<dynamic> _items = [];
   bool _isLoading = true;
   late String _userId;
+  // IDs optimistically marked as read locally but not yet confirmed by server.
+  // Prevents pull-to-refresh from reverting them before the PATCH resolves.
+  final Set<String> _pendingRead = {};
 
   @override
   void initState() {
@@ -80,7 +83,13 @@ class NotificationsScreenState extends State<NotificationsScreen>
     final data = await _service.getNotifications(_userId);
     if (!mounted) return;
     setState(() {
-      _items = data;
+      // Preserve any optimistic reads that the server hasn't confirmed yet.
+      _items = data.map<dynamic>((n) {
+        if (_pendingRead.contains(n['id'].toString())) {
+          return {...n as Map, 'is_read': true};
+        }
+        return n;
+      }).toList();
       _isLoading = false;
     });
   }
@@ -88,21 +97,32 @@ class NotificationsScreenState extends State<NotificationsScreen>
   Future<void> _refresh() => _loadNotifications(silent: true);
 
   Future<void> _markAllRead() async {
-    await _service.markAllAsRead(_userId);
-    if (!mounted) return;
+    final unread = _items
+        .where((n) => n['is_read'] != true)
+        .map((n) => n['id'].toString())
+        .toSet();
+    if (unread.isEmpty) return;
+
+    // Optimistic update first — UI reflects change immediately.
+    _pendingRead.addAll(unread);
     setState(() {
-      _items = _items.map((n) => {...n, 'is_read': true}).toList();
+      _items = _items.map((n) => {...n as Map, 'is_read': true}).toList();
     });
+
+    await _service.markAllAsRead(_userId);
+    _pendingRead.removeAll(unread);
   }
 
   Future<void> _markRead(String id) async {
+    _pendingRead.add(id);
     setState(() {
       _items = _items.map((n) {
-        if (n['id'].toString() == id) return {...n, 'is_read': true};
+        if (n['id'].toString() == id) return {...n as Map, 'is_read': true};
         return n;
       }).toList();
     });
     await _service.markAsRead(id);
+    _pendingRead.remove(id);
   }
 
   void refresh() => _loadNotifications(silent: true);

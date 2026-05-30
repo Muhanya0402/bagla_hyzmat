@@ -1,3 +1,4 @@
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
@@ -16,6 +17,13 @@ class HomeStatusFilter extends StatelessWidget {
     this.counts = const {},
   });
 
+  // HomeColors.dark (0xFF0F1117) is the "active" status colour — nearly black.
+  // In dark mode it becomes invisible, so we swap it for the theme's ink colour.
+  Color _resolveColor(Color raw, BuildContext context) {
+    if (raw == HomeColors.dark) return AppColors.of(context).ink;
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
@@ -27,6 +35,7 @@ class HomeStatusFilter extends StatelessWidget {
         children: filters.map((f) {
           final bool sel = selectedStatus == f.value;
           final int? count = counts[f.value];
+          final Color color = _resolveColor(f.color, context);
 
           return GestureDetector(
             onTap: () => onChanged(f.value),
@@ -35,12 +44,14 @@ class HomeStatusFilter extends StatelessWidget {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: sel ? f.color.withValues(alpha: 0.1) : Colors.white,
+                color: sel
+                    ? color.withValues(alpha: 0.1)
+                    : AppColors.of(context).surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: sel
-                      ? f.color.withValues(alpha: 0.4)
-                      : HomeColors.border,
+                      ? color.withValues(alpha: 0.4)
+                      : AppColors.of(context).border,
                 ),
               ),
               child: Row(
@@ -51,7 +62,7 @@ class HomeStatusFilter extends StatelessWidget {
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: f.color,
+                        color: color,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -60,8 +71,11 @@ class HomeStatusFilter extends StatelessWidget {
                   Text(
                     f.label,
                     style: sel
-                        ? AppText.semiBold(fontSize: 12, color: f.color)
-                        : AppText.medium(fontSize: 12, color: HomeColors.grey),
+                        ? AppText.semiBold(fontSize: 12, color: color)
+                        : AppText.medium(
+                            fontSize: 12,
+                            color: AppColors.of(context).inkSoft,
+                          ),
                   ),
                   // ← счётчик
                   if (count != null && count > 0) ...[
@@ -73,15 +87,15 @@ class HomeStatusFilter extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: sel
-                            ? f.color.withValues(alpha: 0.15)
-                            : HomeColors.border,
+                            ? color.withValues(alpha: 0.15)
+                            : AppColors.of(context).border,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '$count',
                         style: AppText.semiBold(
                           fontSize: 11,
-                          color: sel ? f.color : HomeColors.grey,
+                          color: sel ? color : AppColors.of(context).inkSoft,
                         ),
                       ),
                     ),

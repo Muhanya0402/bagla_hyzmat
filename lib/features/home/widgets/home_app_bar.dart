@@ -105,7 +105,6 @@ class HomeLogoRow extends StatelessWidget {
     if (showLevelBar) {
       return Row(
         children: [
-          Text('Bagla', style: AppText.serif(fontSize: 19, color: c.ink)),
           const SizedBox(width: 10),
           Expanded(child: HomeLevelBar(provider: levelProvider!)),
           const SizedBox(width: 8),
@@ -179,21 +178,14 @@ class HomeNetworkBanner extends StatelessWidget {
           ? const SizedBox.shrink()
           : Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: c.bannerBg,
-                border: Border(
-                  bottom: BorderSide(color: c.bannerBorder),
-                ),
+                border: Border(bottom: BorderSide(color: c.bannerBorder)),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.wifi_off_rounded,
-                    size: 14,
-                    color: c.errorMuted,
-                  ),
+                  Icon(Icons.wifi_off_rounded, size: 14, color: c.errorMuted),
                   const SizedBox(width: 8),
                   Text(
                     'Нет соединения с сервером',

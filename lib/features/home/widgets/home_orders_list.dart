@@ -88,6 +88,8 @@ class HomeOrdersList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
       itemCount: orders.length + 1,
+      // Cards don't need to survive being scrolled out of view.
+      addAutomaticKeepAlives: false,
       itemBuilder: (context, index) {
         if (index == orders.length) {
           if (loadingMore) {
@@ -141,9 +143,10 @@ class HomeOrdersList extends StatelessWidget {
         final role = isShop ? 'shop' : 'courier';
         final order = orders[index];
 
-        return OpenContainer<void>(
+        // RepaintBoundary isolates each card's repaint from its neighbours.
+        return RepaintBoundary(child: OpenContainer<void>(
           tappable: false,
-          transitionDuration: const Duration(milliseconds: 420),
+          transitionDuration: const Duration(milliseconds: 340),
           transitionType: ContainerTransitionType.fadeThrough,
           // Цвет фона закрытой карточки = surface (совпадает с OrderCard)
           closedColor: c.surface,
@@ -174,7 +177,7 @@ class HomeOrdersList extends StatelessWidget {
             currentUserId: authProv.userId,
             onUpdate: onRefresh,
           ),
-        );
+        ));
       },
     );
   }

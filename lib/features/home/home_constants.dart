@@ -38,7 +38,7 @@ List<StatusFilterItem> getStatusFilters(AppLocalizations words) => [
   StatusFilterItem(
     label: words.statusFreeFilter,
     value: 'published',
-    color: HomeColors.yellow,
+    color: const Color.fromARGB(255, 180, 147, 47),
   ),
   StatusFilterItem(
     label: words.statusActiveFilter,

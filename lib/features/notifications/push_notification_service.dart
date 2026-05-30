@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/main.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -24,6 +27,16 @@ class PushNotificationService {
         DarwinInitializationSettings();
     await _localNotifications.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
+      // Tap on a LOCAL notification shown while the app is in the foreground.
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        final data = payload != null
+            ? Map<String, dynamic>.from(
+                jsonDecode(payload) as Map,
+              )
+            : <String, dynamic>{};
+        _handleNotificationTap(data);
+      },
     );
 
     // 2. Запрос разрешения
@@ -52,7 +65,8 @@ class PushNotificationService {
       _saveTokenToDirectus(newToken);
     });
 
-    // 5. Уведомление когда приложение ОТКРЫТО
+    // 5. Уведомление когда приложение ОТКРЫТО — показываем локально.
+    //    Payload содержит data чтобы тап мог пометить нужное уведомление.
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
       if (notification != null) {
@@ -61,7 +75,6 @@ class PushNotificationService {
           notification.title,
           notification.body,
           NotificationDetails(
-            // ← убрали const
             android: AndroidNotificationDetails(
               'bagla_channel',
               'Bagla Notifications',
@@ -72,6 +85,7 @@ class PushNotificationService {
             ),
             iOS: const DarwinNotificationDetails(),
           ),
+          payload: jsonEncode(message.data),
         );
       }
     });
@@ -130,15 +144,21 @@ class PushNotificationService {
     }
   }
 
-  void _handleNotificationTap(Map<String, dynamic> data) {
-    final String? orderId = data['order_id'];
+  void _handleNotificationTap(Map<String, dynamic> data) async {
+    // Mark the specific notification as read if its ID is in the payload,
+    // otherwise mark all unread — the user is going to the notifications screen.
+    final String? notifId = data['notification_id']?.toString();
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('user_id') ?? '';
 
-    if (orderId != null) {
-      navigatorKey.currentState?.pushNamed('/notifications');
-      // Позже можно добавить:
-      // navigatorKey.currentState?.pushNamed('/order', arguments: orderId);
-    } else {
-      navigatorKey.currentState?.pushNamed('/notifications');
+    if (userId.isNotEmpty) {
+      if (notifId != null && notifId.isNotEmpty) {
+        NotificationService().markAsRead(notifId);
+      } else {
+        NotificationService().markAllAsRead(userId);
+      }
     }
+
+    navigatorKey.currentState?.pushNamed('/notifications');
   }
 }
