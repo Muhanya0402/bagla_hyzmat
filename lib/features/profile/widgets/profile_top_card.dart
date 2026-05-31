@@ -145,6 +145,7 @@ class _ProfileTopCardState extends State<ProfileTopCard> {
                               fontWeight: FontWeight.w700,
                               fontFamily: 'Nunito',
                             ),
+                            maxLines: 2,
                           ),
                         ),
                       ),
@@ -203,8 +204,7 @@ class _ProfileTopCardState extends State<ProfileTopCard> {
                           Flexible(
                             child: Text(
                               widget.fullName,
-                              style:
-                                  AppText.serif(fontSize: 17, color: c.ink),
+                              style: AppText.serif(fontSize: 17, color: c.ink),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -286,8 +286,7 @@ class _ProfileTopCardState extends State<ProfileTopCard> {
                   ),
                   child: Column(
                     children: [
-                      Divider(
-                          height: 1, thickness: 0.8, color: c2.borderSoft),
+                      Divider(height: 1, thickness: 0.8, color: c2.borderSoft),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
                         child: Column(
@@ -327,8 +326,7 @@ class _ProfileTopCardState extends State<ProfileTopCard> {
                                 value: progress,
                                 minHeight: 4,
                                 backgroundColor: c2.amberTint,
-                                valueColor:
-                                    AlwaysStoppedAnimation(c2.amber),
+                                valueColor: AlwaysStoppedAnimation(c2.amber),
                               ),
                             ),
                           ],

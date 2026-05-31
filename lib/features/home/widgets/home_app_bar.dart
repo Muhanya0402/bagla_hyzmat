@@ -5,6 +5,7 @@ import 'package:bagla/features/home/widgets/home_level_bar.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:bagla/features/orders/order_realtime_service.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
+import 'package:bagla/features/profile/widgets/banned_access_sheet.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -65,16 +66,24 @@ class HomeLogoRow extends StatelessWidget {
     final Widget balanceChip;
     if (isCourier) {
       balanceChip = GestureDetector(
-        onTap: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => TopUpModal(
-            userId: authProv.userId,
-            role: authProv.role,
-            status: authProv.status,
-          ),
-        ).then((_) => onRefresh()),
+        onTap: () {
+          // Banned-курьер не имеет доступа к пополнению жетонов —
+          // показываем статус-баннер вместо формы top-up.
+          if (authProv.isBanned) {
+            BannedAccessSheet.show(context);
+            return;
+          }
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => TopUpModal(
+              userId: authProv.userId,
+              role: authProv.role,
+              status: authProv.status,
+            ),
+          ).then((_) => onRefresh());
+        },
         child: _BalanceChip(
           icon: Icons.toll_rounded,
           label: authProv.balancePoints.toDouble().toStringAsFixed(0),

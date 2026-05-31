@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
@@ -48,6 +50,17 @@ class NotificationsScreenState extends State<NotificationsScreen>
   // Prevents pull-to-refresh from reverting them before the PATCH resolves.
   final Set<String> _pendingRead = {};
 
+  // ── Mark-all-read undo state ───────────────────────────────────────────
+  // Lifted to fields, чтобы dispose() мог корректно завершить операцию
+  // даже если пользователь успел разлогиниться/уйти с экрана.
+  Timer? _markAllTimer;
+  Set<String>? _markAllPendingIds;
+  bool _markAllUndone = false;
+
+  // ScaffoldMessenger кэшируется через didChangeDependencies, потому что
+  // в dispose() обращаться к context уже нельзя.
+  ScaffoldMessengerState? _messenger;
+
   @override
   void initState() {
     super.initState();
@@ -78,7 +91,24 @@ class NotificationsScreenState extends State<NotificationsScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Кэшируем messenger для dispose().
+    _messenger = ScaffoldMessenger.of(context);
+  }
+
+  @override
   void dispose() {
+    // Если был активный mark-all undo-window и пользователь не отменил —
+    // принудительно гасим SnackBar и сразу шлём PATCH (fire-and-forget).
+    _markAllTimer?.cancel();
+    final pending = _markAllPendingIds;
+    if (pending != null && !_markAllUndone && _userId.isNotEmpty) {
+      // Fire-and-forget — на экране нас уже нет.
+      _service.markAllAsRead(_userId);
+    }
+    _messenger?.clearSnackBars();
+
     _scrollCtrl
       ..removeListener(_onScroll)
       ..dispose();
@@ -167,7 +197,7 @@ class NotificationsScreenState extends State<NotificationsScreen>
     _pendingRead.remove(id);
   }
 
-  /// Mark-all с оптимистичным апдейтом + toast «Отменить» (4 сек).
+  /// Mark-all с оптимистичным апдейтом + toast «Отменить» (5 сек).
   Future<void> _markAllRead() async {
     final words = context.read<LanguageProvider>().words;
 
@@ -187,55 +217,95 @@ class NotificationsScreenState extends State<NotificationsScreen>
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     final c = AppColors.of(context);
+    const duration = Duration(seconds: 5);
 
-    bool undone = false;
-    messenger
-        .showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.fromLTRB(
-              16,
-              0,
-              16,
-              MainShell.bottomReserve(context),
-            ),
-            backgroundColor: c.ink,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            content: Text(
-              words.notifMarkAllToast.replaceAll(
-                '{n}',
-                '${unreadIds.length}',
+    // Сбрасываем и лифтим в поля — чтобы dispose() мог корректно отработать.
+    _markAllTimer?.cancel();
+    _markAllUndone = false;
+    _markAllPendingIds = unreadIds;
+
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MainShell.bottomReserve(context),
+        ),
+        backgroundColor: c.ink,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        content: Row(
+          children: [
+            // Круглый таймер обратного отсчёта слева (5 сек, линейный спад).
+            // Когда дойдёт до 0 — SnackBar закроется и PATCH уйдёт на сервер.
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 1.0, end: 0.0),
+                duration: duration,
+                curve: Curves.linear,
+                builder: (_, value, _) => CircularProgressIndicator(
+                  value: value,
+                  strokeWidth: 2,
+                  color: c.amber,
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                ),
               ),
-              style: AppText.medium(fontSize: 13, color: Colors.white),
             ),
-            action: SnackBarAction(
-              label: words.notifUndo,
-              textColor: c.amber,
-              onPressed: () {
-                undone = true;
-                _pendingRead.removeAll(unreadIds);
-                if (!mounted) return;
-                setState(() {
-                  _items = _items
-                      .map(
-                        (n) => snapshot.containsKey(n.id)
-                            ? n.copyWith(isRead: snapshot[n.id])
-                            : n,
-                      )
-                      .toList();
-                });
-              },
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                words.notifMarkAllToast.replaceAll(
+                  '{n}',
+                  '${unreadIds.length}',
+                ),
+                style: AppText.medium(fontSize: 13, color: Colors.white),
+              ),
             ),
-          ),
-        )
-        .closed
-        .then((_) async {
-      if (undone) return; // отменили — на сервер не шлём
-      await _service.markAllAsRead(_userId);
-      _pendingRead.removeAll(unreadIds);
+          ],
+        ),
+        action: SnackBarAction(
+          label: words.notifUndo,
+          textColor: c.amber,
+          onPressed: () {
+            _markAllUndone = true;
+            _markAllTimer?.cancel();
+            _markAllPendingIds = null;
+            _pendingRead.removeAll(unreadIds);
+            if (!mounted) return;
+            setState(() {
+              _items = _items
+                  .map(
+                    (n) => snapshot.containsKey(n.id)
+                        ? n.copyWith(isRead: snapshot[n.id])
+                        : n,
+                  )
+                  .toList();
+            });
+          },
+        ),
+      ),
+    );
+
+    // Ровно через 5 секунд:
+    //  – принудительно закрываем SnackBar (на случай если визуально завис),
+    //  – если не было Undo — отправляем PATCH на сервер.
+    _markAllTimer = Timer(duration, () async {
+      controller.close();
+      if (_markAllUndone) return;
+      try {
+        await _service.markAllAsRead(_userId);
+      } finally {
+        _pendingRead.removeAll(unreadIds);
+        if (identical(_markAllPendingIds, unreadIds)) {
+          _markAllPendingIds = null;
+        }
+      }
     });
   }
 

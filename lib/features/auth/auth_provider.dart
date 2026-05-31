@@ -358,9 +358,11 @@ class AuthProvider extends ChangeNotifier {
     // Preserve device-level flags that survive across sessions
     final onboardingDone = prefs.getBool('onboarding_done') ?? false;
     final savedLang = prefs.getString('language_code');
+    final isDarkMode = prefs.getBool('is_dark_mode');
     await prefs.clear();
     if (onboardingDone) await prefs.setBool('onboarding_done', true);
     if (savedLang != null) await prefs.setString('selected_lang', savedLang);
+    if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
     _token = '';
     _userId = '';
     _phone = '';

@@ -283,13 +283,25 @@ class _HomeScreenState extends State<HomeScreen>
                 authProv: authProv,
                 words: words,
                 onRefresh: handleRefresh,
-                swipeEnabled: isCourier && isActive,
+                swipeEnabled:
+                    (isCourier && isActive) || (isShop && isActive),
+                // Courier: бинарный Все ↔ Мои
                 selectedFilterIndex: selectedFilterIndex,
                 onSwipe: isCourier && isActive
                     ? (i) {
                         if (selectedFilterIndex == i) return;
                         changeFilterIndex(i);
                       }
+                    : null,
+                // Shop: свайп по статусам
+                swipeStatuses: isShop && isActive
+                    ? [
+                        for (final f in getStatusFilters(words)) f.value,
+                      ]
+                    : null,
+                selectedStatus: selectedStatus,
+                onStatusSwipe: isShop && isActive
+                    ? (v) => setState(() => selectedStatus = v)
                     : null,
               ),
             ),

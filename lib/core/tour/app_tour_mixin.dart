@@ -149,11 +149,16 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
       // Без пульсации — спокойный «editorial» вид без отвлекающего ритма.
       pulseAnimationDuration: Duration.zero,
       pulseEnable: false,
-      alignSkip: Alignment.topRight,
+      // Skip уехал в bottom-right: тултипы для AppBar-таргетов (logout,
+      // mark-all, logo) появляются сразу под appbar — там же, где раньше
+      // висел Skip → визуально сливались. Снизу подсказки почти не
+      // отрисовываются (последний шаг прибит CustomTargetContentPosition,
+      // см. home_screen / order_detail).
+      alignSkip: Alignment.bottomRight,
       useSafeArea: true,
       skipWidget: Padding(
         padding: EdgeInsets.only(
-          top: MediaQuery.paddingOf(context).top + 8,
+          bottom: MediaQuery.paddingOf(context).bottom + 20,
           right: 12,
         ),
         child: _TourSkipButton(isRu: isRu),

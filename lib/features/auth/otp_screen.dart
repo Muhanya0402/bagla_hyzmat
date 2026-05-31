@@ -45,6 +45,9 @@ class _OtpScreenState extends State<OtpScreen>
     _startTimer();
 
     _otpController = context.read<AuthProvider>().otpController;
+    // Стартуем с пустого поля — не подтягиваем код из прошлой сессии
+    // (например, после logout + login другим аккаунтом).
+    _otpController.clear();
     _otpController.addListener(_onOtpChanged);
 
     _shakeCtrl = AnimationController(

@@ -5,14 +5,15 @@ import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/theme/app_colors.dart';
-import 'package:bagla/core/widgets/pressable_scale.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
 import 'package:bagla/features/orders/widgets/cashback_success_dialog.dart';
 import 'package:bagla/features/orders/widgets/order_countdown_card.dart';
+import 'package:bagla/features/orders/widgets/order_details_section.dart';
 import 'package:bagla/features/orders/widgets/order_images_section.dart';
+import 'package:bagla/features/orders/widgets/order_price_section.dart';
 import 'package:bagla/features/orders/widgets/order_route_section.dart';
 import 'package:bagla/features/orders/widgets/order_primary_button.dart';
 import 'package:bagla/features/orders/widgets/order_status_badge.dart';
@@ -22,7 +23,6 @@ import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final dynamic order;
@@ -82,28 +82,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     ];
   }
 
-  String _transportLabel(String? type, AppLocalizations words) {
-    switch (type) {
-      case 'car':
-        return words.transportCar;
-      case 'truck':
-        return words.transportTruck;
-      default:
-        return words.transportAny;
-    }
-  }
-
-  IconData _transportIcon(String? type) {
-    switch (type) {
-      case 'car':
-        return Icons.directions_car_rounded;
-      case 'truck':
-        return Icons.local_shipping_rounded;
-      default:
-        return Icons.directions_run_rounded;
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -157,12 +135,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         child: child,
       ),
     );
-  }
-
-  Future<void> _makePhoneCall(String phone) async {
-    final clean = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    final uri = Uri(scheme: 'tel', path: clean);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -255,7 +227,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             RepaintBoundary(
               child: _section(
                 title: words.recipientSection,
-                child: _buildDetailsBlock(dto, isDataLocked, isShop, words),
+                child: OrderDetailsSection(
+                  dto: dto,
+                  isLocked: isDataLocked,
+                  isShop: isShop,
+                ),
               ),
             ),
             _a2,
@@ -266,12 +242,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           _animated(
             _section(
               title: words.priceSection,
-              child: _buildPriceBlock(
-                isShop,
-                dto.totalAmount,
-                dto.deliveryAmount,
-                dto.cashbackAmount,
-                words,
+              child: OrderPriceSection(
+                isShop: isShop,
+                total: dto.totalAmount,
+                delivery: dto.deliveryAmount,
+                cashback: dto.cashbackAmount,
               ),
             ),
             _a3,
@@ -369,183 +344,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     );
   }
 
-  // ── Details block (transport + recipient + counterparty) ───────────────────
-  Widget _buildDetailsBlock(
-    OrderDto dto,
-    bool isLocked,
-    bool isShop,
-    AppLocalizations words,
-  ) {
-    final c = AppColors.of(context);
-    final String? transportType = dto.transportType;
-    final String phone = dto.clientPhone;
-    final String counterPhone = isShop ? dto.courierPhone : dto.shopPhone;
-    final String courierName = dto.courierName;
-
-    return Column(
-      children: [
-        // Transport row
-        _detailRow(
-          icon: _transportIcon(transportType),
-          iconColor: transportType == 'truck' ? c.errorMuted : c.ink,
-          label: words.transportRequirement,
-          value: _transportLabel(transportType, words),
-        ),
-
-        const SizedBox(height: 10),
-        Container(height: 0.5, color: c.borderSoft),
-        const SizedBox(height: 10),
-
-        // Recipient row
-        _detailRow(
-          icon: Icons.person_outline_rounded,
-          iconColor: c.ink,
-          label: isLocked ? words.phoneHidden : words.clientPhone,
-          value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
-          trailing: phone.isNotEmpty && !isLocked ? _callButton(phone) : null,
-        ),
-
-        // Counterparty row (if available)
-        if (!isLocked && counterPhone.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Container(height: 0.5, color: c.borderSoft),
-          const SizedBox(height: 10),
-          _detailRow(
-            icon: isShop
-                ? Icons.delivery_dining_outlined
-                : Icons.storefront_outlined,
-            iconColor: c.inkMuted,
-            label: isShop
-                ? (courierName.isNotEmpty
-                      ? '${words.courier} — $courierName'
-                      : words.courier)
-                : words.orderSender,
-            value: counterPhone,
-            trailing: _callButton(counterPhone),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _detailRow({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-    Widget? trailing,
-  }) {
-    final c = AppColors.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(icon, size: 16, color: iconColor),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: AppText.regular(fontSize: 10, color: c.inkSoft),
-              ),
-              const SizedBox(height: 1),
-              Text(value, style: AppText.medium(fontSize: 13, color: c.ink)),
-            ],
-          ),
-        ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing],
-      ],
-    );
-  }
-
-  Widget _callButton(String phone) {
-    final c = AppColors.of(context);
-    return GestureDetector(
-      onTap: () => _makePhoneCall(phone),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: c.ink,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(Icons.call, color: Colors.white, size: 18),
-      ),
-    );
-  }
 
   // ── Price block ────────────────────────────────────────────────────────────
-  Widget _buildPriceBlock(
-    bool isShop,
-    double total,
-    double delivery,
-    double cashback,
-    AppLocalizations words,
-  ) {
-    final c = AppColors.of(context);
-    final double itemPrice = total - delivery;
-
-    return Column(
-      children: [
-        _priceRow(
-          words.itemPrice,
-          '${itemPrice.toStringAsFixed(0)} TMT',
-          c.ink,
-        ),
-        const SizedBox(height: 8),
-        _priceRow(words.delivery, '${delivery.toStringAsFixed(0)} TMT', c.ink),
-        if (!isShop && cashback > 0) ...[
-          const SizedBox(height: 8),
-          _priceRow(
-            words.cashbackPercent,
-            '+${cashback.toDouble()} ${words.tokens}',
-            c.amber,
-          ),
-        ],
-        Container(
-          height: 0.5,
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          color: c.borderSoft,
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              isShop ? words.toShopReceive : words.courierPayout,
-              style: AppText.semiBold(fontSize: 13, color: c.ink),
-            ),
-            Text(
-              isShop
-                  ? '${itemPrice.toStringAsFixed(0)} TMT'
-                  : '${delivery.toStringAsFixed(0)} TMT',
-              style: AppText.semiBold(fontSize: 17, color: c.ink),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _priceRow(String label, String value, Color valueColor) {
-    final c = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: AppText.regular(fontSize: 13, color: c.inkMuted)),
-        Text(value, style: AppText.medium(fontSize: 13, color: valueColor)),
-      ],
-    );
-  }
-
   // ── Images ─────────────────────────────────────────────────────────────────
   // ── Bottom action button ───────────────────────────────────────────────────
   Widget _buildActionButton(
@@ -586,7 +386,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             // OrderService.updateStatus умеет работать без него.
             courierPhone: '',
             role: widget.role,
-            onUpdate: widget.onUpdate,
+            // После успешного «взять заказ» закрываем детальный экран —
+            // курьер возвращается на главную и видит обновлённую ленту.
+            onUpdate: () {
+              widget.onUpdate?.call();
+              if (mounted) Navigator.pop(context);
+            },
           ),
         );
       }

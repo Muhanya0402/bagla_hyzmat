@@ -23,8 +23,17 @@ class HomeOrdersList extends StatelessWidget {
   final AppLocalizations words;
   final VoidCallback onRefresh;
   final bool swipeEnabled;
+
+  // ── Courier mode: бинарный свайп между Все/Мои ──────────────────────────
   final int selectedFilterIndex;
   final ValueChanged<int>? onSwipe;
+
+  // ── Shop mode: свайп по списку статусов ─────────────────────────────────
+  /// Упорядоченный список значений статус-фильтра (включая `null` для «Все»).
+  /// Если задан вместе с [onStatusSwipe] — активен status-mode свайпа.
+  final List<String?>? swipeStatuses;
+  final String? selectedStatus;
+  final ValueChanged<String?>? onStatusSwipe;
 
   const HomeOrdersList({
     super.key,
@@ -42,19 +51,43 @@ class HomeOrdersList extends StatelessWidget {
     this.swipeEnabled = false,
     this.selectedFilterIndex = 0,
     this.onSwipe,
+    this.swipeStatuses,
+    this.selectedStatus,
+    this.onStatusSwipe,
   });
 
   @override
   Widget build(BuildContext context) {
     final content = _buildContent(context);
-    if (!swipeEnabled || onSwipe == null) return content;
+    if (!swipeEnabled) return content;
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onHorizontalDragEnd: (details) {
         final v = details.primaryVelocity ?? 0;
-        if (v < -300 && selectedFilterIndex == 0) { onSwipe!(1); }
-        else if (v > 300 && selectedFilterIndex == 1) { onSwipe!(0); }
+        if (v.abs() < 300) return;
+
+        // ── Status mode (магазин): свайп по списку статусов ────────────
+        if (swipeStatuses != null && onStatusSwipe != null) {
+          final list = swipeStatuses!;
+          final idx = list.indexOf(selectedStatus);
+          if (idx < 0) return;
+          if (v < 0 && idx < list.length - 1) {
+            onStatusSwipe!(list[idx + 1]);
+          } else if (v > 0 && idx > 0) {
+            onStatusSwipe!(list[idx - 1]);
+          }
+          return;
+        }
+
+        // ── Index mode (курьер): бинарный Все ↔ Мои ────────────────────
+        if (onSwipe != null) {
+          if (v < 0 && selectedFilterIndex == 0) {
+            onSwipe!(1);
+          } else if (v > 0 && selectedFilterIndex == 1) {
+            onSwipe!(0);
+          }
+        }
       },
       child: content,
     );

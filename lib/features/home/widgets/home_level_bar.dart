@@ -20,19 +20,9 @@ class HomeLevelBar extends StatelessWidget {
       children: [
         // ── Level badge — outside the track ────────────────────────────
         Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            color: c.amber,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: c.amber.withValues(alpha: 0.35),
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(color: c.ink, shape: BoxShape.circle),
           alignment: Alignment.center,
           child: Text(
             '$level',
@@ -56,13 +46,11 @@ class HomeLevelBar extends StatelessWidget {
               final bool onFill = fill > w * 0.55;
 
               return Container(
-                height: 22,
+                height: 30,
                 decoration: BoxDecoration(
                   color: c.amberTint,
                   borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: c.amber.withValues(alpha: 0.18),
-                  ),
+                  border: Border.all(color: c.ink.withValues(alpha: 0.18)),
                 ),
                 child: Stack(
                   alignment: Alignment.centerLeft,
@@ -72,18 +60,15 @@ class HomeLevelBar extends StatelessWidget {
                       duration: const Duration(milliseconds: 500),
                       curve: Curves.easeOutCubic,
                       width: fill,
-                      height: 22,
+                      height: 30,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            c.amber,
-                            c.amber.withValues(alpha: 0.72),
-                          ],
+                          colors: [c.ink, c.ink.withValues(alpha: 0.72)],
                         ),
                         borderRadius: BorderRadius.circular(100),
                         boxShadow: [
                           BoxShadow(
-                            color: c.amber.withValues(alpha: 0.22),
+                            color: c.ink.withValues(alpha: 0.22),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -105,7 +90,7 @@ class HomeLevelBar extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: AppText.semiBold(
                                 fontSize: 9,
-                                color: onFill ? Colors.white : c.ink,
+                                color: onFill ? Colors.white : Colors.white,
                               ),
                             ),
                           ),
@@ -150,8 +135,10 @@ class HomeProgressTrack extends StatelessWidget {
     final c = AppColors.of(context);
     return LayoutBuilder(
       builder: (_, constraints) {
-        final double filled =
-            (constraints.maxWidth * progress).clamp(0.0, constraints.maxWidth);
+        final double filled = (constraints.maxWidth * progress).clamp(
+          0.0,
+          constraints.maxWidth,
+        );
         return Container(
           height: 8,
           decoration: BoxDecoration(

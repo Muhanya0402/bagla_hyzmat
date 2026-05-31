@@ -355,7 +355,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           child: Container(height: 0.5, color: AppColors.of(context).border),
         ),
       ),
-      body: Stack(
+      body: GestureDetector(
+        // Тап по пустому месту body — закрывает клавиатуру.
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Stack(
         children: [
           Form(
             key: _formKey,
@@ -363,6 +367,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               children: [
                 Expanded(
                   child: ListView(
+                    // Скролл вниз/вверх — закрывает клавиатуру.
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                     children: [
                       _section(
@@ -430,6 +437,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
             ),
         ],
+        ),
       ),
     );
   }

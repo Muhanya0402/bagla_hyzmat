@@ -8,6 +8,7 @@ import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
+import 'package:bagla/features/profile/widgets/banned_access_sheet.dart';
 import 'package:bagla/features/profile/widgets/footer_section.dart';
 import 'package:bagla/features/profile/widgets/logout_dialog.dart';
 import 'package:bagla/features/profile/widgets/menu_tile.dart';
@@ -304,6 +305,12 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   void _openTopUp(BuildContext context, AuthProvider auth) {
+    // Заблокированный курьер не имеет доступа к пополнению жетонов.
+    if (auth.isBanned) {
+      BannedAccessSheet.show(context);
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

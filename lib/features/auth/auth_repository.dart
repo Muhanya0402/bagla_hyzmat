@@ -451,6 +451,18 @@ class AuthRepository {
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    // Preserve device-level flags that survive across sessions —
+    // тема, язык и onboarding не должны сбрасываться при смене аккаунта.
+    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    final savedLang = prefs.getString('language_code');
+    final selectedLang = prefs.getString('selected_lang');
+    final isDarkMode = prefs.getBool('is_dark_mode');
     await prefs.clear();
+    if (onboardingDone) await prefs.setBool('onboarding_done', true);
+    if (savedLang != null) await prefs.setString('language_code', savedLang);
+    if (selectedLang != null) {
+      await prefs.setString('selected_lang', selectedLang);
+    }
+    if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
   }
 }
