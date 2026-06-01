@@ -2,7 +2,9 @@ import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
@@ -117,6 +119,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final words = context.watch<LanguageProvider>().words;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +139,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
               ),
               const SizedBox(width: 8),
               Text(
-                widget.isRu ? 'ВЫБЕРИТЕ БАНК' : 'BANK SAÝLAŇ',
+                words.bankPickerTitle,
                 style: AppText.semiBold(
                   fontSize: 10,
                   color: c.inkSoft,
@@ -176,7 +179,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
                     Icon(Icons.info_outline, color: c.inkSoft, size: 18),
                     const SizedBox(width: 10),
                     Text(
-                      widget.isRu ? 'Банки недоступны' : 'Banklar ýok',
+                      words.bankPickerEmpty,
                       style: AppText.regular(fontSize: 13, color: c.inkSoft),
                     ),
                   ],

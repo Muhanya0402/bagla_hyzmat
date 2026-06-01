@@ -503,6 +503,42 @@ class AppLocalizations {
   String get rejectionReasonSelfie => get('rejectionReasonSelfie');
   String get rejectionReasonOrgName => get('rejectionReasonOrgName');
   String get rejectionReasonCategory => get('rejectionReasonCategory');
+  // ── Home / orders banner ────────────────────────────────────────────────
+  String get homeNoConnection => get('homeNoConnection');
+  String get ordersLoadError => get('ordersLoadError');
+  String get shopEmptyList => get('shopEmptyList');
+  String get ordersAllLoaded => get('ordersAllLoaded');
+  // ── Role picker modal ──────────────────────────────────────────────────
+  String get rolePickerTitle => get('rolePickerTitle');
+  String get rolePickerSubtitle => get('rolePickerSubtitle');
+  String get rolePickerCourierTitle => get('rolePickerCourierTitle');
+  String get rolePickerCourierDesc => get('rolePickerCourierDesc');
+  String get rolePickerClientTitle => get('rolePickerClientTitle');
+  String get rolePickerClientDesc => get('rolePickerClientDesc');
+  // ── Wallet info modal ──────────────────────────────────────────────────
+  String get walletTitle => get('walletTitle');
+  String get walletSubtitle => get('walletSubtitle');
+  String get walletAvailable => get('walletAvailable');
+  String get walletHowToWithdraw => get('walletHowToWithdraw');
+  String get walletStep1Title => get('walletStep1Title');
+  String get walletStep1Subtitle => get('walletStep1Subtitle');
+  String get walletStep2Title => get('walletStep2Title');
+  String get walletStep2Subtitle => get('walletStep2Subtitle');
+  String get walletStep3Title => get('walletStep3Title');
+  String get walletStep3Subtitle => get('walletStep3Subtitle');
+  String get walletGotIt => get('walletGotIt');
+  // ── Bank picker ────────────────────────────────────────────────────────
+  String get bankPickerTitle => get('bankPickerTitle');
+  String get bankPickerEmpty => get('bankPickerEmpty');
+  // ── Create order ───────────────────────────────────────────────────────
+  String get createOrderTokensInfo => get('createOrderTokensInfo');
+  // ── Restricted access ──────────────────────────────────────────────────
+  String get restrictedDefaultTitle => get('restrictedDefaultTitle');
+  String get restrictedDefaultMessage => get('restrictedDefaultMessage');
+  String get restrictedDefaultButton => get('restrictedDefaultButton');
+  String get restrictedDefaultStatusHint =>
+      get('restrictedDefaultStatusHint');
+  String get restrictedSignOut => get('restrictedSignOut');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

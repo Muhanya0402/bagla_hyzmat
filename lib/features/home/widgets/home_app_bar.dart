@@ -180,6 +180,7 @@ class HomeNetworkBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final words = context.watch<LanguageProvider>().words;
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
@@ -197,7 +198,7 @@ class HomeNetworkBanner extends StatelessWidget {
                   Icon(Icons.wifi_off_rounded, size: 14, color: c.errorMuted),
                   const SizedBox(width: 8),
                   Text(
-                    'Нет соединения с сервером',
+                    words.homeNoConnection,
                     style: AppText.regular(fontSize: 12, color: c.errorMuted),
                   ),
                 ],

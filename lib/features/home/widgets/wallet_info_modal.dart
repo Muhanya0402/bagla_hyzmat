@@ -1,5 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class WalletInfoModal extends StatelessWidget {
   final double balance;
@@ -15,6 +17,7 @@ class WalletInfoModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -69,13 +72,13 @@ class WalletInfoModal extends StatelessWidget {
           ShaderMask(
             shaderCallback: (b) => _gradient.createShader(b),
             child: Text(
-              'Мой кошелёк',
+              words.walletTitle,
               style: AppText.extraBold(fontSize: 22, color: Colors.white),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Средства от выполненных заказов',
+            words.walletSubtitle,
             style: AppText.regular(
               fontSize: 13,
               color: const Color(0xFF9AA3AF),
@@ -102,7 +105,7 @@ class WalletInfoModal extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  'Доступный баланс',
+                  words.walletAvailable,
                   style: AppText.regular(
                     fontSize: 12,
                     color: const Color(0xFF9AA3AF),
@@ -134,7 +137,7 @@ class WalletInfoModal extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'КАК ВЫВЕСТИ СРЕДСТВА',
+                  words.walletHowToWithdraw,
                   style: AppText.semiBold(
                     fontSize: 10,
                     color: const Color(0xFF9AA3AF),
@@ -144,24 +147,24 @@ class WalletInfoModal extends StatelessWidget {
                 _buildStep(
                   number: '1',
                   icon: Icons.support_agent_rounded,
-                  title: 'Свяжитесь с поддержкой',
-                  subtitle: 'Напишите нам в поддержку для оформления вывода',
+                  title: words.walletStep1Title,
+                  subtitle: words.walletStep1Subtitle,
                   color: _green,
                 ),
                 const SizedBox(height: 14),
                 _buildStep(
                   number: '2',
                   icon: Icons.badge_outlined,
-                  title: 'Подтвердите личность',
-                  subtitle: 'Предоставьте данные организации и реквизиты',
+                  title: words.walletStep2Title,
+                  subtitle: words.walletStep2Subtitle,
                   color: const Color(0xFFE67E22),
                 ),
                 const SizedBox(height: 14),
                 _buildStep(
                   number: '3',
                   icon: Icons.account_balance_rounded,
-                  title: 'Получите перевод',
-                  subtitle: 'Средства поступят на ваш счёт в течение 1–3 дней',
+                  title: words.walletStep3Title,
+                  subtitle: words.walletStep3Subtitle,
                   color: _green,
                 ),
               ],
@@ -188,7 +191,7 @@ class WalletInfoModal extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                'ПОНЯТНО',
+                words.walletGotIt,
                 style: AppText.bold(
                   fontSize: 14,
                   color: Colors.white,

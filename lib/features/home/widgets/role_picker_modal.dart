@@ -1,7 +1,9 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// Bottom-sheet content shown when a client/observer tries to open
 /// an order or tap "take order" without having a real role yet.
@@ -12,6 +14,7 @@ class RolePickerEmbedded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.of(context).bg,
@@ -51,12 +54,12 @@ class RolePickerEmbedded extends StatelessWidget {
             const SizedBox(height: 14),
 
             Text(
-              'Кто вы?',
+              words.rolePickerTitle,
               style: AppText.serif(fontSize: 22, letterSpacing: -0.3),
             ),
             const SizedBox(height: 6),
             Text(
-              'Выберите роль, чтобы продолжить',
+              words.rolePickerSubtitle,
               style: AppText.regular(
                 fontSize: 13,
                 color: AppColors.of(context).inkMuted,
@@ -67,8 +70,8 @@ class RolePickerEmbedded extends StatelessWidget {
             // ── Курьер ──────────────────────────────────────────────────
             _RoleOption(
               icon: Icons.electric_bike_outlined,
-              title: 'Курьер',
-              description: 'Принимаю и доставляю заказы',
+              title: words.rolePickerCourierTitle,
+              description: words.rolePickerCourierDesc,
               onTap: () => Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
@@ -82,8 +85,8 @@ class RolePickerEmbedded extends StatelessWidget {
             // ── Заказчик ────────────────────────────────────────────────
             _RoleOption(
               icon: Icons.shopping_bag_outlined,
-              title: 'Заказчик',
-              description: 'Создаю заказы для доставки',
+              title: words.rolePickerClientTitle,
+              description: words.rolePickerClientDesc,
               onTap: () => Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(

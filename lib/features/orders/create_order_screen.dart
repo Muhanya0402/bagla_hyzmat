@@ -60,11 +60,23 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   String _transportType = 'any';
   bool _multipleItems = false;
 
+  // Только (value, icon) — лейблы локализованные, берём через AppLocalizations.
   static const _transportOptions = [
-    ('any', 'Авто необязательно', Icons.directions_run_rounded),
-    ('car', 'Легковой авто', Icons.directions_car_rounded),
-    ('truck', 'Грузовой авто', Icons.local_shipping_rounded),
+    ('any', Icons.directions_run_rounded),
+    ('car', Icons.directions_car_rounded),
+    ('truck', Icons.local_shipping_rounded),
   ];
+
+  String _transportLabel(String value, AppLocalizations words) {
+    switch (value) {
+      case 'car':
+        return words.transportCar;
+      case 'truck':
+        return words.transportTruck;
+      default:
+        return words.transportAny;
+    }
+  }
   final _picker = ImagePicker();
 
   // ── Location ───────────────────────────────────────────────────────────────
@@ -668,7 +680,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         title: words.transportSection,
                         child: Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: _transportField(),
+                          child: _transportField(words),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -1189,10 +1201,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _transportField() {
+  Widget _transportField(AppLocalizations words) {
     return Column(
       children: _transportOptions.map((opt) {
-        final (value, label, icon) = opt;
+        final (value, icon) = opt;
+        final label = _transportLabel(value, words);
         final isSelected = _transportType == value;
         return GestureDetector(
           onTap: () => setState(() => _transportType = value),
@@ -1689,7 +1702,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Публикация заказа: $points жетонов. Будут списаны после принятия курьером',
+                      words.createOrderTokensInfo
+                          .replaceAll('{n}', '$points'),
                       style: AppText.medium(
                         fontSize: 12,
                         color: AppColors.of(context).ink,

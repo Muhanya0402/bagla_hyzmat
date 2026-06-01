@@ -1,7 +1,9 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Brand constants (local, no external import needed)
@@ -20,27 +22,31 @@ const _kGradient = LinearGradient(colors: [_kGreen, _kRed]);
 class RestrictedAccessView extends StatelessWidget {
   final VoidCallback onActionPressed;
   final VoidCallback? onSignOut;
-  final String title;
-  final String message;
-  final String buttonText;
-  final String statusHint;
+  /// Если null — используются локализованные дефолты из l10n.
+  final String? title;
+  final String? message;
+  final String? buttonText;
+  final String? statusHint;
 
   const RestrictedAccessView({
     super.key,
     required this.onActionPressed,
     this.onSignOut,
-    this.title = 'Доступ к заказам временно ограничен',
-    this.message =
-        'Ваш профиль курьера находится на финальной проверке службой '
-        'безопасности Bagla. Принятие заказов будет доступно '
-        'сразу после подтверждения.',
-    this.buttonText = 'Понятно',
-    this.statusHint = 'Верификация занимает от 15 минут до 2 часов',
+    this.title,
+    this.message,
+    this.buttonText,
+    this.statusHint,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final words = context.watch<LanguageProvider>().words;
+    // Дефолты резолвятся из l10n — runtime, не const.
+    final t = title ?? words.restrictedDefaultTitle;
+    final m = message ?? words.restrictedDefaultMessage;
+    final b = buttonText ?? words.restrictedDefaultButton;
+    final h = statusHint ?? words.restrictedDefaultStatusHint;
     return Material(
       color: Colors.transparent,
       child: Column(
@@ -72,13 +78,13 @@ class RestrictedAccessView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  title,
+                  t,
                   textAlign: TextAlign.center,
                   style: AppText.serif(fontSize: 17, color: c.ink),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  message,
+                  m,
                   textAlign: TextAlign.center,
                   style: AppText.regular(fontSize: 13, color: c.inkMuted).copyWith(height: 1.55),
                 ),
@@ -97,7 +103,7 @@ class RestrictedAccessView extends StatelessWidget {
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
-                          statusHint,
+                          h,
                           style: AppText.medium(fontSize: 12, color: c.amber),
                         ),
                       ),
@@ -107,7 +113,7 @@ class RestrictedAccessView extends StatelessWidget {
                 const SizedBox(height: 20),
                 Container(height: 0.5, color: c.borderSoft),
                 const SizedBox(height: 16),
-                _ActionButton(label: buttonText, onTap: onActionPressed),
+                _ActionButton(label: b, onTap: onActionPressed),
               ],
             ),
           ),
@@ -217,7 +223,9 @@ class _SignOutButtonState extends State<_SignOutButton> {
               fontSize: 13,
               color: _pressed ? AppColors.of(context).errorMuted : AppColors.of(context).inkSoft,
             ),
-            child: const Text('Выйти из системы'),
+            child: Text(
+              context.watch<LanguageProvider>().words.restrictedSignOut,
+            ),
           ),
         ),
       ),

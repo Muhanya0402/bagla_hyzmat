@@ -547,6 +547,45 @@ const Map<String, String> stringsTk = {
   'rejectionReasonSelfie': 'Ýüz suraty',
   'rejectionReasonOrgName': 'Edaranyň ady',
   'rejectionReasonCategory': 'Dükan kategoriýasy',
+  // ── Home / orders banner ───────────────────────────────────────────────────
+  'homeNoConnection': 'Serwer bilen baglanyşyk ýok',
+  'ordersLoadError': 'Ýüklemekde säwlik. Aşak süýşüriň.',
+  'shopEmptyList': 'Häzirçe sargyt ýok',
+  'ordersAllLoaded': 'Ähli sargyt ýüklendi',
+  // ── Role picker modal ──────────────────────────────────────────────────────
+  'rolePickerTitle': 'Siz kim?',
+  'rolePickerSubtitle': 'Dowam etmek üçin roly saýlaň',
+  'rolePickerCourierTitle': 'Kurýer',
+  'rolePickerCourierDesc': 'Sargytlary kabul edýärin we eltýärin',
+  'rolePickerClientTitle': 'Müşderi',
+  'rolePickerClientDesc': 'Sargyt döredýärin',
+  // ── Wallet info modal ──────────────────────────────────────────────────────
+  'walletTitle': 'Meniň gapjygym',
+  'walletSubtitle': 'Berjaý edilen sargyt serişdeleri',
+  'walletAvailable': 'Bar bolan balans',
+  'walletHowToWithdraw': 'SERIŞDE ÇYKARMAK',
+  'walletStep1Title': 'Goldaw bilen habarlaşyň',
+  'walletStep1Subtitle': 'Çykarmak üçin goldawa ýazyň',
+  'walletStep2Title': 'Şahsyýetiňizi tassyklaň',
+  'walletStep2Subtitle': 'Edaranyň maglumatlaryny we rekwizitleri beriň',
+  'walletStep3Title': 'Geçirimi alyň',
+  'walletStep3Subtitle': 'Serişdeler hasabyňyza 1-3 günüň içinde geler',
+  'walletGotIt': 'DÜŞÜNDÜM',
+  // ── Bank picker ────────────────────────────────────────────────────────────
+  'bankPickerTitle': 'BANK SAÝLAŇ',
+  'bankPickerEmpty': 'Banklar ýok',
+  // ── Create order ───────────────────────────────────────────────────────────
+  'createOrderTokensInfo':
+      'Sargyt çap etmek: {n} nyşan. Kurýer kabul edenden soň ýazylyp alynar',
+  // ── Restricted access (banned/pending) ─────────────────────────────────────
+  'restrictedDefaultTitle': 'Sargyt almaga rugsat wagtlaýyn çäklendirilen',
+  'restrictedDefaultMessage':
+      'Profiliňiz Bagla howpsuzlyk gullugy tarapyndan barlanýar. '
+      'Tassyklanandan soň sargyt almak mümkin bolar.',
+  'restrictedDefaultButton': 'Düşnükli',
+  'restrictedDefaultStatusHint':
+      'Barlag 15 minutdan 2 sagada çenli dowam edýär',
+  'restrictedSignOut': 'Ulgamdan çykmak',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

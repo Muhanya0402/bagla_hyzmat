@@ -555,6 +555,45 @@ const Map<String, String> stringsRu = {
   'rejectionReasonSelfie': 'Фото лица',
   'rejectionReasonOrgName': 'Название организации',
   'rejectionReasonCategory': 'Категория магазина',
+  // ── Home / orders banner ───────────────────────────────────────────────────
+  'homeNoConnection': 'Нет соединения с сервером',
+  'ordersLoadError': 'Ошибка загрузки. Потяните вниз.',
+  'shopEmptyList': 'У вас пока нет заказов',
+  'ordersAllLoaded': 'Все заказы загружены',
+  // ── Role picker modal ──────────────────────────────────────────────────────
+  'rolePickerTitle': 'Кто вы?',
+  'rolePickerSubtitle': 'Выберите роль, чтобы продолжить',
+  'rolePickerCourierTitle': 'Курьер',
+  'rolePickerCourierDesc': 'Принимаю и доставляю заказы',
+  'rolePickerClientTitle': 'Заказчик',
+  'rolePickerClientDesc': 'Создаю заказы для доставки',
+  // ── Wallet info modal ──────────────────────────────────────────────────────
+  'walletTitle': 'Мой кошелёк',
+  'walletSubtitle': 'Средства от выполненных заказов',
+  'walletAvailable': 'Доступный баланс',
+  'walletHowToWithdraw': 'КАК ВЫВЕСТИ СРЕДСТВА',
+  'walletStep1Title': 'Свяжитесь с поддержкой',
+  'walletStep1Subtitle': 'Напишите нам в поддержку для оформления вывода',
+  'walletStep2Title': 'Подтвердите личность',
+  'walletStep2Subtitle': 'Предоставьте данные организации и реквизиты',
+  'walletStep3Title': 'Получите перевод',
+  'walletStep3Subtitle': 'Средства поступят на ваш счёт в течение 1-3 дней',
+  'walletGotIt': 'ПОНЯТНО',
+  // ── Bank picker ────────────────────────────────────────────────────────────
+  'bankPickerTitle': 'ВЫБЕРИТЕ БАНК',
+  'bankPickerEmpty': 'Банки недоступны',
+  // ── Create order ───────────────────────────────────────────────────────────
+  'createOrderTokensInfo':
+      'Публикация заказа: {n} жетонов. Будут списаны после принятия курьером',
+  // ── Restricted access (banned/pending) ─────────────────────────────────────
+  'restrictedDefaultTitle': 'Доступ к заказам временно ограничен',
+  'restrictedDefaultMessage':
+      'Ваш профиль находится на финальной проверке службой безопасности Bagla. '
+      'Принятие заказов будет доступно сразу после подтверждения.',
+  'restrictedDefaultButton': 'Понятно',
+  'restrictedDefaultStatusHint':
+      'Верификация занимает от 15 минут до 2 часов',
+  'restrictedSignOut': 'Выйти из системы',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',

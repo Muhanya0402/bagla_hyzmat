@@ -107,15 +107,15 @@ class HomeOrdersList extends StatelessWidget {
       );
     }
     if (hasError) {
-      return const HomeEmptyState(
+      return HomeEmptyState(
         icon: Icons.wifi_off_rounded,
-        text: 'Ошибка загрузки. Потяните вниз.',
+        text: words.ordersLoadError,
       );
     }
     if (orders.isEmpty) {
       return HomeEmptyState(
         icon: Icons.inbox_rounded,
-        text: isShop ? 'У вас пока нет заказов' : words.emptyList,
+        text: isShop ? words.shopEmptyList : words.emptyList,
       );
     }
 
@@ -143,7 +143,7 @@ class HomeOrdersList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
-                  'Все заказы загружены',
+                  words.ordersAllLoaded,
                   style: AppText.regular(
                     fontSize: 12,
                     color: AppColors.of(context).inkSoft,
