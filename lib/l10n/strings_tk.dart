@@ -527,6 +527,26 @@ const Map<String, String> stringsTk = {
       'Kurýer warianty surata düşürer, müşderi gerek bolanyny saýlar.',
   'orderMultipleItemsCourierHint':
       'Ähli warianty surata alyň — müşderi birini saýlar.',
+  // ── Статус "Отказ от модератора" ───────────────────────────────────────────
+  'accountRejected': 'Profili düzetmek gerek',
+  'accountRejectedTap': 'Düzetmek we täzeden ibermek üçin basyň',
+  'regFixTitle': 'Maglumatlary düzediň',
+  'regFixSubtitle':
+      'Moderator düzetmeli meýdanlary belledi. Düzedeniňizden soň profil '
+      'täzeden barlaga gider.',
+  'regFixSubmit': 'Barlaga ibermek',
+  'regFixNothingToFix': 'Düzetmäge zat ýok',
+  'rejectionReasonName': 'Ady',
+  'rejectionReasonSurname': 'Familiýasy',
+  'rejectionReasonLastname': 'Atasynyň ady',
+  'rejectionReasonLocation': 'Ýerleşişi',
+  'rejectionReasonTransport': 'Ulagyň görnüşi',
+  'rejectionReasonPassportMain': 'Pasportyň esasy sahypasy',
+  'rejectionReasonPassportAddress': 'Hasaba alyş',
+  'rejectionReasonPassportFace': 'Pasportdaky ýüz suraty',
+  'rejectionReasonSelfie': 'Ýüz suraty',
+  'rejectionReasonOrgName': 'Edaranyň ady',
+  'rejectionReasonCategory': 'Dükan kategoriýasy',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

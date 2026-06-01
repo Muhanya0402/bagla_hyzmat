@@ -535,6 +535,26 @@ const Map<String, String> stringsRu = {
       'Курьер сфотографирует варианты, чтобы клиент выбрал нужный.',
   'orderMultipleItemsCourierHint':
       'Сфотографируйте все варианты — клиент выберет один.',
+  // ── Статус "Отказ от модератора" ───────────────────────────────────────────
+  'accountRejected': 'Профиль требует исправления',
+  'accountRejectedTap': 'Нажмите чтобы исправить и отправить повторно',
+  'regFixTitle': 'Исправить данные',
+  'regFixSubtitle': 'Модератор отметил поля, которые нужно скорректировать. '
+      'После исправления профиль уйдёт на повторную проверку.',
+  'regFixSubmit': 'Отправить на проверку',
+  'regFixNothingToFix': 'Нет полей для исправления',
+  // Коды причин отказа (для отображения в чек-листе пользователю)
+  'rejectionReasonName': 'Имя',
+  'rejectionReasonSurname': 'Фамилия',
+  'rejectionReasonLastname': 'Отчество',
+  'rejectionReasonLocation': 'Местоположение',
+  'rejectionReasonTransport': 'Вид транспорта',
+  'rejectionReasonPassportMain': 'Главная страница паспорта',
+  'rejectionReasonPassportAddress': 'Прописка',
+  'rejectionReasonPassportFace': 'Фото лица в паспорте',
+  'rejectionReasonSelfie': 'Фото лица',
+  'rejectionReasonOrgName': 'Название организации',
+  'rejectionReasonCategory': 'Категория магазина',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',

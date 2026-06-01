@@ -162,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen>
     final bool isCourier = authProv.isCourier;
     final bool isBanned = authProv.isBanned;
     final bool isPending = authProv.isPending && (isCourier || isShop);
+    final bool isRejected = authProv.isRejected && (isCourier || isShop);
     final bool needsRoleSelection = authProv.needsRoleSelection;
 
     final filteredOrders = applyFilters(orders);
@@ -238,10 +239,15 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-          if (isBanned || isPending)
+          if (isBanned || isPending || isRejected)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildStatusBanner(isBanned, words, c),
+              child: _buildStatusBanner(
+                isBanned: isBanned,
+                isRejected: isRejected,
+                words: words,
+                c: c,
+              ),
             ),
 
           if (isShop && isActive || selectedFilterIndex == 1)
@@ -311,42 +317,94 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStatusBanner(
-    bool isBanned,
-    AppLocalizations words,
-    AppColors c,
-  ) {
-    final color = isBanned ? c.errorMuted : c.amber;
-    final bgColor = isBanned ? c.errorTint : c.amberTint;
-    final icon = isBanned ? Icons.block_rounded : Icons.access_time_rounded;
-    final text = isBanned ? words.accountBanned : words.accountPending;
+  Widget _buildStatusBanner({
+    required bool isBanned,
+    required bool isRejected,
+    required AppLocalizations words,
+    required AppColors c,
+  }) {
+    // Приоритет: banned > rejected > pending.
+    final Color color;
+    final Color bgColor;
+    final IconData icon;
+    final String text;
+    final String? subtext;
+    final VoidCallback? onTap;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+    if (isBanned) {
+      color = c.errorMuted;
+      bgColor = c.errorTint;
+      icon = Icons.block_rounded;
+      text = words.accountBanned;
+      subtext = null;
+      onTap = null;
+    } else if (isRejected) {
+      // Rejected — error-палитра как у banned, НО с подсказкой и тапом.
+      color = c.errorMuted;
+      bgColor = c.errorTint;
+      icon = Icons.edit_note_rounded;
+      text = words.accountRejected;
+      subtext = words.accountRejectedTap;
+      onTap = () => Navigator.pushNamed(context, '/reg-fix')
+          .then((_) => handleRefresh());
+    } else {
+      color = c.amber;
+      bgColor = c.amberTint;
+      icon = Icons.access_time_rounded;
+      text = words.accountPending;
+      subtext = null;
+      onTap = null;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 17),
             ),
-            child: Icon(icon, color: color, size: 17),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: AppText.medium(fontSize: 13, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    text,
+                    style: AppText.semiBold(fontSize: 13, color: color),
+                  ),
+                  if (subtext != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtext,
+                      style: AppText.regular(
+                              fontSize: 11.5, color: color.withValues(alpha: 0.85))
+                          .copyWith(height: 1.3),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ],
+            if (onTap != null) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded, color: color, size: 18),
+            ],
+          ],
+        ),
       ),
     );
   }

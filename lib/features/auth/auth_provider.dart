@@ -1,5 +1,6 @@
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
+import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagla/features/notifications/push_notification_service.dart';
@@ -37,6 +38,7 @@ class AuthProvider extends ChangeNotifier {
   double _walletBalance = 0.0;
   String _transportType = 'any';
   String _category = ''; // slug категории магазина (shop only)
+  List<String> _rejectionReasons = const []; // коды отказа модератора
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,10 @@ class AuthProvider extends ChangeNotifier {
   bool get isPending => status == 'pending';
   bool get isBanned => status == 'banned';
   bool get isPublished => status == 'published';
+  bool get isRejected => status == 'rejected';
+
+  /// Коды полей, которые модератор отметил для исправления.
+  List<String> get rejectionReasons => List.unmodifiable(_rejectionReasons);
 
   /// Клиент, прошедший регистрацию, но ещё не выбравший роль.
   bool get needsRoleSelection => isClient && isPublished;
@@ -71,7 +77,7 @@ class AuthProvider extends ChangeNotifier {
   /// Banned/pending пользователи получают громкие статус-баннеры — тур только
   /// отвлекает их от понимания, что аккаунт ограничен.
   bool get shouldSkipTour =>
-      isBanned || (isPending && (isCourier || isShop));
+      isBanned || isRejected || (isPending && (isCourier || isShop));
   double get rating => _rating;
   // int cast so widgets can do "${auth.balancePoints}" without ".0"
   double get balancePoints => _balancePoints;
@@ -103,6 +109,7 @@ class AuthProvider extends ChangeNotifier {
     _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
     _transportType = prefs.getString('transport_type') ?? 'any';
     _category = prefs.getString('category') ?? '';
+    _rejectionReasons = prefs.getStringList('rejection_reasons') ?? const [];
 
     if (_phone.isNotEmpty) phoneController.text = _phone;
     // Привязываем тур-namespace к загруженному userId.
@@ -153,6 +160,20 @@ class AuthProvider extends ChangeNotifier {
       _category = rawCat.toString();
     }
 
+    // rejection_reasons может прийти как:
+    //   - List<dynamic> (Directus JSON-array)
+    //   - String с CSV ("name,location,...")
+    //   - null
+    final rawReasons = user['rejection_reasons'];
+    if (rawReasons is List) {
+      _rejectionReasons = rawReasons.map((e) => e.toString()).toList();
+    } else if (rawReasons is String && rawReasons.isNotEmpty) {
+      _rejectionReasons =
+          rawReasons.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    } else {
+      _rejectionReasons = const [];
+    }
+
     // ── Location (supports both raw ID and expanded Directus object) ────────
     void extractId(dynamic raw, void Function(String) setter) {
       if (raw == null) return;
@@ -184,6 +205,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setDouble('wallet_balance', _walletBalance);
     await prefs.setString('transport_type', _transportType);
     await prefs.setString('category', _category);
+    await prefs.setStringList('rejection_reasons', _rejectionReasons);
     await prefs.setBool('is_logged_in', true);
 
     // Account-scoped тур namespace.
@@ -388,6 +410,8 @@ class AuthProvider extends ChangeNotifier {
     await TourManager.instance.restoreSnapshot(tourSnapshot);
     // На время "нет активного userId" — глобальный namespace.
     TourManager.instance.setUserId('');
+    // Локальный кэш прочитанных уведомлений принадлежит ушедшему пользователю.
+    NotificationService.clearLocallyRead();
     _token = '';
     _userId = '';
     _phone = '';
@@ -403,6 +427,7 @@ class AuthProvider extends ChangeNotifier {
     _walletBalance = 0.0;
     _rating = 0.0;
     _category = '';
+    _rejectionReasons = const [];
     _isCodeSent = false;
     notifyListeners();
   }

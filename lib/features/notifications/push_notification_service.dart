@@ -19,7 +19,28 @@ class PushNotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  /// Глобальный флаг: вся one-time инициализация (listeners + initial
+  /// message) делается ровно один раз за жизнь процесса.
+  /// На повторный вызов `initialize()` (например, после re-auth)
+  /// мы НЕ переподписываемся и НЕ обрабатываем initialMessage заново —
+  /// иначе после логина другого аккаунта приложение бы кидало на
+  /// экран уведомлений (это и был баг).
+  bool _initialized = false;
+
+  /// Публичная entry-point: вызывается из верифицирующего auth flow.
+  /// Идемпотентна: всю one-time работу делает один раз, а на каждый
+  /// логин — обновляет FCM-токен в Directus.
   Future<void> initialize() async {
+    if (!_initialized) {
+      await _initializeOnce();
+      _initialized = true;
+    }
+    // На каждый логин — синхронизируем токен с текущим user_id в БД,
+    // иначе на чужой аккаунт уведомления продолжат идти.
+    await _syncTokenToCurrentUser();
+  }
+
+  Future<void> _initializeOnce() async {
     // 1. Инициализация локальных уведомлений (foreground)
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@drawable/ic_notification');
@@ -42,25 +63,9 @@ class PushNotificationService {
     // 2. Запрос разрешения
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
-    // 3. Получить и сохранить токен
-    // 3. Получить и сохранить токен
-    try {
-      final String? token = await _messaging.getToken();
-      if (token != null) {
-        if (kDebugMode) {
-          print('✅ FCM Token: $token');
-        }
-        await _saveTokenToDirectus(token);
-      }
-    } catch (e, stackTrace) {
-      if (kDebugMode) {
-        print('❌ Ошибка получения FCM токена:');
-        print('Error: $e');
-        print('StackTrace: $stackTrace');
-      }
-    }
-
-    // 4. Обновление токена
+    // 3. Обновление токена (например, при переустановке/смене SIM).
+    // Этот listener активен на всю жизнь приложения — токен синхронизируется
+    // в БД для **текущего** залогиненного пользователя. См. _saveTokenToDirectus.
     _messaging.onTokenRefresh.listen((newToken) {
       _saveTokenToDirectus(newToken);
     });
@@ -95,13 +100,48 @@ class PushNotificationService {
       _handleNotificationTap(message.data);
     });
 
-    // 7. Приложение было ЗАКРЫТО — открыли через уведомление
+    // 7. Приложение было ЗАКРЫТО — открыли через уведомление.
+    // Ждём чтобы auth_token успел загрузиться из prefs (cold-start).
     final RemoteMessage? initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       Future.delayed(const Duration(seconds: 1), () {
         _handleNotificationTap(initialMessage.data);
       });
     }
+  }
+
+  /// Синхронизирует текущий FCM-токен с залогиненным пользователем.
+  /// Вызывается на каждый login — гарантирует, что push'ы пойдут
+  /// именно на текущий аккаунт, а не на предыдущий.
+  Future<void> _syncTokenToCurrentUser() async {
+    try {
+      final String? token = await _messaging.getToken();
+      if (token != null) {
+        if (kDebugMode) print('✅ FCM Token sync: $token');
+        await _saveTokenToDirectus(token);
+      }
+    } catch (e) {
+      if (kDebugMode) print('❌ FCM sync error: $e');
+    }
+  }
+
+  /// Опрашивает prefs пока auth_token + user_id не появятся.
+  /// Возвращает true если успели за `timeout`, false если так и нет.
+  /// Нужно для cold-start: тап на push мог прилететь раньше, чем
+  /// AuthProvider.loadUserData успел прочитать prefs.
+  Future<bool> _waitForAuth({
+    Duration timeout = const Duration(seconds: 5),
+    Duration pollEvery = const Duration(milliseconds: 250),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+      final uid = prefs.getString('user_id') ?? '';
+      if (token.isNotEmpty && uid.isNotEmpty) return true;
+      await Future.delayed(pollEvery);
+    }
+    return false;
   }
 
   Future<void> _saveTokenToDirectus(String fcmToken) async {
@@ -145,17 +185,23 @@ class PushNotificationService {
   }
 
   void _handleNotificationTap(Map<String, dynamic> data) async {
-    // Mark the specific notification as read if its ID is in the payload,
-    // otherwise mark all unread — the user is going to the notifications screen.
     final String? notifId = data['notification_id']?.toString();
+
+    // На cold-start auth_token / user_id могут ещё не быть в prefs
+    // (AuthProvider.loadUserData асинхронная). Ждём до 5 сек.
+    await _waitForAuth();
+
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('user_id') ?? '';
 
+    // PATCH ОБЯЗАТЕЛЬНО await'им — иначе NotificationsScreen.initState
+    // успеет сделать GET до того, как сервер запишет is_read=true.
+    // Локальный кэш в NotificationService — двойная подстраховка.
     if (userId.isNotEmpty) {
       if (notifId != null && notifId.isNotEmpty) {
-        NotificationService().markAsRead(notifId);
+        await NotificationService().markAsRead(notifId);
       } else {
-        NotificationService().markAllAsRead(userId);
+        await NotificationService().markAllAsRead(userId);
       }
     }
 

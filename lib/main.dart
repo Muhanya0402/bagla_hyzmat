@@ -20,6 +20,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'features/profile/registration_details_screen.dart';
+import 'features/profile/registration_fix_screen.dart';
 import 'l10n/language_provider.dart';
 import 'features/auth/auth_repository.dart';
 import 'features/auth/phone_screen.dart';
@@ -206,6 +207,11 @@ class MyApp extends StatelessWidget {
         }
         if (settings.name == '/appeals') {
           return MaterialPageRoute(builder: (_) => const AppealsScreen());
+        }
+        if (settings.name == '/reg-fix') {
+          return MaterialPageRoute(
+            builder: (_) => const RegistrationFixScreen(),
+          );
         }
         if (settings.name == '/terms') {
           return MaterialPageRoute(builder: (_) => const TermsScreen());

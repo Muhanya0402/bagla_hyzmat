@@ -5,13 +5,6 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Brand constants — intentional accent colours, not adapted to theme.
-// ─────────────────────────────────────────────────────────────────────────────
-const _kGreen = Color(0xFF1A7A3C);
-const _kRed = Color(0xFFD32F1E);
-const _kGradient = LinearGradient(colors: [_kGreen, _kRed]);
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Model
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -50,13 +43,18 @@ class BankOption {
     );
   }
 
-  Color get color {
-    if (primaryColor == null) return _kGreen;
+  /// Бренд-цвет банка (опц.). Используется ТОЛЬКО как маленький акцент
+  /// в fallback-иконке (когда нет логотипа). На основной UI карточки
+  /// не влияет — общий дизайн остаётся нейтральным.
+  /// Возвращает `null` если поле пустое/невалидное — вызывающий код
+  /// сам подставит нейтральный fallback из AppColors.
+  Color? get brandColor {
+    if (primaryColor == null) return null;
     try {
       final hex = primaryColor!.replaceAll('#', '');
       return Color(int.parse('FF$hex', radix: 16));
     } catch (_) {
-      return _kGreen;
+      return null;
     }
   }
 }
@@ -132,7 +130,7 @@ class _BankPickerSectionState extends State<BankPickerSection> {
                 width: 3,
                 height: 12,
                 decoration: BoxDecoration(
-                  gradient: _kGradient,
+                  color: c.ink,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -232,8 +230,10 @@ class _BankCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final color = bank.color;
     final name = isRu ? bank.nameRu : bank.nameTk;
+    // Бренд-цвет используется только в fallback-иконке (когда нет логотипа).
+    // По умолчанию — нейтральный c.ink, чтобы не выбиваться из палитры UI.
+    final accent = bank.brandColor ?? c.ink;
 
     return GestureDetector(
       onTap: onTap,
@@ -242,16 +242,18 @@ class _BankCard extends StatelessWidget {
         width: 100,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.08) : c.surface,
+          color: isSelected ? c.emeraldTint : c.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? color : c.border,
-            width: isSelected ? 1.8 : 1,
+            color: isSelected
+                ? c.ink.withValues(alpha: 0.35)
+                : c.border,
+            width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: color.withValues(alpha: 0.15),
+                    color: c.ink.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -261,13 +263,13 @@ class _BankCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildLogo(color),
+            _buildLogo(c, accent),
             const SizedBox(height: 6),
             Text(
               name,
               style: AppText.semiBold(
                 fontSize: 11,
-                color: isSelected ? color : c.ink,
+                color: c.ink,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -279,9 +281,9 @@ class _BankCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLogo(Color color) {
+  Widget _buildLogo(AppColors c, Color accent) {
     if (bank.logoFileId == null || bank.logoFileId!.isEmpty) {
-      return _fallbackIcon(color);
+      return _fallbackIcon(c, accent);
     }
 
     final url = '$_baseUrl/assets/${bank.logoFileId}';
@@ -303,24 +305,27 @@ class _BankCard extends StatelessWidget {
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 1.5,
-                color: color.withValues(alpha: 0.4),
+                color: c.inkSoft,
               ),
             ),
           );
         },
-        errorBuilder: (_, _, _) => _fallbackIcon(color),
+        errorBuilder: (_, _, _) => _fallbackIcon(c, accent),
       ),
     );
   }
 
-  Widget _fallbackIcon(Color color) => Container(
+  /// Fallback когда нет логотипа: плитка с иконкой банка.
+  /// Здесь — единственное место где используется `bank.brandColor`,
+  /// и только если он задан; иначе нейтральный c.ink.
+  Widget _fallbackIcon(AppColors c, Color accent) => Container(
     width: 36,
     height: 36,
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
+      color: accent.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(10),
     ),
-    child: Icon(Icons.account_balance_rounded, color: color, size: 18),
+    child: Icon(Icons.account_balance_rounded, color: accent, size: 18),
   );
 }
 

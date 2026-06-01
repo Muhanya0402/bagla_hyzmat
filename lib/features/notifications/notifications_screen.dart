@@ -132,12 +132,17 @@ class NotificationsScreenState extends State<NotificationsScreen>
         offset: 0,
       );
       if (!mounted) return;
+      // Глобальный кэш id'шек, помеченных как прочитанные клиентом
+      // (включая случай тапа на push до cold-start этого экрана).
+      final globalRead = NotificationService.locallyReadIds;
       setState(() {
         _items = data
             .whereType<Map>()
             .map((m) => NotificationDto.fromMap(Map<String, dynamic>.from(m)))
             .map(
-              (n) => _pendingRead.contains(n.id) ? n.copyWith(isRead: true) : n,
+              (n) => (_pendingRead.contains(n.id) || globalRead.contains(n.id))
+                  ? n.copyWith(isRead: true)
+                  : n,
             )
             .toList();
         _isLoading = false;
@@ -163,11 +168,16 @@ class NotificationsScreenState extends State<NotificationsScreen>
         offset: _items.length,
       );
       if (!mounted) return;
+      final globalRead = NotificationService.locallyReadIds;
       setState(() {
         for (final raw in more.whereType<Map>()) {
           final dto = NotificationDto.fromMap(Map<String, dynamic>.from(raw));
           if (_items.any((x) => x.id == dto.id)) continue;
-          _items.add(_pendingRead.contains(dto.id) ? dto.copyWith(isRead: true) : dto);
+          _items.add(
+            (_pendingRead.contains(dto.id) || globalRead.contains(dto.id))
+                ? dto.copyWith(isRead: true)
+                : dto,
+          );
         }
         _hasMore = more.length >= _pageSize;
         _loadingMore = false;

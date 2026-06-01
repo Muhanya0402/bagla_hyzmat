@@ -482,6 +482,27 @@ class AppLocalizations {
   String get orderMultipleItemsHint => get('orderMultipleItemsHint');
   String get orderMultipleItemsCourierHint =>
       get('orderMultipleItemsCourierHint');
+  // ── Статус "Отказ от модератора" ─────────────────────────────────────────
+  String get accountRejected => get('accountRejected');
+  String get accountRejectedTap => get('accountRejectedTap');
+  String get regFixTitle => get('regFixTitle');
+  String get regFixSubtitle => get('regFixSubtitle');
+  String get regFixSubmit => get('regFixSubmit');
+  String get regFixNothingToFix => get('regFixNothingToFix');
+  String get rejectionReasonName => get('rejectionReasonName');
+  String get rejectionReasonSurname => get('rejectionReasonSurname');
+  String get rejectionReasonLastname => get('rejectionReasonLastname');
+  String get rejectionReasonLocation => get('rejectionReasonLocation');
+  String get rejectionReasonTransport => get('rejectionReasonTransport');
+  String get rejectionReasonPassportMain =>
+      get('rejectionReasonPassportMain');
+  String get rejectionReasonPassportAddress =>
+      get('rejectionReasonPassportAddress');
+  String get rejectionReasonPassportFace =>
+      get('rejectionReasonPassportFace');
+  String get rejectionReasonSelfie => get('rejectionReasonSelfie');
+  String get rejectionReasonOrgName => get('rejectionReasonOrgName');
+  String get rejectionReasonCategory => get('rejectionReasonCategory');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

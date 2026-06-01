@@ -188,7 +188,8 @@ class AuthRepository {
               'district.id,district.district_ru,district.district_tk,'
               'etrap.id,etrap.etrap_ru,etrap.etrap_tk,'
               'province.id,province.province_ru,province.province_tk,'
-              'experience_points,wallet_balance,transport_type,category',
+              'experience_points,wallet_balance,transport_type,category,'
+              'rejection_reasons',
         },
       );
 
@@ -466,6 +467,15 @@ class AuthRepository {
             ? (rawCat['id']?.toString() ?? '')
             : rawCat.toString();
     await prefs.setString('category', categorySlug);
+
+    // rejection_reasons — массив string-кодов. Сохраняем как StringList.
+    final rawReasons = user['rejection_reasons'];
+    final reasons = rawReasons is List
+        ? rawReasons.map((e) => e.toString()).toList()
+        : (rawReasons is String && rawReasons.isNotEmpty
+            ? rawReasons.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+            : <String>[]);
+    await prefs.setStringList('rejection_reasons', reasons);
     await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
     await prefs.setDouble(
       'balance_points',

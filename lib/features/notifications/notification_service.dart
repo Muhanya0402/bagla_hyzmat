@@ -3,6 +3,20 @@ import 'package:bagla/core/api_client.dart';
 class NotificationService {
   final ApiClient _api = ApiClient();
 
+  /// Глобальный кэш id'шек, помеченных как прочитанные клиентом.
+  /// Заполняется в `markAsRead`/`markAllAsRead` и в `applyLocalReadOverrides`
+  /// при показе списка — гарантирует, что даже если GET успел проскочить
+  /// до того, как PATCH дошёл до сервера, UI всё равно покажет уведомление
+  /// прочитанным. Очищается на logout (см. clearLocallyRead).
+  static final Set<String> _locallyReadIds = <String>{};
+
+  /// Возвращает копию текущего набора локально прочитанных id'шек.
+  /// Использовать в экранах для override'а серверных данных.
+  static Set<String> get locallyReadIds => Set.unmodifiable(_locallyReadIds);
+
+  /// Очистить локальный кэш — вызывается на logout.
+  static void clearLocallyRead() => _locallyReadIds.clear();
+
   Future<List<dynamic>> getNotifications(
     String customerId, {
     int limit = 30,
@@ -21,6 +35,8 @@ class NotificationService {
   }
 
   Future<void> markAsRead(String notificationId) async {
+    // Локальный override — даже если PATCH упадёт, экран покажет прочитанным.
+    _locallyReadIds.add(notificationId);
     try {
       await _api.dio.patch(
         '/items/notifications/$notificationId',
@@ -38,6 +54,10 @@ class NotificationService {
           .toList();
 
       if (unread.isEmpty) return;
+
+      // Локальный override: добавляем сразу, ДО PATCH'а — гарантирует
+      // что параллельные GET'ы увидят их прочитанными.
+      _locallyReadIds.addAll(unread);
 
       await _api.dio.patch(
         '/items/notifications',
