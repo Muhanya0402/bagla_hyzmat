@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
@@ -55,7 +56,7 @@ class PointsCard extends StatelessWidget {
                   color: c.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.toll_rounded, color: c.amber, size: 20),
+                child: const PointIcon(size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(

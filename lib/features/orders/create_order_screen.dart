@@ -6,6 +6,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
@@ -1746,11 +1747,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.toll_rounded,
-                    size: 16,
-                    color: AppColors.of(context).amber,
-                  ),
+                  PointIcon(size: 16, tintColor: AppColors.of(context).amber),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(

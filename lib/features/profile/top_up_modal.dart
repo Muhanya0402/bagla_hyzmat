@@ -3,6 +3,7 @@ import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/bank_picker.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -388,7 +389,7 @@ class _BalanceChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.toll_rounded, size: 15, color: c.accent),
+          PointIcon(size: 15, tintColor: c.accent),
           const SizedBox(width: 7),
           Text(
             isRu ? 'Текущий баланс:' : 'Häzirki balans:',

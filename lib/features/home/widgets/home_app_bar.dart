@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/home/widgets/home_level_bar.dart';
 import 'package:bagla/features/levels/level_provider.dart';
@@ -85,7 +86,6 @@ class HomeLogoRow extends StatelessWidget {
           ).then((_) => onRefresh());
         },
         child: _BalanceChip(
-          icon: Icons.toll_rounded,
           label: authProv.balancePoints.toDouble().toStringAsFixed(0),
           chipColor: c.amber,
           tintColor: c.amberTint,
@@ -138,13 +138,11 @@ class HomeLogoRow extends StatelessWidget {
 }
 
 class _BalanceChip extends StatelessWidget {
-  final IconData icon;
   final String label;
   final Color chipColor;
   final Color tintColor;
 
   const _BalanceChip({
-    required this.icon,
     required this.label,
     required this.chipColor,
     required this.tintColor,
@@ -162,7 +160,7 @@ class _BalanceChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: chipColor),
+          PointIcon(size: 14, tintColor: chipColor),
           const SizedBox(width: 4),
           Text(label, style: AppText.semiBold(fontSize: 12, color: chipColor)),
         ],

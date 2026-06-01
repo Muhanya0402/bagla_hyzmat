@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/orders/widgets/order_primary_button.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -102,14 +103,7 @@ class CashbackSuccessDialog extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    'assets/images/point_icon.png',
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) =>
-                        Icon(Icons.toll_rounded, color: c.amber, size: 24),
-                  ),
+                  const PointIcon(size: 24),
                   const SizedBox(width: 8),
                   Text(
                     '+${points.toDouble()} ${words.tokens}',

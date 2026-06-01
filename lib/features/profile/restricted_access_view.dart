@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -294,12 +295,9 @@ class TopUpFormView extends StatelessWidget {
               fontSize: 28,
               color: const Color(0xFFD1D5DB),
             ),
-            prefixIcon: Image.asset(
-              'assets/images/point_icon.png',
-              width: 28,
-              height: 28,
-              errorBuilder: (_, _, _) =>
-                  const Icon(Icons.toll_rounded, color: _kGreen, size: 26),
+            prefixIcon: const Padding(
+              padding: EdgeInsets.all(8),
+              child: PointIcon(size: 28),
             ),
             suffixText: 'жетонов',
             suffixStyle: AppText.regular(fontSize: 14, color: _kGrey),

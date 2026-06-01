@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
@@ -389,7 +390,7 @@ class _ActionButton extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.toll_rounded, size: 13, color: c.amber),
+                    PointIcon(size: 13, tintColor: c.amber),
                     const SizedBox(width: 3),
                     Text(
                       '$points',

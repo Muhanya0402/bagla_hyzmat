@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -127,14 +128,7 @@ class _OrderCountdownCardState extends State<OrderCountdownCard> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    'assets/images/point_icon.png',
-                    width: 16,
-                    height: 16,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) =>
-                        Icon(Icons.toll_rounded, size: 16, color: c.amber),
-                  ),
+                  const PointIcon(size: 16),
                   const SizedBox(width: 4),
                   Text(
                     '+${widget.cashback}',
