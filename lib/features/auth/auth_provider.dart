@@ -38,6 +38,7 @@ class AuthProvider extends ChangeNotifier {
   double _walletBalance = 0.0;
   String _transportType = 'any';
   String _category = ''; // slug категории магазина (shop only)
+  String _selfieFileId = ''; // UUID файла selfie_scan в Directus
   List<String> _rejectionReasons = const []; // коды отказа модератора
 
   // ── Getters ────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ class AuthProvider extends ChangeNotifier {
   double get walletBalance => _walletBalance;
   String get transportType => _transportType;
   String get category => _category;
+  String get selfieFileId => _selfieFileId;
 
   AuthProvider() {
     loadUserData();
@@ -109,6 +111,7 @@ class AuthProvider extends ChangeNotifier {
     _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
     _transportType = prefs.getString('transport_type') ?? 'any';
     _category = prefs.getString('category') ?? '';
+    _selfieFileId = prefs.getString('selfie_file_id') ?? '';
     _rejectionReasons = prefs.getStringList('rejection_reasons') ?? const [];
 
     if (_phone.isNotEmpty) phoneController.text = _phone;
@@ -160,6 +163,16 @@ class AuthProvider extends ChangeNotifier {
       _category = rawCat.toString();
     }
 
+    // selfie_scan может прийти как UUID-string, либо как Map (expanded m2o).
+    final rawSelfie = user['selfie_scan'];
+    if (rawSelfie == null) {
+      _selfieFileId = '';
+    } else if (rawSelfie is Map) {
+      _selfieFileId = (rawSelfie['id'] ?? '').toString();
+    } else {
+      _selfieFileId = rawSelfie.toString();
+    }
+
     // rejection_reasons может прийти как:
     //   - List<dynamic> (Directus JSON-array)
     //   - String с CSV ("name,location,...")
@@ -205,6 +218,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setDouble('wallet_balance', _walletBalance);
     await prefs.setString('transport_type', _transportType);
     await prefs.setString('category', _category);
+    await prefs.setString('selfie_file_id', _selfieFileId);
     await prefs.setStringList('rejection_reasons', _rejectionReasons);
     await prefs.setBool('is_logged_in', true);
 
@@ -427,6 +441,7 @@ class AuthProvider extends ChangeNotifier {
     _walletBalance = 0.0;
     _rating = 0.0;
     _category = '';
+    _selfieFileId = '';
     _rejectionReasons = const [];
     _isCodeSent = false;
     notifyListeners();

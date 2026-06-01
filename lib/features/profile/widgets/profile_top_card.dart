@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/user_avatar.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/levels/level_card_widget.dart';
 import 'package:bagla/features/levels/level_provider.dart';
@@ -121,34 +122,12 @@ class _ProfileTopCardState extends State<ProfileTopCard> {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: cfg.color, width: 2),
-                      ),
-                      padding: const EdgeInsets.all(3),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: c.ink,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            widget.fullName.isNotEmpty
-                                ? widget.fullName[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Nunito',
-                            ),
-                            maxLines: 2,
-                          ),
-                        ),
-                      ),
+                    UserAvatar(
+                      // selfie_scan UUID. Если пустой — fallback на букву имени.
+                      fileId: widget.auth.selfieFileId,
+                      name: widget.fullName,
+                      size: 48, // inner-диаметр; с рамкой 2 + padding 3 → 58 total
+                      borderColor: cfg.color,
                     ),
                     Positioned(
                       right: -4,

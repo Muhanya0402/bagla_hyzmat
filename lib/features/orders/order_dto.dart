@@ -31,6 +31,9 @@ class OrderDto {
   final String clientPhone;
   final String courierPhone;
   final String courierName;
+  /// UUID файла `selfie_scan` курьера — для рендеринга круглой аватарки.
+  /// Пустая строка если курьера нет или у него не загружено фото.
+  final String courierSelfieFileId;
   /// Slug категории магазина (food/cafe/...). Может быть пустым у старых заказов.
   final String category;
   /// true — магазин предлагает несколько товаров на выбор (курьер фотает,
@@ -59,6 +62,7 @@ class OrderDto {
     required this.clientPhone,
     required this.courierPhone,
     required this.courierName,
+    required this.courierSelfieFileId,
     required this.category,
     required this.multipleItems,
     required this.raw,
@@ -113,6 +117,7 @@ class OrderDto {
       clientPhone: s('client_phone'),
       courierPhone: s('courier_phone'),
       courierName: s('courier_name'),
+      courierSelfieFileId: s('courier_selfie_file_id'),
       category: categorySlug,
       multipleItems: m['multiple_items'] == true,
       raw: m,

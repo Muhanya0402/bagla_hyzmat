@@ -189,7 +189,7 @@ class AuthRepository {
               'etrap.id,etrap.etrap_ru,etrap.etrap_tk,'
               'province.id,province.province_ru,province.province_tk,'
               'experience_points,wallet_balance,transport_type,category,'
-              'rejection_reasons',
+              'rejection_reasons,selfie_scan',
         },
       );
 
@@ -467,6 +467,15 @@ class AuthRepository {
             ? (rawCat['id']?.toString() ?? '')
             : rawCat.toString();
     await prefs.setString('category', categorySlug);
+
+    // selfie_scan — UUID файла либо expanded Map.
+    final rawSelfie = user['selfie_scan'];
+    final selfieId = rawSelfie == null
+        ? ''
+        : rawSelfie is Map
+            ? (rawSelfie['id']?.toString() ?? '')
+            : rawSelfie.toString();
+    await prefs.setString('selfie_file_id', selfieId);
 
     // rejection_reasons — массив string-кодов. Сохраняем как StringList.
     final rawReasons = user['rejection_reasons'];

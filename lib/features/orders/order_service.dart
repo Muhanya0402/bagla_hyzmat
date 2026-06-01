@@ -273,7 +273,7 @@ class OrderService {
             '/items/customers',
             queryParameters: {
               'filter[id][_in]': courierIds.join(','),
-              'fields': 'id,name,surname',
+              'fields': 'id,name,surname,selfie_scan',
             },
           );
           final courierData = courierResp.data?['data'];
@@ -296,6 +296,16 @@ class OrderService {
               final c = courierMap[id]!;
               order['courier_name'] = '${c['name'] ?? ''} ${c['surname'] ?? ''}'
                   .trim();
+              // selfie_scan может быть UUID-строкой или expanded Map.
+              final selfie = c['selfie_scan'];
+              final selfieId = selfie == null
+                  ? ''
+                  : selfie is Map
+                      ? (selfie['id']?.toString() ?? '')
+                      : selfie.toString();
+              if (selfieId.isNotEmpty) {
+                order['courier_selfie_file_id'] = selfieId;
+              }
             }
           }
         }

@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/user_avatar.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -169,6 +170,16 @@ class OrderDetailsSection extends StatelessWidget {
                 ? Icons.delivery_dining_outlined
                 : Icons.storefront_outlined,
             iconColor: c.inkMuted,
+            // Для магазина рядом с заказом показываем круглую аватарку
+            // курьера вместо иконки-плашки. Эффектнее, узнаваемее и сразу
+            // подсказывает «это живой человек, не безличный исполнитель».
+            leading: isShop
+                ? UserAvatar(
+                    fileId: dto.courierSelfieFileId,
+                    name: courierName,
+                    size: 34,
+                  )
+                : null,
             label: isShop
                 ? (courierName.isNotEmpty
                     ? '${words.courier} — $courierName'
@@ -189,6 +200,9 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
   final Widget? trailing;
+  /// Если задан — рендерится вместо иконки-плашки слева.
+  /// Используется для аватара курьера в shop-view.
+  final Widget? leading;
 
   const _DetailRow({
     required this.icon,
@@ -196,6 +210,7 @@ class _DetailRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.trailing,
+    this.leading,
   });
 
   @override
@@ -203,15 +218,16 @@ class _DetailRow extends StatelessWidget {
     final c = AppColors.of(context);
     return Row(
       children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(icon, size: 16, color: iconColor),
-        ),
+        leading ??
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 16, color: iconColor),
+            ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
