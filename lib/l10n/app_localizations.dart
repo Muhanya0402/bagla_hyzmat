@@ -477,6 +477,11 @@ class AppLocalizations {
   String get deliveryPickDate => get('deliveryPickDate');
   String get deliveryPickTime => get('deliveryPickTime');
   String get done => get('done');
+  // ── Несколько товаров на выбор ──────────────────────────────────────────
+  String get orderMultipleItemsLabel => get('orderMultipleItemsLabel');
+  String get orderMultipleItemsHint => get('orderMultipleItemsHint');
+  String get orderMultipleItemsCourierHint =>
+      get('orderMultipleItemsCourierHint');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

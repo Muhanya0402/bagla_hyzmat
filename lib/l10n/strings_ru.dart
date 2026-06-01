@@ -529,6 +529,12 @@ const Map<String, String> stringsRu = {
   'deliveryPickDate': 'Дата доставки',
   'deliveryPickTime': 'Время доставки',
   'done': 'Готово',
+  // ── Несколько товаров на выбор ─────────────────────────────────────────────
+  'orderMultipleItemsLabel': 'Несколько товаров на выбор',
+  'orderMultipleItemsHint':
+      'Курьер сфотографирует варианты, чтобы клиент выбрал нужный.',
+  'orderMultipleItemsCourierHint':
+      'Сфотографируйте все варианты — клиент выберет один.',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',

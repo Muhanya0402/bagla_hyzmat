@@ -33,6 +33,9 @@ class OrderDto {
   final String courierName;
   /// Slug категории магазина (food/cafe/...). Может быть пустым у старых заказов.
   final String category;
+  /// true — магазин предлагает несколько товаров на выбор (курьер фотает,
+  /// клиент выбирает). У старых заказов всегда false.
+  final bool multipleItems;
   // Сырая мапа — на случай если где-то понадобится поле, которого нет в DTO.
   final Map<String, dynamic> raw;
 
@@ -57,6 +60,7 @@ class OrderDto {
     required this.courierPhone,
     required this.courierName,
     required this.category,
+    required this.multipleItems,
     required this.raw,
   });
 
@@ -110,6 +114,7 @@ class OrderDto {
       courierPhone: s('courier_phone'),
       courierName: s('courier_name'),
       category: categorySlug,
+      multipleItems: m['multiple_items'] == true,
       raw: m,
     );
   }

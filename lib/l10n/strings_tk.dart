@@ -521,6 +521,12 @@ const Map<String, String> stringsTk = {
   'deliveryPickDate': 'Eltip beriş senesi',
   'deliveryPickTime': 'Eltip beriş wagty',
   'done': 'Taýýar',
+  // ── Несколько товаров на выбор ─────────────────────────────────────────────
+  'orderMultipleItemsLabel': 'Saýlamak üçin birnäçe haryt',
+  'orderMultipleItemsHint':
+      'Kurýer warianty surata düşürer, müşderi gerek bolanyny saýlar.',
+  'orderMultipleItemsCourierHint':
+      'Ähli warianty surata alyň — müşderi birini saýlar.',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

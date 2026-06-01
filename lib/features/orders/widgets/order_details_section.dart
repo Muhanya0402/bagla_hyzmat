@@ -63,6 +63,63 @@ class OrderDetailsSection extends StatelessWidget {
 
     return Column(
       children: [
+        // ── Multiple items banner — особый highlight для курьера ──────────
+        // Курьер должен сразу видеть, что нужно сфотать несколько вариаций,
+        // а не просто забрать один товар. Поэтому используем amber-плашку,
+        // а не обычный _DetailRow.
+        if (dto.multipleItems) ...[
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: c.amberTint,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: c.amber.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: c.amber.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.collections_outlined,
+                    size: 16,
+                    color: c.amber,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        words.orderMultipleItemsLabel,
+                        style: AppText.semiBold(fontSize: 13, color: c.ink),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        words.orderMultipleItemsCourierHint,
+                        style: AppText.regular(
+                                fontSize: 11.5, color: c.inkMuted)
+                            .copyWith(height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+
         // ── Category row (если есть) ──────────────────────────────────────
         if (dto.category.isNotEmpty) ...[
           _DetailRow(

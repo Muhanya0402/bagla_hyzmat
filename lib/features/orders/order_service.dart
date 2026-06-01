@@ -36,6 +36,8 @@ class OrderService {
     required String? shopProvinceId,
     // ── Категория магазина (m2o → shop_categories) ────────────────────────
     String? category,
+    // ── Несколько товаров на выбор ─────────────────────────────────────────
+    bool multipleItems = false,
   }) async {
     try {
       List<String> fileIds = [];
@@ -95,6 +97,9 @@ class OrderService {
         'pictures': fileIds.map((id) => {'directus_files_id': id}).toList(),
         // Категория магазина — slug из shop_categories.
         if (category != null && category.isNotEmpty) 'category': category,
+        // Несколько товаров на выбор — отправляем всегда (даже false),
+        // чтобы у новых заказов поле было заполнено явно.
+        'multiple_items': multipleItems,
       };
 
       final response = await _apiClient.dio.post(

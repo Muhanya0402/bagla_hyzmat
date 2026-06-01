@@ -58,6 +58,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   DateTime? _selectedDateTime;
   List<XFile> _images = [];
   String _transportType = 'any';
+  bool _multipleItems = false;
 
   static const _transportOptions = [
     ('any', 'Авто необязательно', Icons.directions_run_rounded),
@@ -476,6 +477,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         shopEtrapId: auth.etraptId.isNotEmpty ? auth.etraptId : null,
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
         category: auth.category.isNotEmpty ? auth.category : null,
+        multipleItems: _multipleItems,
       );
 
       _msg(words.orderCreated);
@@ -621,7 +623,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         child: _section(
                           icon: Icons.camera_alt_outlined,
                           title: words.orderPhoto,
-                          child: _imagePickerWidget(words),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _imagePickerWidget(words),
+                              const SizedBox(height: 12),
+                              _multipleItemsCheckbox(words),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -749,6 +758,71 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   // ── Image picker ───────────────────────────────────────────────────────────
+
+  /// Чекбокс «Несколько товаров на выбор» — даёт магазину сказать курьеру,
+  /// что нужно сфотать каждую вариацию, чтобы клиент выбрал.
+  Widget _multipleItemsCheckbox(AppLocalizations words) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _multipleItems = !_multipleItems),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        decoration: BoxDecoration(
+          color: _multipleItems ? c.emeraldTint : c.borderSoft,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _multipleItems
+                ? c.ink.withValues(alpha: 0.35)
+                : c.border,
+            width: _multipleItems ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: _multipleItems ? c.ink : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _multipleItems ? c.ink : c.border,
+                  width: 1.5,
+                ),
+              ),
+              child: _multipleItems
+                  ? const Icon(Icons.check_rounded,
+                      size: 13, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    words.orderMultipleItemsLabel,
+                    style: AppText.semiBold(fontSize: 13.5, color: c.ink),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    words.orderMultipleItemsHint,
+                    style:
+                        AppText.regular(fontSize: 11.5, color: c.inkMuted)
+                            .copyWith(height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _imagePickerWidget(AppLocalizations words) {
     return SizedBox(
