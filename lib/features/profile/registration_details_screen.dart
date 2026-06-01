@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/core/image_compression.dart';
+import 'package:bagla/core/image_picker_presets.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
@@ -258,13 +260,31 @@ class _RegistrationDetailsScreenState
 
   // ── Photo ──────────────────────────────────────────────────────────────────
 
+  /// Пресет сжатия по типу слота: паспортные — крупнее и качественнее
+  /// (текст читаем), селфи/лицо — обычный «лицевой» пресет.
+  ImagePreset _presetFor(_PhotoSlot slot) {
+    switch (slot) {
+      case _PhotoSlot.passportMain:
+      case _PhotoSlot.passportAddress:
+      case _PhotoSlot.passportFace:
+        return ImagePresets.passportPage;
+      case _PhotoSlot.selfie:
+        return ImagePresets.face;
+    }
+  }
+
   Future<void> _pickImage(_PhotoSlot slot) async {
     final source = await ImageSourcePicker.show(context);
     if (source == null || !mounted) return;
-    final image = await _picker.pickImage(source: source, imageQuality: 60);
-    if (image != null && mounted) {
-      setState(() => _photos[slot] = File(image.path));
-    }
+    final image = await _picker.pickImage(source: source);
+    if (image == null || !mounted) return;
+    // Сжимаем нативно в WebP + EXIF strip.
+    final compressed = await ImageCompression.compress(
+      File(image.path),
+      _presetFor(slot),
+    );
+    if (!mounted) return;
+    setState(() => _photos[slot] = compressed);
   }
 
   /// Фото лица — сразу фронтальная камера, без выбора источника.
@@ -274,11 +294,14 @@ class _RegistrationDetailsScreenState
       final image = await _picker.pickImage(
         source: ImageSource.camera,
         preferredCameraDevice: CameraDevice.front,
-        imageQuality: 60,
       );
-      if (image != null && mounted) {
-        setState(() => _photos[_PhotoSlot.selfie] = File(image.path));
-      }
+      if (image == null || !mounted) return;
+      final compressed = await ImageCompression.compress(
+        File(image.path),
+        ImagePresets.face,
+      );
+      if (!mounted) return;
+      setState(() => _photos[_PhotoSlot.selfie] = compressed);
     } catch (_) {
       // Камера недоступна / отказ в правах — молча. Пользователь увидит,
       // что слот пустой, и попробует снова.

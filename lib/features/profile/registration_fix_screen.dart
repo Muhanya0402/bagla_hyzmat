@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/core/image_compression.dart';
+import 'package:bagla/core/image_picker_presets.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
@@ -180,13 +182,24 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
     });
   }
 
+  /// Паспортные слоты — большое разрешение для читаемого текста; selfie — лицо.
+  ImagePreset _presetFor(_Photo slot) => switch (slot) {
+        _Photo.passportMain ||
+        _Photo.passportAddress ||
+        _Photo.passportFace =>
+          ImagePresets.passportPage,
+        _Photo.selfie => ImagePresets.face,
+      };
+
   Future<void> _pickImage(_Photo slot) async {
     final source = await ImageSourcePicker.show(context);
     if (source == null || !mounted) return;
-    final image = await _picker.pickImage(source: source, imageQuality: 60);
-    if (image != null && mounted) {
-      setState(() => _photos[slot] = File(image.path));
-    }
+    final image = await _picker.pickImage(source: source);
+    if (image == null || !mounted) return;
+    final compressed =
+        await ImageCompression.compress(File(image.path), _presetFor(slot));
+    if (!mounted) return;
+    setState(() => _photos[slot] = compressed);
   }
 
   Future<void> _pickFace() async {
@@ -194,11 +207,14 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
       final image = await _picker.pickImage(
         source: ImageSource.camera,
         preferredCameraDevice: CameraDevice.front,
-        imageQuality: 60,
       );
-      if (image != null && mounted) {
-        setState(() => _photos[_Photo.selfie] = File(image.path));
-      }
+      if (image == null || !mounted) return;
+      final compressed = await ImageCompression.compress(
+        File(image.path),
+        ImagePresets.face,
+      );
+      if (!mounted) return;
+      setState(() => _photos[_Photo.selfie] = compressed);
     } catch (_) {}
   }
 

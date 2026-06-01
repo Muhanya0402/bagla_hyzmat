@@ -1,5 +1,7 @@
 ﻿import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/core/image_compression.dart';
+import 'package:bagla/core/image_picker_presets.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
@@ -846,12 +848,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           if (index == _images.length) {
             return GestureDetector(
               onTap: () async {
+                // image_picker даёт «как есть» (raw), потом сжимаем в WebP.
                 final selected = await _picker.pickMultiImage();
-                if (selected.isNotEmpty) {
-                  setState(
-                    () => _images = [..._images, ...selected].take(3).toList(),
-                  );
-                }
+                if (selected.isEmpty || !mounted) return;
+                // Параллельное сжатие — 3 фото обычно ~1-2 сек на средних телефонах.
+                final compressed = await Future.wait(
+                  selected.map((x) => ImageCompression.compress(
+                        File(x.path),
+                        ImagePresets.orderItem,
+                      )),
+                );
+                if (!mounted) return;
+                // image_picker отдаёт XFile — после сжатия XFile из File-пути.
+                final asXFiles = compressed.map((f) => XFile(f.path)).toList();
+                setState(() => _images =
+                    [..._images, ...asXFiles].take(3).toList());
               },
               child: Container(
                 width: 84,

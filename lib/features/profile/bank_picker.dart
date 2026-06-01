@@ -248,9 +248,7 @@ class _BankCard extends StatelessWidget {
           color: isSelected ? c.emeraldTint : c.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? c.ink.withValues(alpha: 0.35)
-                : c.border,
+            color: isSelected ? c.ink.withValues(alpha: 0.35) : c.border,
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
@@ -270,10 +268,7 @@ class _BankCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               name,
-              style: AppText.semiBold(
-                fontSize: 11,
-                color: c.ink,
-              ),
+              style: AppText.semiBold(fontSize: 11, color: c.ink),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

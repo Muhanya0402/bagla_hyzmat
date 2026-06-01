@@ -963,9 +963,7 @@ class _SupportRowState extends State<_SupportRow> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  widget.isRu
-                      ? 'Связаться с поддержкой'
-                      : 'Goldaw bilen habarlaşmak',
+                  context.watch<LanguageProvider>().words.profileSupportContact,
                   style: AppText.medium(fontSize: 13, color: c.ink),
                 ),
               ),

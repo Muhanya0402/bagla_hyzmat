@@ -1,6 +1,8 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_constants.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// Чип фильтра локации (велаят / этрап / район)
 class LocationChip extends StatelessWidget {
@@ -138,6 +140,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.watch<LanguageProvider>().words;
     final filtered = widget.items
         .where((i) => i.label.toLowerCase().contains(_q))
         .toList();
@@ -174,7 +177,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                   GestureDetector(
                     onTap: widget.onClear,
                     child: Text(
-                      'Сбросить',
+                      words.filterReset,
                       style: AppText.medium(
                         fontSize: 13,
                         color: HomeColors.red,
@@ -193,7 +196,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               onChanged: (v) => setState(() => _q = v.toLowerCase()),
               style: AppText.regular(fontSize: 14, color: HomeColors.dark),
               decoration: InputDecoration(
-                hintText: 'Поиск...',
+                hintText: words.filterSearchHint,
                 hintStyle: AppText.regular(
                   fontSize: 14,
                   color: HomeColors.grey,
@@ -243,7 +246,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                 : filtered.isEmpty
                 ? Center(
                     child: Text(
-                      'Ничего не найдено',
+                      words.filterNotFound,
                       style: AppText.regular(
                         fontSize: 14,
                         color: HomeColors.grey,
