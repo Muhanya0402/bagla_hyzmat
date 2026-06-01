@@ -234,18 +234,25 @@ class OrderService {
       // ─────────────────────────────────────────────────────────────
 
       final filterQuery = filters.join('&');
-      final url =
-          '/items/orders'
+      // Явный список полей, нужных OrderDto.fromMap. До рефактора
+      // запрашивался `*` + 18 expanded полей локации, которые DTO даже
+      // не читает — впустую съедали ~60% payload'а.
+      //
+      // Что НЕ запрашиваем здесь, но нужно на detail-screen:
+      //   - pictures (грузим только при открытии заказа)
+      //   - district/etrap/province объекты (текст адреса уже в shop_adress/...)
+      const fields = 'id,order_status,transport_type,'
+          'total_amount,delivery_amount,points_amount,cashback_amount,'
+          'comment,time_of_delivery,'
+          'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
+          'shop_name,shop_title,shop_phone,client_phone,courier_phone,'
+          'category,multiple_items,'
+          'pictures.directus_files_id,'
+          'courierId.item,courierId.collection';
+      final url = '/items/orders'
           '?$filterQuery'
           '&sort=-date_created'
-          '&fields=*,pictures.directus_files_id'
-          ',district.id,district.district_ru,district.district_tk'
-          ',etrap.id,etrap.etrap_ru,etrap.etrap_tk'
-          ',province.id,province.province_ru,province.province_tk'
-          ',shop_district.id,shop_district.district_ru,shop_district.district_tk'
-          ',shop_etrap.id,shop_etrap.etrap_ru,shop_etrap.etrap_tk'
-          ',shop_province.id,shop_province.province_ru,shop_province.province_tk'
-          ',courierId.*'
+          '&fields=$fields'
           '&limit=$limit'
           '&offset=$offset';
 

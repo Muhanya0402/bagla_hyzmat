@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
@@ -40,6 +42,10 @@ class AuthProvider extends ChangeNotifier {
   String _category = ''; // slug категории магазина (shop only)
   String _selfieFileId = ''; // UUID файла selfie_scan в Directus
   List<String> _rejectionReasons = const []; // коды отказа модератора
+  /// true сразу после `setUserData()` из verify-flow. HomeScreen видит этот
+  /// флаг и пропускает первый refreshProfile() — экономия одного HTTP'а.
+  /// Сбрасывается через `consumeFreshProfileFlag()`.
+  bool _hasFreshProfile = false;
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
@@ -70,6 +76,15 @@ class AuthProvider extends ChangeNotifier {
 
   /// Коды полей, которые модератор отметил для исправления.
   List<String> get rejectionReasons => List.unmodifiable(_rejectionReasons);
+
+  /// Одноразовый getter: возвращает true и **сбрасывает** флаг.
+  /// HomeScreen использует это чтобы пропустить избыточный refreshProfile
+  /// сразу после успешного логина (профиль уже только что прилетел).
+  bool consumeFreshProfileFlag() {
+    if (!_hasFreshProfile) return false;
+    _hasFreshProfile = false;
+    return true;
+  }
 
   /// Клиент, прошедший регистрацию, но ещё не выбравший роль.
   bool get needsRoleSelection => isClient && isPublished;
@@ -224,6 +239,9 @@ class AuthProvider extends ChangeNotifier {
 
     // Account-scoped тур namespace.
     TourManager.instance.setUserId(_userId);
+    // После setUserData профиль считается свежим — следующий
+    // вызов handleRefresh() пропустит refreshProfile() (экономим HTTP).
+    _hasFreshProfile = true;
     notifyListeners();
   }
 
@@ -278,7 +296,11 @@ class AuthProvider extends ChangeNotifier {
         await setUserData(user);
         // Check mounted AFTER every await
 
-        await PushNotificationService().initialize();
+        // FCM init НЕ ждём — он медленный (permission dialog, getToken),
+        // а его результат не нужен для перехода на /home. Полностью
+        // безопасно: initialize() идемпотентен и сам синхронизирует токен
+        // когда подгрузится.
+        unawaited(PushNotificationService().initialize());
         if (!context.mounted) return true;
         if (autoNavigate) await _navigate(context);
         return true;

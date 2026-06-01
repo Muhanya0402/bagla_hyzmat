@@ -1,5 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'dart:async';
+
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -65,19 +67,15 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       }
       await handleRefresh(); // Этот метод сделает HTTP запрос и наполнит список
 
-      // 2. Только после первичной загрузки подключаем веб-сокеты
+      // 2. WebSocket connect — параллельно (не ждём handleRefresh).
       initRealtime();
 
       scrollController.addListener(onScroll);
       if (!mounted) return;
-      final auth = context.read<AuthProvider>();
-      if (auth.userId.isNotEmpty && auth.role == 'courier') {
-        context.read<LevelProvider>().loadForUser(auth.userId).then((_) {
-          if (mounted) setState(() {});
-        });
-        loadActiveOrdersCount(auth.userId);
-      }
-      await checkUnreadNotifications();
+      // LevelProvider + active count теперь в Future.wait внутри handleRefresh —
+      // отдельные вызовы больше не нужны.
+      // checkUnreadNotifications — асинхронно, не блокирует UI стартом.
+      unawaited(checkUnreadNotifications());
     });
   }
 
@@ -177,7 +175,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       final unreadRaw = await service.getUnread(auth.userId);
       if (unreadRaw.isEmpty || !mounted) return;
       final unread = unreadRaw.map(NotificationDto.fromMap).toList();
-      await Future.delayed(const Duration(milliseconds: 600));
+      // Минимальная задержка чтобы дать UI отрендерить home — но не блокер.
+      await Future.delayed(const Duration(milliseconds: 200));
       if (!mounted) return;
 
       // Кэшируем ссылки на messenger/AppColors/words ДО показа модалки.
@@ -500,15 +499,21 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   Future<void> handleRefresh() async {
     httpOffset = 0;
     hasMore = true;
-    await context.read<AuthProvider>().refreshProfile();
-    if (!mounted) return;
+
     final auth = context.read<AuthProvider>();
-    if (auth.userId.isNotEmpty && auth.role == 'courier') {
-      await context.read<LevelProvider>().loadForUser(auth.userId);
-      loadActiveOrdersCount(auth.userId);
-    }
-    try {
-      final fetchedOrders = await orderService.getOrders(
+    final isCourier = auth.userId.isNotEmpty && auth.role == 'courier';
+    // Если профиль только что прилетел из verifyOTP — не дёргаем сервер
+    // ещё раз. Экономия одного HTTP'а и ~200–500 ms на старте.
+    final skipProfile = auth.consumeFreshProfileFlag();
+
+    // Все 4 операции независимы друг от друга — пуляем параллельно.
+    // Раньше шло последовательно: profile → level → ordersCount → orders.
+    // Теперь все четыре конкуррентно (макс. сумма = max времени из них).
+    final results = await Future.wait<dynamic>([
+      // 0: profile (skip если свежий)
+      if (skipProfile) Future.value(null) else auth.refreshProfile(),
+      // 1: orders
+      orderService.getOrders(
         role: auth.role,
         userId: auth.userId,
         myOrdersOnly: selectedFilterIndex == 1,
@@ -522,17 +527,34 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         shopPhone: filters.shop?.id,
         orderStatus: selectedStatus,
         categoryFilter: filters.category?.id,
-      );
-      if (mounted) {
-        setState(() {
-          orders = fetchedOrders;
-          ordersLoading = false;
-          ordersError = false;
-        });
+      ).catchError((_) => <dynamic>[]),
+      // 2: courier level
+      if (isCourier)
+        context.read<LevelProvider>().loadForUser(auth.userId)
+      else
+        Future.value(null),
+      // 3: courier active orders count
+      if (isCourier)
+        orderService.getActiveOrdersCount(auth.userId)
+      else
+        Future.value(0),
+    ]);
+
+    if (!mounted) return;
+
+    final fetchedOrders = (results[1] as List<dynamic>?) ?? [];
+    final activeCount = (results[3] as int?) ?? 0;
+
+    setState(() {
+      if (fetchedOrders.isNotEmpty || !ordersError) {
+        orders = fetchedOrders;
+        ordersError = false;
+      } else {
+        ordersError = true;
       }
-    } catch (_) {
-      if (mounted) setState(() => ordersError = true);
-    }
+      ordersLoading = false;
+      activeOrdersCount = activeCount;
+    });
   }
 
   /// Переподключить WS с актуальным состоянием `filters` + `selectedStatus`.
