@@ -34,6 +34,8 @@ class OrderService {
     required String? shopDistrictId,
     required String? shopEtrapId,
     required String? shopProvinceId,
+    // ── Категория магазина (m2o → shop_categories) ────────────────────────
+    String? category,
   }) async {
     try {
       List<String> fileIds = [];
@@ -91,6 +93,8 @@ class OrderService {
         'points_amount': pointsAmount,
         'cashback_amount': cashbackAmount,
         'pictures': fileIds.map((id) => {'directus_files_id': id}).toList(),
+        // Категория магазина — slug из shop_categories.
+        if (category != null && category.isNotEmpty) 'category': category,
       };
 
       final response = await _apiClient.dio.post(
@@ -172,6 +176,7 @@ class OrderService {
     String? deliveryDistrictId,
     String? shopPhone,
     String? orderStatus,
+    String? categoryFilter,
   }) async {
     try {
       final filters = <String>[];
@@ -217,6 +222,9 @@ class OrderService {
       }
       if (orderStatus != null) {
         filters.add('filter[order_status][_eq]=$orderStatus');
+      }
+      if (categoryFilter != null && categoryFilter.isNotEmpty) {
+        filters.add('filter[category][_eq]=$categoryFilter');
       }
       // ─────────────────────────────────────────────────────────────
 

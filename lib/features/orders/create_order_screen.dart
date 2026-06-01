@@ -10,10 +10,12 @@ import 'package:bagla/models/province.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/features/orders/order_service.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
 
 class CreateOrderScreen extends StatefulWidget {
@@ -40,6 +42,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _phoneFocus = FocusNode();
   final _priceFocus = FocusNode();
   final _deliveryFocus = FocusNode();
+
+  // ── Section keys для прокрутки к ошибке валидации ──────────────────────────
+  final _photoKey = GlobalKey();
+  final _dateKey = GlobalKey();
+  final _locationKey = GlobalKey();
+  final _scrollController = ScrollController();
+
+  // Маска номера клиента — формат совпадает с phone_screen.
+  final _phoneMask = MaskTextInputFormatter(
+    mask: '## ## ## ##',
+    filter: {'#': RegExp(r'[0-9]')},
+  );
 
   DateTime? _selectedDateTime;
   List<XFile> _images = [];
@@ -95,6 +109,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _phoneFocus.dispose();
     _priceFocus.dispose();
     _deliveryFocus.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -196,31 +211,48 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Date picker ────────────────────────────────────────────────────────────
 
+  /// Округлить минуты вниз до ближайшего шага (требование CupertinoDatePicker).
+  DateTime _roundDownToInterval(DateTime dt, int interval) {
+    final rounded = dt.minute - (dt.minute % interval);
+    return DateTime(dt.year, dt.month, dt.day, dt.hour, rounded);
+  }
+
+  /// Двушаговый iOS-style picker:
+  /// 1. Выбор даты (CupertinoDatePicker.date — карусель день/месяц/год)
+  /// 2. Сразу после — выбор времени (CupertinoDatePicker.time — карусель ч:м)
+  /// Результат пишется в `_selectedDateTime` + контроллер.
   Future<void> _pickDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 14)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.of(context).ink),
-        ),
-        child: child!,
-      ),
+    final words = context.read<LanguageProvider>().words;
+    final now = DateTime.now();
+    // Инициал должен быть кратен minuteInterval (5), иначе Cupertino падает.
+    final initial = _roundDownToInterval(_selectedDateTime ?? now, 5);
+
+    final date = await _showCupertinoWheel(
+      mode: CupertinoDatePickerMode.date,
+      initial: initial,
+      minimum: DateTime(now.year, now.month, now.day),
+      maximum: now.add(const Duration(days: 14)),
+      title: words.deliveryPickDate,
     );
     if (!mounted || date == null) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.of(context).ink),
+
+    // Время — без даты в карусели, только часы:минуты.
+    final time = await _showCupertinoWheel(
+      mode: CupertinoDatePickerMode.time,
+      initial: _roundDownToInterval(
+        DateTime(
+          date.year,
+          date.month,
+          date.day,
+          initial.hour,
+          initial.minute,
         ),
-        child: child!,
+        5,
       ),
+      title: words.deliveryPickTime,
     );
     if (!mounted || time == null) return;
+
     setState(() {
       _selectedDateTime = DateTime(
         date.year,
@@ -235,23 +267,177 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     });
   }
 
+  /// Универсальный Cupertino-wheel в нижнем модальном листе.
+  /// Возвращает выбранную DateTime или null если пользователь отменил.
+  Future<DateTime?> _showCupertinoWheel({
+    required CupertinoDatePickerMode mode,
+    required DateTime initial,
+    required String title,
+    DateTime? minimum,
+    DateTime? maximum,
+  }) {
+    final words = context.read<LanguageProvider>().words;
+    final c = AppColors.of(context);
+    DateTime temp = initial;
+
+    return showCupertinoModalPopup<DateTime>(
+      context: context,
+      builder: (ctx) {
+        // Cupertino-popup ставит дефолтный TextStyle с yellow underline
+        // как debug-сигнал «текст без DefaultTextStyle предка». Явно задаём
+        // нормальный стиль для всех Text внутри + transparent Material для
+        // ripple-эффектов (если когда-то добавим).
+        return DefaultTextStyle(
+          style: AppText.regular(fontSize: 14, color: c.ink)
+              .copyWith(decoration: TextDecoration.none),
+          child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+          height: 320,
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                // ── Header ───────────────────────────────────────────────
+                Container(
+                  height: 52,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: c.borderSoft, width: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Text(
+                          words.cancelOrder,
+                          style: AppText.medium(
+                            fontSize: 14,
+                            color: c.inkSoft,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            title,
+                            style: AppText.semiBold(fontSize: 15, color: c.ink),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx, temp),
+                        child: Text(
+                          words.done,
+                          style: AppText.semiBold(fontSize: 14, color: c.ink),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // ── Wheel ───────────────────────────────────────────────
+                Expanded(
+                  child: CupertinoTheme(
+                    data: CupertinoThemeData(
+                      brightness: Theme.of(context).brightness,
+                      textTheme: CupertinoTextThemeData(
+                        dateTimePickerTextStyle: AppText.medium(
+                          fontSize: 18,
+                          color: c.ink,
+                        ),
+                      ),
+                    ),
+                    child: CupertinoDatePicker(
+                      mode: mode,
+                      initialDateTime: initial,
+                      minimumDate: minimum,
+                      maximumDate: maximum,
+                      use24hFormat: true,
+                      minuteInterval: 5,
+                      onDateTimeChanged: (dt) => temp = dt,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ),
+          ),
+        );
+      },
+    );
+  }
+
   // ── Submit ─────────────────────────────────────────────────────────────────
 
-  Future<void> _submitOrder(AppLocalizations words) async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _scrollToKey(GlobalKey key) async {
+    final ctx = key.currentContext;
+    if (ctx == null) return;
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      alignment: 0.15,
+    );
+  }
 
+  Future<void> _submitOrder(AppLocalizations words) async {
+    final title = words.regToastFixTitle;
+
+    // ── 1. Фото обязательны ────────────────────────────────────────────────
     if (_images.isEmpty) {
-      _msg(words.addPhotoError, isError: true);
+      await _scrollToKey(_photoKey);
+      _showErrorToast(title, words.addPhotoError);
       return;
     }
-    if (!_locationSelected) {
-      _msg(words.selectDistrictError, isError: true);
+
+    // ── 2. Текстовые поля по порядку (телефон → цена → доставка) ───────────
+    // Маска кладёт в controller пробелы — для валидации нужны только цифры.
+    final phoneDigits = _phoneMask.getUnmaskedText();
+    if (phoneDigits.length < 8) {
+      _phoneFocus.requestFocus();
+      _showErrorToast(title, words.phoneShort);
       return;
     }
+
+    // ── 3. Дата/время ──────────────────────────────────────────────────────
     if (_selectedDateTime == null) {
-      _msg(words.selectTimeError, isError: true);
+      await _scrollToKey(_dateKey);
+      _showErrorToast(title, words.selectTimeError);
       return;
     }
+
+    final price = _priceController.text.trim();
+    if (price.isEmpty || price == '0') {
+      _priceFocus.requestFocus();
+      _showErrorToast(title, words.specifyPrice);
+      return;
+    }
+
+    final delivery = _deliveryController.text.trim();
+    if (delivery.isEmpty || delivery == '0') {
+      _deliveryFocus.requestFocus();
+      _showErrorToast(title, words.specifyDelivery);
+      return;
+    }
+
+    // ── 4. Локация ─────────────────────────────────────────────────────────
+    if (!_locationSelected) {
+      await _scrollToKey(_locationKey);
+      _showErrorToast(title, words.selectDistrictError);
+      return;
+    }
+
+    // Form-level validate — для двойной перестраховки (errorBorder на полях).
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
@@ -289,6 +475,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         shopDistrictId: auth.districtId.isNotEmpty ? auth.districtId : null,
         shopEtrapId: auth.etraptId.isNotEmpty ? auth.etraptId : null,
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
+        category: auth.category.isNotEmpty ? auth.category : null,
       );
 
       _msg(words.orderCreated);
@@ -298,6 +485,62 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Anthropic-стиль: warning toast с заголовком + подзаголовком.
+  void _showErrorToast(String title, String subtitle) {
+    final c = AppColors.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 4),
+        content: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: BoxDecoration(
+                color: c.amberTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.priority_high_rounded, size: 18, color: c.amber),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: AppText.semiBold(fontSize: 14, color: c.ink)
+                        .copyWith(letterSpacing: 0.1),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppText.regular(fontSize: 12.5, color: c.inkMuted)
+                        .copyWith(height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: c.surface,
+        behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: c.amber.withValues(alpha: 0.35), width: 1),
+        ),
+      ),
+    );
   }
 
   void _msg(String text, {bool isError = false}) {
@@ -367,27 +610,34 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               children: [
                 Expanded(
                   child: ListView(
+                    controller: _scrollController,
                     // Скролл вниз/вверх — закрывает клавиатуру.
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                     children: [
-                      _section(
-                        icon: Icons.camera_alt_outlined,
-                        title: words.orderPhoto,
-                        child: _imagePickerWidget(words),
+                      KeyedSubtree(
+                        key: _photoKey,
+                        child: _section(
+                          icon: Icons.camera_alt_outlined,
+                          title: words.orderPhoto,
+                          child: _imagePickerWidget(words),
+                        ),
                       ),
                       const SizedBox(height: 10),
-                      _section(
-                        icon: Icons.person_outline_rounded,
-                        title: words.orderRecipient,
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 8),
-                            _phoneField(words),
-                            const SizedBox(height: 8),
-                            _dateField(words),
-                          ],
+                      KeyedSubtree(
+                        key: _dateKey,
+                        child: _section(
+                          icon: Icons.person_outline_rounded,
+                          title: words.orderRecipient,
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 8),
+                              _phoneField(words),
+                              const SizedBox(height: 8),
+                              _dateField(words),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -413,10 +663,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _section(
-                        icon: Icons.map_outlined,
-                        title: words.orderDeliveryArea,
-                        child: _buildLocationStepper(isRu, words),
+                      KeyedSubtree(
+                        key: _locationKey,
+                        child: _section(
+                          icon: Icons.map_outlined,
+                          title: words.orderDeliveryArea,
+                          child: _buildLocationStepper(isRu, words),
+                        ),
                       ),
                       const SizedBox(height: 10),
                     ],
@@ -645,31 +898,79 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   // ── Fields ─────────────────────────────────────────────────────────────────
 
+  /// Phone input — визуально совпадает с PhoneScreen: 🇹🇲 +993 | mask `__ __ __ __`.
+  /// Контроллер хранит маскированный текст; на сервер уходит цифровая часть.
   Widget _phoneField(AppLocalizations words) {
-    return TextFormField(
-      controller: _phoneController,
-      focusNode: _phoneFocus,
-      keyboardType: TextInputType.phone,
-      textInputAction: TextInputAction.next,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_priceFocus),
-      style: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
-      decoration:
-          _fieldDecor(
-            hint: words.clientPhone,
-            prefix: Icon(
-              Icons.phone_android_outlined,
-              color: AppColors.of(context).ink,
-              size: 18,
+    final c = AppColors.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: c.border, width: 1),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: c.ink.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // ── Country pill: флаг + +993 ───────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+            height: 56,
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(color: c.borderSoft, width: 1),
+              ),
             ),
-          ).copyWith(
-            prefixText: '+993 ',
-            prefixStyle: AppText.regular(
-              fontSize: 14,
-              color: AppColors.of(context).ink,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🇹🇲', style: TextStyle(fontSize: 17)),
+                const SizedBox(width: 8),
+                Text(
+                  '+993',
+                  style: AppText.semiBold(fontSize: 14, color: c.ink),
+                ),
+              ],
             ),
           ),
-      validator: (v) => (v == null || v.length < 8) ? words.phoneShort : null,
+          // ── Mask-формат `__ __ __ __` ───────────────────────────────────
+          Expanded(
+            child: TextFormField(
+              controller: _phoneController,
+              focusNode: _phoneFocus,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              inputFormatters: [_phoneMask],
+              onFieldSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(_priceFocus),
+              style: AppText.medium(fontSize: 16, color: c.ink)
+                  .copyWith(letterSpacing: 0.4),
+              cursorColor: c.ink,
+              cursorWidth: 1.5,
+              decoration: InputDecoration(
+                hintText: '__ __ __ __',
+                hintStyle: AppText.regular(fontSize: 16, color: c.inkSoft)
+                    .copyWith(letterSpacing: 0.4),
+                border: InputBorder.none,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 17),
+              ),
+              validator: (v) {
+                // _phoneMask.getUnmaskedText() даёт чистые цифры; всего должно
+                // быть 8 (туркменский локальный номер без префикса).
+                final digits = _phoneMask.getUnmaskedText();
+                if (digits.length < 8) return words.phoneShort;
+                return null;
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 

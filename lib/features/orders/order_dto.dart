@@ -31,6 +31,8 @@ class OrderDto {
   final String clientPhone;
   final String courierPhone;
   final String courierName;
+  /// Slug категории магазина (food/cafe/...). Может быть пустым у старых заказов.
+  final String category;
   // Сырая мапа — на случай если где-то понадобится поле, которого нет в DTO.
   final Map<String, dynamic> raw;
 
@@ -54,6 +56,7 @@ class OrderDto {
     required this.clientPhone,
     required this.courierPhone,
     required this.courierName,
+    required this.category,
     required this.raw,
   });
 
@@ -75,6 +78,13 @@ class OrderDto {
     }
 
     final pics = m['pictures'];
+    // category может прийти как string slug или Map (expanded m2o).
+    final rawCat = m['category'];
+    final categorySlug = rawCat == null
+        ? ''
+        : rawCat is Map
+            ? (rawCat['id']?.toString() ?? '')
+            : rawCat.toString();
     return OrderDto(
       id: s('id'),
       // На бэке встречаются оба имени поля.
@@ -99,6 +109,7 @@ class OrderDto {
       clientPhone: s('client_phone'),
       courierPhone: s('courier_phone'),
       courierName: s('courier_name'),
+      category: categorySlug,
       raw: m,
     );
   }

@@ -33,6 +33,23 @@ class OrderRealtimeService {
   String? _authToken;
   String? _subId; // ID подписки — нужен для unsubscribe
 
+  // ── Текущие параметры подключения ────────────────────────────────────────
+  // Храним их как поля, чтобы _scheduleReconnect мог использовать тот же
+  // набор фильтров без необходимости пробрасывать всё через цепочку колбэков.
+  String _role = '';
+  String _userId = '';
+  bool _myOrdersOnly = false;
+  String _transportFilter = 'any';
+  String? _shopProvinceId;
+  String? _shopEtrapId;
+  String? _shopDistrictId;
+  String? _deliveryProvinceId;
+  String? _deliveryEtrapId;
+  String? _deliveryDistrictId;
+  String? _shopPhone;
+  String? _orderStatus;
+  String? _categoryFilter;
+
   // Колбэки для HomeScreen
   void Function(List<dynamic> orders)? onOrdersUpdate; // начальные данные
   void Function(dynamic order, String event)?
@@ -45,8 +62,34 @@ class OrderRealtimeService {
     required String role,
     required String userId,
     bool myOrdersOnly = false,
+    String transportFilter = 'any',
+    String? shopProvinceId,
+    String? shopEtrapId,
+    String? shopDistrictId,
+    String? deliveryProvinceId,
+    String? deliveryEtrapId,
+    String? deliveryDistrictId,
+    String? shopPhone,
+    String? orderStatus,
+    String? categoryFilter,
   }) async {
     if (_connected) return;
+
+    // Запоминаем текущий набор параметров — нужны и для reconnect, и для
+    // диагностики того, изменились ли фильтры (см. reconnectWithFilters).
+    _role = role;
+    _userId = userId;
+    _myOrdersOnly = myOrdersOnly;
+    _transportFilter = transportFilter;
+    _shopProvinceId = shopProvinceId;
+    _shopEtrapId = shopEtrapId;
+    _shopDistrictId = shopDistrictId;
+    _deliveryProvinceId = deliveryProvinceId;
+    _deliveryEtrapId = deliveryEtrapId;
+    _deliveryDistrictId = deliveryDistrictId;
+    _shopPhone = shopPhone;
+    _orderStatus = orderStatus;
+    _categoryFilter = categoryFilter;
 
     final prefs = await SharedPreferences.getInstance();
     _authToken = prefs.getString('auth_token');
@@ -57,11 +100,7 @@ class OrderRealtimeService {
     }
 
     // Строим фильтр в зависимости от роли — такой же как в getOrders()
-    final filter = _buildFilter(
-      role: role,
-      userId: userId,
-      myOrdersOnly: myOrdersOnly,
-    );
+    final filter = _buildFilter();
 
     try {
       final uri = Uri.parse(
@@ -73,24 +112,14 @@ class OrderRealtimeService {
       _channel = WebSocketChannel.connect(uri);
 
       _sub = _channel!.stream.listen(
-        (raw) => _onMessage(raw, role, userId, myOrdersOnly),
+        (raw) => _onMessage(raw),
         onError: (e) {
           debugPrint('🔌 WS error: $e');
-          _scheduleReconnect(
-            role: role,
-            userId: userId,
-            myOrdersOnly: myOrdersOnly,
-          );
+          _scheduleReconnect();
         },
         onDone: () {
           debugPrint('🔌 WS closed');
-          if (!_disposed) {
-            _scheduleReconnect(
-              role: role,
-              userId: userId,
-              myOrdersOnly: myOrdersOnly,
-            );
-          }
+          if (!_disposed) _scheduleReconnect();
         },
         cancelOnError: false,
       );
@@ -104,12 +133,45 @@ class OrderRealtimeService {
       debugPrint('🔌 WS: подключаемся к $uri');
     } catch (e) {
       debugPrint('🔌 WS connect error: $e');
-      _scheduleReconnect(
-        role: role,
-        userId: userId,
-        myOrdersOnly: myOrdersOnly,
-      );
+      _scheduleReconnect();
     }
+  }
+
+  /// Полный реконнект с новым набором фильтров. Безопасно вызывать
+  /// при смене таба или фильтров в модалке — старая подписка закрывается,
+  /// новая открывается с актуальными параметрами.
+  Future<void> reconnectWithFilters({
+    required String role,
+    required String userId,
+    bool myOrdersOnly = false,
+    String transportFilter = 'any',
+    String? shopProvinceId,
+    String? shopEtrapId,
+    String? shopDistrictId,
+    String? deliveryProvinceId,
+    String? deliveryEtrapId,
+    String? deliveryDistrictId,
+    String? shopPhone,
+    String? orderStatus,
+    String? categoryFilter,
+  }) async {
+    debugPrint('🔌 WS: reconnectWithFilters → закрываем старую подписку');
+    await disconnect();
+    await connect(
+      role: role,
+      userId: userId,
+      myOrdersOnly: myOrdersOnly,
+      transportFilter: transportFilter,
+      shopProvinceId: shopProvinceId,
+      shopEtrapId: shopEtrapId,
+      shopDistrictId: shopDistrictId,
+      deliveryProvinceId: deliveryProvinceId,
+      deliveryEtrapId: deliveryEtrapId,
+      deliveryDistrictId: deliveryDistrictId,
+      shopPhone: shopPhone,
+      orderStatus: orderStatus,
+      categoryFilter: categoryFilter,
+    );
   }
 
   // Временные переменные для подписки после auth
@@ -117,7 +179,7 @@ class OrderRealtimeService {
 
   // ── Обработка сообщений ───────────────────────────────────────────────────
 
-  void _onMessage(dynamic raw, String role, String userId, bool myOrdersOnly) {
+  void _onMessage(dynamic raw) {
     try {
       final msg = jsonDecode(raw as String) as Map<String, dynamic>;
       final type = msg['type'] as String? ?? '';
@@ -224,76 +286,138 @@ class OrderRealtimeService {
     debugPrint('🔌 WS: подписка отправлена с глубокими полями uid=$_subId');
   }
 
-  // ── Фильтр (дублирует логику getOrders) ──────────────────────────────────
+  // ── Фильтр (дублирует логику OrderService.getOrders) ─────────────────────
 
-  Map<String, dynamic> _buildFilter({
-    required String role,
-    required String userId,
-    required bool myOrdersOnly,
-  }) {
-    if (role == 'courier') {
-      if (myOrdersOnly) {
-        return {
+  /// Базовый фильтр по роли + все дополнительные пользовательские фильтры.
+  /// Возвращает Directus-совместимый объект для подписки WS.
+  ///
+  /// Структура: всегда _and-массив `[base, ...extras]`, чтобы серверу было
+  /// проще оптимизировать и чтобы добавление новых фильтров было однострочным.
+  Map<String, dynamic> _buildFilter() {
+    final clauses = <Map<String, dynamic>>[];
+
+    // ── Базовый фильтр по роли (mirrors OrderService.getOrders) ────────────
+    if (_role == 'courier') {
+      if (_myOrdersOnly) {
+        clauses.add({
           'courierId': {
             'item:customers': {
-              'id': {'_eq': userId},
+              'id': {'_eq': _userId},
             },
           },
-        };
+        });
       } else {
-        return {
-          '_and': [
-            {
-              'order_status': {
-                '_nin': ['completed', 'canceled'],
-              },
-            },
-            {
-              'courierId': {'_null': true},
-            },
-          ],
-        };
+        clauses.add({
+          'order_status': {
+            '_nin': ['completed', 'canceled'],
+          },
+        });
+        clauses.add({
+          'courierId': {'_null': true},
+        });
       }
-    } else if (role == 'shop' || role == 'business') {
-      return {
+    } else if (_role == 'shop' || _role == 'business') {
+      clauses.add({
         'shopId': {
           'item:customers': {
-            'id': {'_eq': userId},
+            'id': {'_eq': _userId},
           },
         },
-      };
+      });
     } else {
-      return {
-        '_and': [
-          {
-            'courierId': {'_null': true},
-          },
-          {
-            'order_status': {
-              '_nin': ['completed', 'canceled'],
-            },
-          },
-        ],
-      };
+      clauses.add({
+        'courierId': {'_null': true},
+      });
+      clauses.add({
+        'order_status': {
+          '_nin': ['completed', 'canceled'],
+        },
+      });
     }
+
+    // ── Доп. фильтры пользователя (модалка курьера) ────────────────────────
+    if (_transportFilter != 'any') {
+      clauses.add({
+        'transport_type': {'_eq': _transportFilter},
+      });
+    }
+    if (_shopProvinceId != null) {
+      clauses.add({
+        'shop_province': {'_eq': _shopProvinceId},
+      });
+    }
+    if (_shopEtrapId != null) {
+      clauses.add({
+        'shop_etrap': {'_eq': _shopEtrapId},
+      });
+    }
+    if (_shopDistrictId != null) {
+      clauses.add({
+        'shop_district': {'_eq': _shopDistrictId},
+      });
+    }
+    if (_deliveryProvinceId != null) {
+      clauses.add({
+        'province': {'_eq': _deliveryProvinceId},
+      });
+    }
+    if (_deliveryEtrapId != null) {
+      clauses.add({
+        'etrap': {'_eq': _deliveryEtrapId},
+      });
+    }
+    if (_deliveryDistrictId != null) {
+      clauses.add({
+        'district': {'_eq': _deliveryDistrictId},
+      });
+    }
+    if (_shopPhone != null && _shopPhone!.isNotEmpty) {
+      clauses.add({
+        'shop_phone': {'_eq': _shopPhone},
+      });
+    }
+    if (_orderStatus != null && _orderStatus!.isNotEmpty) {
+      clauses.add({
+        'order_status': {'_eq': _orderStatus},
+      });
+    }
+    if (_categoryFilter != null && _categoryFilter!.isNotEmpty) {
+      clauses.add({
+        'category': {'_eq': _categoryFilter},
+      });
+    }
+
+    return {'_and': clauses};
   }
 
   // ── Переподключение ───────────────────────────────────────────────────────
 
-  void _scheduleReconnect({
-    required String role,
-    required String userId,
-    required bool myOrdersOnly,
-  }) {
+  /// Реконнект использует **актуальные** поля сервиса — те, что были заданы
+  /// в последнем `connect()` или `reconnectWithFilters()`. Этого достаточно,
+  /// потому что мы всегда вызываем эти методы при смене фильтров.
+  void _scheduleReconnect() {
     if (_disposed) return;
     _connected = false;
     onConnectionChanged?.call(false);
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(seconds: 3), () {
-      if (!_disposed) {
-        debugPrint('🔌 WS: переподключение...');
-        connect(role: role, userId: userId, myOrdersOnly: myOrdersOnly);
-      }
+      if (_disposed) return;
+      debugPrint('🔌 WS: переподключение...');
+      connect(
+        role: _role,
+        userId: _userId,
+        myOrdersOnly: _myOrdersOnly,
+        transportFilter: _transportFilter,
+        shopProvinceId: _shopProvinceId,
+        shopEtrapId: _shopEtrapId,
+        shopDistrictId: _shopDistrictId,
+        deliveryProvinceId: _deliveryProvinceId,
+        deliveryEtrapId: _deliveryEtrapId,
+        deliveryDistrictId: _deliveryDistrictId,
+        shopPhone: _shopPhone,
+        orderStatus: _orderStatus,
+        categoryFilter: _categoryFilter,
+      );
     });
   }
 

@@ -1,3 +1,4 @@
+import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,6 +36,7 @@ class AuthProvider extends ChangeNotifier {
   double _balancePoints = 0.0;
   double _walletBalance = 0.0;
   String _transportType = 'any';
+  String _category = ''; // slug категории магазина (shop only)
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
@@ -75,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
   double get balancePoints => _balancePoints;
   double get walletBalance => _walletBalance;
   String get transportType => _transportType;
+  String get category => _category;
 
   AuthProvider() {
     loadUserData();
@@ -99,8 +102,11 @@ class AuthProvider extends ChangeNotifier {
     _balancePoints = prefs.getDouble('balance_points') ?? 0.0;
     _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
     _transportType = prefs.getString('transport_type') ?? 'any';
+    _category = prefs.getString('category') ?? '';
 
     if (_phone.isNotEmpty) phoneController.text = _phone;
+    // Привязываем тур-namespace к загруженному userId.
+    TourManager.instance.setUserId(_userId);
     notifyListeners();
   }
 
@@ -137,6 +143,15 @@ class AuthProvider extends ChangeNotifier {
     _balancePoints = (user['balance_points'] ?? 0.0).toDouble();
     _walletBalance = (user['wallet_balance'] ?? 0.0).toDouble();
     _transportType = user['transport_type']?.toString() ?? 'any';
+    // category может прийти как string slug или как Map (expanded m2o).
+    final rawCat = user['category'];
+    if (rawCat == null) {
+      _category = '';
+    } else if (rawCat is Map) {
+      _category = (rawCat['id'] ?? '').toString();
+    } else {
+      _category = rawCat.toString();
+    }
 
     // ── Location (supports both raw ID and expanded Directus object) ────────
     void extractId(dynamic raw, void Function(String) setter) {
@@ -168,8 +183,11 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setDouble('balance_points', _balancePoints);
     await prefs.setDouble('wallet_balance', _walletBalance);
     await prefs.setString('transport_type', _transportType);
+    await prefs.setString('category', _category);
     await prefs.setBool('is_logged_in', true);
 
+    // Account-scoped тур namespace.
+    TourManager.instance.setUserId(_userId);
     notifyListeners();
   }
 
@@ -359,10 +377,17 @@ class AuthProvider extends ChangeNotifier {
     final onboardingDone = prefs.getBool('onboarding_done') ?? false;
     final savedLang = prefs.getString('language_code');
     final isDarkMode = prefs.getBool('is_dark_mode');
+    // Account-scoped тур-состояния (всех пользователей) — сохраняем
+    // через TourManager, чтобы при возврате на этот аккаунт гид не
+    // показывался заново.
+    final tourSnapshot = TourManager.instance.snapshotAllTourKeys();
     await prefs.clear();
     if (onboardingDone) await prefs.setBool('onboarding_done', true);
     if (savedLang != null) await prefs.setString('selected_lang', savedLang);
     if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
+    await TourManager.instance.restoreSnapshot(tourSnapshot);
+    // На время "нет активного userId" — глобальный namespace.
+    TourManager.instance.setUserId('');
     _token = '';
     _userId = '';
     _phone = '';
@@ -377,6 +402,7 @@ class AuthProvider extends ChangeNotifier {
     _balancePoints = 0.0;
     _walletBalance = 0.0;
     _rating = 0.0;
+    _category = '';
     _isCodeSent = false;
     notifyListeners();
   }

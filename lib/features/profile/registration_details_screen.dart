@@ -1,17 +1,23 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/auth/auth_repository.dart';
+import 'package:bagla/features/profile/widgets/image_source_picker.dart';
+import 'package:bagla/features/profile/widgets/shop_categories.dart';
+import 'package:bagla/l10n/app_localizations.dart';
+import 'package:bagla/l10n/language_provider.dart';
+import 'package:bagla/models/district.dart';
+import 'package:bagla/models/etrap.dart';
+import 'package:bagla/models/province.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../l10n/language_provider.dart';
-import '../../models/district.dart';
-import '../../models/province.dart';
-import '../../models/etrap.dart';
-import '../auth/auth_repository.dart';
+// ─── Какое фото грузим ────────────────────────────────────────────────────────
+enum _PhotoSlot { passportMain, passportAddress, passportFace, selfie }
 
 class RegistrationDetailsScreen extends StatefulWidget {
   final String role;
@@ -22,19 +28,39 @@ class RegistrationDetailsScreen extends StatefulWidget {
       _RegistrationDetailsScreenState();
 }
 
-class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
+class _RegistrationDetailsScreenState
+    extends State<RegistrationDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _authRepo = AuthRepository();
   final _picker = ImagePicker();
 
   bool _isLoading = false;
 
-  File? _passportFile;
-  File? _addressFile;
+  // 4 файла у курьера (раньше было 2).
+  final Map<_PhotoSlot, File?> _photos = {
+    _PhotoSlot.passportMain: null,
+    _PhotoSlot.passportAddress: null,
+    _PhotoSlot.passportFace: null,
+    _PhotoSlot.selfie: null,
+  };
 
+  // Ввод имени/фамилии/отчества (курьер) или названия (магазин).
   final _c1 = TextEditingController();
   final _c2 = TextEditingController();
   final _c3 = TextEditingController();
+
+  // Фокусы — нужны чтобы прыгать на пустое поле при валидации.
+  final _f1 = FocusNode();
+  final _f2 = FocusNode();
+  final _f3 = FocusNode();
+
+  // GlobalKey'и секций — для scrollToEnsureVisible на не-text полях.
+  final _locationKey = GlobalKey();
+  final _categoryKey = GlobalKey();
+  final _transportKey = GlobalKey();
+  final _photosKey = GlobalKey();
+
+  final _scrollController = ScrollController();
 
   List<Province> _provinces = [];
   List<Etrap> _etraps = [];
@@ -50,46 +76,88 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
   bool _locationSelected = false;
   String _transportType = 'any';
 
-  static const _transportOptions = [
-    ('any', 'Пешком / Любой', Icons.directions_walk_rounded),
-    ('car', 'Легковой авто', Icons.directions_car_rounded),
-    ('truck', 'Грузовой авто', Icons.local_shipping_rounded),
-  ];
+  // Категория магазина (для role == shop).
+  ShopCategory? _selectedCategory;
+  // null пока грузим, после — серверные категории или fallback.
+  List<ShopCategory>? _categories;
 
   int _locationStep = 0;
 
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _searchDebounce;
+
+  // Кэшируем messenger — нужен в dispose() где context недоступен.
+  ScaffoldMessengerState? _messenger;
 
   @override
   void initState() {
     super.initState();
     _loadProvinces();
-    _searchController.addListener(() {
+    if (widget.role == 'shop') _loadCategories();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final list = await _authRepo.getShopCategories();
+      if (!mounted) return;
+      setState(() => _categories = list.isNotEmpty ? list : kLocalShopCategories);
+    } catch (_) {
+      // Сеть/сервер недоступны — даём пользователю продолжить с локальным
+      // списком. На submit Directus всё равно проверит m2o-связь.
+      if (mounted) setState(() => _categories = kLocalShopCategories);
+    }
+  }
+
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
       setState(() => _searchQuery = _searchController.text.toLowerCase());
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.of(context);
+  }
+
+  @override
   void dispose() {
+    _messenger?.clearSnackBars();
+    _searchDebounce?.cancel();
     _c1.dispose();
     _c2.dispose();
     _c3.dispose();
-    _searchController.dispose();
+    _f1.dispose();
+    _f2.dispose();
+    _f3.dispose();
+    _scrollController.dispose();
+    _searchController
+      ..removeListener(_onSearchChanged)
+      ..dispose();
     super.dispose();
   }
 
   // ── Data loading ───────────────────────────────────────────────────────────
 
   Future<void> _loadProvinces() async {
+    if (!mounted) return;
     setState(() => _loadingProvinces = true);
     try {
       final list = await _authRepo.getProvinces();
+      if (!mounted) return;
       setState(() => _provinces = list);
-    } catch (e) {
-      _showToast('Ошибка загрузки велаятов: $e');
+    } catch (_) {
+      if (mounted) {
+        _showToast(
+          context.read<LanguageProvider>().words.regErrorLoadProvinces,
+        );
+      }
     } finally {
-      setState(() => _loadingProvinces = false);
+      if (mounted) setState(() => _loadingProvinces = false);
     }
   }
 
@@ -103,22 +171,27 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       _districts = [];
       _locationStep = 1;
       _searchQuery = '';
+      _searchController.clear();
       _loadingEtraps = true;
       _locationSelected = false;
     });
     try {
       final list = await _authRepo.getEtrapsByProvince(p.id);
+      if (!mounted) return;
       setState(() {
         _etraps = list;
+        // Велаят без этрапов → достаточно только провинции.
         if (list.isEmpty) {
           _locationSelected = true;
           _locationStep = 0;
         }
       });
-    } catch (e) {
-      _showToast('Ошибка загрузки этрапов: $e');
+    } catch (_) {
+      if (mounted) {
+        _showToast(context.read<LanguageProvider>().words.regErrorLoadEtraps);
+      }
     } finally {
-      setState(() => _loadingEtraps = false);
+      if (mounted) setState(() => _loadingEtraps = false);
     }
   }
 
@@ -130,22 +203,29 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
       _districts = [];
       _locationStep = 2;
       _searchQuery = '';
+      _searchController.clear();
       _loadingDistricts = true;
       _locationSelected = false;
     });
     try {
       final list = await _authRepo.getDistrictsByEtrap(e.id);
+      if (!mounted) return;
       setState(() {
         _districts = list;
+        // Этрап без районов → достаточно велаят+этрап.
         if (list.isEmpty) {
           _locationSelected = true;
           _locationStep = 1;
         }
       });
-    } catch (e) {
-      _showToast('Ошибка загрузки районов: $e');
+    } catch (_) {
+      if (mounted) {
+        _showToast(
+          context.read<LanguageProvider>().words.regErrorLoadDistricts,
+        );
+      }
     } finally {
-      setState(() => _loadingDistricts = false);
+      if (mounted) setState(() => _loadingDistricts = false);
     }
   }
 
@@ -154,6 +234,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     setState(() {
       _selectedDistrict = d;
       _searchQuery = '';
+      _searchController.clear();
       _locationSelected = true;
     });
   }
@@ -162,6 +243,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     setState(() {
       _locationStep = step;
       _searchQuery = '';
+      _searchController.clear();
       _locationSelected = false;
       if (step == 0) {
         _selectedProvince = null;
@@ -176,59 +258,137 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
   // ── Photo ──────────────────────────────────────────────────────────────────
 
-  Future<void> _pickImage(bool isPassport) async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50,
-    );
-    if (image != null) {
-      setState(() {
-        if (isPassport) {
-          _passportFile = File(image.path);
-        } else {
-          _addressFile = File(image.path);
-        }
-      });
+  Future<void> _pickImage(_PhotoSlot slot) async {
+    final source = await ImageSourcePicker.show(context);
+    if (source == null || !mounted) return;
+    final image = await _picker.pickImage(source: source, imageQuality: 60);
+    if (image != null && mounted) {
+      setState(() => _photos[slot] = File(image.path));
+    }
+  }
+
+  /// Фото лица — сразу фронтальная камера, без выбора источника.
+  /// Результат автоматически попадает в `_PhotoSlot.selfie`.
+  Future<void> _pickFacePhoto() async {
+    try {
+      final image = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 60,
+      );
+      if (image != null && mounted) {
+        setState(() => _photos[_PhotoSlot.selfie] = File(image.path));
+      }
+    } catch (_) {
+      // Камера недоступна / отказ в правах — молча. Пользователь увидит,
+      // что слот пустой, и попробует снова.
     }
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
+  /// Прокручиваем к секции и моргаем — лёгкий визуальный hint.
+  Future<void> _scrollTo(GlobalKey key) async {
+    final ctx = key.currentContext;
+    if (ctx == null) return;
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      alignment: 0.15, // секция чуть выше центра
+    );
+  }
+
+  /// Фокус на первом пустом текстовом поле курьера / магазина.
+  /// Возвращает имя поля для toast или null если всё заполнено.
+  String? _firstEmptyTextField(AppLocalizations words) {
+    if (widget.role == 'courier') {
+      if (_c1.text.trim().isEmpty) {
+        _f1.requestFocus();
+        return words.regFieldName;
+      }
+      if (_c2.text.trim().isEmpty) {
+        _f2.requestFocus();
+        return words.regFieldSurname;
+      }
+      if (_c3.text.trim().isEmpty) {
+        _f3.requestFocus();
+        return words.regFieldLastname;
+      }
+    } else {
+      if (_c1.text.trim().isEmpty) {
+        _f1.requestFocus();
+        return words.regFieldOrgName;
+      }
+    }
+    return null;
+  }
+
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_locationSelected) {
-      _showToast('Пожалуйста, выберите район');
+    final words = context.read<LanguageProvider>().words;
+    final auth = context.read<AuthProvider>();
+    final isCourier = widget.role == 'courier';
+
+    // ── 1. Текстовые поля ──────────────────────────────────────────────────
+    final emptyField = _firstEmptyTextField(words);
+    if (emptyField != null) {
+      _showErrorToast(words.regToastFixTitle, emptyField);
       return;
     }
 
-    if (widget.role == 'courier' &&
-        (_passportFile == null || _addressFile == null)) {
-      _showToast('Пожалуйста, загрузите оба фото паспорта');
+    // ── 2. Локация ─────────────────────────────────────────────────────────
+    if (!_locationSelected) {
+      await _scrollTo(_locationKey);
+      _showErrorToast(words.regToastFixTitle, words.regErrorLocationRequired);
+      return;
+    }
+
+    // ── 3. Категория (только shop) ─────────────────────────────────────────
+    if (!isCourier && _selectedCategory == null) {
+      await _scrollTo(_categoryKey);
+      _showErrorToast(words.regToastFixTitle, words.regErrorCategoryRequired);
+      return;
+    }
+
+    // ── 4. Фото (только курьер: все 4) ─────────────────────────────────────
+    if (isCourier && _photos.values.any((f) => f == null)) {
+      await _scrollTo(_photosKey);
+      _showErrorToast(words.regToastFixTitle, words.regErrorPhotosRequired);
+      return;
+    }
+
+    if (auth.userId.isEmpty) {
+      _showErrorToast(words.regToastFixTitle, words.regErrorUserId);
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
-      if (userId == null) throw 'ID пользователя не найден';
+      // Загружаем все непустые фото.
+      final passportId = _photos[_PhotoSlot.passportMain] != null
+          ? await _authRepo.uploadFile(_photos[_PhotoSlot.passportMain]!.path)
+          : null;
+      final addressId = _photos[_PhotoSlot.passportAddress] != null
+          ? await _authRepo
+              .uploadFile(_photos[_PhotoSlot.passportAddress]!.path)
+          : null;
+      final faceId = _photos[_PhotoSlot.passportFace] != null
+          ? await _authRepo.uploadFile(_photos[_PhotoSlot.passportFace]!.path)
+          : null;
+      final selfieId = _photos[_PhotoSlot.selfie] != null
+          ? await _authRepo.uploadFile(_photos[_PhotoSlot.selfie]!.path)
+          : null;
 
-      String? passportId;
-      String? addressId;
-      if (_passportFile != null) {
-        passportId = await _authRepo.uploadFile(_passportFile!.path);
-      }
-      if (_addressFile != null) {
-        addressId = await _authRepo.uploadFile(_addressFile!.path);
-      }
-
-      Map<String, dynamic> updateData = {
+      // Базовые поля. district/etrap опциональны — у некоторых велаятов их нет.
+      final Map<String, dynamic> updateData = {
         'role': widget.role,
-        'passport_scan': passportId,
-        'adress_scan': addressId,
-        'district': _selectedDistrict!.id,
-        'etrap': _selectedEtrap!.id,
         'province': _selectedProvince!.id,
+        if (_selectedEtrap != null) 'etrap': _selectedEtrap!.id,
+        if (_selectedDistrict != null) 'district': _selectedDistrict!.id,
+        'passport_scan': ?passportId,
+        'adress_scan': ?addressId,
+        'passport_face_scan': ?faceId,
+        'selfie_scan': ?selfieId,
       };
 
       if (widget.role == 'courier') {
@@ -240,99 +400,106 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           'transport_type': _transportType,
         });
       } else {
+        // Адрес магазина — лучшее из доступного.
         final shopAddress = _selectedDistrict != null
-            ? "${_selectedEtrap!.ru}, ${_selectedDistrict!.ru}"
+            ? '${_selectedEtrap!.ru}, ${_selectedDistrict!.ru}'
             : _selectedEtrap != null
-            ? _selectedEtrap!.ru
-            : _selectedProvince!.ru;
+                ? _selectedEtrap!.ru
+                : _selectedProvince!.ru;
 
         updateData.addAll({
           'organization_name': _c1.text.trim(),
           'address': shopAddress,
           'name': _c1.text.trim(),
           'status': 'pending',
-          'district': _selectedDistrict?.id,
-          'etrap': _selectedEtrap?.id,
-          'province': _selectedProvince!.id,
+          if (_selectedCategory != null) 'category': _selectedCategory!.id,
         });
 
-        if (mounted) {
-          context.read<AuthProvider>().updateShopAddress(shopAddress);
-        }
+        if (mounted) auth.updateShopAddress(shopAddress);
       }
 
       final success = await _authRepo.updateProfile(
-        userId: userId,
+        userId: auth.userId,
         data: updateData,
       );
 
+      if (!mounted) return;
       if (!success) {
-        _showToast(
-          'Не удалось сохранить данные. Попробуйте ещё раз через мгновение.',
-        );
+        _showToast(words.regErrorSubmit);
         return;
       }
 
-      if (!mounted) return;
-      if (widget.role != 'courier') {
-        context.read<AuthProvider>().updateShopAddress(_c2.text.trim());
-      }
       try {
-        await context.read<AuthProvider>().refreshProfile();
+        await auth.refreshProfile();
       } catch (_) {}
       if (!mounted) return;
-      _showToast('Данные отправлены. Ожидайте подтверждения', isSuccess: true);
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pushNamedAndRemoveUntil('/home', (r) => false);
-    } catch (e) {
-      _showToast(
-        'Не удалось сохранить данные. Попробуйте ещё раз через мгновение.',
-      );
+      _showToast(words.regSuccessSubmit, isSuccess: true);
+      Navigator.of(context, rootNavigator: true)
+          .pushNamedAndRemoveUntil('/home', (r) => false);
+    } catch (_) {
+      if (mounted) _showToast(words.regErrorSubmit);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showToast(String msg, {bool isSuccess = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
+  /// Anthropic-стиль: warning toast с заголовком + подзаголовком.
+  /// Слева — мягкий amber-индикатор, нет режущей красноты.
+  void _showErrorToast(String title, String subtitle) {
+    final c = AppColors.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
+        duration: const Duration(seconds: 4),
         content: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isSuccess ? Icons.check_circle_outline : Icons.info_outline,
-              size: 17,
-              color: isSuccess
-                  ? AppColors.of(context).ink
-                  : AppColors.of(context).errorMuted,
+            Container(
+              width: 32,
+              height: 32,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: BoxDecoration(
+                color: c.amberTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.priority_high_rounded,
+                size: 18,
+                color: c.amber,
+              ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                msg,
-                style: AppText.regular(
-                  fontSize: 13,
-                  color: isSuccess
-                      ? AppColors.of(context).ink
-                      : AppColors.of(context).ink,
-                ).copyWith(height: 1.4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: AppText.semiBold(fontSize: 14, color: c.ink)
+                        .copyWith(letterSpacing: 0.1),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppText.regular(fontSize: 12.5, color: c.inkMuted)
+                        .copyWith(height: 1.35),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        backgroundColor: isSuccess
-            ? AppColors.of(context).emeraldTint
-            : AppColors.of(context).errorTint,
+        backgroundColor: c.surface,
         behavior: SnackBarBehavior.floating,
         elevation: 0,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isSuccess
-                ? AppColors.of(context).ink.withValues(alpha: 0.25)
-                : AppColors.of(context).errorMuted.withValues(alpha: 0.25),
+            color: c.amber.withValues(alpha: 0.35),
             width: 1,
           ),
         ),
@@ -340,11 +507,56 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     );
   }
 
-  // ── Transport picker ───────────────────────────────────────────────────────
+  void _showToast(String msg, {bool isSuccess = false}) {
+    final c = AppColors.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle_outline : Icons.info_outline,
+              size: 17,
+              color: isSuccess ? c.ink : c.errorMuted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                msg,
+                style: AppText.regular(fontSize: 13, color: c.ink)
+                    .copyWith(height: 1.4),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isSuccess ? c.emeraldTint : c.errorTint,
+        behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isSuccess
+                ? c.ink.withValues(alpha: 0.25)
+                : c.errorMuted.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+      ),
+    );
+  }
 
-  Widget _buildTransportPicker() {
+  // ═════════════════════════════════════════════════════════════════════════
+  // Transport picker
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildTransportPicker(AppColors c, AppLocalizations words) {
+    final options = [
+      ('any', words.regTransportAny, Icons.directions_walk_rounded),
+      ('car', words.regTransportCar, Icons.directions_car_rounded),
+      ('truck', words.regTransportTruck, Icons.local_shipping_rounded),
+    ];
+
     return Column(
-      children: _transportOptions.map((opt) {
+      children: options.map((opt) {
         final (value, label, icon) = opt;
         final isSelected = _transportType == value;
         return GestureDetector(
@@ -354,69 +566,44 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.of(context).emeraldTint
-                  : AppColors.of(context).surface,
+              color: isSelected ? c.emeraldTint : c.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
-                    ? AppColors.of(context).ink.withValues(alpha: 0.45)
-                    : AppColors.of(context).border,
+                    ? c.ink.withValues(alpha: 0.45)
+                    : c.border,
                 width: isSelected ? 1.5 : 1,
               ),
             ),
             child: Row(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                Container(
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.of(context).ink.withValues(alpha: 0.12)
-                        : AppColors.of(context).surface,
+                        ? c.ink.withValues(alpha: 0.12)
+                        : c.surface,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
                     icon,
                     size: 18,
-                    color: isSelected
-                        ? AppColors.of(context).ink
-                        : AppColors.of(context).inkSoft,
+                    color: isSelected ? c.ink : c.inkSoft,
                   ),
                 ),
-                SizedBox(width: 14),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     label,
                     style: AppText.medium(
                       fontSize: 14,
-                      color: isSelected
-                          ? AppColors.of(context).ink
-                          : AppColors.of(context).inkMuted,
+                      color: isSelected ? c.ink : c.inkMuted,
                     ),
                   ),
                 ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? AppColors.of(context).ink
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.of(context).ink
-                          : AppColors.of(context).border,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: isSelected
-                      ? Icon(Icons.check_rounded, color: Colors.white, size: 13)
-                      : null,
-                ),
+                if (isSelected)
+                  Icon(Icons.check_rounded, size: 18, color: c.ink),
               ],
             ),
           ),
@@ -425,349 +612,393 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     );
   }
 
-  // ── Location stepper ───────────────────────────────────────────────────────
-
-  Widget _buildLocationStepper(bool isRu) {
+  // ═════════════════════════════════════════════════════════════════════════
+  // Category picker (магазин)
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildCategoryPicker(bool isRu, AppColors c, AppLocalizations words) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepIndicator(),
-        SizedBox(height: 14),
-        if (_selectedProvince != null ||
-            _selectedEtrap != null ||
-            _selectedDistrict != null)
-          _buildBreadcrumb(isRu),
-        if (_locationStep > 0 && !_locationSelected) ...[
-          SizedBox(height: 10),
-          _buildSearchField(),
-        ],
-        SizedBox(height: 10),
-        _locationSelected
-            ? _buildLocationDone(isRu)
-            : _buildCurrentStepList(isRu),
-      ],
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    final steps = ['Велаят', 'Этрап', 'Район'];
-    return Row(
-      children: List.generate(3, (i) {
-        final isDone =
-            i < _locationStep || (i == 2 && _selectedDistrict != null);
-        final isActive = i == _locationStep && !_locationSelected;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () {
-              if (i < _locationStep) _resetLocationStep(i);
-            },
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
+        Text(
+          words.regCatHint,
+          style: AppText.regular(fontSize: 13, color: c.inkSoft)
+              .copyWith(height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        if (_categories == null)
+          _buildLoader(c)
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _categories!.map((cat) {
+              final isSelected = _selectedCategory?.id == cat.id;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedCategory = cat),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.fromLTRB(11, 8, 14, 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? c.emeraldTint : c.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected
+                          ? c.ink.withValues(alpha: 0.35)
+                          : c.border,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: (isDone || isActive)
-                              ? AppColors.of(context).ink
-                              : AppColors.of(context).border,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+                      Icon(
+                        cat.icon,
+                        size: 15,
+                        color: isSelected ? c.ink : c.inkMuted,
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(width: 7),
                       Text(
-                        steps[i],
+                        cat.label(isRu),
                         style: AppText.medium(
-                          fontSize: 10.5,
-                          color: isDone || isActive
-                              ? AppColors.of(context).ink
-                              : AppColors.of(context).inkSoft,
-                        ).copyWith(letterSpacing: 0.2),
+                          fontSize: 13,
+                          color: isSelected ? c.ink : c.inkMuted,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                if (i < 2) SizedBox(width: 8),
-              ],
-            ),
+              );
+            }).toList(),
           ),
+      ],
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Location stepper
+  // ═════════════════════════════════════════════════════════════════════════
+  Widget _buildLocationStepper(
+      bool isRu, AppColors c, AppLocalizations words) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStepIndicator(c, words),
+        const SizedBox(height: 14),
+        _buildBreadcrumb(isRu, c),
+        const SizedBox(height: 10),
+        if (!_locationSelected && _locationStep > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildSearchField(c, words),
+          ),
+        _locationSelected
+            ? _buildLocationDone(isRu, c)
+            : _buildCurrentStepList(isRu, c),
+      ],
+    );
+  }
+
+  Widget _buildStepIndicator(AppColors c, AppLocalizations words) {
+    final steps = [
+      words.regStepProvince,
+      words.regStepEtrap,
+      words.regStepDistrict,
+    ];
+    return Row(
+      children: List.generate(steps.length * 2 - 1, (i) {
+        if (i.isOdd) {
+          return Expanded(
+            child: Container(
+              height: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              color: c.borderSoft,
+            ),
+          );
+        }
+        final idx = i ~/ 2;
+        final isActive = idx <= _locationStep;
+        final isDone = idx < _locationStep ||
+            (_locationSelected && idx <= _locationStep);
+        return Column(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? c.ink
+                    : isActive
+                        ? c.emeraldTint
+                        : c.surface,
+                shape: BoxShape.circle,
+                border:
+                    Border.all(color: isActive ? c.ink : c.border, width: 1),
+              ),
+              alignment: Alignment.center,
+              child: isDone
+                  ? const Icon(Icons.check, size: 13, color: Colors.white)
+                  : Text(
+                      '${idx + 1}',
+                      style: AppText.semiBold(
+                        fontSize: 11,
+                        color: isActive ? c.ink : c.inkSoft,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              steps[idx],
+              style: AppText.regular(
+                fontSize: 10,
+                color: isActive ? c.ink : c.inkSoft,
+              ),
+            ),
+          ],
         );
       }),
     );
   }
 
-  Widget _buildBreadcrumb(bool isRu) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          if (_selectedProvince != null)
-            _Chip(
-              label: _selectedProvince!.label(isRu),
-              onTap: () => _resetLocationStep(0),
-              isSelected: _selectedEtrap == null && _locationSelected,
+  Widget _buildBreadcrumb(bool isRu, AppColors c) {
+    if (_selectedProvince == null) return const SizedBox.shrink();
+    final parts = <String>[
+      _selectedProvince!.label(isRu),
+      if (_selectedEtrap != null) _selectedEtrap!.label(isRu),
+      if (_selectedDistrict != null) _selectedDistrict!.label(isRu),
+    ];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (var i = 0; i < parts.length; i++) ...[
+          GestureDetector(
+            onTap: () => _resetLocationStep(i),
+            child: Text(
+              parts[i],
+              style: AppText.medium(
+                fontSize: 12,
+                color: i == parts.length - 1 ? c.ink : c.inkMuted,
+              ).copyWith(
+                decoration: i == parts.length - 1
+                    ? TextDecoration.none
+                    : TextDecoration.underline,
+                decorationColor: c.inkMuted,
+              ),
             ),
-          if (_selectedEtrap != null)
-            _Chip(
-              label: _selectedEtrap!.label(isRu),
-              onTap: () => _resetLocationStep(1),
-              isSelected: _selectedDistrict == null && _locationSelected,
-            ),
-          if (_selectedDistrict != null)
-            _Chip(
-              label: _selectedDistrict!.label(isRu),
-              isSelected: true,
-              onTap: () => _resetLocationStep(1),
-            ),
+          ),
+          if (i < parts.length - 1)
+            Icon(Icons.chevron_right_rounded, size: 14, color: c.inkSoft),
         ],
-      ),
+      ],
     );
   }
 
-  Widget _buildSearchField() {
-    final hints = ['', 'Поиск этрапа...', 'Поиск района...'];
+  Widget _buildSearchField(AppColors c, AppLocalizations words) {
+    final hint =
+        _locationStep == 1 ? words.regSearchEtrap : words.regSearchDistrict;
     return TextField(
       controller: _searchController,
-      style: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
+      style: AppText.regular(fontSize: 14, color: c.ink),
       decoration: InputDecoration(
-        hintText: hints[_locationStep],
-        hintStyle: AppText.regular(
-          fontSize: 14,
-          color: AppColors.of(context).inkSoft,
-        ),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          color: AppColors.of(context).inkSoft,
-          size: 20,
-        ),
-        suffixIcon: _searchQuery.isNotEmpty
-            ? GestureDetector(
-                onTap: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: AppColors.of(context).ink,
-                ),
-              )
-            : null,
+        hintText: hint,
+        hintStyle: AppText.regular(fontSize: 14, color: c.inkSoft),
+        prefixIcon: Icon(Icons.search_rounded, size: 18, color: c.inkSoft),
         filled: true,
-        fillColor: AppColors.of(context).surface,
+        fillColor: c.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: c.border, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.of(context).border, width: 1),
+          borderSide: BorderSide(color: c.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.of(context).ink, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          borderSide: BorderSide(color: c.ink, width: 1.5),
         ),
       ),
     );
   }
 
-  Widget _buildCurrentStepList(bool isRu) {
-    if (_locationStep == 0) return _buildProvinceList(isRu);
-    if (_locationStep == 1) return _buildEtrapList(isRu);
-    return _buildDistrictList(isRu);
+  Widget _buildCurrentStepList(bool isRu, AppColors c) {
+    switch (_locationStep) {
+      case 0:
+        return _buildProvinceList(isRu, c);
+      case 1:
+        return _buildEtrapList(isRu, c);
+      case 2:
+        return _buildDistrictList(isRu, c);
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
-  Widget _buildProvinceList(bool isRu) {
-    if (_loadingProvinces) return _buildLoader();
-    return _buildItemGrid(
+  Widget _buildProvinceList(bool isRu, AppColors c) {
+    if (_loadingProvinces) return _buildLoader(c);
+    return _buildItemGrid<Province>(
       items: _provinces,
-      labelFn: (p) => p.label(isRu),
+      label: (p) => p.label(isRu),
       onTap: _selectProvince,
+      c: c,
     );
   }
 
-  Widget _buildEtrapList(bool isRu) {
-    if (_loadingEtraps) return _buildLoader();
-    final filtered = _etraps
-        .where((e) => e.label(isRu).toLowerCase().contains(_searchQuery))
-        .toList();
-    return _buildItemList(
+  Widget _buildEtrapList(bool isRu, AppColors c) {
+    if (_loadingEtraps) return _buildLoader(c);
+    final filtered = _etraps.where((e) {
+      if (_searchQuery.isEmpty) return true;
+      return e.label(isRu).toLowerCase().contains(_searchQuery);
+    }).toList();
+    return _buildItemList<Etrap>(
       items: filtered,
-      labelFn: (e) => e.label(isRu),
+      label: (e) => e.label(isRu),
       onTap: _selectEtrap,
+      c: c,
     );
   }
 
-  Widget _buildDistrictList(bool isRu) {
-    if (_loadingDistricts) return _buildLoader();
-    final filtered = _districts
-        .where((d) => d.label(isRu).toLowerCase().contains(_searchQuery))
-        .toList();
-    return _buildItemList(
+  Widget _buildDistrictList(bool isRu, AppColors c) {
+    if (_loadingDistricts) return _buildLoader(c);
+    final filtered = _districts.where((d) {
+      if (_searchQuery.isEmpty) return true;
+      return d.label(isRu).toLowerCase().contains(_searchQuery);
+    }).toList();
+    return _buildItemList<District>(
       items: filtered,
-      labelFn: (d) => d.label(isRu),
+      label: (d) => d.label(isRu),
       onTap: _selectDistrict,
+      c: c,
     );
   }
 
   Widget _buildItemGrid<T>({
     required List<T> items,
-    required String Function(T) labelFn,
+    required String Function(T) label,
     required void Function(T) onTap,
+    required AppColors c,
   }) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 2.8,
-      ),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final item = items[i];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items.map((item) {
         return GestureDetector(
           onTap: () => onTap(item),
           child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
-              color: AppColors.of(context).surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.of(context).border),
+              color: c.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: c.border, width: 1),
             ),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              labelFn(item),
-              textAlign: TextAlign.center,
-              style: AppText.medium(
-                fontSize: 13,
-                color: AppColors.of(context).ink,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              label(item),
+              style: AppText.medium(fontSize: 13, color: c.ink),
             ),
           ),
         );
-      },
+      }).toList(),
     );
   }
 
   Widget _buildItemList<T>({
     required List<T> items,
-    required String Function(T) labelFn,
+    required String Function(T) label,
     required void Function(T) onTap,
+    required AppColors c,
   }) {
     if (items.isEmpty) {
       return Container(
-        height: 80,
+        padding: const EdgeInsets.all(20),
         alignment: Alignment.center,
         child: Text(
-          _searchQuery.isEmpty ? 'Нет данных' : 'Ничего не найдено',
-          style: AppText.regular(
-            fontSize: 14,
-            color: AppColors.of(context).inkSoft,
-          ),
+          '—',
+          style: AppText.regular(fontSize: 13, color: c.inkSoft),
         ),
       );
     }
     return Container(
-      constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
-        color: AppColors.of(context).surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.of(context).border),
+        border: Border.all(color: c.border, width: 1),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: NotificationListener<ScrollStartNotification>(
-          onNotification: (_) {
-            FocusScope.of(context).unfocus();
-            return false;
-          },
-          child: ListView.separated(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          itemCount: items.length,
-          separatorBuilder: (_, _) => Divider(
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-            color: AppColors.of(context).borderSoft,
-          ),
-          itemBuilder: (_, i) {
-            final item = items[i];
-            return InkWell(
-              onTap: () => onTap(item),
-              splashColor: AppColors.of(context).ink.withValues(alpha: 0.05),
-              highlightColor: Colors.transparent,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        labelFn(item),
-                        style: AppText.medium(
-                          fontSize: 14,
-                          color: AppColors.of(context).ink,
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => onTap(items[i]),
+                borderRadius: i == 0
+                    ? const BorderRadius.vertical(top: Radius.circular(14))
+                    : i == items.length - 1
+                        ? const BorderRadius.vertical(
+                            bottom: Radius.circular(14),
+                          )
+                        : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label(items[i]),
+                          style:
+                              AppText.medium(fontSize: 14, color: c.ink),
                         ),
                       ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 13,
-                      color: AppColors.of(context).border,
-                    ),
-                  ],
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: c.inkSoft,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            );
-          },
-        ),
-      ),
+            ),
+            if (i < items.length - 1)
+              Divider(height: 0.5, thickness: 0.5, color: c.borderSoft),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildLoader() {
+  Widget _buildLoader(AppColors c) {
     return Container(
-      height: 80,
+      padding: const EdgeInsets.symmetric(vertical: 24),
       alignment: Alignment.center,
       child: SizedBox(
         width: 22,
         height: 22,
-        child: CircularProgressIndicator(
-          color: AppColors.of(context).ink,
-          strokeWidth: 1.5,
-        ),
+        child: CircularProgressIndicator(color: c.ink, strokeWidth: 2),
       ),
     );
   }
 
-  Widget _buildLocationDone(bool isRu) {
+  Widget _buildLocationDone(bool isRu, AppColors c) {
+    final label = _selectedDistrict?.label(isRu) ??
+        _selectedEtrap?.label(isRu) ??
+        _selectedProvince?.label(isRu) ??
+        '';
     return GestureDetector(
       onTap: () => _resetLocationStep(0),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.of(context).emeraldTint,
+          color: c.emeraldTint,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: AppColors.of(context).ink.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: c.ink.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -775,36 +1006,28 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: AppColors.of(context).ink,
+                color: c.ink,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(Icons.check_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.check_rounded,
+                  color: Colors.white, size: 18),
             ),
-            SizedBox(width: 14),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedDistrict?.label(isRu) ??
-                        _selectedEtrap?.label(isRu) ??
-                        _selectedProvince?.label(isRu) ??
-                        '',
-                    style: AppText.semiBold(
-                      fontSize: 15,
-                      color: AppColors.of(context).ink,
-                    ),
+                    label,
+                    style: AppText.semiBold(fontSize: 15, color: c.ink),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     [
                       _selectedProvince?.label(isRu),
                       if (_selectedEtrap != null) _selectedEtrap!.label(isRu),
                     ].whereType<String>().join(' · '),
-                    style: AppText.regular(
-                      fontSize: 12,
-                      color: AppColors.of(context).inkMuted,
-                    ),
+                    style: AppText.regular(fontSize: 12, color: c.inkMuted),
                   ),
                 ],
               ),
@@ -812,7 +1035,7 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
             Icon(
               Icons.edit_outlined,
               size: 16,
-              color: AppColors.of(context).ink.withValues(alpha: 0.7),
+              color: c.ink.withValues(alpha: 0.7),
             ),
           ],
         ),
@@ -820,19 +1043,21 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
     );
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
-
+  // ═════════════════════════════════════════════════════════════════════════
+  // Build
+  // ═════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final isCourier = widget.role == 'courier';
     final langProvider = context.watch<LanguageProvider>();
     final isRu = langProvider.isRu;
     final words = langProvider.words;
+    final c = AppColors.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.of(context).bg,
+      backgroundColor: c.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.of(context).bg,
+        backgroundColor: c.bg,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: GestureDetector(
@@ -840,189 +1065,256 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
           child: Container(
             margin: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.of(context).surface,
+              color: c.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.of(context).border),
+              border: Border.all(color: c.border),
             ),
-            child: Icon(
-              Icons.arrow_back_ios_new,
-              color: AppColors.of(context).ink,
-              size: 16,
-            ),
+            child: Icon(Icons.arrow_back_ios_new, color: c.ink, size: 16),
           ),
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: _RoleChip(isCourier: isCourier),
+            child: _RoleChip(isCourier: isCourier, c: c, words: words),
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppColors.of(context).borderSoft),
+          child: Container(height: 1, color: c.borderSoft),
         ),
       ),
-      body: Stack(
-        children: [
-          Form(
-            key: _formKey,
-            child: ListView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 110),
-              children: [
-            // ── Заголовок ──────────────────────────────────────────────
-            Text(
-              isCourier ? 'Расскажите о себе' : 'Ваша организация',
-              style: AppText.serif(fontSize: 32, letterSpacing: -0.5),
-            ),
-            SizedBox(height: 10),
-            Text(
-              isCourier
-                  ? 'Эти данные необходимы для оформления документов '
-                        'и связи с магазинами-партнёрами.'
-                  : 'Эти данные помогут курьерам найти вас '
-                        'и правильно оформить доставку.',
-              style: AppText.regular(
-                fontSize: 14.5,
-                color: AppColors.of(context).inkMuted,
-              ).copyWith(height: 1.55, letterSpacing: 0.1),
-            ),
-
-            SizedBox(height: 36),
-
-            // ── Личные данные / Организация ────────────────────────────
-            _SectionLabel(
-              icon: Icons.person_outline_rounded,
-              label: isCourier ? 'ЛИЧНЫЕ ДАННЫЕ' : 'ОБ ОРГАНИЗАЦИИ',
-            ),
-            SizedBox(height: 16),
-
-            if (!isCourier) ...[
-              _InputField(
-                label: 'Наименование организации',
-                hint: 'Например: ИП «Хасанов»',
-                errorHint:
-                    'Пожалуйста, укажите название, чтобы курьеры могли найти вас.',
-                controller: _c1,
-                icon: Icons.business_outlined,
-              ),
-            ],
-            if (isCourier) ...[
-              _InputField(
-                label: 'Имя',
-                hint: 'Ваше имя',
-                errorHint: 'Пожалуйста, укажите ваше имя.',
-                controller: _c1,
-                icon: Icons.badge_outlined,
-              ),
-              SizedBox(height: 12),
-              _InputField(
-                label: 'Фамилия',
-                hint: 'Ваша фамилия',
-                errorHint: 'Пожалуйста, укажите фамилию.',
-                controller: _c2,
-                icon: Icons.badge_outlined,
-              ),
-              SizedBox(height: 12),
-              _InputField(
-                label: 'Отчество',
-                hint: 'Ваше отчество',
-                errorHint: 'Пожалуйста, укажите отчество.',
-                controller: _c3,
-                icon: Icons.badge_outlined,
-              ),
-            ],
-
-            SizedBox(height: 32),
-
-            // ── Местоположение ─────────────────────────────────────────
-            _SectionLabel(
-              icon: Icons.location_on_outlined,
-              label: 'МЕСТОПОЛОЖЕНИЕ',
-            ),
-            SizedBox(height: 16),
-            _buildLocationStepper(isRu),
-
-            if (isCourier) ...[
-              SizedBox(height: 32),
-
-              // ── Вид транспорта ─────────────────────────────────────
-              _SectionLabel(
-                icon: Icons.local_shipping_outlined,
-                label: 'ВИД ТРАНСПОРТА',
-              ),
-              SizedBox(height: 16),
-              _buildTransportPicker(),
-
-              SizedBox(height: 32),
-
-              // ── Фото паспорта ──────────────────────────────────────
-              _SectionLabel(
-                icon: Icons.document_scanner_outlined,
-                label: 'ФОТО ПАСПОРТА',
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Главная страница и страница с пропиской.',
-                style: AppText.regular(
-                  fontSize: 13,
-                  color: AppColors.of(context).inkSoft,
-                ).copyWith(height: 1.4),
-              ),
-              SizedBox(height: 14),
-              Row(
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Stack(
+          children: [
+            Form(
+              key: _formKey,
+              child: ListView(
+                controller: _scrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 110),
                 children: [
-                  _PhotoBox(
-                    label: 'Главная\nстраница',
-                    file: _passportFile,
-                    onTap: () => _pickImage(true),
+                  Text(
+                    isCourier
+                        ? words.regCourierHeroTitle
+                        : words.regShopHeroTitle,
+                    style: AppText.serif(fontSize: 32, letterSpacing: -0.5),
                   ),
-                  SizedBox(width: 12),
-                  _PhotoBox(
-                    label: 'Прописка',
-                    file: _addressFile,
-                    onTap: () => _pickImage(false),
+                  const SizedBox(height: 10),
+                  Text(
+                    isCourier
+                        ? words.regCourierHeroSubtitle
+                        : words.regShopHeroSubtitle,
+                    style: AppText.regular(
+                            fontSize: 14.5, color: c.inkMuted)
+                        .copyWith(height: 1.55, letterSpacing: 0.1),
                   ),
+                  const SizedBox(height: 36),
+                  _SectionLabel(
+                    icon: Icons.person_outline_rounded,
+                    label: isCourier
+                        ? words.regSectionPersonal
+                        : words.regSectionOrganization,
+                    c: c,
+                  ),
+                  const SizedBox(height: 16),
+                  if (!isCourier)
+                    _InputField(
+                      label: words.regFieldOrgName,
+                      hint: words.regFieldOrgNameHint,
+                      errorHint: words.regFieldOrgNameError,
+                      controller: _c1,
+                      focusNode: _f1,
+                      icon: Icons.business_outlined,
+                    ),
+                  if (isCourier) ...[
+                    _InputField(
+                      label: words.regFieldName,
+                      hint: words.regFieldNameHint,
+                      errorHint: words.regFieldNameError,
+                      controller: _c1,
+                      focusNode: _f1,
+                      icon: Icons.badge_outlined,
+                    ),
+                    const SizedBox(height: 12),
+                    _InputField(
+                      label: words.regFieldSurname,
+                      hint: words.regFieldSurnameHint,
+                      errorHint: words.regFieldSurnameError,
+                      controller: _c2,
+                      focusNode: _f2,
+                      icon: Icons.badge_outlined,
+                    ),
+                    const SizedBox(height: 12),
+                    _InputField(
+                      label: words.regFieldLastname,
+                      hint: words.regFieldLastnameHint,
+                      errorHint: words.regFieldLastnameError,
+                      controller: _c3,
+                      focusNode: _f3,
+                      icon: Icons.badge_outlined,
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                  KeyedSubtree(
+                    key: _locationKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel(
+                          icon: Icons.location_on_outlined,
+                          label: words.regSectionLocation,
+                          c: c,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildLocationStepper(isRu, c, words),
+                      ],
+                    ),
+                  ),
+
+                  // ── Категория магазина ─────────────────────────────────
+                  if (!isCourier) ...[
+                    const SizedBox(height: 32),
+                    KeyedSubtree(
+                      key: _categoryKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SectionLabel(
+                            icon: Icons.category_outlined,
+                            label: words.regSectionCategory,
+                            c: c,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCategoryPicker(isRu, c, words),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (isCourier) ...[
+                    const SizedBox(height: 32),
+                    KeyedSubtree(
+                      key: _transportKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SectionLabel(
+                            icon: Icons.local_shipping_outlined,
+                            label: words.regSectionTransport,
+                            c: c,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildTransportPicker(c, words),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    KeyedSubtree(
+                      key: _photosKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SectionLabel(
+                            icon: Icons.document_scanner_outlined,
+                            label: words.regSectionPassport,
+                            c: c,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            words.regPassportHint,
+                            style:
+                                AppText.regular(fontSize: 13, color: c.inkSoft)
+                                    .copyWith(height: 1.4),
+                          ),
+                          const SizedBox(height: 14),
+                          // ── 4 фото в сетке 2×2 ──────────────────────
+                          Row(
+                            children: [
+                              _PhotoBox(
+                                label: words.regPhotoMain,
+                                file: _photos[_PhotoSlot.passportMain],
+                                onTap: () =>
+                                    _pickImage(_PhotoSlot.passportMain),
+                                uploadedLabel: words.regPhotoUploaded,
+                              ),
+                              const SizedBox(width: 12),
+                              _PhotoBox(
+                                label: words.regPhotoAddress,
+                                file: _photos[_PhotoSlot.passportAddress],
+                                onTap: () =>
+                                    _pickImage(_PhotoSlot.passportAddress),
+                                uploadedLabel: words.regPhotoUploaded,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              _PhotoBox(
+                                label: words.regPhotoFace,
+                                file: _photos[_PhotoSlot.passportFace],
+                                onTap: () =>
+                                    _pickImage(_PhotoSlot.passportFace),
+                                uploadedLabel: words.regPhotoUploaded,
+                              ),
+                              const SizedBox(width: 12),
+                              _PhotoBox(
+                                // Слот "Фото лица" — открывает фронтальную
+                                // камеру напрямую (без bottom-sheet выбора
+                                // источника). Иконка тоже специальная.
+                                label: words.regPhotoSelfie,
+                                file: _photos[_PhotoSlot.selfie],
+                                onTap: _pickFacePhoto,
+                                uploadedLabel: words.regPhotoUploaded,
+                                emptyIcon:
+                                    Icons.face_retouching_natural_outlined,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ],
+            ),
 
-          ],
-        ),
-      ),
-
-          // ── Фиксированная кнопка поверх контента ──────────────────────
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.of(context).bg.withValues(alpha: 0),
-                    AppColors.of(context).bg.withValues(alpha: 0.96),
-                    AppColors.of(context).bg,
-                  ],
-                  stops: const [0, 0.35, 1],
+            // ── Фиксированная кнопка ─────────────────────────────────
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      c.bg.withValues(alpha: 0),
+                      c.bg.withValues(alpha: 0.96),
+                      c.bg,
+                    ],
+                    stops: const [0, 0.35, 1],
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
-                  child: _SubmitButton(
-                    label: words.saveBtn,
-                    isLoading: _isLoading,
-                    onPressed: _handleSubmit,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
+                    child: _SubmitButton(
+                      label: words.saveBtn,
+                      isLoading: _isLoading,
+                      onPressed: _handleSubmit,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1034,43 +1326,41 @@ class _RegistrationDetailsScreenState extends State<RegistrationDetailsScreen> {
 
 class _RoleChip extends StatelessWidget {
   final bool isCourier;
-  const _RoleChip({required this.isCourier});
+  final AppColors c;
+  final AppLocalizations words;
+  const _RoleChip({
+    required this.isCourier,
+    required this.c,
+    required this.words,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.of(context).emeraldTint,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.of(context).ink.withValues(alpha: 0.3),
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: c.emeraldTint,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.ink.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isCourier
+                ? Icons.electric_bike_outlined
+                : Icons.shopping_bag_outlined,
+            color: c.ink,
+            size: 14,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isCourier
-                    ? Icons.electric_bike_outlined
-                    : Icons.shopping_bag_outlined,
-                color: AppColors.of(context).ink,
-                size: 14,
-              ),
-              SizedBox(width: 6),
-              Text(
-                isCourier ? 'Курьер' : 'Магазин',
-                style: AppText.semiBold(
-                  fontSize: 12.5,
-                  color: AppColors.of(context).ink,
-                ).copyWith(letterSpacing: 0.1),
-              ),
-            ],
+          const SizedBox(width: 6),
+          Text(
+            isCourier ? words.regRoleCourier : words.regRoleShop,
+            style: AppText.semiBold(fontSize: 12.5, color: c.ink)
+                .copyWith(letterSpacing: 0.1),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1078,8 +1368,12 @@ class _RoleChip extends StatelessWidget {
 class _SectionLabel extends StatelessWidget {
   final IconData icon;
   final String label;
-
-  const _SectionLabel({required this.icon, required this.label});
+  final AppColors c;
+  const _SectionLabel({
+    required this.icon,
+    required this.label,
+    required this.c,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1089,19 +1383,17 @@ class _SectionLabel extends StatelessWidget {
           width: 3,
           height: 14,
           decoration: BoxDecoration(
-            color: AppColors.of(context).ink,
+            color: c.ink,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        SizedBox(width: 10),
-        Icon(icon, size: 15, color: AppColors.of(context).inkMuted),
-        SizedBox(width: 7),
+        const SizedBox(width: 10),
+        Icon(icon, size: 15, color: c.inkMuted),
+        const SizedBox(width: 7),
         Text(
           label,
-          style: AppText.bold(
-            fontSize: 11,
-            color: AppColors.of(context).ink,
-          ).copyWith(letterSpacing: 1.1),
+          style: AppText.bold(fontSize: 11, color: c.ink)
+              .copyWith(letterSpacing: 1.1),
         ),
       ],
     );
@@ -1114,13 +1406,14 @@ class _InputField extends StatefulWidget {
   final String errorHint;
   final TextEditingController controller;
   final IconData icon;
-
+  final FocusNode? focusNode;
   const _InputField({
     required this.label,
     required this.hint,
     required this.errorHint,
     required this.controller,
     required this.icon,
+    this.focusNode,
   });
 
   @override
@@ -1128,85 +1421,74 @@ class _InputField extends StatefulWidget {
 }
 
 class _InputFieldState extends State<_InputField> {
-  final _focus = FocusNode();
+  FocusNode get _focus => widget.focusNode ?? _internal;
+  late final FocusNode _internal = FocusNode();
   bool _hasFocus = false;
 
   @override
   void initState() {
     super.initState();
-    _focus.addListener(() {
-      if (mounted) setState(() => _hasFocus = _focus.hasFocus);
-    });
+    _focus.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() => _hasFocus = _focus.hasFocus);
   }
 
   @override
   void dispose() {
-    _focus.dispose();
+    _focus.removeListener(_onFocusChange);
+    // Внутренний node удаляем только если он наш.
+    if (widget.focusNode == null) _internal.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return TextFormField(
       controller: widget.controller,
       focusNode: _focus,
-      style: AppText.regular(fontSize: 15, color: AppColors.of(context).ink),
+      style: AppText.regular(fontSize: 15, color: c.ink),
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
-        hintStyle: AppText.regular(
-          fontSize: 14,
-          color: AppColors.of(context).inkSoft,
-        ),
+        hintStyle: AppText.regular(fontSize: 14, color: c.inkSoft),
         labelStyle: AppText.regular(
           fontSize: 13.5,
-          color: _hasFocus
-              ? AppColors.of(context).ink
-              : AppColors.of(context).inkSoft,
+          color: _hasFocus ? c.ink : c.inkSoft,
         ),
         prefixIcon: Icon(
           widget.icon,
           size: 18,
-          color: _hasFocus
-              ? AppColors.of(context).ink
-              : AppColors.of(context).inkSoft,
+          color: _hasFocus ? c.ink : c.inkSoft,
         ),
         filled: true,
-        fillColor: AppColors.of(context).surface,
+        fillColor: c.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.of(context).border, width: 1),
+          borderSide: BorderSide(color: c.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.of(context).ink, width: 1.5),
+          borderSide: BorderSide(color: c.ink, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: AppColors.of(context).errorMuted,
-            width: 1,
-          ),
+          borderSide: BorderSide(color: c.errorMuted, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: AppColors.of(context).errorMuted,
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: c.errorMuted, width: 1.5),
         ),
-        errorStyle: AppText.regular(
-          fontSize: 12,
-          color: AppColors.of(context).errorMuted,
-        ).copyWith(height: 1.4),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
+        errorStyle: AppText.regular(fontSize: 12, color: c.errorMuted)
+            .copyWith(height: 1.4),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       validator: (v) => (v == null || v.isEmpty) ? widget.errorHint : null,
     );
@@ -1217,11 +1499,19 @@ class _PhotoBox extends StatelessWidget {
   final String label;
   final File? file;
   final VoidCallback onTap;
-
-  const _PhotoBox({required this.label, this.file, required this.onTap});
+  final String uploadedLabel;
+  final IconData emptyIcon;
+  const _PhotoBox({
+    required this.label,
+    this.file,
+    required this.onTap,
+    required this.uploadedLabel,
+    this.emptyIcon = Icons.add_a_photo_outlined,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -1229,12 +1519,12 @@ class _PhotoBox extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           height: 148,
           decoration: BoxDecoration(
-            color: file == null ? AppColors.of(context).surface : null,
+            color: file == null ? c.surface : null,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: file != null
-                  ? AppColors.of(context).ink.withValues(alpha: 0.5)
-                  : AppColors.of(context).border,
+                  ? c.ink.withValues(alpha: 0.5)
+                  : c.border,
               width: file != null ? 1.5 : 1,
             ),
             image: file != null
@@ -1249,25 +1539,22 @@ class _PhotoBox extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AppColors.of(
-                          context,
-                        ).ink.withValues(alpha: 0.10),
+                        color: c.ink.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(13),
                       ),
                       child: Icon(
-                        Icons.add_a_photo_outlined,
-                        color: AppColors.of(context).ink,
+                        emptyIcon,
+                        color: c.ink,
                         size: 19,
                       ),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Text(
                       label,
                       textAlign: TextAlign.center,
-                      style: AppText.medium(
-                        fontSize: 12.5,
-                        color: AppColors.of(context).inkMuted,
-                      ).copyWith(height: 1.35),
+                      style:
+                          AppText.medium(fontSize: 12.5, color: c.inkMuted)
+                              .copyWith(height: 1.35),
                     ),
                   ],
                 )
@@ -1288,14 +1575,10 @@ class _PhotoBox extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        color: AppColors.of(context).ink,
-                        size: 15,
-                      ),
-                      SizedBox(width: 5),
+                      Icon(Icons.check_circle_rounded, color: c.ink, size: 15),
+                      const SizedBox(width: 5),
                       Text(
-                        'Загружено',
+                        uploadedLabel,
                         style: AppText.semiBold(
                           fontSize: 12,
                           color: Colors.white,
@@ -1310,68 +1593,10 @@ class _PhotoBox extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool isSelected;
-
-  const _Chip({
-    required this.label,
-    required this.onTap,
-    this.isSelected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.of(context).emeraldTint
-              : AppColors.of(context).surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.of(context).ink.withValues(alpha: 0.4)
-                : AppColors.of(context).border,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppText.medium(
-                fontSize: 12,
-                color: isSelected
-                    ? AppColors.of(context).ink
-                    : AppColors.of(context).inkMuted,
-              ),
-            ),
-            if (!isSelected) ...[
-              SizedBox(width: 4),
-              Icon(
-                Icons.close_rounded,
-                size: 12,
-                color: AppColors.of(context).inkSoft,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Submit button with press-scale + pulsing loader ────────────────────────
-
 class _SubmitButton extends StatefulWidget {
   final String label;
   final bool isLoading;
   final VoidCallback onPressed;
-
   const _SubmitButton({
     required this.label,
     required this.isLoading,
@@ -1387,6 +1612,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -1402,16 +1628,16 @@ class _SubmitButtonState extends State<_SubmitButton> {
           width: double.infinity,
           height: 58,
           decoration: BoxDecoration(
-            color: AppColors.of(context).ink,
+            color: c.ink,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AppColors.of(context).ink.withValues(alpha: 0.22),
+                color: c.ink.withValues(alpha: 0.22),
                 blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
               BoxShadow(
-                color: AppColors.of(context).ink.withValues(alpha: 0.08),
+                color: c.ink.withValues(alpha: 0.08),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -1422,10 +1648,8 @@ class _SubmitButtonState extends State<_SubmitButton> {
               ? const _PulsingDots()
               : Text(
                   widget.label,
-                  style: AppText.semiBold(
-                    fontSize: 16,
-                    color: Colors.white,
-                  ).copyWith(letterSpacing: 0.2),
+                  style: AppText.semiBold(fontSize: 16, color: Colors.white)
+                      .copyWith(letterSpacing: 0.2),
                 ),
         ),
       ),
@@ -1489,7 +1713,7 @@ class _PulsingDotsState extends State<_PulsingDots>
               child: Container(
                 width: 6,
                 height: 6,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),

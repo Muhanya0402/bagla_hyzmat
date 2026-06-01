@@ -3,6 +3,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
 import 'package:bagla/features/orders/widgets/order_status_badge.dart';
 import 'package:bagla/l10n/app_localizations.dart';
@@ -58,10 +59,14 @@ class OrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Row 1: transport icon + ID + status badge ──────────
+                // ── Row 1: transport icon + category chip + ID + status badge ──
                 Row(
                   children: [
                     _buildTransportIcon(dto.transportType, c),
+                    if (dto.category.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      _buildCategoryChip(dto.category, c),
+                    ],
                     const SizedBox(width: 6),
                     _buildIdPill(dto.shortId, c),
                     const Spacer(),
@@ -157,6 +162,20 @@ class OrderCard extends StatelessWidget {
         color = c.inkSoft;
     }
     return Icon(icon, size: 15, color: color);
+  }
+
+  // ── Category chip — иконка категории магазина ──────────────────────────────
+  Widget _buildCategoryChip(String slug, AppColors c) {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: c.emeraldTint,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      alignment: Alignment.center,
+      child: Icon(iconForSlug(slug), size: 13, color: c.ink),
+    );
   }
 
   // ── ID pill ────────────────────────────────────────────────────────────────

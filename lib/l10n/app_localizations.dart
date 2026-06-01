@@ -442,7 +442,9 @@ class AppLocalizations {
   String get regPickFromCamera => get('regPickFromCamera');
   String get regPickFromGallery => get('regPickFromGallery');
   String get regPickCancel => get('regPickCancel');
+  String get regToastFixTitle => get('regToastFixTitle');
   String get regErrorLocationRequired => get('regErrorLocationRequired');
+  String get regErrorCategoryRequired => get('regErrorCategoryRequired');
   String get regErrorPhotosRequired => get('regErrorPhotosRequired');
   String get regErrorUserId => get('regErrorUserId');
   String get regErrorSubmit => get('regErrorSubmit');
@@ -467,6 +469,14 @@ class AppLocalizations {
   String get regPhotoUploaded => get('regPhotoUploaded');
   String get regRoleCourier => get('regRoleCourier');
   String get regRoleShop => get('regRoleShop');
+  // ── Категория в заказах / фильтрах ──────────────────────────────────────
+  String get orderCategoryLabel => get('orderCategoryLabel');
+  String get filterCategorySection => get('filterCategorySection');
+  String get filterPickCategory => get('filterPickCategory');
+  // ── iOS-style date/time picker ──────────────────────────────────────────
+  String get deliveryPickDate => get('deliveryPickDate');
+  String get deliveryPickTime => get('deliveryPickTime');
+  String get done => get('done');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

@@ -1,3 +1,5 @@
+import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import 'package:bagla/features/home/widgets/courier_filter_modal.dart';
 import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/unread_notifications_modal.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:bagla/features/orders/order_realtime_service.dart';
@@ -107,6 +110,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         deliveryDistrictId: filters.deliveryDistrict?.id,
         shopPhone: filters.shop?.id,
         orderStatus: selectedStatus,
+        categoryFilter: filters.category?.id,
       );
 
       if (mounted) {
@@ -120,13 +124,25 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       }
 
       // 2. Переподключаем веб-сокеты на нужный тип заказов (Все или Только мои)
+      // плюс с актуальными фильтрами курьера — иначе WS будет слать заказы,
+      // которые HTTP бы отфильтровал, и UI начнёт «дёргаться».
       debugPrint(
         '🔌 WS: Переподключение из-за смены вкладки на индекс $index (myOrdersOnly: $myOrdersOnlyParam)',
       );
-      realtimeService.connect(
+      realtimeService.reconnectWithFilters(
         role: auth.role,
         userId: auth.userId,
         myOrdersOnly: myOrdersOnlyParam,
+        transportFilter: filters.transportFilter,
+        shopProvinceId: filters.shopProvince?.id,
+        shopEtrapId: filters.shopEtrap?.id,
+        shopDistrictId: filters.shopDistrict?.id,
+        deliveryProvinceId: filters.deliveryProvince?.id,
+        deliveryEtrapId: filters.deliveryEtrap?.id,
+        deliveryDistrictId: filters.deliveryDistrict?.id,
+        shopPhone: filters.shop?.id,
+        orderStatus: selectedStatus,
+        categoryFilter: filters.category?.id,
       );
     } catch (e) {
       debugPrint('Ошибка при смене вкладки: $e');
@@ -163,13 +179,31 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       final unread = unreadRaw.map(NotificationDto.fromMap).toList();
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
+
+      // Кэшируем ссылки на messenger/AppColors/words ДО показа модалки.
+      // После переавторизации цепочка `ScaffoldMessenger.of(context)` внутри
+      // async-колбэка может race'иться с route-transition и потерять SnackBar.
+      // Захват ссылок здесь гарантирует, что toast уйдёт в нужный messenger.
+      final messenger = ScaffoldMessenger.of(context);
+      final c = AppColors.of(context);
+
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => UnreadNotificationsModal(
           notifications: unread,
-          onMarkAllRead: () async => service.markAllAsRead(auth.userId),
+          onMarkAllRead: () async {
+            await service.markAllAsRead(auth.userId);
+            // mounted-check НЕ нужен — мы используем закэшированный messenger,
+            // а не lookup через context. Это и есть весь смысл фикса.
+            _showMarkAllConfirmToastWith(
+              messenger: messenger,
+              c: c,
+              words: words,
+              count: unread.length,
+            );
+          },
           words: words,
           isRu: isRu,
         ),
@@ -177,6 +211,59 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     } catch (e) {
       debugPrint('checkUnreadNotifications error: $e');
     }
+  }
+
+  /// Anthropic-style confirmation toast после "Прочитать все" на модалке.
+  /// Без undo — модалка уже закрыта, эта операция считается финальной.
+  ///
+  /// Принимает messenger/c/words явно — нельзя полагаться на
+  /// `ScaffoldMessenger.of(context)` в async-колбэке, потому что после
+  /// re-auth контекст может уже относиться к новому виджет-дереву.
+  void _showMarkAllConfirmToastWith({
+    required ScaffoldMessengerState messenger,
+    required AppColors c,
+    required AppLocalizations words,
+    required int count,
+  }) {
+    messenger.clearSnackBars();
+    final text = words.notifMarkAllToast.replaceAll('{n}', '$count');
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        content: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: c.emeraldTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.done_all_rounded, size: 18, color: c.ink),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: AppText.medium(fontSize: 13, color: c.ink),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: c.surface,
+        behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: c.ink.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> initLocationFilter() async {
@@ -272,6 +359,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         deliveryDistrictId: filters.deliveryDistrict?.id,
         shopPhone: filters.shop?.id,
         orderStatus: selectedStatus,
+        categoryFilter: filters.category?.id,
       );
 
       if (mounted) {
@@ -325,6 +413,16 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       role: auth.role,
       userId: auth.userId,
       myOrdersOnly: selectedFilterIndex == 1,
+      transportFilter: filters.transportFilter,
+      shopProvinceId: filters.shopProvince?.id,
+      shopEtrapId: filters.shopEtrap?.id,
+      shopDistrictId: filters.shopDistrict?.id,
+      deliveryProvinceId: filters.deliveryProvince?.id,
+      deliveryEtrapId: filters.deliveryEtrap?.id,
+      deliveryDistrictId: filters.deliveryDistrict?.id,
+      shopPhone: filters.shop?.id,
+      orderStatus: selectedStatus,
+      categoryFilter: filters.category?.id,
     );
   }
 
@@ -386,6 +484,16 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       role: auth.role,
       userId: auth.userId,
       myOrdersOnly: selectedFilterIndex == 1,
+      transportFilter: filters.transportFilter,
+      shopProvinceId: filters.shopProvince?.id,
+      shopEtrapId: filters.shopEtrap?.id,
+      shopDistrictId: filters.shopDistrict?.id,
+      deliveryProvinceId: filters.deliveryProvince?.id,
+      deliveryEtrapId: filters.deliveryEtrap?.id,
+      deliveryDistrictId: filters.deliveryDistrict?.id,
+      shopPhone: filters.shop?.id,
+      orderStatus: selectedStatus,
+      categoryFilter: filters.category?.id,
     );
   }
 
@@ -413,6 +521,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         deliveryDistrictId: filters.deliveryDistrict?.id,
         shopPhone: filters.shop?.id,
         orderStatus: selectedStatus,
+        categoryFilter: filters.category?.id,
       );
       if (mounted) {
         setState(() {
@@ -424,6 +533,28 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     } catch (_) {
       if (mounted) setState(() => ordersError = true);
     }
+  }
+
+  /// Переподключить WS с актуальным состоянием `filters` + `selectedStatus`.
+  /// Вызывается после применения/сброса фильтров в модалке.
+  Future<void> _reconnectWsWithCurrentFilters() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    await realtimeService.reconnectWithFilters(
+      role: auth.role,
+      userId: auth.userId,
+      myOrdersOnly: selectedFilterIndex == 1,
+      transportFilter: filters.transportFilter,
+      shopProvinceId: filters.shopProvince?.id,
+      shopEtrapId: filters.shopEtrap?.id,
+      shopDistrictId: filters.shopDistrict?.id,
+      deliveryProvinceId: filters.deliveryProvince?.id,
+      deliveryEtrapId: filters.deliveryEtrap?.id,
+      deliveryDistrictId: filters.deliveryDistrict?.id,
+      shopPhone: filters.shop?.id,
+      orderStatus: selectedStatus,
+      categoryFilter: filters.category?.id,
+    );
   }
 
   void showFilterModal() {
@@ -464,6 +595,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           });
           Navigator.pop(modalCtx);
           handleRefresh();
+          // WS — на новые фильтры. Иначе сокет будет слать заказы по старым.
+          _reconnectWsWithCurrentFilters();
         },
         onClear: () {
           _filtersEverApplied = true; // ← добавить
@@ -477,6 +610,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           });
           Navigator.pop(modalCtx);
           handleRefresh();
+          _reconnectWsWithCurrentFilters();
         },
         words: words,
       ),

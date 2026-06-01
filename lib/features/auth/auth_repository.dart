@@ -1,4 +1,6 @@
 import 'package:bagla/core/app_config.dart';
+import 'package:bagla/core/tour/tour_manager.dart';
+import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/province.dart';
 import 'package:bagla/models/etrap.dart';
@@ -21,7 +23,9 @@ class AuthRepository {
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
       debugPrint('──────────────────────────────────────');
-      debugPrint('📤 SEND_OTP →  POST ${_api.dio.options.baseUrl}/items/otp_codes');
+      debugPrint(
+        '📤 SEND_OTP →  POST ${_api.dio.options.baseUrl}/items/otp_codes',
+      );
       debugPrint('   payload: {identifier: $cleanPhone}');
 
       final response = await _api.dio.post(
@@ -49,8 +53,8 @@ class AuthRepository {
   Future<Map<String, dynamic>?> verifyOTP(String phone, String code) async {
     try {
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
-      final cleanCode  = code.trim();
-      const flowPath   = '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73';
+      final cleanCode = code.trim();
+      const flowPath = '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73';
 
       debugPrint('──────────────────────────────────────');
       debugPrint('📤 VERIFY_OTP →  POST ${_api.dio.options.baseUrl}$flowPath');
@@ -170,7 +174,9 @@ class AuthRepository {
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
       debugPrint('──────────────────────────────────────');
-      debugPrint('📤 FETCH_PROFILE →  GET ${_api.dio.options.baseUrl}/items/customers');
+      debugPrint(
+        '📤 FETCH_PROFILE →  GET ${_api.dio.options.baseUrl}/items/customers',
+      );
       debugPrint('   filter phone: $cleanPhone');
 
       final response = await _api.dio.get(
@@ -182,7 +188,7 @@ class AuthRepository {
               'district.id,district.district_ru,district.district_tk,'
               'etrap.id,etrap.etrap_ru,etrap.etrap_tk,'
               'province.id,province.province_ru,province.province_tk,'
-              'experience_points,wallet_balance,transport_type',
+              'experience_points,wallet_balance,transport_type,category',
         },
       );
 
@@ -193,7 +199,9 @@ class AuthRepository {
       if (data.isNotEmpty) {
         final user = data[0];
         debugPrint('📡 Получен статус от сервера: ${user['status']}');
-        debugPrint('   id=${user['id']}  role=${user['role']}  name=${user['name']}');
+        debugPrint(
+          '   id=${user['id']}  role=${user['role']}  name=${user['name']}',
+        );
         debugPrint('──────────────────────────────────────');
         await _saveUserToLocal(user);
         return user;
@@ -314,6 +322,57 @@ class AuthRepository {
     }
   }
 
+  // ─── Категории магазина ────────────────────────────────────────────────────
+
+  /// Получить актуальный список категорий из Directus.
+  ///
+  /// Ожидаемая схема `shop_categories`:
+  ///   - `id` — PK (string slug или int autoincrement — оба работают)
+  ///   - `label_ru` — string
+  ///   - `label_tk` — string
+  ///   - `sort` — integer, опц. (порядок отображения; в Directus это
+  ///     системное поле для drag-and-drop сортировки в admin-панели)
+  ///   - `icon` — string, опц. (slug для маппинга `kShopCategoryIcons`)
+  ///
+  /// Сортировка: сначала по `sort` (asc, null'ы в конце), затем по `id` —
+  /// порядок остаётся стабильным, даже если ты ещё не расставил sort.
+  ///
+  /// Если поле `icon` пустое — иконка подбирается по `id` (если `id` — slug).
+  /// Если ничего не подошло — дефолтная `storefront`.
+  ///
+  /// Бросает Exception — вызывающий код решит, использовать ли fallback.
+  Future<List<ShopCategory>> getShopCategories() async {
+    try {
+      final res = await _api.dio.get(
+        '/items/shop_categories',
+        queryParameters: {
+          'fields': 'id,label_ru,label_tk,sort',
+          // Directus: `sort` (asc), затем `id` как tie-breaker.
+          'sort': 'sort,id',
+          'limit': 100,
+        },
+      );
+      final List data = res.data['data'];
+      return data.map((row) {
+        final m = row as Map<String, dynamic>;
+        final id = m['id'];
+        // Slug для иконки: 1) поле icon, 2) id если он строковый, 3) fallback.
+        final iconSlug = (m['icon'] as String?)?.trim().isNotEmpty == true
+            ? m['icon'] as String
+            : (id is String ? id : '');
+        return ShopCategory(
+          id: id,
+          icon: iconForSlug(iconSlug),
+          labelRu: (m['label_ru'] as String?) ?? '',
+          labelTk: (m['label_tk'] as String?) ?? '',
+        );
+      }).toList();
+    } on DioException catch (e) {
+      debugPrint('❌ getShopCategories: ${e.response?.statusCode} ${e.message}');
+      rethrow;
+    }
+  }
+
   Future<double?> fetchTokenRate() async {
     try {
       final response = await _api.dio.get(
@@ -399,6 +458,14 @@ class AuthRepository {
     await prefs.setString('role', user['role'] ?? 'client');
     await prefs.setString('status', user['status'] ?? 'pending');
     await prefs.setString('shop_address', user['address'] ?? '');
+    // Категория магазина (slug). Может прийти как string slug или Map (expanded m2o).
+    final rawCat = user['category'];
+    final categorySlug = rawCat == null
+        ? ''
+        : rawCat is Map
+            ? (rawCat['id']?.toString() ?? '')
+            : rawCat.toString();
+    await prefs.setString('category', categorySlug);
     await prefs.setDouble('rating', (user['rating'] ?? 0.0).toDouble());
     await prefs.setDouble(
       'balance_points',
@@ -457,6 +524,9 @@ class AuthRepository {
     final savedLang = prefs.getString('language_code');
     final selectedLang = prefs.getString('selected_lang');
     final isDarkMode = prefs.getBool('is_dark_mode');
+    // Account-scoped тур-состояния всех пользователей — чтобы возврат
+    // на старый аккаунт не показывал гид заново.
+    final tourSnapshot = TourManager.instance.snapshotAllTourKeys();
     await prefs.clear();
     if (onboardingDone) await prefs.setBool('onboarding_done', true);
     if (savedLang != null) await prefs.setString('language_code', savedLang);
@@ -464,5 +534,7 @@ class AuthRepository {
       await prefs.setString('selected_lang', selectedLang);
     }
     if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
+    await TourManager.instance.restoreSnapshot(tourSnapshot);
+    TourManager.instance.setUserId('');
   }
 }

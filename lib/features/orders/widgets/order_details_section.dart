@@ -1,6 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -62,6 +63,22 @@ class OrderDetailsSection extends StatelessWidget {
 
     return Column(
       children: [
+        // ── Category row (если есть) ──────────────────────────────────────
+        if (dto.category.isNotEmpty) ...[
+          _DetailRow(
+            icon: iconForSlug(dto.category),
+            iconColor: c.ink,
+            label: words.orderCategoryLabel,
+            value: labelForSlug(
+              dto.category,
+              context.read<LanguageProvider>().isRu,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(height: 0.5, color: c.borderSoft),
+          const SizedBox(height: 10),
+        ],
+
         // ── Transport row ─────────────────────────────────────────────────
         _DetailRow(
           icon: _transportIcon(transportType),

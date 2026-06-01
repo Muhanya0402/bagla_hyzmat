@@ -6,6 +6,7 @@ import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
+import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
@@ -39,6 +40,7 @@ class CourierFilters {
   final CourierFilterItem? deliveryDistrict;
 
   final CourierFilterItem? shop;
+  final CourierFilterItem? category;
 
   const CourierFilters({
     this.transportFilter = 'any',
@@ -49,6 +51,7 @@ class CourierFilters {
     this.deliveryEtrap,
     this.deliveryDistrict,
     this.shop,
+    this.category,
   });
 
   int get activeCount {
@@ -61,6 +64,7 @@ class CourierFilters {
     if (deliveryEtrap != null) n++;
     if (deliveryDistrict != null) n++;
     if (shop != null) n++;
+    if (category != null) n++;
     return n;
   }
 
@@ -75,6 +79,7 @@ class CourierFilters {
     Object? deliveryEtrap = _s,
     Object? deliveryDistrict = _s,
     Object? shop = _s,
+    Object? category = _s,
   }) => CourierFilters(
     transportFilter: transportFilter ?? this.transportFilter,
     shopProvince: shopProvince == _s
@@ -96,6 +101,9 @@ class CourierFilters {
         ? this.deliveryDistrict
         : deliveryDistrict as CourierFilterItem?,
     shop: shop == _s ? this.shop : shop as CourierFilterItem?,
+    category: category == _s
+        ? this.category
+        : category as CourierFilterItem?,
   );
 }
 
@@ -111,6 +119,7 @@ class ClassifierCache {
   List<CourierFilterItem> provinces = [];
   final Map<String, List<CourierFilterItem>> etraps = {};
   final Map<String, List<CourierFilterItem>> districts = {};
+  List<ShopCategory> shopCategories = [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -477,6 +486,21 @@ class _CourierFilterModalState extends State<CourierFilterModal>
     }
   }
 
+  Future<List<ShopCategory>> _loadShopCategories() async {
+    if (widget.cache.shopCategories.isNotEmpty) {
+      return widget.cache.shopCategories;
+    }
+    try {
+      final list = await widget.authRepo.getShopCategories();
+      final items = list.isNotEmpty ? list : kLocalShopCategories;
+      widget.cache.shopCategories = items;
+      return items;
+    } catch (_) {
+      widget.cache.shopCategories = kLocalShopCategories;
+      return kLocalShopCategories;
+    }
+  }
+
   Future<List<CourierFilterItem>> _loadDistricts(String etrapId) async {
     if (widget.cache.districts.containsKey(etrapId)) {
       return widget.cache.districts[etrapId]!;
@@ -733,6 +757,41 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                     );
                   }).toList(),
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Category ─────────────────────────────────────────────────
+              _sectionLabel(w.filterCategorySection),
+              _pickerTile(
+                icon: _draft.category != null
+                    ? iconForSlug(_draft.category!.id)
+                    : Icons.category_outlined,
+                hint: w.filterPickCategory,
+                selected: _draft.category,
+                onTap: () async {
+                  final cats = await _loadShopCategories();
+                  if (!mounted) return;
+                  final items = cats
+                      .map((c) => CourierFilterItem(
+                            id: c.id.toString(),
+                            label: c.label(widget.isRu),
+                          ))
+                      .toList();
+                  final res = await _openPicker(
+                    title: w.filterCategorySection,
+                    itemsFuture: Future.value(items),
+                    selectedId: _draft.category?.id,
+                  );
+                  if (res == null) return;
+                  setState(() => _draft = _draft.copyWith(
+                        category: _isCleared(res) ? null : res,
+                      ));
+                },
+                onClear: _draft.category != null
+                    ? () => setState(
+                        () => _draft = _draft.copyWith(category: null),
+                      )
+                    : null,
               ),
               const SizedBox(height: 16),
 

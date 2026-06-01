@@ -11,6 +11,19 @@ abstract final class TourKeys {
   static const courierFilter      = 'courier_filter_modal';
   static const userTypeSelection  = 'user_type_selection_screen';
 
-  /// SharedPrefs-ключ: 'tour_passed_home_screen' и т.д.
-  static String prefsKey(String screenKey) => 'tour_passed_$screenKey';
+  /// SharedPrefs-ключ для тур-состояния.
+  ///
+  /// Если передан непустой `userId`, ключ становится account-scoped:
+  ///   `tour_passed_<userId>_<screen>`.
+  /// Иначе — глобальный (legacy): `tour_passed_<screen>`.
+  /// Account-scoping важен на устройствах, где работают через несколько
+  /// аккаунтов: после logout→login другого аккаунта тур должен сбрасываться
+  /// **только для нового пользователя**, а у вернувшегося — оставаться seen.
+  static String prefsKey(String screenKey, {String userId = ''}) {
+    if (userId.isEmpty) return 'tour_passed_$screenKey';
+    return 'tour_passed_${userId}_$screenKey';
+  }
+
+  /// Префикс для bulk-поиска всех tour-ключей (любого пользователя).
+  static const prefsPrefix = 'tour_passed_';
 }
