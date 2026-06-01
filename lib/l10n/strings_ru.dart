@@ -631,6 +631,20 @@ const Map<String, String> stringsRu = {
   'tourCreateOrderSubmitTitle': 'Опубликовать заказ',
   'tourCreateOrderSubmitBody':
       'Стоимость и количество жетонов показаны слева. Тапните «Заказать» — мы уведомим курьеров в районе.',
+  // ── Persistent notification активных заказов ──────────────────────────────
+  'activeOrdersChannelName': 'Активные заказы',
+  'activeOrdersChannelDesc':
+      'Постоянное уведомление с активными заказами для быстрого доступа',
+  'activeOrdersNotifTitle': 'Bagla · Активные заказы',
+  'activeOrdersCountSingle': '1 заказ в работе',
+  'activeOrdersCountFew': '{n} заказа в работе',
+  'activeOrdersCountMany': '{n} заказов в работе',
+  'activeOrdersIndex': 'Заказ {i} из {n}',
+  'activeOrdersBtnPrev': '‹',
+  'activeOrdersBtnNext': '›',
+  'activeOrdersBtnCall': 'Позвонить',
+  'activeOrdersBtnComplete': 'Завершить',
+  'activeOrdersBtnCancel': 'Отменить',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',

@@ -569,6 +569,19 @@ class AppLocalizations {
       get('tourCreateOrderLocationBody');
   String get tourCreateOrderSubmitTitle => get('tourCreateOrderSubmitTitle');
   String get tourCreateOrderSubmitBody => get('tourCreateOrderSubmitBody');
+  // ── Active orders persistent notification ───────────────────────────────
+  String get activeOrdersChannelName => get('activeOrdersChannelName');
+  String get activeOrdersChannelDesc => get('activeOrdersChannelDesc');
+  String get activeOrdersNotifTitle => get('activeOrdersNotifTitle');
+  String get activeOrdersCountSingle => get('activeOrdersCountSingle');
+  String get activeOrdersCountFew => get('activeOrdersCountFew');
+  String get activeOrdersCountMany => get('activeOrdersCountMany');
+  String get activeOrdersIndex => get('activeOrdersIndex');
+  String get activeOrdersBtnPrev => get('activeOrdersBtnPrev');
+  String get activeOrdersBtnNext => get('activeOrdersBtnNext');
+  String get activeOrdersBtnCall => get('activeOrdersBtnCall');
+  String get activeOrdersBtnComplete => get('activeOrdersBtnComplete');
+  String get activeOrdersBtnCancel => get('activeOrdersBtnCancel');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

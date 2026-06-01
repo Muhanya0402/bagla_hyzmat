@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
+import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -448,6 +449,9 @@ class AuthProvider extends ChangeNotifier {
     TourManager.instance.setUserId('');
     // Локальный кэш прочитанных уведомлений принадлежит ушедшему пользователю.
     NotificationService.clearLocallyRead();
+    // Скрываем persistent notification с активными заказами — они не должны
+    // продолжать висеть в lock screen после logout.
+    unawaited(ActiveOrdersNotification.hide());
     _token = '';
     _userId = '';
     _phone = '';

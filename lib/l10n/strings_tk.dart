@@ -623,6 +623,20 @@ const Map<String, String> stringsTk = {
   'tourCreateOrderSubmitTitle': 'Sargyt çap etmek',
   'tourCreateOrderSubmitBody':
       'Baha we nyşan sany çepde görkezilen. «Sargyt» düwmesine basyň — etrapdaky kurýerlere habar bereris.',
+  // ── Persistent notification активных заказов ──────────────────────────────
+  'activeOrdersChannelName': 'Işjeň sargytlar',
+  'activeOrdersChannelDesc':
+      'Işjeň sargytlara çalt girmek üçin hemişelik habarnama',
+  'activeOrdersNotifTitle': 'Bagla · Işjeň sargytlar',
+  'activeOrdersCountSingle': '1 işjeň sargyt',
+  'activeOrdersCountFew': '{n} işjeň sargyt',
+  'activeOrdersCountMany': '{n} işjeň sargyt',
+  'activeOrdersIndex': '{n}-den {i}-nji sargyt',
+  'activeOrdersBtnPrev': '‹',
+  'activeOrdersBtnNext': '›',
+  'activeOrdersBtnCall': 'Jaň etmek',
+  'activeOrdersBtnComplete': 'Tamamlamak',
+  'activeOrdersBtnCancel': 'Ýatyrmak',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

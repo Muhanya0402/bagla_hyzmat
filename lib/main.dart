@@ -19,6 +19,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'features/notifications/active_orders/active_orders_notification.dart';
 import 'features/profile/registration_details_screen.dart';
 import 'features/profile/registration_fix_screen.dart';
 import 'l10n/language_provider.dart';
@@ -83,6 +84,14 @@ class _AppBootstrapState extends State<AppBootstrap> {
     final prefs = await SharedPreferences.getInstance();
     final themeProvider = ThemeProvider.fromPrefs(prefs);
     await TourManager.instance.init();
+    // Persistent notification «Активные заказы» — канал + listeners один раз
+    // за процесс. Title/desc берём из текущего языка (если поменяется на лету,
+    // канал останется с прежним именем — это допустимо, имена видны только
+    // в системных настройках Android).
+    await ActiveOrdersNotification.initialize(
+      channelName: langProvider.words.activeOrdersChannelName,
+      channelDesc: langProvider.words.activeOrdersChannelDesc,
+    );
 
     final bool loggedIn = await AuthRepository.checkAuthStatus();
     final String savedRole = prefs.getString('role') ?? '';

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
-    <color name="notification_color">#1B3A6B</color>
+    <!-- Anthropic warm clay accent — совпадает с AppColors.accent (light)
+         и AppColors.ink (dark). Это фирменный «Claude rust». Андроид
+         тинтует им силуэт иконки в шторке и подсвечивает уведомление. -->
+    <color name="notification_color">#CC785C</color>
 </resources>

@@ -3,6 +3,9 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/notifications/active_orders/active_order_snapshot.dart';
+import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
+import 'package:bagla/features/orders/order_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,7 +55,18 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   final scrollController = ScrollController();
 
   int activeOrdersCount = 0;
+  /// AppLifecycleListener — современная замена WidgetsBindingObserver
+  /// для подписки на resumed/paused. Не требует override'ить весь
+  /// интерфейс наблюдателя.
+  AppLifecycleListener? _lifecycleListener;
+
   void initController() {
+    // Слушаем resume — это момент когда пользователь возвращается в
+    // приложение из background. Здесь применяем pending action из
+    // persistent notification (например, «Завершить» нажатый из шторки).
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () => unawaited(_processPendingAction()),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initAuth = context.read<AuthProvider>();
       final initRole = initAuth.role.toLowerCase().trim();
@@ -155,9 +169,51 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   void disposeController() {
+    _lifecycleListener?.dispose();
+    _lifecycleListener = null;
     realtimeService.disconnect();
     scrollController.dispose();
   }
+
+  // ── Pending action processor ───────────────────────────────────────────
+
+  /// Парсит и выполняет pending action, поставленный из background isolate'а
+  /// в `ActiveOrdersNotification.onActionReceivedMethod`.
+  ///
+  /// Формат строки в prefs: `<verb>:<orderId>`. Поддерживается:
+  ///   - `complete:<id>` — PATCH status='completed'
+  ///   - (расширяемо: `cancel:<id>`, `accept:<id>`)
+  ///
+  /// На любую ошибку — silent fail. Если PATCH провалится, пользователь
+  /// увидит непросроченный статус и сможет нажать кнопку снова.
+  Future<void> _processPendingAction() async {
+    final action = await ActiveOrdersNotification.consumePendingAction();
+    if (action == null || action.isEmpty) return;
+    if (!mounted) return;
+
+    final colonIdx = action.indexOf(':');
+    if (colonIdx <= 0 || colonIdx >= action.length - 1) return;
+    final verb = action.substring(0, colonIdx);
+    final orderId = action.substring(colonIdx + 1);
+
+    final auth = context.read<AuthProvider>();
+
+    switch (verb) {
+      case 'complete':
+        final ok = await orderService.updateStatus(
+          orderId,
+          'completed',
+          userId: auth.userId,
+        );
+        if (!mounted) return;
+        if (ok) {
+          // Полный refresh: orders, level, active count + sync уведомления.
+          await handleRefresh();
+        }
+        break;
+    }
+  }
+
 
   Future<void> loadActiveOrdersCount(String userId) async {
     final count = await orderService.getActiveOrdersCount(userId);
@@ -464,6 +520,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       // Переприменяем локальные фильтры (по велаятам/этрапам),
       // чтобы новый или обновленный сокет-заказ сразу правильно отфильтровался на экране
       applyFilters(orders);
+      // WS-событие может означать что новый заказ ушёл в active или
+      // существующий завершился. Пересинхронизируем уведомление.
+      unawaited(_syncActiveOrdersNotification());
     };
   }
 
@@ -555,6 +614,67 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       ordersLoading = false;
       activeOrdersCount = activeCount;
     });
+    // Не блокируем UI — fire-and-forget. Менеджер сам ничего не делает,
+    // если активных заказов 0 (просто отменяет уведомление).
+    unawaited(_syncActiveOrdersNotification());
+  }
+
+  /// Синхронизировать persistent notification «Активные заказы».
+  ///
+  /// Фильтрует текущий список `orders` под активные позиции
+  /// текущего пользователя, конвертирует в `ActiveOrderSnapshot`'ы,
+  /// передаёт менеджеру. На logout вызывается `hide()`.
+  ///
+  /// Ограничение: использует `orders` из текущей UI-вкладки. Если курьер
+  /// на «Все» — активные заказы там отсутствуют по дизайну, уведомление
+  /// будет пустым. Это OK для MVP — обычно курьер сидит на «Мои».
+  /// В Phase 2 можно сделать отдельный fetch активных заказов независимо
+  /// от UI-фильтра.
+  Future<void> _syncActiveOrdersNotification() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    if (auth.userId.isEmpty) {
+      await ActiveOrdersNotification.hide();
+      return;
+    }
+    final lang = context.read<LanguageProvider>();
+    final isRu = lang.isRu;
+    final words = lang.words;
+
+    final snapshots = <ActiveOrderSnapshot>[];
+    for (final raw in orders) {
+      if (raw is! Map) continue;
+      final dto = OrderDto.fromMap(Map<String, dynamic>.from(raw));
+
+      // Курьер: показываем только взятые им active.
+      // Магазин: показываем published + active (его заказы в работе).
+      if (auth.isCourier && dto.status != 'active') continue;
+      if (auth.isShop &&
+          dto.status != 'published' &&
+          dto.status != 'active') {
+        continue;
+      }
+      if (auth.isClient) continue;
+
+      snapshots.add(ActiveOrderSnapshot(
+        id: dto.id,
+        shortId: dto.shortId,
+        addressLine: dto.deliveryAddress(isRu),
+        // Курьеру звоним клиенту, магазину — курьеру.
+        phoneToCall: auth.isCourier ? dto.clientPhone : dto.courierPhone,
+        status: dto.status,
+      ));
+    }
+
+    await ActiveOrdersNotification.sync(
+      orders: snapshots,
+      title: words.activeOrdersNotifTitle,
+      indexTemplate: (i, n) => words.activeOrdersIndex
+          .replaceAll('{i}', '${i + 1}')
+          .replaceAll('{n}', '$n'),
+      callBtnLabel: words.activeOrdersBtnCall,
+      completeBtnLabel: words.activeOrdersBtnComplete,
+    );
   }
 
   /// Переподключить WS с актуальным состоянием `filters` + `selectedStatus`.
