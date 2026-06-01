@@ -3,6 +3,9 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/image_compression.dart';
 import 'package:bagla/core/image_picker_presets.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
@@ -19,6 +22,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
@@ -27,7 +31,8 @@ class CreateOrderScreen extends StatefulWidget {
   State<CreateOrderScreen> createState() => _CreateOrderScreenState();
 }
 
-class _CreateOrderScreenState extends State<CreateOrderScreen> {
+class _CreateOrderScreenState extends State<CreateOrderScreen>
+    with AppTourMixin<CreateOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _authRepo = AuthRepository();
   bool _isLoading = false;
@@ -49,6 +54,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _photoKey = GlobalKey();
   final _dateKey = GlobalKey();
   final _locationKey = GlobalKey();
+  final _submitKey = GlobalKey();
   final _scrollController = ScrollController();
 
   // Маска номера клиента — формат совпадает с phone_screen.
@@ -111,6 +117,41 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _orderService.fetchPointsRules().then((rules) {
       setState(() => _pointsRules = rules);
     });
+    startTourIfNeeded(
+      screenKey: TourKeys.createOrder,
+      targetsBuilder: _buildTourTargets,
+    );
+  }
+
+  List<TargetFocus> _buildTourTargets() {
+    final words = context.read<LanguageProvider>().words;
+    return [
+      TourTarget.build(
+        key: _photoKey,
+        title: words.tourCreateOrderPhotoTitle,
+        body: words.tourCreateOrderPhotoBody,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _dateKey,
+        title: words.tourCreateOrderRecipientTitle,
+        body: words.tourCreateOrderRecipientBody,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _locationKey,
+        title: words.tourCreateOrderLocationTitle,
+        body: words.tourCreateOrderLocationBody,
+        align: ContentAlign.top,
+      ),
+      TourTarget.build(
+        key: _submitKey,
+        title: words.tourCreateOrderSubmitTitle,
+        body: words.tourCreateOrderSubmitBody,
+        align: ContentAlign.top,
+        isLast: true,
+      ),
+    ];
   }
 
   @override
@@ -1766,10 +1807,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              _SubmitButton(
-                label: words.placeOrder,
-                isLoading: _isLoading,
-                onTap: () => _submitOrder(words),
+              KeyedSubtree(
+                key: _submitKey,
+                child: _SubmitButton(
+                  label: words.placeOrder,
+                  isLoading: _isLoading,
+                  onTap: () => _submitOrder(words),
+                ),
               ),
             ],
           ),

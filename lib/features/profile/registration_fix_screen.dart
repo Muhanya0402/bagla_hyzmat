@@ -5,6 +5,9 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/image_compression.dart';
 import 'package:bagla/core/image_picker_presets.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/features/profile/rejection_codes.dart';
@@ -18,6 +21,7 @@ import 'package:bagla/models/province.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 /// Экран исправления данных после отказа модератора.
 ///
@@ -40,7 +44,8 @@ class RegistrationFixScreen extends StatefulWidget {
 
 enum _Photo { passportMain, passportAddress, passportFace, selfie }
 
-class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
+class _RegistrationFixScreenState extends State<RegistrationFixScreen>
+    with AppTourMixin<RegistrationFixScreen> {
   final _authRepo = AuthRepository();
   final _picker = ImagePicker();
   bool _isLoading = false;
@@ -76,6 +81,8 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
   };
 
   late final Set<String> _reasons;
+  final _summaryKey = GlobalKey();
+  final _submitKey = GlobalKey();
   late final String _role;
   bool get _isCourier => _role == 'courier';
 
@@ -93,6 +100,29 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
     if (_reasons.contains(RejectionCode.category) && !_isCourier) {
       _loadCategories();
     }
+    startTourIfNeeded(
+      screenKey: TourKeys.regFix,
+      targetsBuilder: _buildTourTargets,
+    );
+  }
+
+  List<TargetFocus> _buildTourTargets() {
+    final words = context.read<LanguageProvider>().words;
+    return [
+      TourTarget.build(
+        key: _summaryKey,
+        title: words.tourRegFixSummaryTitle,
+        body: words.tourRegFixSummaryBody,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _submitKey,
+        title: words.tourRegFixSubmitTitle,
+        body: words.tourRegFixSubmitBody,
+        align: ContentAlign.top,
+        isLast: true,
+      ),
+    ];
   }
 
   @override
@@ -456,7 +486,10 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
                 const SizedBox(height: 24),
 
                 // Чек-лист затронутых полей
-                _ReasonsList(reasons: _reasons, c: c, words: words),
+                KeyedSubtree(
+                  key: _summaryKey,
+                  child: _ReasonsList(reasons: _reasons, c: c, words: words),
+                ),
                 const SizedBox(height: 24),
 
                 ..._buildFieldsForReasons(c, words, isRu),
@@ -479,10 +512,13 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen> {
                   top: false,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
-                    child: _SubmitButton(
-                      label: words.regFixSubmit,
-                      isLoading: _isLoading,
-                      onTap: _submit,
+                    child: KeyedSubtree(
+                      key: _submitKey,
+                      child: _SubmitButton(
+                        label: words.regFixSubmit,
+                        isLoading: _isLoading,
+                        onTap: _submit,
+                      ),
                     ),
                   ),
                 ),

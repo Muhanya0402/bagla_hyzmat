@@ -5,6 +5,9 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/image_compression.dart';
 import 'package:bagla/core/image_picker_presets.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/features/profile/widgets/image_source_picker.dart';
@@ -17,6 +20,7 @@ import 'package:bagla/models/province.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 // ─── Какое фото грузим ────────────────────────────────────────────────────────
 enum _PhotoSlot { passportMain, passportAddress, passportFace, selfie }
@@ -31,7 +35,8 @@ class RegistrationDetailsScreen extends StatefulWidget {
 }
 
 class _RegistrationDetailsScreenState
-    extends State<RegistrationDetailsScreen> {
+    extends State<RegistrationDetailsScreen>
+    with AppTourMixin<RegistrationDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _authRepo = AuthRepository();
   final _picker = ImagePicker();
@@ -56,11 +61,13 @@ class _RegistrationDetailsScreenState
   final _f2 = FocusNode();
   final _f3 = FocusNode();
 
-  // GlobalKey'и секций — для scrollToEnsureVisible на не-text полях.
+  // GlobalKey'и секций — для scrollToEnsureVisible на не-text полях
+  // и одновременно для тура (подсветка).
   final _locationKey = GlobalKey();
   final _categoryKey = GlobalKey();
   final _transportKey = GlobalKey();
   final _photosKey = GlobalKey();
+  final _submitKey = GlobalKey();
 
   final _scrollController = ScrollController();
 
@@ -98,6 +105,41 @@ class _RegistrationDetailsScreenState
     _loadProvinces();
     if (widget.role == 'shop') _loadCategories();
     _searchController.addListener(_onSearchChanged);
+    startTourIfNeeded(
+      screenKey: TourKeys.regDetails,
+      targetsBuilder: _buildTourTargets,
+    );
+  }
+
+  /// Тур-шаги под роль:
+  ///   - локация (общее)
+  ///   - фото (только курьер; у магазина пропускаем — там фото не нужны)
+  ///   - submit
+  List<TargetFocus> _buildTourTargets() {
+    final words = context.read<LanguageProvider>().words;
+    final isCourier = widget.role == 'courier';
+    return [
+      TourTarget.build(
+        key: _locationKey,
+        title: words.tourRegLocationTitle,
+        body: words.tourRegLocationBody,
+        align: ContentAlign.bottom,
+      ),
+      if (isCourier)
+        TourTarget.build(
+          key: _photosKey,
+          title: words.tourRegPhotosTitle,
+          body: words.tourRegPhotosBody,
+          align: ContentAlign.top,
+        ),
+      TourTarget.build(
+        key: _submitKey,
+        title: words.tourRegSubmitTitle,
+        body: words.tourRegSubmitBody,
+        align: ContentAlign.top,
+        isLast: true,
+      ),
+    ];
   }
 
   Future<void> _loadCategories() async {
@@ -1327,10 +1369,13 @@ class _RegistrationDetailsScreenState
                   top: false,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 20),
-                    child: _SubmitButton(
-                      label: words.saveBtn,
-                      isLoading: _isLoading,
-                      onPressed: _handleSubmit,
+                    child: KeyedSubtree(
+                      key: _submitKey,
+                      child: _SubmitButton(
+                        label: words.saveBtn,
+                        isLoading: _isLoading,
+                        onPressed: _handleSubmit,
+                      ),
                     ),
                   ),
                 ),

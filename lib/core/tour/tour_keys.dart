@@ -10,6 +10,8 @@ abstract final class TourKeys {
   static const topUpModal         = 'top_up_modal';
   static const courierFilter      = 'courier_filter_modal';
   static const userTypeSelection  = 'user_type_selection_screen';
+  static const regDetails         = 'registration_details_screen';
+  static const regFix             = 'registration_fix_screen';
 
   /// SharedPrefs-ключ для тур-состояния.
   ///

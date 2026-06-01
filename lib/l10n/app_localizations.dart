@@ -539,6 +539,36 @@ class AppLocalizations {
   String get restrictedDefaultStatusHint =>
       get('restrictedDefaultStatusHint');
   String get restrictedSignOut => get('restrictedSignOut');
+  // ── Tour: registration_details ─────────────────────────────────────────
+  String get tourRegLocationTitle => get('tourRegLocationTitle');
+  String get tourRegLocationBody => get('tourRegLocationBody');
+  String get tourRegPhotosTitle => get('tourRegPhotosTitle');
+  String get tourRegPhotosBody => get('tourRegPhotosBody');
+  String get tourRegSubmitTitle => get('tourRegSubmitTitle');
+  String get tourRegSubmitBody => get('tourRegSubmitBody');
+  // ── Tour: registration_fix ─────────────────────────────────────────────
+  String get tourRegFixSummaryTitle => get('tourRegFixSummaryTitle');
+  String get tourRegFixSummaryBody => get('tourRegFixSummaryBody');
+  String get tourRegFixSubmitTitle => get('tourRegFixSubmitTitle');
+  String get tourRegFixSubmitBody => get('tourRegFixSubmitBody');
+  // ── Tour: appeals ──────────────────────────────────────────────────────
+  String get tourAppealsCreateTitle => get('tourAppealsCreateTitle');
+  String get tourAppealsCreateBody => get('tourAppealsCreateBody');
+  String get tourAppealsListTitle => get('tourAppealsListTitle');
+  String get tourAppealsListBody => get('tourAppealsListBody');
+  // ── Tour: create_order ─────────────────────────────────────────────────
+  String get tourCreateOrderPhotoTitle => get('tourCreateOrderPhotoTitle');
+  String get tourCreateOrderPhotoBody => get('tourCreateOrderPhotoBody');
+  String get tourCreateOrderRecipientTitle =>
+      get('tourCreateOrderRecipientTitle');
+  String get tourCreateOrderRecipientBody =>
+      get('tourCreateOrderRecipientBody');
+  String get tourCreateOrderLocationTitle =>
+      get('tourCreateOrderLocationTitle');
+  String get tourCreateOrderLocationBody =>
+      get('tourCreateOrderLocationBody');
+  String get tourCreateOrderSubmitTitle => get('tourCreateOrderSubmitTitle');
+  String get tourCreateOrderSubmitBody => get('tourCreateOrderSubmitBody');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

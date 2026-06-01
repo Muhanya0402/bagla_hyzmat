@@ -586,6 +586,43 @@ const Map<String, String> stringsTk = {
   'restrictedDefaultStatusHint':
       'Barlag 15 minutdan 2 sagada çenli dowam edýär',
   'restrictedSignOut': 'Ulgamdan çykmak',
+  // ── Тур: registration_details ──────────────────────────────────────────────
+  'tourRegLocationTitle': 'Iş ýeri',
+  'tourRegLocationBody':
+      'Welaýaty, etraby we etrapçany ädimme-ädim saýlaň — bu size ýakyn sargytlary tapmaga kömek eder.',
+  'tourRegPhotosTitle': 'Resminama suratlary',
+  'tourRegPhotosBody':
+      '4 surat ýükläň: pasportyň esasy sahypasy, hasaba alyş, ýüz suratly sahypa we öň selfi. Howpsuzlyk gullugy üçin gerek.',
+  'tourRegSubmitTitle': 'Barlaga ibermek',
+  'tourRegSubmitBody':
+      'Arzany ibermek üçin basyň. Moderator 15 minutdan 2 sagada çenli barlaýar.',
+  // ── Тур: registration_fix ──────────────────────────────────────────────────
+  'tourRegFixSummaryTitle': 'Düzetmeli zatlar',
+  'tourRegFixSummaryBody':
+      'Moderatoryň belländäki meýdanlaryň sanawy. Aşak süýşüriň we her birini düzediň.',
+  'tourRegFixSubmitTitle': 'Düzedeniňizden soň',
+  'tourRegFixSubmitBody':
+      'Hemmesini düzedeniňizden soň, düwmäni basyň — profil täzeden barlaga gider.',
+  // ── Тур: appeals ───────────────────────────────────────────────────────────
+  'tourAppealsCreateTitle': 'Täze ýüzlenme',
+  'tourAppealsCreateBody':
+      'Meseläňizi düşündiriň — meselem, sargyt boýunça dawa ýa-da kurýer hakda şikaýat. Iş güni içinde jogap bereris.',
+  'tourAppealsListTitle': 'Ýüzlenmeler taryhy',
+  'tourAppealsListBody':
+      'Bu ýerde ähli arzalaryňyz we ýagdaýy. Söhbeti açmak üçin karta basyň.',
+  // ── Тур: create_order ──────────────────────────────────────────────────────
+  'tourCreateOrderPhotoTitle': 'Haryt suraty',
+  'tourCreateOrderPhotoBody':
+      '3-e çenli surat goşuň — kurýer we müşderi näme alyp barýandygyňyzy aňsat düşüner.',
+  'tourCreateOrderRecipientTitle': 'Müşderi we wagt',
+  'tourCreateOrderRecipientBody':
+      'Müşderiniň belgisini giriziň we senäni saýlaň — karusel iPhone ýaly işleýär.',
+  'tourCreateOrderLocationTitle': 'Nirä eltmeli',
+  'tourCreateOrderLocationBody':
+      'Eltip beriş etrapçasyny görkeziň — sistem ýakyn kurýerleri tapar.',
+  'tourCreateOrderSubmitTitle': 'Sargyt çap etmek',
+  'tourCreateOrderSubmitBody':
+      'Baha we nyşan sany çepde görkezilen. «Sargyt» düwmesine basyň — etrapdaky kurýerlere habar bereris.',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

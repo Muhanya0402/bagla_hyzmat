@@ -1,5 +1,8 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/appeals/widgets/appeal_card.dart';
 import 'package:bagla/features/appeals/widgets/appeal_detail_sheet.dart';
 import 'package:bagla/features/appeals/widgets/create_appeal_sheet.dart';
@@ -9,6 +12,7 @@ import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 class AppealsScreen extends StatefulWidget {
   const AppealsScreen({super.key});
@@ -17,16 +21,43 @@ class AppealsScreen extends StatefulWidget {
   State<AppealsScreen> createState() => _AppealsScreenState();
 }
 
-class _AppealsScreenState extends State<AppealsScreen> {
+class _AppealsScreenState extends State<AppealsScreen>
+    with AppTourMixin<AppealsScreen> {
   List<dynamic> _appeals = [];
   bool _isLoading = true;
   String? _error;
   bool _sheetOpen = false;
 
+  final _newKey = GlobalKey();
+  final _listKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _loadAppeals();
+    startTourIfNeeded(
+      screenKey: TourKeys.appeals,
+      targetsBuilder: _buildTourTargets,
+    );
+  }
+
+  List<TargetFocus> _buildTourTargets() {
+    final words = context.read<LanguageProvider>().words;
+    return [
+      TourTarget.build(
+        key: _newKey,
+        title: words.tourAppealsCreateTitle,
+        body: words.tourAppealsCreateBody,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        key: _listKey,
+        title: words.tourAppealsListTitle,
+        body: words.tourAppealsListBody,
+        align: ContentAlign.top,
+        isLast: true,
+      ),
+    ];
   }
 
   Future<void> _loadAppeals() async {
@@ -96,16 +127,20 @@ class _AppealsScreenState extends State<AppealsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Кнопка нового обращения ──────────────────────────────────
-            _NewAppealButton(
-              label: words.appealsNew,
-              hint: words.appealsHint,
-              onTap: () => _showCreateSheet(context, words),
+            KeyedSubtree(
+              key: _newKey,
+              child: _NewAppealButton(
+                label: words.appealsNew,
+                hint: words.appealsHint,
+                onTap: () => _showCreateSheet(context, words),
+              ),
             ),
             Container(height: 0.5, color: AppColors.of(context).border),
 
             // ── Список апелляций ─────────────────────────────────────────
             Expanded(
               child: RefreshIndicator(
+                key: _listKey,
                 color: AppColors.of(context).ink,
                 backgroundColor: AppColors.of(context).surface,
                 onRefresh: _loadAppeals,
