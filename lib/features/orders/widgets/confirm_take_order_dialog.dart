@@ -61,7 +61,8 @@ class ConfirmTakeOrderDialog extends StatelessWidget {
       pageBuilder: (_, _, _) => Stack(
         children: [
           BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+            // sigma 2 для производительности на старых девайсах.
+            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
             child: Container(color: Colors.black.withValues(alpha: 0.28)),
           ),
           Center(

@@ -330,7 +330,9 @@ class _FloatingNav extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        // sigma 2 вместо 4 — визуально близко, ~4× дешевле для GPU.
+        // BackdropFilter — самая дорогая операция в Flutter UI.
+        filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
         child: Container(
           height: 66,
           decoration: BoxDecoration(

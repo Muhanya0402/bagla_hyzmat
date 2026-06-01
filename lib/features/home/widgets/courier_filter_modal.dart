@@ -290,7 +290,8 @@ class _FilterOverlayState extends State<_FilterOverlay>
               behavior: HitTestBehavior.opaque,
               onTap: _close,
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                // sigma 2 для GPU-friendly blur'а на старых девайсах.
+                filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                 child: Container(color: Colors.black.withValues(alpha: 0.38)),
               ),
             ),

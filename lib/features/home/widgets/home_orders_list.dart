@@ -156,22 +156,26 @@ class HomeOrdersList extends StatelessWidget {
         }
 
         if (authProv.role == 'client') {
-          return OrderCard(
-            order: orders[index],
-            role: 'courier',
-            currentUserId: authProv.userId,
-            userPhone: authProv.phone,
-            onUpdate: onRefresh,
-            onTap: () => showModalBottomSheet(
-              context: context,
-              useRootNavigator: true,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => RolePickerEmbedded(
-                onClose: () =>
-                    Navigator.of(context, rootNavigator: true).pop(),
-              ),
-            ).then((_) => onRefresh()),
+          // RepaintBoundary — каждая карточка получает свой raster-слой,
+          // изменение одной не репейнтит соседей.
+          return RepaintBoundary(
+            child: OrderCard(
+              order: orders[index],
+              role: 'courier',
+              currentUserId: authProv.userId,
+              userPhone: authProv.phone,
+              onUpdate: onRefresh,
+              onTap: () => showModalBottomSheet(
+                context: context,
+                useRootNavigator: true,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => RolePickerEmbedded(
+                  onClose: () =>
+                      Navigator.of(context, rootNavigator: true).pop(),
+                ),
+              ).then((_) => onRefresh()),
+            ),
           );
         }
 

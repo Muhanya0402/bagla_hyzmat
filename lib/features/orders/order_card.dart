@@ -12,7 +12,7 @@ import 'package:bagla/features/orders/order_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class OrderCard extends StatelessWidget {
+class OrderCard extends StatefulWidget {
   final dynamic order;
   final String role;
   final String currentUserId;
@@ -30,14 +30,47 @@ class OrderCard extends StatelessWidget {
     required this.userPhone,
   });
 
-  // ── Main build ─────────────────────────────────────────────────────────────
+  @override
+  State<OrderCard> createState() => _OrderCardState();
+}
+
+class _OrderCardState extends State<OrderCard> {
+  // DTO мемоизируется: парсится один раз и переисчисляется только когда
+  // `widget.order` поменялся по identity. Без этого каждый rebuild карточки
+  // (а их много — language toggle, parent setState) создавал новый Map-копию
+  // и новый OrderDto. Для списка из 30 карточек это были тысячи мусорных
+  // объектов в секунду.
+  late OrderDto _dto;
+
+  @override
+  void initState() {
+    super.initState();
+    _dto = OrderDto.fromMap(Map<String, dynamic>.from(widget.order as Map));
+  }
+
+  @override
+  void didUpdateWidget(OrderCard old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.order, widget.order)) {
+      _dto = OrderDto.fromMap(Map<String, dynamic>.from(widget.order as Map));
+    }
+  }
+
+  // ── Shortcuts to widget fields — чтобы build() не таскал `widget.X` ──
+  String get role => widget.role;
+  String get currentUserId => widget.currentUserId;
+  String get userPhone => widget.userPhone;
+  VoidCallback? get onUpdate => widget.onUpdate;
+  VoidCallback? get onTap => widget.onTap;
+
+  // ── Main build ─────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final langProvider = context.watch<LanguageProvider>();
-    final words = langProvider.words;
+    final isRu = context.select<LanguageProvider, bool>((p) => p.isRu);
+    final words = Provider.of<LanguageProvider>(context, listen: false).words;
 
-    final dto = OrderDto.fromMap(Map<String, dynamic>.from(order as Map));
+    final dto = _dto;
     final isShop = role == 'shop';
 
     return Container(
@@ -80,14 +113,14 @@ class OrderCard extends StatelessWidget {
                 _buildAddressRow(
                   icon: Icons.inventory_2_outlined,
                   iconColor: c.inkMuted,
-                  address: dto.shopAddress(langProvider.isRu),
+                  address: dto.shopAddress(isRu),
                   c: c,
                 ),
                 const SizedBox(height: 4),
                 _buildAddressRow(
                   icon: Icons.location_on_outlined,
                   iconColor: c.ink,
-                  address: dto.deliveryAddress(langProvider.isRu),
+                  address: dto.deliveryAddress(isRu),
                   c: c,
                 ),
 

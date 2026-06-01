@@ -88,7 +88,8 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        // sigma 2 — заметно дешевле, визуально близко.
+        filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
         child: Container(
           decoration: BoxDecoration(
             color: c.bg,

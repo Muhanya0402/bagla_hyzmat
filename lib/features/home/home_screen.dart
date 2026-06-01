@@ -35,6 +35,11 @@ class _HomeScreenState extends State<HomeScreen>
   final _statusFilterKey = GlobalKey(); // HomeStatusFilter (shop / «Мои»)
   final _ordersKey = GlobalKey(); // лента заказов
 
+  /// Guard: level-up диалог уже запланирован, не плодим дубли при ребилдах.
+  /// Раньше каждый rebuild регистрировал новый postFrameCallback,
+  /// и если widget rebuilds 5× быстро подряд — открывались 5 диалогов.
+  bool _levelUpQueued = false;
+
   @override
   void initState() {
     super.initState();
@@ -141,6 +146,7 @@ class _HomeScreenState extends State<HomeScreen>
               provider: provider,
               onDismiss: () {
                 provider.dismissLevelUp(pending.id);
+                _levelUpQueued = false;
                 Navigator.of(ctx).pop();
               },
             ),
@@ -154,7 +160,14 @@ class _HomeScreenState extends State<HomeScreen>
     final authProv = context.watch<AuthProvider>();
     final lang = context.watch<LanguageProvider>();
     final words = lang.words;
-    final levelProvider = context.watch<LevelProvider>();
+    // НЕ watch — берём провайдер один раз без подписки.
+    // Реактивность нужна только на pendingLevelUp — селектим узко.
+    final levelProvider = context.read<LevelProvider>();
+    // Реактивно следим только за фактом «есть/нет pending level-up»,
+    // а не за всеми XP-тиками и обновлениями уровня.
+    final hasPendingLevelUp = context.select<LevelProvider, bool>(
+      (p) => p.pendingLevelUp != null,
+    );
 
     // AuthProvider теперь нормализует role/status и предоставляет предикаты.
     final bool isActive = authProv.isActive;
@@ -169,9 +182,11 @@ class _HomeScreenState extends State<HomeScreen>
 
     final c = AppColors.of(context);
 
-    if (isCourier && levelProvider.pendingLevelUp != null) {
+    if (isCourier && hasPendingLevelUp && !_levelUpQueued) {
+      _levelUpQueued = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showLevelUp(context, levelProvider);
+        if (!mounted) return;
+        _showLevelUp(context, levelProvider);
       });
     }
 

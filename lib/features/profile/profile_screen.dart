@@ -335,7 +335,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       pageBuilder: (_, _, _) => Stack(
         children: [
           BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            // sigma 2 — на старых девайсах sigma 5 вызывает ощутимый jank
+            // при открытии модалки.
+            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
             child: const SizedBox.expand(),
           ),
           Center(
