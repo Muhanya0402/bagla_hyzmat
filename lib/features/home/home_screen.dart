@@ -360,7 +360,11 @@ class _HomeScreenState extends State<HomeScreen>
       icon = Icons.edit_note_rounded;
       text = words.accountRejected;
       subtext = words.accountRejectedTap;
-      onTap = () => Navigator.pushNamed(context, '/reg-fix')
+      // rootNavigator: true обязательно — иначе push идёт во вложенный
+      // Navigator текущего таба MainShell'а, у которого `_tabRoute` не
+      // знает про `/reg-fix` → "onGenerateRoute returned null".
+      onTap = () => Navigator.of(context, rootNavigator: true)
+          .pushNamed('/reg-fix')
           .then((_) => handleRefresh());
     } else {
       color = c.amber;

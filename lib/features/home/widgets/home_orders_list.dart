@@ -10,7 +10,7 @@ import 'package:bagla/features/orders/order_card.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 
-class HomeOrdersList extends StatelessWidget {
+class HomeOrdersList extends StatefulWidget {
   final List<dynamic> orders;
   final bool isLoading;
   final bool isReloading; // true while switching tabs — shows shimmer
@@ -57,43 +57,157 @@ class HomeOrdersList extends StatelessWidget {
   });
 
   @override
+  State<HomeOrdersList> createState() => _HomeOrdersListState();
+}
+
+class _HomeOrdersListState extends State<HomeOrdersList> {
+  /// Точка начала текущего жеста — нужна чтобы считать суммарный сдвиг
+  /// в `onPointerUp` (для определения направления свайпа).
+  Offset? _pointerStart;
+
+  /// Состояния жеста:
+  ///   - `null` — палец оторван или ещё не определились
+  ///   - `false` — определили: жест вертикальный, refresh может работать
+  ///   - `true`  — определили: жест горизонтальный, refresh заглушаем
+  ///
+  /// Пока `null` (палец на экране, направление не определено) —
+  /// **всё равно** глотаем ScrollNotification. Это критично: иначе
+  /// RefreshIndicator успевает активироваться на первых 1-2 пикселях
+  /// вертикального движения горизонтального свайпа.
+  bool? _direction;
+
+  /// Минимальное общее перемещение (px) чтобы зафиксировать направление.
+  /// Берём малое 4 — почти моментально, но защищает от случайного
+  /// дёргания пальцем без явного направления.
+  static const double _dirCommitDistance = 4;
+
+  /// Минимальный сдвиг по X в `onPointerUp` чтобы триггернуть swipe-action.
+  /// Стандарт Material — 60-80 px.
+  static const double _hSwipeThreshold = 80;
+
+  void _onPointerDown(PointerDownEvent event) {
+    _pointerStart = event.position;
+    _direction = null; // пока неизвестно
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_pointerStart == null || _direction != null) return;
+    final dx = (event.position.dx - _pointerStart!.dx).abs();
+    final dy = (event.position.dy - _pointerStart!.dy).abs();
+    // Фиксируем направление как только перемещение стало заметным.
+    // Доминирующая ось решает: горизонтально или вертикально.
+    if (dx + dy >= _dirCommitDistance) {
+      _direction = dx > dy; // true = horizontal, false = vertical
+      // setState НЕ нужен: NotificationListener.onNotification читает
+      // `_direction` на каждое уведомление в реальном времени.
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    final start = _pointerStart;
+    final wasHorizontal = _direction == true;
+    _pointerStart = null;
+    _direction = null;
+    if (start == null || !wasHorizontal) return;
+    final dx = event.position.dx - start.dx;
+    if (dx.abs() < _hSwipeThreshold) return;
+    _handleHorizontalSwipe(dx < 0);
+  }
+
+  void _onPointerCancel(PointerCancelEvent _) {
+    _pointerStart = null;
+    _direction = null;
+  }
+
+  /// `forward = true` — пользователь свайпнул влево (→ следующий пункт).
+  /// `forward = false` — свайпнул вправо (← предыдущий).
+  void _handleHorizontalSwipe(bool forward) {
+    // ── Status mode (магазин): свайп по списку статусов ────────────────
+    if (widget.swipeStatuses != null && widget.onStatusSwipe != null) {
+      final list = widget.swipeStatuses!;
+      final idx = list.indexOf(widget.selectedStatus);
+      if (idx < 0) return;
+      if (forward && idx < list.length - 1) {
+        widget.onStatusSwipe!(list[idx + 1]);
+      } else if (!forward && idx > 0) {
+        widget.onStatusSwipe!(list[idx - 1]);
+      }
+      return;
+    }
+    // ── Index mode (курьер): бинарный Все ↔ Мои ──────────────────────
+    if (widget.onSwipe != null) {
+      if (forward && widget.selectedFilterIndex == 0) {
+        widget.onSwipe!(1);
+      } else if (!forward && widget.selectedFilterIndex == 1) {
+        widget.onSwipe!(0);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final content = _buildContent(context);
-    if (!swipeEnabled) return content;
+    // Listener/NotificationListener нужны только когда есть реальный список
+    // и активирован горизонтальный свайп между табами.
+    //
+    // На empty/loading/error/shimmer состояниях мы возвращаем чистый
+    // content БЕЗ обёрток — иначе мой NotificationListener успевает
+    // заблокировать первый OverscrollNotification, RefreshIndicator
+    // не получает старт оверскролла, pull-to-refresh не активируется.
+    final hasItems = widget.orders.isNotEmpty &&
+        !widget.isLoading &&
+        !widget.isReloading &&
+        !widget.hasError;
+    if (!widget.swipeEnabled || !hasItems) return content;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragEnd: (details) {
-        final v = details.primaryVelocity ?? 0;
-        if (v.abs() < 300) return;
-
-        // ── Status mode (магазин): свайп по списку статусов ────────────
-        if (swipeStatuses != null && onStatusSwipe != null) {
-          final list = swipeStatuses!;
-          final idx = list.indexOf(selectedStatus);
-          if (idx < 0) return;
-          if (v < 0 && idx < list.length - 1) {
-            onStatusSwipe!(list[idx + 1]);
-          } else if (v > 0 && idx > 0) {
-            onStatusSwipe!(list[idx - 1]);
-          }
-          return;
-        }
-
-        // ── Index mode (курьер): бинарный Все ↔ Мои ────────────────────
-        if (onSwipe != null) {
-          if (v < 0 && selectedFilterIndex == 0) {
-            onSwipe!(1);
-          } else if (v > 0 && selectedFilterIndex == 1) {
-            onSwipe!(0);
-          }
-        }
-      },
-      child: content,
+    return Listener(
+      // deferToChild по умолчанию — ListView/Scrollable получают события
+      // как обычно, мы ТОЛЬКО наблюдаем и решаем нужно ли подавить
+      // overscroll-уведомления.
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerCancel,
+      child: NotificationListener<ScrollNotification>(
+        // **Глотаем** ScrollNotification (return true → не пропускаем
+        // выше к RefreshIndicator):
+        //   1. Пока палец на экране и направление НЕ определено
+        //      (`_direction == null` && `_pointerStart != null`).
+        //      Это критично: иначе на первые 1-2 пикселя вертикального
+        //      движения горизонтального свайпа refresh успевает
+        //      проинициализироваться — и появляется «дёрг».
+        //   2. Когда зафиксировали горизонтальное направление
+        //      (`_direction == true`).
+        //
+        // Пропускаем (return false → notification идёт дальше):
+        //   3. Когда зафиксировано вертикальное (`_direction == false`).
+        //      RefreshIndicator работает как обычно.
+        //   4. Когда палец не на экране (свободный inertia-scroll).
+        onNotification: (_) {
+          if (_pointerStart != null && _direction == null) return true;
+          if (_direction == true) return true;
+          return false;
+        },
+        child: content,
+      ),
     );
   }
 
   Widget _buildContent(BuildContext context) {
+    // Локальные алиасы — чтобы не таскать `widget.` через весь метод,
+    // после рефакторинга в StatefulWidget. Это просто чтение полей.
+    final isReloading = widget.isReloading;
+    final isLoading = widget.isLoading;
+    final hasError = widget.hasError;
+    final words = widget.words;
+    final orders = widget.orders;
+    final isShop = widget.isShop;
+    final scrollController = widget.scrollController;
+    final loadingMore = widget.loadingMore;
+    final hasMore = widget.hasMore;
+    final authProv = widget.authProv;
+    final onRefresh = widget.onRefresh;
+
     // Tab-switch shimmer — keeps old content feeling alive.
     if (isReloading) return const _ShimmerList();
 

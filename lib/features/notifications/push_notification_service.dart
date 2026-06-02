@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/core/secure_token_store.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/main.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -136,7 +137,7 @@ class PushNotificationService {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token') ?? '';
+      final token = await SecureTokenStore.instance.getAccessToken() ?? '';
       final uid = prefs.getString('user_id') ?? '';
       if (token.isNotEmpty && uid.isNotEmpty) return true;
       await Future.delayed(pollEvery);
@@ -147,10 +148,10 @@ class PushNotificationService {
   Future<void> _saveTokenToDirectus(String fcmToken) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // ✅ Правильные ключи из auth_repository.dart
       final String? userId = prefs.getString('user_id');
-      final String? authToken = prefs.getString('auth_token');
+      // Auth token из secure storage.
+      final String? authToken =
+          await SecureTokenStore.instance.getAccessToken();
 
       if (userId == null || userId.isEmpty) {
         if (kDebugMode) {

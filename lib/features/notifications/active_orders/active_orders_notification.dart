@@ -19,6 +19,12 @@ import 'active_order_snapshot.dart';
 ///   - **Action buttons** — обрабатываются в background isolate через
 ///     static `onActionReceivedMethod`. Из-за этого все зависимости должны
 ///     быть statically initialisable.
+/// `@pragma('vm:entry-point')` на КЛАССЕ — обязательно для AOT.
+/// `awesome_notifications` запускает action handler из native кода в
+/// отдельном isolate'е, где tree-shaker'у нужно явно сказать
+/// «не удаляй этот класс». Аннотации на отдельных static-методах
+/// (`onActionReceivedMethod` ниже) недостаточно — нужно ещё и на классе.
+@pragma('vm:entry-point')
 abstract final class ActiveOrdersNotification {
   ActiveOrdersNotification._();
 
@@ -90,8 +96,7 @@ abstract final class ActiveOrdersNotification {
     // Запросить разрешение если ещё не дано.
     final allowed = await AwesomeNotifications().isNotificationAllowed();
     if (!allowed) {
-      await AwesomeNotifications()
-          .requestPermissionToSendNotifications();
+      await AwesomeNotifications().requestPermissionToSendNotifications();
     }
   }
 
@@ -250,8 +255,7 @@ abstract final class ActiveOrdersNotification {
   ///   - HTTP вызовы технически возможны, но Xiaomi/Huawei могут гасить
   ///     isolate раньше чем запрос успеет — поэтому делаем pending-action
   @pragma('vm:entry-point')
-  static Future<void> onActionReceivedMethod(
-      ReceivedAction action) async {
+  static Future<void> onActionReceivedMethod(ReceivedAction action) async {
     final key = action.buttonKeyPressed;
     if (key.isEmpty) return; // тап по самому уведомлению — открывает app
 
@@ -290,10 +294,7 @@ abstract final class ActiveOrdersNotification {
         // ROM'ах. Ставим pending-флаг, главный isolate подхватит его при
         // следующем resume и сделает API call с правильной обработкой ошибок.
         final order = list[idx];
-        await prefs.setString(
-          _kPendingActionKey,
-          'complete:${order.id}',
-        );
+        await prefs.setString(_kPendingActionKey, 'complete:${order.id}');
         // Открываем приложение через cancel'нутый notification + payload,
         // чтобы пользователь увидел результат.
         // (На iOS приложение откроется автоматически при tap'е на уведомление.)

@@ -19,6 +19,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'core/api_client.dart';
+import 'core/secure_token_store.dart';
 import 'features/notifications/active_orders/active_orders_notification.dart';
 import 'features/profile/registration_details_screen.dart';
 import 'features/profile/registration_fix_screen.dart';
@@ -27,6 +29,12 @@ import 'features/auth/auth_repository.dart';
 import 'features/auth/phone_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// Глобальный ScaffoldMessenger — нужен чтобы показывать SnackBar'ы
+/// из мест без BuildContext (например, ApiClient при истёкшем refresh-token).
+/// Привязывается к корню MaterialApp, переживает route changes.
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -83,6 +91,40 @@ class _AppBootstrapState extends State<AppBootstrap> {
 
     final prefs = await SharedPreferences.getInstance();
     final themeProvider = ThemeProvider.fromPrefs(prefs);
+    // Одноразовая миграция auth/refresh токенов из plain SharedPreferences
+    // в secure storage (Keychain/Keystore). ОБЯЗАТЕЛЬНО до первой API-сессии,
+    // потому что ApiClient interceptor читает токен из secure store.
+    await SecureTokenStore.instance.migrateFromPrefsIfNeeded();
+    // Привязываем session-expired toast к глобальному ScaffoldMessenger.
+    // ApiClient вызовет это когда refresh-token протух → пользователь
+    // окажется на /login и увидит объяснение, а не silent kick.
+    ApiClient().onSessionExpired = () {
+      final messenger = scaffoldMessengerKey.currentState;
+      if (messenger == null) return;
+      final words = langProvider.words;
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                words.sessionExpiredTitle,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                words.sessionExpiredBody,
+                style: const TextStyle(fontSize: 12.5),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    };
     await TourManager.instance.init();
     // Persistent notification «Активные заказы» — канал + listeners один раз
     // за процесс. Title/desc берём из текущего языка (если поменяется на лету,
@@ -174,6 +216,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       navigatorKey: navigatorKey,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: 'Bagla',
       localizationsDelegates: const [

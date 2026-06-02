@@ -5,6 +5,7 @@ import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'tour_manager.dart';
 
@@ -40,7 +41,10 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
     required List<TargetFocus> Function() targetsBuilder,
     bool forceShow = false,
   }) {
-    if (!forceShow && TourManager.instance.isSeen(screenKey)) return;
+    // ВАЖНО: НЕ делаем eager isSeen-check здесь. На cold-start TourManager
+    // ещё может не знать `_userId` (AuthProvider.loadUserData ещё в полёте).
+    // isSeen с пустым namespace вернёт false, тур запустится впустую. Все
+    // проверки делаются в `_tryLaunch` ПОСЛЕ синхронизации userId.
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -107,12 +111,41 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
-  void _tryLaunch({
+  Future<void> _tryLaunch({
     required String screenKey,
     required List<TargetFocus> Function() targetsBuilder,
     required bool forceShow,
-  }) {
-    if (!forceShow && TourManager.instance.isSeen(screenKey)) return;
+  }) async {
+    // Синхронизация userId — критично для cold-start race.
+    //
+    // Сценарий бага:
+    //   1. App start → AuthProvider() ctor вызывает loadUserData() (async)
+    //   2. Параллельно HomeScreen.initState() → startTourIfNeeded() →
+    //      postFrameCallback → _tryLaunch до того как loadUserData
+    //      успел вызвать TourManager.setUserId(123)
+    //   3. isSeen(home_screen) → проверяет `tour_passed_home_screen`
+    //      (без uid) → false → тур запускается
+    //   4. Пользователь проходит тур → markSeen пишет
+    //      `tour_passed_123_home_screen=true` (т.к. loadUserData
+    //      уже завершился)
+    //   5. Следующий запуск — та же гонка → тур опять «не пройден» → loop
+    //
+    // Фикс: перед isSeen-check читаем `user_id` напрямую из prefs и
+    // форсим TourManager.setUserId(...). Если prefs уже содержит user_id
+    // (что верно для re-launch'а), TourManager сразу станет правильным.
+    if (!forceShow) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final uid = prefs.getString('user_id') ?? '';
+        if (uid.isNotEmpty) {
+          TourManager.instance.setUserId(uid);
+        }
+      } catch (_) {
+        // prefs read failed — продолжаем с тем что есть, безопасный fallback
+      }
+      if (!mounted) return;
+      if (TourManager.instance.isSeen(screenKey)) return;
+    }
     if (_isAnyTourRunning) return;
     final targets = targetsBuilder();
     if (targets.isEmpty) return;

@@ -31,14 +31,21 @@ class OrderDto {
   final String clientPhone;
   final String courierPhone;
   final String courierName;
+
   /// UUID файла `selfie_scan` курьера — для рендеринга круглой аватарки.
   /// Пустая строка если курьера нет или у него не загружено фото.
   final String courierSelfieFileId;
+
   /// Slug категории магазина (food/cafe/...). Может быть пустым у старых заказов.
   final String category;
+
   /// true — магазин предлагает несколько товаров на выбор (курьер фотает,
   /// клиент выбирает). У старых заказов всегда false.
   final bool multipleItems;
+
+  /// ID курьера (customer id). Нужен для `generateDeliveryCode` из
+  /// background isolate'а при нажатии «Завершить». Пустая строка у магазина.
+  final String courierId;
   // Сырая мапа — на случай если где-то понадобится поле, которого нет в DTO.
   final Map<String, dynamic> raw;
 
@@ -63,6 +70,7 @@ class OrderDto {
     required this.courierPhone,
     required this.courierName,
     required this.courierSelfieFileId,
+    required this.courierId,
     required this.category,
     required this.multipleItems,
     required this.raw,
@@ -91,8 +99,8 @@ class OrderDto {
     final categorySlug = rawCat == null
         ? ''
         : rawCat is Map
-            ? (rawCat['id']?.toString() ?? '')
-            : rawCat.toString();
+        ? (rawCat['id']?.toString() ?? '')
+        : rawCat.toString();
     return OrderDto(
       id: s('id'),
       // На бэке встречаются оба имени поля.
@@ -120,24 +128,27 @@ class OrderDto {
       courierSelfieFileId: s('courier_selfie_file_id'),
       category: categorySlug,
       multipleItems: m['multiple_items'] == true,
+      courierId: s('courierId'),
       raw: m,
     );
   }
 
   /// Короткий ID для отображения в UI: первый сегмент UUID в верхнем регистре.
-  String get shortId =>
-      id.isEmpty ? '' : id.split('-').first.toUpperCase();
+  String get shortId => id.isEmpty ? '' : id.split('-').first.toUpperCase();
 
   /// Адрес магазина с учётом языка + локализованный fallback.
   String shopAddress(bool isRu, {String? fallback}) {
-    if (isRu) return shopAddressRu.isNotEmpty ? shopAddressRu : (fallback ?? '');
+    if (isRu)
+      return shopAddressRu.isNotEmpty ? shopAddressRu : (fallback ?? '');
     return shopAddressTk.isNotEmpty ? shopAddressTk : (fallback ?? '');
   }
 
   /// Адрес доставки с учётом языка + локализованный fallback.
   String deliveryAddress(bool isRu, {String? fallback}) {
     if (isRu) {
-      return deliveryAddressRu.isNotEmpty ? deliveryAddressRu : (fallback ?? '');
+      return deliveryAddressRu.isNotEmpty
+          ? deliveryAddressRu
+          : (fallback ?? '');
     }
     return deliveryAddressTk.isNotEmpty ? deliveryAddressTk : (fallback ?? '');
   }

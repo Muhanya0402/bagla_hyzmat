@@ -42,7 +42,21 @@ class _OrderCountdownCardState extends State<OrderCountdownCard> {
     final t = widget.timeOfDelivery;
     if (t == null || t.isEmpty) return;
     final deadline = DateTime.parse(t).toLocal();
-    _tick(deadline);
+    // Вычисляем начальное состояние СИНХРОННО (без setState — мы ещё
+    // в initState, виджет ещё не смонтирован).
+    final diff = deadline.difference(DateTime.now());
+    _timeLeft = diff.isNegative ? Duration.zero : diff;
+    _isExpired = diff.isNegative;
+    if (_isExpired) {
+      // Если уже просрочен — нотифицируем parent ПОСЛЕ build'а.
+      // Иначе `widget.onExpired()` вызовет parent.setState() прямо во
+      // время билда parent'а → "setState called during build" exception.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onExpired();
+      });
+      return; // таймер не нужен — уже просрочено
+    }
+    // Не просрочен — запускаем периодический tick.
     _timer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => _tick(deadline),

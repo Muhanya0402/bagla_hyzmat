@@ -1,7 +1,7 @@
 import 'package:bagla/core/base_url.dart';
+import 'package:bagla/core/secure_token_store.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Круглый аватар пользователя.
 ///
@@ -105,10 +105,7 @@ class _NetworkAvatar extends StatelessWidget {
     required this.size,
   });
 
-  Future<String?> _readToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
+  Future<String?> _readToken() => SecureTokenStore.instance.getAccessToken();
 
   @override
   Widget build(BuildContext context) {

@@ -645,6 +645,10 @@ const Map<String, String> stringsRu = {
   'activeOrdersBtnCall': 'Позвонить',
   'activeOrdersBtnComplete': 'Завершить',
   'activeOrdersBtnCancel': 'Отменить',
+  // ── Принудительный logout при истечении сессии ─────────────────────────────
+  'sessionExpiredTitle': 'Сессия истекла',
+  'sessionExpiredBody':
+      'Время вашей сессии закончилось. Войдите снова, чтобы продолжить.',
   'levelLabel': 'Уровень {n}',
   'levelDailyBonus': 'Ежедневный бонус: +{n} жетонов/день',
   'levelToNext': 'До уровня {n}',

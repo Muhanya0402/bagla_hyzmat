@@ -637,6 +637,10 @@ const Map<String, String> stringsTk = {
   'activeOrdersBtnCall': 'Jaň etmek',
   'activeOrdersBtnComplete': 'Tamamlamak',
   'activeOrdersBtnCancel': 'Ýatyrmak',
+  // ── Принудительный logout при истечении сессии ─────────────────────────────
+  'sessionExpiredTitle': 'Sessiýanyň möhleti gutardy',
+  'sessionExpiredBody':
+      'Sessiýaňyzyň wagty tamamlandy. Dowam etmek üçin täzeden giriň.',
   'levelLabel': '{n} dereje',
   'levelDailyBonus': 'Gündelik bonus: +{n} tylla/gün',
   'levelToNext': '{n} derejä çenli',

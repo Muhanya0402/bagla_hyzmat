@@ -40,7 +40,13 @@ class OrderImagesSection extends StatelessWidget {
         itemCount: pictures.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (ctx, i) {
-          final String? fileId = pictures[i]['directus_files_id'];
+          // Resilient к двум форматам ответа Directus:
+          //   - explicit fields `pictures.directus_files_id` → `[{directus_files_id: 'uuid'}]`
+          //   - fields `*` (fallback при 403) → `[145, 146]` (just junction ID ints)
+          // Если получили int — нет file ID, скипаем (а не падаем).
+          final raw = pictures[i];
+          final String? fileId =
+              raw is Map ? raw['directus_files_id'] as String? : null;
           if (fileId == null) return const SizedBox.shrink();
           return GestureDetector(
             onTap: () => _openViewer(ctx, i),

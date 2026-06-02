@@ -13,8 +13,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:bagla/core/base_url.dart';
+import 'package:bagla/core/secure_token_store.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as ws_status;
 
@@ -91,8 +91,8 @@ class OrderRealtimeService {
     _orderStatus = orderStatus;
     _categoryFilter = categoryFilter;
 
-    final prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('auth_token');
+    // Auth token из secure storage (Keychain/Keystore).
+    _authToken = await SecureTokenStore.instance.getAccessToken();
 
     if (_authToken == null || _authToken!.isEmpty) {
       debugPrint('🔌 WS: нет токена — пропускаем');

@@ -582,6 +582,9 @@ class AppLocalizations {
   String get activeOrdersBtnCall => get('activeOrdersBtnCall');
   String get activeOrdersBtnComplete => get('activeOrdersBtnComplete');
   String get activeOrdersBtnCancel => get('activeOrdersBtnCancel');
+  // ── Session expired ────────────────────────────────────────────────────
+  String get sessionExpiredTitle => get('sessionExpiredTitle');
+  String get sessionExpiredBody => get('sessionExpiredBody');
   String get levelLabel => get('levelLabel');
   String get levelDailyBonus => get('levelDailyBonus');
   String get levelToNext => get('levelToNext');

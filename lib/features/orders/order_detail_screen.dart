@@ -52,6 +52,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
   // Updated at most once (when the deadline passes); never on every tick.
   bool _isExpired = false;
 
+  /// Pictures, подгруженные отдельным запросом в Directus.
+  /// Изначально null → используем `dto.pictures` (что пришло в кэше списка).
+  /// После fetch'а — этот список (всегда в формате `[{directus_files_id: ...}]`).
+  /// Зачем: в `getOrders` (список) при некоторых permission-настройках
+  /// pictures приходят как junction-IDs (int) → не отображаются.
+  /// Точечный запрос на конкретный заказ обычно работает.
+  List<dynamic>? _fetchedPictures;
+
   late final AnimationController _animCtrl;
 
   // Pre-cached interval animations — avoids CurvedAnimation allocations on
@@ -102,6 +110,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       screenKey: TourKeys.orderDetail,
       targetsBuilder: _buildTourTargets,
     );
+    _loadPicturesIfNeeded();
+  }
+
+  /// Триггерим отдельный fetch только если в кэше списка картинки не
+  /// в Map-формате (т.е. если они int junction-IDs — фолбэк `*` в getOrders).
+  Future<void> _loadPicturesIfNeeded() async {
+    final orderId = (widget.order['id'] ?? '').toString();
+    if (orderId.isEmpty) return;
+    final cached = widget.order['pictures'];
+    // Если в кэше уже Map-формат — ничего не делаем, всё уже есть.
+    if (cached is List && cached.isNotEmpty && cached.first is Map) return;
+
+    final picsResult = await OrderService().getOrderPictures(orderId);
+    if (!mounted) return;
+    setState(() => _fetchedPictures = picsResult);
   }
 
   // Called by _CountdownCard exactly once when the deadline passes.
@@ -253,13 +276,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           ),
 
           // ── Photos ───────────────────────────────────────────────────────
-          if (dto.pictures.isNotEmpty) ...[
+          // Если pictures загрузили отдельным запросом (`_fetchedPictures`) —
+          // используем их (всегда в Map-формате). Иначе fallback на dto
+          // (может быть Map-формат если list-запрос успел получить
+          // explicit fields, или int junction IDs если был fallback на `*`).
+          if (() {
+            final pics = _fetchedPictures ?? dto.pictures;
+            return pics.any((p) => p is Map);
+          }()) ...[
             const SizedBox(height: 10),
             _animated(
               _section(
                 title: words.photoSection,
                 child: OrderImagesSection(
-                  pictures: dto.pictures,
+                  pictures: _fetchedPictures ?? dto.pictures,
                   baseUrl: _baseUrl,
                 ),
               ),

@@ -99,7 +99,14 @@ class _OrderPhotoViewerScreenState extends State<OrderPhotoViewerScreen> {
             itemCount: total,
             onPageChanged: (i) => setState(() => _current = i),
             itemBuilder: (_, i) {
-              final String? fileId = widget.pictures[i]['directus_files_id'];
+              // Defensive: pictures может прийти как `[int, int]` если
+              // на главном запросе сработал fallback `fields=*` (см.
+              // OrderService.getOrders). В этом случае file ID недоступен —
+              // показываем пустоту вместо краша.
+              final raw = widget.pictures[i];
+              final String? fileId = raw is Map
+                  ? raw['directus_files_id'] as String?
+                  : null;
               if (fileId == null) return const SizedBox.shrink();
               final url =
                   '${widget.baseUrl}/assets/$fileId?width=1200&quality=95';

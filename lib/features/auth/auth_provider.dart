@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:bagla/core/base_url.dart';
+import 'package:bagla/core/secure_token_store.dart';
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
@@ -103,15 +105,28 @@ class AuthProvider extends ChangeNotifier {
   String get category => _category;
   String get selfieFileId => _selfieFileId;
 
+  /// Подписка на изменения токенов в secure storage. Срабатывает при
+  /// успешном refresh из ApiClient — мы синхронизируем локально-кэшированный
+  /// `_token` и нотифицируем UI (раньше после refresh `_token` оставался
+  /// stale до перезапуска приложения).
+  StreamSubscription<void>? _tokenChangesSub;
+
   AuthProvider() {
     loadUserData();
+    _tokenChangesSub = SecureTokenStore.instance.tokenChanges.listen((_) async {
+      final fresh = await SecureTokenStore.instance.getAccessToken() ?? '';
+      if (fresh == _token) return;
+      _token = fresh;
+      notifyListeners();
+    });
   }
 
   // ── Load from SharedPrefs ──────────────────────────────────────────────────
 
   Future<void> loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token') ?? '';
+    // Токен из secure storage (Keychain/Keystore), не из prefs.
+    _token = await SecureTokenStore.instance.getAccessToken() ?? '';
     _userId = prefs.getString('user_id') ?? '';
     _name = prefs.getString('name') ?? '';
     _surname = prefs.getString('surname') ?? '';
@@ -218,7 +233,10 @@ class AuthProvider extends ChangeNotifier {
     );
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', _token);
+    // Access token — в secure storage, не в plain prefs.
+    if (_token.isNotEmpty) {
+      await SecureTokenStore.instance.setAccessToken(_token);
+    }
     await prefs.setString('user_id', _userId);
     await prefs.setString('name', _name);
     await prefs.setString('surname', _surname);
@@ -431,11 +449,18 @@ class AuthProvider extends ChangeNotifier {
   // ── Logout ─────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
+    // 1. Server-side revoke + clear secure tokens.
+    // Не блокирует UI — silent fail OK, local cleanup всё равно произойдёт.
+    await SecureTokenStore.instance.revokeOnServer(BaseUrl.url);
+    await SecureTokenStore.instance.clear();
+
+    // 2. Plain prefs cleanup с сохранением device-flag'ов.
     final prefs = await SharedPreferences.getInstance();
-    // Preserve device-level flags that survive across sessions
     final onboardingDone = prefs.getBool('onboarding_done') ?? false;
     final savedLang = prefs.getString('language_code');
     final isDarkMode = prefs.getBool('is_dark_mode');
+    final tokenMigrationDone =
+        prefs.getBool('secure_tokens_migrated_v1') ?? false;
     // Account-scoped тур-состояния (всех пользователей) — сохраняем
     // через TourManager, чтобы при возврате на этот аккаунт гид не
     // показывался заново.
@@ -444,6 +469,9 @@ class AuthProvider extends ChangeNotifier {
     if (onboardingDone) await prefs.setBool('onboarding_done', true);
     if (savedLang != null) await prefs.setString('selected_lang', savedLang);
     if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
+    if (tokenMigrationDone) {
+      await prefs.setBool('secure_tokens_migrated_v1', true);
+    }
     await TourManager.instance.restoreSnapshot(tourSnapshot);
     // На время "нет активного userId" — глобальный namespace.
     TourManager.instance.setUserId('');
@@ -495,6 +523,7 @@ class AuthProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _tokenChangesSub?.cancel();
     phoneController.dispose();
     otpController.dispose();
     super.dispose();

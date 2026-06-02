@@ -22,6 +22,10 @@ dependencies:
   # Используем вместо flutter_local_notifications т.к. поддерживает action
   # buttons, custom layouts, background handler и sticky notifications.
   awesome_notifications: ^0.10.0
+  # Keychain (iOS) / EncryptedSharedPreferences + Keystore (Android) для
+  # хранения access/refresh токенов. Plain SharedPreferences читается через
+  # ADB backup или root — недопустимо для финансовой части (балансы жетонов).
+  flutter_secure_storage: ^9.2.2
   url_launcher: ^6.3.0
   package_info_plus: ^8.0.0
   mask_text_input_formatter: ^2.5.0

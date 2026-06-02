@@ -241,7 +241,10 @@ class OrderService {
       // Что НЕ запрашиваем здесь, но нужно на detail-screen:
       //   - pictures (грузим только при открытии заказа)
       //   - district/etrap/province объекты (текст адреса уже в shop_adress/...)
-      const fields = 'id,order_status,transport_type,'
+      // Lean explicit field list. Если у Directus role нет прав на одно из
+      // этих полей (или relation), он вернёт 403. В этом случае fallback'имся
+      // на `*` который возвращает только разрешённые поля.
+      const leanFields = 'id,order_status,transport_type,'
           'total_amount,delivery_amount,points_amount,cashback_amount,'
           'comment,time_of_delivery,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
@@ -249,14 +252,34 @@ class OrderService {
           'category,multiple_items,'
           'pictures.directus_files_id,'
           'courierId.item,courierId.collection';
-      final url = '/items/orders'
+
+      String buildUrl(String fields) => '/items/orders'
           '?$filterQuery'
           '&sort=-date_created'
           '&fields=$fields'
           '&limit=$limit'
           '&offset=$offset';
 
-      final response = await _apiClient.dio.get(url);
+      Response response;
+      try {
+        response = await _apiClient.dio.get(buildUrl(leanFields));
+      } on DioException catch (e) {
+        // 403 на lean-fields обычно значит что какое-то поле/relation
+        // закрыто permissions в Directus (например `directus_files`,
+        // `courierId` junction, etc.). Логируем диагностику и retry с `*`,
+        // который вернёт только то, что у роли есть в access policy.
+        if (e.response?.statusCode == 403) {
+          if (kDebugMode) {
+            print('⚠️ getOrders 403 with lean fields — retrying with *');
+            print('   URL: ${e.requestOptions.path}');
+            print('   Response: ${e.response?.data}');
+          }
+          response = await _apiClient.dio.get(buildUrl('*'));
+        } else {
+          rethrow;
+        }
+      }
+
       if (response.data?['data'] == null) return [];
 
       final List<dynamic> orders = response.data['data'] as List<dynamic>;
@@ -319,8 +342,60 @@ class OrderService {
       }
 
       return orders;
+    } on DioException catch (e) {
+      // Расширенная диагностика — если 403 повторился даже на `*`,
+      // значит у роли вообще нет access policy на `orders`. Покажем
+      // полный response сервера — там обычно конкретное объяснение.
+      if (kDebugMode) {
+        print('❌ getOrders DioException:');
+        print('   URL: ${e.requestOptions.uri}');
+        print('   Status: ${e.response?.statusCode}');
+        print('   Response: ${e.response?.data}');
+        print('   Type: ${e.type}');
+      }
+      // Бросаем дальше — handleRefresh теперь различает error и empty list,
+      // не затрёт существующие orders в UI.
+      rethrow;
     } catch (e) {
       if (kDebugMode) print('Ошибка getOrders: $e');
+      rethrow;
+    }
+  }
+
+  // ─── 3.5. Картинки заказа (отдельный fetch) ──────────────────────────────
+
+  /// Возвращает `pictures` отдельного заказа в формате
+  /// `[{directus_files_id: 'uuid'}, ...]`.
+  ///
+  /// **Зачем отдельно:** в `getOrders` (список) запрос `pictures.directus_files_id`
+  /// иногда падает с 403 из-за permissions на `orders_files` / `directus_files`
+  /// для всего списка. Точечный запрос на один заказ обычно работает, потому
+  /// что Directus permission rules могут разрешать read одного владельца
+  /// заказа но не выборку по списку.
+  ///
+  /// На 403 / network error возвращает пустой список — детальный экран
+  /// просто не покажет картинки. Не блокирует UI.
+  Future<List<dynamic>> getOrderPictures(String orderId) async {
+    try {
+      final res = await _apiClient.dio.get(
+        '/items/orders/$orderId',
+        queryParameters: {
+          'fields': 'pictures.directus_files_id',
+        },
+      );
+      final data = res.data?['data'];
+      if (data is Map) {
+        final pics = data['pictures'];
+        if (pics is List) return pics;
+      }
+      return [];
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('⚠️ getOrderPictures($orderId): '
+            '${e.response?.statusCode} ${e.response?.data}');
+      }
+      return [];
+    } catch (_) {
       return [];
     }
   }

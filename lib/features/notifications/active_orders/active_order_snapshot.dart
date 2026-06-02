@@ -15,7 +15,11 @@ class ActiveOrderSnapshot {
   /// при сохранении, чтобы background isolate не таскал LanguageProvider.
   final String addressLine;
   /// Телефон для кнопки «Позвонить». Пустая строка — кнопка не показывается.
+  /// Для курьера это телефон клиента, для магазина — телефон курьера.
   final String phoneToCall;
+  /// ID курьера (customer id). Нужен для `generateDeliveryCode` из
+  /// background isolate'а при нажатии «Завершить». Пустая строка у магазина.
+  final String courierId;
   /// Статус — 'published' / 'active' / etc. Влияет на доступные действия.
   final String status;
 
@@ -24,6 +28,7 @@ class ActiveOrderSnapshot {
     required this.shortId,
     required this.addressLine,
     required this.phoneToCall,
+    required this.courierId,
     required this.status,
   });
 
@@ -32,6 +37,7 @@ class ActiveOrderSnapshot {
         'shortId': shortId,
         'addressLine': addressLine,
         'phoneToCall': phoneToCall,
+        'courierId': courierId,
         'status': status,
       };
 
@@ -41,6 +47,7 @@ class ActiveOrderSnapshot {
         shortId: (j['shortId'] ?? '').toString(),
         addressLine: (j['addressLine'] ?? '').toString(),
         phoneToCall: (j['phoneToCall'] ?? '').toString(),
+        courierId: (j['courierId'] ?? '').toString(),
         status: (j['status'] ?? '').toString(),
       );
 

@@ -494,11 +494,19 @@ class _RegistrationDetailsScreenState
         return;
       }
 
-      try {
-        await auth.refreshProfile();
-      } catch (_) {}
-      if (!mounted) return;
+      // Показываем success-toast и сразу навигируем — НЕ ждём refreshProfile.
+      // Раньше ждали `await refreshProfile()` который мог зависнуть до 10 сек
+      // (Dio receiveTimeout) → пользователь застрял на форме с loader'ом.
+      // Теперь рефреш улетает в фон, новые данные подхватятся когда придут.
       _showToast(words.regSuccessSubmit, isSuccess: true);
+      // Fire-and-forget refresh — успешно дойдёт до home или нет, нам всё
+      // равно. MainShell сам сделает refresh при mount'е.
+      auth.refreshProfile().catchError((_) {});
+
+      // pushNamedAndRemoveUntil заменяет ВЕСЬ stack новым `/home`.
+      // Это правильно — registration был промежуточной формой, не должна
+      // оставаться в истории «назад».
+      if (!mounted) return;
       Navigator.of(context, rootNavigator: true)
           .pushNamedAndRemoveUntil('/home', (r) => false);
     } catch (_) {

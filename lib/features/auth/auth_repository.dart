@@ -1,4 +1,6 @@
 import 'package:bagla/core/app_config.dart';
+import 'package:bagla/core/base_url.dart';
+import 'package:bagla/core/secure_token_store.dart';
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/models/district.dart';
@@ -16,9 +18,9 @@ class AuthRepository {
 
   Future<bool> sendOTP(String phone) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token');
-      await prefs.remove('refresh_token');
+      // Перед началом новой OTP-сессии чистим любые остаточные токены —
+      // например, если предыдущий вход был от другого пользователя.
+      await SecureTokenStore.instance.clear();
 
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
@@ -108,43 +110,10 @@ class AuthRepository {
     }
   }
 
-  Future<bool> refreshAccessToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final refreshToken = prefs.getString('refresh_token');
-      if (refreshToken == null) return false;
-
-      final response = await _api.dio.post(
-        '/flows/trigger/ВАШ_REFRESH_FLOW_ID',
-        data: {'refresh_token': refreshToken},
-        options: Options(
-          headers: {'Authorization': 'Bearer ${AppConfig.publicToken}'},
-        ),
-      );
-
-      final data = response.data;
-      String? newAccessToken;
-      String? newRefreshToken;
-
-      for (final key in data.keys) {
-        final value = data[key];
-        if (value is Map && value['access_token'] != null) {
-          newAccessToken = value['access_token'] as String;
-          newRefreshToken = value['refresh_token'] as String?;
-          break;
-        }
-      }
-
-      if (newAccessToken != null) {
-        await _saveTokens(newAccessToken, newRefreshToken ?? refreshToken);
-        return true;
-      }
-      return false;
-    } on DioException catch (e) {
-      debugPrint("Ошибка refreshAccessToken: ${e.response?.data}");
-      return false;
-    }
-  }
+  // [DELETED] AuthRepository.refreshAccessToken() — мёртвый метод, ссылался
+  // на placeholder-URL `/flows/trigger/ВАШ_REFRESH_FLOW_ID`. Никто его не
+  // вызывал. Refresh access token делается централизованно через
+  // ApiClient interceptor (см. /auth/refresh) — это правильный путь.
 
   // ─── Профиль ───────────────────────────────────────────────────────────────
 
@@ -427,21 +396,18 @@ class AuthRepository {
   // ─── Токены и кэш ──────────────────────────────────────────────────────────
 
   Future<void> _saveTokens(String accessToken, String refreshToken) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', accessToken);
-    await prefs.setString('refresh_token', refreshToken);
-    debugPrint("✅ Токены сохранены");
+    await SecureTokenStore.instance.setTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
+    debugPrint("✅ Токены сохранены (secure storage)");
   }
 
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
+  static Future<String?> getToken() =>
+      SecureTokenStore.instance.getAccessToken();
 
-  static Future<String?> getRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('refresh_token');
-  }
+  static Future<String?> getRefreshToken() =>
+      SecureTokenStore.instance.getRefreshToken();
 
   /// Достать ID из M2O поля (может прийти как Map или String)
   static String _extractId(dynamic field) {
@@ -536,13 +502,27 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    // 1. Сначала — server-side revoke. POST /auth/logout инвалидирует
+    // refresh-token на стороне Directus. Без этого refresh-token остаётся
+    // валидным до естественного истечения (по умолчанию 7 дней). Если
+    // запрос упадёт (нет сети) — продолжаем local cleanup, лучше залогаутить
+    // пользователя локально чем оставить в неопределённости.
+    await SecureTokenStore.instance.revokeOnServer(BaseUrl.url);
+
+    // 2. Стираем токены из secure storage.
+    await SecureTokenStore.instance.clear();
+
+    // 3. Чистим plain prefs (профильные данные, кэш и т.д.) с сохранением
+    // device-level флагов.
     final prefs = await SharedPreferences.getInstance();
-    // Preserve device-level flags that survive across sessions —
-    // тема, язык и onboarding не должны сбрасываться при смене аккаунта.
     final onboardingDone = prefs.getBool('onboarding_done') ?? false;
     final savedLang = prefs.getString('language_code');
     final selectedLang = prefs.getString('selected_lang');
     final isDarkMode = prefs.getBool('is_dark_mode');
+    // Migration-флаг — НЕ сбрасываем, иначе при следующем старте мы
+    // попытаемся «мигрировать» пустые prefs обратно в secure store.
+    final tokenMigrationDone =
+        prefs.getBool('secure_tokens_migrated_v1') ?? false;
     // Account-scoped тур-состояния всех пользователей — чтобы возврат
     // на старый аккаунт не показывал гид заново.
     final tourSnapshot = TourManager.instance.snapshotAllTourKeys();
@@ -553,6 +533,9 @@ class AuthRepository {
       await prefs.setString('selected_lang', selectedLang);
     }
     if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
+    if (tokenMigrationDone) {
+      await prefs.setBool('secure_tokens_migrated_v1', true);
+    }
     await TourManager.instance.restoreSnapshot(tourSnapshot);
     TourManager.instance.setUserId('');
   }

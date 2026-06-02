@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/point_icon.dart';
@@ -169,11 +171,81 @@ class _BalanceChip extends StatelessWidget {
   }
 }
 
-/// Offline banner — animates in/out smoothly
-class HomeNetworkBanner extends StatelessWidget {
+/// Offline banner с debounce — появляется ТОЛЬКО при устойчивом disconnect'е.
+///
+/// **Зачем debounce:** WebSocket кратковременно отключается на каждом свайпе
+/// между табами / смене фильтров (см. `reconnectWithFilters`). Без debounce'а
+/// баннер успевал моргнуть на ~200мс и сразу скрыться — пользователь видел
+/// «дёрг» при свайпе.
+///
+/// Стратегия:
+///   - `isConnected` стал false → запускаем таймер 1.5с
+///   - Если за это время `isConnected` вернулся в true → отменяем таймер,
+///     баннер не показываем
+///   - Если таймер сработал → переключаем баннер на видимый
+///   - `isConnected` снова true → мгновенно скрываем (без debounce)
+class HomeNetworkBanner extends StatefulWidget {
   final bool isConnected;
 
   const HomeNetworkBanner({super.key, required this.isConnected});
+
+  @override
+  State<HomeNetworkBanner> createState() => _HomeNetworkBannerState();
+}
+
+class _HomeNetworkBannerState extends State<HomeNetworkBanner> {
+  /// Реальное состояние, которое отображается. Отличается от
+  /// `widget.isConnected` тем, что disconnect задерживается debounce'ом.
+  bool _showBanner = false;
+  Timer? _debounceTimer;
+
+  /// Сколько ждать перед показом баннера — фильтрует кратковременные
+  /// reconnect'ы (свайп таба, смена фильтра). 1.5с — комфортный баланс:
+  /// нормальный reconnect укладывается в 200-500мс, реальный disconnect
+  /// длится дольше.
+  static const _disconnectGrace = Duration(milliseconds: 1500);
+
+  @override
+  void initState() {
+    super.initState();
+    // На init не показываем баннер, даже если WS ещё не подключился —
+    // даём ему grace-период.
+    _showBanner = false;
+    if (!widget.isConnected) _scheduleShow();
+  }
+
+  @override
+  void didUpdateWidget(HomeNetworkBanner old) {
+    super.didUpdateWidget(old);
+    if (old.isConnected == widget.isConnected) return;
+    if (widget.isConnected) {
+      // Восстановилось — мгновенно скрываем + чистим таймер.
+      _debounceTimer?.cancel();
+      _debounceTimer = null;
+      if (_showBanner) {
+        setState(() => _showBanner = false);
+      }
+    } else {
+      // Отключилось — запускаем таймер. Если за 1.5с восстановится,
+      // баннер не покажем (см. ветку выше).
+      _scheduleShow();
+    }
+  }
+
+  void _scheduleShow() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_disconnectGrace, () {
+      if (!mounted) return;
+      if (widget.isConnected) return; // на всякий случай
+      setState(() => _showBanner = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +254,7 @@ class HomeNetworkBanner extends StatelessWidget {
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      child: isConnected
+      child: !_showBanner
           ? const SizedBox.shrink()
           : Container(
               width: double.infinity,

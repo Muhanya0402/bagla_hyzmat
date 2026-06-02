@@ -55,6 +55,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   final scrollController = ScrollController();
 
   int activeOrdersCount = 0;
+
   /// AppLifecycleListener — современная замена WidgetsBindingObserver
   /// для подписки на resumed/paused. Не требует override'ить весь
   /// интерфейс наблюдателя.
@@ -96,7 +97,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   Future<void> changeFilterIndex(int index) async {
     if (selectedFilterIndex == index) return;
 
-    // Show shimmer skeleton while the new tab's data loads — no empty flash.
+    // Shimmer skeleton — даёт визуальный feedback что данные грузятся.
     setState(() {
       selectedFilterIndex = index;
       ordersReloading = true;
@@ -214,7 +215,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     }
   }
 
-
   Future<void> loadActiveOrdersCount(String userId) async {
     final count = await orderService.getActiveOrdersCount(userId);
     if (mounted) setState(() => activeOrdersCount = count);
@@ -312,10 +312,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: c.ink.withValues(alpha: 0.15),
-            width: 1,
-          ),
+          side: BorderSide(color: c.ink.withValues(alpha: 0.15), width: 1),
         ),
       ),
     );
@@ -571,22 +568,29 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final results = await Future.wait<dynamic>([
       // 0: profile (skip если свежий)
       if (skipProfile) Future.value(null) else auth.refreshProfile(),
-      // 1: orders
-      orderService.getOrders(
-        role: auth.role,
-        userId: auth.userId,
-        myOrdersOnly: selectedFilterIndex == 1,
-        transportFilter: filters.transportFilter,
-        shopProvinceId: filters.shopProvince?.id,
-        shopEtrapId: filters.shopEtrap?.id,
-        shopDistrictId: filters.shopDistrict?.id,
-        deliveryProvinceId: filters.deliveryProvince?.id,
-        deliveryEtrapId: filters.deliveryEtrap?.id,
-        deliveryDistrictId: filters.deliveryDistrict?.id,
-        shopPhone: filters.shop?.id,
-        orderStatus: selectedStatus,
-        categoryFilter: filters.category?.id,
-      ).catchError((_) => <dynamic>[]),
+      // 1: orders. ВАЖНО: на ошибке возвращаем `null`, не пустой список,
+      // чтобы отличить «реально нет заказов» от «запрос провалился».
+      // Раньше catchError → [] → setState затирал существующие orders
+      // на любой временной ошибке (401-cooldown, network blip и т.п.) →
+      // только что созданный заказ исчезал у пользователя.
+      orderService
+          .getOrders(
+            role: auth.role,
+            userId: auth.userId,
+            myOrdersOnly: selectedFilterIndex == 1,
+            transportFilter: filters.transportFilter,
+            shopProvinceId: filters.shopProvince?.id,
+            shopEtrapId: filters.shopEtrap?.id,
+            shopDistrictId: filters.shopDistrict?.id,
+            deliveryProvinceId: filters.deliveryProvince?.id,
+            deliveryEtrapId: filters.deliveryEtrap?.id,
+            deliveryDistrictId: filters.deliveryDistrict?.id,
+            shopPhone: filters.shop?.id,
+            orderStatus: selectedStatus,
+            categoryFilter: filters.category?.id,
+          )
+          .then<List<dynamic>?>((v) => v)
+          .catchError((_) => null),
       // 2: courier level
       if (isCourier)
         context.read<LevelProvider>().loadForUser(auth.userId)
@@ -601,14 +605,19 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
     if (!mounted) return;
 
-    final fetchedOrders = (results[1] as List<dynamic>?) ?? [];
+    // `null` означает «запрос провалился» — НЕ затираем существующие orders.
+    // `[]` означает «у пользователя реально нет заказов» — обновляем UI.
+    final fetchedOrdersOrNull = results[1] as List<dynamic>?;
     final activeCount = (results[3] as int?) ?? 0;
 
     setState(() {
-      if (fetchedOrders.isNotEmpty || !ordersError) {
-        orders = fetchedOrders;
+      if (fetchedOrdersOrNull != null) {
+        orders = fetchedOrdersOrNull;
         ordersError = false;
       } else {
+        // Запрос упал. Оставляем существующие `orders` (как раз тот случай
+        // когда WS только что добавил новый заказ, а refresh не пришёл).
+        // Помечаем UI как «ошибка», но контент сохраняем.
         ordersError = true;
       }
       ordersLoading = false;
@@ -649,21 +658,22 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       // Курьер: показываем только взятые им active.
       // Магазин: показываем published + active (его заказы в работе).
       if (auth.isCourier && dto.status != 'active') continue;
-      if (auth.isShop &&
-          dto.status != 'published' &&
-          dto.status != 'active') {
+      if (auth.isShop && dto.status != 'published' && dto.status != 'active') {
         continue;
       }
       if (auth.isClient) continue;
 
-      snapshots.add(ActiveOrderSnapshot(
-        id: dto.id,
-        shortId: dto.shortId,
-        addressLine: dto.deliveryAddress(isRu),
-        // Курьеру звоним клиенту, магазину — курьеру.
-        phoneToCall: auth.isCourier ? dto.clientPhone : dto.courierPhone,
-        status: dto.status,
-      ));
+      snapshots.add(
+        ActiveOrderSnapshot(
+          id: dto.id,
+          shortId: dto.shortId,
+          addressLine: dto.deliveryAddress(isRu),
+          // Курьеру звоним клиенту, магазину — курьеру.
+          phoneToCall: auth.isCourier ? dto.clientPhone : dto.courierPhone,
+          status: dto.status,
+          courierId: dto.courierId,
+        ),
+      );
     }
 
     await ActiveOrdersNotification.sync(
