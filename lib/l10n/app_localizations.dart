@@ -354,6 +354,24 @@ class AppLocalizations {
   // Тема (light/dark) — лейбл в ThemeToggleTile в Profile.
   String get profileThemeLight => get('profileThemeLight');
   String get profileThemeDark => get('profileThemeDark');
+
+  // ── TopUp modal (пополнение жетонов) ───────────────────────────────────
+  String get topUpHeaderTitle => get('topUpHeaderTitle');
+  String get topUpHeaderSubtitle => get('topUpHeaderSubtitle');
+  String get topUpBalanceLabel => get('topUpBalanceLabel');
+  String get topUpTokensUnit => get('topUpTokensUnit');
+  String get topUpTokensUnitShort => get('topUpTokensUnitShort');
+  String get topUpSectionTokensAmount => get('topUpSectionTokensAmount');
+  String get topUpBadgePopular => get('topUpBadgePopular');
+  String get topUpBadgeProfitable => get('topUpBadgeProfitable');
+  String get topUpCustomAmountHint => get('topUpCustomAmountHint');
+  String get topUpSummaryYouGet => get('topUpSummaryYouGet');
+  String get topUpPayBtn => get('topUpPayBtn');
+  String get topUpSecurityNote => get('topUpSecurityNote');
+  String get topUpTourPackagesTitle => get('topUpTourPackagesTitle');
+  String get topUpTourPackagesBody => get('topUpTourPackagesBody');
+  String get topUpTourPayTitle => get('topUpTourPayTitle');
+  String get topUpTourPayBody => get('topUpTourPayBody');
   String get supportTitle => get('supportTitle');
   String get supportSubtitle => get('supportSubtitle');
   String get supportHint => get('supportHint');

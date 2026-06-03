@@ -7,27 +7,45 @@ import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/bank_picker.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
+import 'package:bagla/l10n/app_localizations.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../features/auth/auth_repository.dart';
 
 // ─── Token package presets ────────────────────────────────────────────────────
 
+/// Тип бейджа на карточке пакета. Сами строки локализуются через
+/// AppLocalizations — здесь только enum-ключ, чтобы массив пакетов
+/// оставался `const`.
+enum _BadgeKind { popular, profitable }
+
 class _TokenPackage {
   final int tokens;
-  final String? badgeRu;
-  final String? badgeTk;
+  final _BadgeKind? badge;
 
-  const _TokenPackage({required this.tokens, this.badgeRu, this.badgeTk});
+  const _TokenPackage({required this.tokens, this.badge});
 }
 
 const _kPackages = [
   _TokenPackage(tokens: 10),
-  _TokenPackage(tokens: 25, badgeRu: 'Популярно', badgeTk: 'Meşhur'),
-  _TokenPackage(tokens: 50, badgeRu: 'Выгодно', badgeTk: 'Bähbitli'),
+  _TokenPackage(tokens: 25, badge: _BadgeKind.popular),
+  _TokenPackage(tokens: 50, badge: _BadgeKind.profitable),
   _TokenPackage(tokens: 100),
 ];
+
+String? _badgeText(_BadgeKind? kind, AppLocalizations w) {
+  switch (kind) {
+    case _BadgeKind.popular:
+      return w.topUpBadgePopular;
+    case _BadgeKind.profitable:
+      return w.topUpBadgeProfitable;
+    case null:
+      return null;
+  }
+}
 
 // ─── TopUpModal ───────────────────────────────────────────────────────────────
 
@@ -35,6 +53,12 @@ class TopUpModal extends StatefulWidget {
   final String userId;
   final String role;
   final String status;
+
+  /// ⚠️ Deprecated — используется только при тур-таргетах, где требуется
+  /// инициализация ДО первого build (initState). В UI язык берётся из
+  /// `LanguageProvider`, чтобы автоматически реагировать на toggle языка.
+  /// Раньше caller'ы не передавали этот флаг → модалка всегда показывалась
+  /// на RU независимо от выбранного языка.
   final bool isRu;
   final int? currentBalance; // optional: pass from parent to show balance chip
 
@@ -73,26 +97,34 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
     );
   }
 
-  List<TargetFocus> _buildTourTargets() => [
-    TourTarget.build(
-      key: _packagesKey,
-      titleRu: 'Пакеты жетонов',
-      titleTk: 'Nişan paketleri',
-      bodyRu: 'Выберите готовый пакет или введите своё количество.',
-      bodyTk: 'Taýyn paketi saýlaň ýa-da öz mukdaryňyzy giriziň.',
-      isRu: widget.isRu,
-      align: ContentAlign.top,
-    ),
-    TourTarget.build(
-      key: _payKey,
-      titleRu: 'Оплата',
-      titleTk: 'Töleg',
-      bodyRu: 'Выберите банк и нажмите кнопку для перехода к оплате.',
-      bodyTk: 'Banky saýlaň we töleg etmek üçin düwmä basyň.',
-      isRu: widget.isRu,
-      align: ContentAlign.top,
-    ),
-  ];
+  List<TargetFocus> _buildTourTargets() {
+    // Тур-таргеты строятся ДО первого build, поэтому здесь читаем
+    // language через context.read (а не watch). Тур однократный,
+    // язык не меняется по ходу обхода.
+    final lang = context.read<LanguageProvider>();
+    final isRuActual = lang.isRu;
+    final w = lang.words;
+    return [
+      TourTarget.build(
+        key: _packagesKey,
+        titleRu: w.topUpTourPackagesTitle,
+        titleTk: w.topUpTourPackagesTitle,
+        bodyRu: w.topUpTourPackagesBody,
+        bodyTk: w.topUpTourPackagesBody,
+        isRu: isRuActual,
+        align: ContentAlign.top,
+      ),
+      TourTarget.build(
+        key: _payKey,
+        titleRu: w.topUpTourPayTitle,
+        titleTk: w.topUpTourPayTitle,
+        bodyRu: w.topUpTourPayBody,
+        bodyTk: w.topUpTourPayBody,
+        isRu: isRuActual,
+        align: ContentAlign.top,
+      ),
+    ];
+  }
 
   Future<void> _loadRate() async {
     final rate = await _authRepo.fetchTokenRate();
@@ -153,6 +185,13 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
         ? bottomInset + 16
         : bottomPadding + 24;
 
+    // Читаем из провайдера через watch — если юзер переключит язык
+    // через LangToggle пока модалка открыта, тексты подменятся
+    // моментально без переоткрытия.
+    final lang = context.watch<LanguageProvider>();
+    final words = lang.words;
+    final bool isRu = lang.isRu;
+
     final c = AppColors.of(context);
     return Container(
       decoration: BoxDecoration(
@@ -186,7 +225,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                     children: [
                       // Header
                       _Header(
-                        isRu: widget.isRu,
+                        words: words,
                         onClose: () => Navigator.pop(context),
                       ),
                       const SizedBox(height: 20),
@@ -195,14 +234,14 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                       if (widget.currentBalance != null) ...[
                         _BalanceChip(
                           balance: widget.currentBalance!,
-                          isRu: widget.isRu,
+                          words: words,
                         ),
                         const SizedBox(height: 20),
                       ],
 
                       // Bank picker
                       BankPickerSection(
-                        isRu: widget.isRu,
+                        isRu: isRu,
                         selected: _selectedBank,
                         onSelected: (bank) =>
                             setState(() => _selectedBank = bank),
@@ -210,11 +249,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                       const SizedBox(height: 22),
 
                       // Token packages grid
-                      _SectionLabel(
-                        text: widget.isRu
-                            ? 'КОЛИЧЕСТВО ЖЕТОНОВ'
-                            : 'NIŞAN MUKDARY',
-                      ),
+                      _SectionLabel(text: words.topUpSectionTokensAmount),
                       const SizedBox(height: 10),
                       KeyedSubtree(
                         key: _packagesKey,
@@ -222,7 +257,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                           packages: _kPackages,
                           selectedIndex: _selectedPackageIndex,
                           rate: _rate,
-                          isRu: widget.isRu,
+                          words: words,
                           onSelect: _selectPackage,
                         ),
                       ),
@@ -231,7 +266,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                       // Custom amount field
                       _CustomAmountField(
                         controller: _controller,
-                        isRu: widget.isRu,
+                        words: words,
                         isActive: _selectedPackageIndex == null && _points > 0,
                         onChanged: _onCustomChanged,
                       ),
@@ -246,7 +281,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                                 child: _SummaryRow(
                                   points: _points,
                                   rate: _rate,
-                                  isRu: widget.isRu,
+                                  words: words,
                                 ),
                               )
                             : const SizedBox.shrink(),
@@ -260,14 +295,14 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                         child: _PayButton(
                           enabled: _canSubmit,
                           isLoading: _isLoading,
-                          isRu: widget.isRu,
+                          words: words,
                           onTap: _submit,
                         ),
                       ),
                       const SizedBox(height: 12),
 
                       // Security note
-                      _SecurityNote(isRu: widget.isRu),
+                      _SecurityNote(words: words),
                     ],
                   ),
                 ),
@@ -284,10 +319,10 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _Header extends StatelessWidget {
-  final bool isRu;
+  final AppLocalizations words;
   final VoidCallback onClose;
 
-  const _Header({required this.isRu, required this.onClose});
+  const _Header({required this.words, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
@@ -300,14 +335,12 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isRu ? 'Пополнение баланса' : 'Balans doldur',
+                words.topUpHeaderTitle,
                 style: AppText.serif(fontSize: 20, color: c.ink),
               ),
               const SizedBox(height: 4),
               Text(
-                isRu
-                    ? 'Жетоны нужны для принятия заказов'
-                    : 'Sargytlary kabul etmek üçin nişanlar gerek',
+                words.topUpHeaderSubtitle,
                 style: AppText.regular(fontSize: 13, color: c.inkMuted),
               ),
             ],
@@ -373,8 +406,8 @@ class _SectionLabel extends StatelessWidget {
 
 class _BalanceChip extends StatelessWidget {
   final int balance;
-  final bool isRu;
-  const _BalanceChip({required this.balance, required this.isRu});
+  final AppLocalizations words;
+  const _BalanceChip({required this.balance, required this.words});
 
   @override
   Widget build(BuildContext context) {
@@ -392,14 +425,14 @@ class _BalanceChip extends StatelessWidget {
           PointIcon(size: 15, tintColor: c.accent),
           const SizedBox(width: 7),
           Text(
-            isRu ? 'Текущий баланс:' : 'Häzirki balans:',
+            words.topUpBalanceLabel,
             style: AppText.regular(fontSize: 13, color: c.inkMuted),
           ),
           const SizedBox(width: 6),
           Text('$balance', style: AppText.semiBold(fontSize: 14, color: c.ink)),
           const SizedBox(width: 4),
           Text(
-            isRu ? 'жет.' : 'nişan',
+            words.topUpTokensUnit,
             style: AppText.regular(fontSize: 12, color: c.inkSoft),
           ),
         ],
@@ -416,14 +449,14 @@ class _PackagesGrid extends StatelessWidget {
   final List<_TokenPackage> packages;
   final int? selectedIndex;
   final double rate;
-  final bool isRu;
+  final AppLocalizations words;
   final ValueChanged<int> onSelect;
 
   const _PackagesGrid({
     required this.packages,
     required this.selectedIndex,
     required this.rate,
-    required this.isRu,
+    required this.words,
     required this.onSelect,
   });
 
@@ -443,7 +476,7 @@ class _PackagesGrid extends StatelessWidget {
         package: packages[i],
         isSelected: selectedIndex == i,
         rate: rate,
-        isRu: isRu,
+        words: words,
         onTap: () => onSelect(i),
       ),
     );
@@ -456,14 +489,14 @@ class _PackageCard extends StatefulWidget {
   final _TokenPackage package;
   final bool isSelected;
   final double rate;
-  final bool isRu;
+  final AppLocalizations words;
   final VoidCallback onTap;
 
   const _PackageCard({
     required this.package,
     required this.isSelected,
     required this.rate,
-    required this.isRu,
+    required this.words,
     required this.onTap,
   });
 
@@ -483,7 +516,7 @@ class _PackageCardState extends State<_PackageCard> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final badge = widget.isRu ? widget.package.badgeRu : widget.package.badgeTk;
+    final badge = _badgeText(widget.package.badge, widget.words);
     final price = widget.package.tokens * widget.rate;
 
     return GestureDetector(
@@ -541,7 +574,7 @@ class _PackageCardState extends State<_PackageCard> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 3),
                         child: Text(
-                          widget.isRu ? 'жет.' : 'nşn.',
+                          widget.words.topUpTokensUnitShort,
                           style: AppText.regular(
                             fontSize: 11,
                             color: c.inkSoft,
@@ -593,13 +626,13 @@ class _PackageCardState extends State<_PackageCard> {
 
 class _CustomAmountField extends StatelessWidget {
   final TextEditingController controller;
-  final bool isRu;
+  final AppLocalizations words;
   final bool isActive; // true when user chose custom over a preset
   final ValueChanged<String> onChanged;
 
   const _CustomAmountField({
     required this.controller,
-    required this.isRu,
+    required this.words,
     required this.isActive,
     required this.onChanged,
   });
@@ -614,9 +647,7 @@ class _CustomAmountField extends StatelessWidget {
       style: AppText.medium(fontSize: 15, color: c.ink),
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: isRu
-            ? 'Или введите своё количество...'
-            : 'Ýa-da öz mukdaryňyzy giriziň...',
+        hintText: words.topUpCustomAmountHint,
         hintStyle: AppText.regular(fontSize: 13, color: c.inkSoft),
         prefixIcon: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -660,12 +691,12 @@ class _CustomAmountField extends StatelessWidget {
 class _SummaryRow extends StatelessWidget {
   final int points;
   final double rate;
-  final bool isRu;
+  final AppLocalizations words;
 
   const _SummaryRow({
     required this.points,
     required this.rate,
-    required this.isRu,
+    required this.words,
   });
 
   String _formatAmount(double v) => v == v.truncateToDouble()
@@ -688,7 +719,7 @@ class _SummaryRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            isRu ? 'Вы получите' : 'Alarsyňyz',
+            words.topUpSummaryYouGet,
             style: AppText.regular(fontSize: 14, color: c.inkMuted),
           ),
           RichText(
@@ -699,7 +730,8 @@ class _SummaryRow extends StatelessWidget {
                   style: AppText.bold(fontSize: 17, color: c.accent),
                 ),
                 TextSpan(
-                  text: isRu ? ' жет.' : ' nşn.',
+                  // Пробел перед сокращением — намеренно (см. визуал).
+                  text: ' ${words.topUpTokensUnitShort}',
                   style: AppText.regular(fontSize: 13, color: c.inkMuted),
                 ),
                 TextSpan(
@@ -726,13 +758,13 @@ class _SummaryRow extends StatelessWidget {
 class _PayButton extends StatefulWidget {
   final bool enabled;
   final bool isLoading;
-  final bool isRu;
+  final AppLocalizations words;
   final VoidCallback onTap;
 
   const _PayButton({
     required this.enabled,
     required this.isLoading,
-    required this.isRu,
+    required this.words,
     required this.onTap,
   });
 
@@ -787,7 +819,7 @@ class _PayButtonState extends State<_PayButton> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: c.bg),
                 )
               : Text(
-                  widget.isRu ? 'Перейти к оплате' : 'Töleg etmek',
+                  widget.words.topUpPayBtn,
                   style: AppText.semiBold(
                     fontSize: 14,
                     color: widget.enabled ? c.bg : c.inkSoft,
@@ -804,8 +836,8 @@ class _PayButtonState extends State<_PayButton> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _SecurityNote extends StatelessWidget {
-  final bool isRu;
-  const _SecurityNote({required this.isRu});
+  final AppLocalizations words;
+  const _SecurityNote({required this.words});
 
   @override
   Widget build(BuildContext context) {
@@ -816,7 +848,7 @@ class _SecurityNote extends StatelessWidget {
         Icon(Icons.lock_outline_rounded, size: 11, color: c.inkSoft),
         const SizedBox(width: 5),
         Text(
-          isRu ? 'Безопасная оплата через банк' : 'Bank arkaly howpsuz töleg',
+          words.topUpSecurityNote,
           style: AppText.regular(fontSize: 11, color: c.inkSoft),
         ),
       ],

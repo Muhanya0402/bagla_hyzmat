@@ -378,6 +378,24 @@ const Map<String, String> stringsRu = {
   // Тема (light/dark) — лейбл в ThemeToggleTile в Profile.
   'profileThemeLight': 'Светлая тема',
   'profileThemeDark': 'Тёмная тема',
+  // TopUp modal — пополнение жетонов курьера.
+  'topUpHeaderTitle': 'Пополнение баланса',
+  'topUpHeaderSubtitle': 'Жетоны нужны для принятия заказов',
+  'topUpBalanceLabel': 'Текущий баланс:',
+  'topUpTokensUnit': 'жет.',
+  'topUpTokensUnitShort': 'жет.',
+  'topUpSectionTokensAmount': 'КОЛИЧЕСТВО ЖЕТОНОВ',
+  'topUpBadgePopular': 'Популярно',
+  'topUpBadgeProfitable': 'Выгодно',
+  'topUpCustomAmountHint': 'Или введите своё количество...',
+  'topUpSummaryYouGet': 'Вы получите',
+  'topUpPayBtn': 'Перейти к оплате',
+  'topUpSecurityNote': 'Безопасная оплата через банк',
+  'topUpTourPackagesTitle': 'Пакеты жетонов',
+  'topUpTourPackagesBody':
+      'Выберите готовый пакет или введите своё количество.',
+  'topUpTourPayTitle': 'Оплата',
+  'topUpTourPayBody': 'Выберите банк и нажмите кнопку для перехода к оплате.',
   // Support modal
   'supportTitle': 'Служба поддержки',
   'supportSubtitle': 'Мы на связи и готовы помочь вам с любым вопросом',
