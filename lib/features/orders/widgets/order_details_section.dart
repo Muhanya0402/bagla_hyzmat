@@ -92,7 +92,7 @@ class OrderDetailsSection extends StatelessWidget {
                   child: Icon(
                     Icons.collections_outlined,
                     size: 16,
-                    color: c.amber,
+                    color: c.ink,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -109,8 +109,9 @@ class OrderDetailsSection extends StatelessWidget {
                       Text(
                         words.orderMultipleItemsCourierHint,
                         style: AppText.regular(
-                                fontSize: 11.5, color: c.inkMuted)
-                            .copyWith(height: 1.35),
+                          fontSize: 11.5,
+                          color: c.inkMuted,
+                        ).copyWith(height: 1.35),
                       ),
                     ],
                   ),
@@ -182,8 +183,8 @@ class OrderDetailsSection extends StatelessWidget {
                 : null,
             label: isShop
                 ? (courierName.isNotEmpty
-                    ? '${words.courier} — $courierName'
-                    : words.courier)
+                      ? '${words.courier} — $courierName'
+                      : words.courier)
                 : words.orderSender,
             value: counterPhone,
             trailing: _CallButton(onTap: () => _makeCall(counterPhone)),
@@ -200,6 +201,7 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
   final Widget? trailing;
+
   /// Если задан — рендерится вместо иконки-плашки слева.
   /// Используется для аватара курьера в shop-view.
   final Widget? leading;

@@ -251,8 +251,23 @@ abstract final class ActiveOrdersNotification {
     // Per-order state: код уже отправлен клиенту?
     final codeSent = prefs.getBool('$_kCodeSentPrefix${order.id}') ?? false;
 
+    // ── Стратегия actionType ─────────────────────────────────────────────
+    //
+    // ‹ / › — `SilentAction`: им нужны только SharedPreferences и
+    //   AwesomeNotifications, которые работают и в background isolate.
+    //   Бесшумная перелистывание без открытия app — то что нужно.
+    //
+    // Call / Complete / Verify — `Default`: эти ходят в плагины
+    //   (url_launcher / dio / flutter_secure_storage), которые в
+    //   background isolate awesome_notifications НЕ зарегистрированы.
+    //   На killed-app `SilentAction` молча падает → юзер видит «ничего
+    //   не работает». `Default` будит app в main isolate, где плагины
+    //   живы → handler отрабатывает гарантированно.
+    //
+    //   UX-цена: на долю секунды мелькает экран приложения перед
+    //   тем как появится диалер / обновится уведомление. Это приемлемо
+    //   за надёжность работы из killed-состояния.
     final actions = <NotificationActionButton>[
-      // ‹ — предыдущий заказ. Показываем только если есть куда листать.
       if (list.length > 1)
         NotificationActionButton(
           key: _actPrev,
@@ -265,7 +280,7 @@ abstract final class ActiveOrdersNotification {
         NotificationActionButton(
           key: _actCall,
           label: callLabel,
-          actionType: ActionType.SilentAction,
+          actionType: ActionType.Default,
           autoDismissible: false,
         ),
       // Кнопка завершения — двухстадийная:
@@ -276,21 +291,20 @@ abstract final class ActiveOrdersNotification {
           NotificationActionButton(
             key: _actGenerateCode,
             label: completeLabel,
-            actionType: ActionType.SilentAction,
+            actionType: ActionType.Default,
             autoDismissible: false,
           )
         else
           NotificationActionButton(
             key: _actVerifyCode,
             label: verifyLabel,
-            actionType: ActionType.SilentAction,
+            actionType: ActionType.Default,
             autoDismissible: false,
             // RemoteInput — пользователь вводит 4-значный код прямо в шторку.
             // Текст приходит в `ReceivedAction.buttonKeyInput`.
             requireInputText: true,
           ),
       ],
-      // › — следующий заказ.
       if (list.length > 1)
         NotificationActionButton(
           key: _actNext,

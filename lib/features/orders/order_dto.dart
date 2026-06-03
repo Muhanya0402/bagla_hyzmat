@@ -138,8 +138,9 @@ class OrderDto {
 
   /// Адрес магазина с учётом языка + локализованный fallback.
   String shopAddress(bool isRu, {String? fallback}) {
-    if (isRu)
+    if (isRu) {
       return shopAddressRu.isNotEmpty ? shopAddressRu : (fallback ?? '');
+    }
     return shopAddressTk.isNotEmpty ? shopAddressTk : (fallback ?? '');
   }
 

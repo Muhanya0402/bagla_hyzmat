@@ -70,6 +70,24 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initAuth = context.read<AuthProvider>();
+
+      // ⚠️ Дожидаемся загрузки prefs ДО handleRefresh.
+      //
+      // AuthProvider.loadUserData() вызывается в конструкторе async, без
+      // await — на момент первого frame `auth.userId/role` ещё пустые
+      // (default 'client'). В таком состоянии handleRefresh видит
+      // `isCourier = false` → `LevelProvider.loadForUser` скипается
+      // в Future.wait → level-bar пустой.
+      //
+      // Юзер делает pull-to-refresh → к тому времени auth уже загружен →
+      // level загружается. Отсюда баг «уровни не обновляются при входе,
+      // надо скроллить сверху вниз».
+      //
+      // loadUserData идемпотентен (читает те же prefs), повторный вызов
+      // безопасен.
+      await initAuth.loadUserData();
+      if (!mounted) return;
+
       final initRole = initAuth.role.toLowerCase().trim();
       if (initRole == 'shop' || initRole == 'business') {
         selectedFilterIndex = 1;
@@ -134,6 +152,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           ordersError = false;
           httpOffset = fetchedOrders.length;
         });
+        _refreshShopCache(); // ← кеш заказчиков для фильтра
       }
 
       // 2. Переподключаем веб-сокеты на нужный тип заказов (Все или Только мои)
@@ -368,41 +387,24 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     }
   }
 
+  /// Снимок магазинов для модалки. Пополнение кеша делается в
+  /// `_refreshShopCache()` на каждой загрузке orders — здесь только
+  /// возвращаем текущий снимок.
   List<CourierFilterItem> buildShopItems() {
-    // 1) Из текущего `orders` строим Map<phone, bestName>.
-    //    Непустое имя перекрывает пустое — иначе кейс «первый заказ
-    //    без имени» убивал бы имя в фильтре.
-    final bestName = <String, String>{};
-    for (final o in orders) {
-      final phone = (o['shop_phone'] ?? '').toString().trim();
-      if (phone.isEmpty) continue;
-      final name = (o['shop_name'] ?? o['shop_title'] ?? '').toString().trim();
-      if (name.isEmpty) {
-        bestName.putIfAbsent(phone, () => '');
-      } else {
-        bestName[phone] = name;
-      }
-    }
-
-    // 2) Превращаем в items.
-    final fresh = bestName.entries.map(
-      (e) => CourierFilterItem(
-        id: e.key,
-        // Имя как primary (когда есть), телефон в subtitle.
-        // Безымянные — телефон в primary, subtitle = null.
-        label: e.value.isNotEmpty ? e.value : e.key,
-        subtitle: e.value.isNotEmpty ? e.key : null,
-        // Поиск работает и по имени, и по телефону.
-        searchKeywords: '${e.value} ${e.key}',
-      ),
-    );
-
-    // 3) Сливаем в накопительный кеш и возвращаем его отсортированную
-    //    версию. Это нужно чтобы tile «Магазин» в фильтр-модалке не был
-    //    disabled, когда текущий `orders` пуст (рефреш / срезанный
-    //    фильтр) — у нас всё ещё есть магазины из прошлых загрузок.
-    classifierCache.mergeShopItems(fresh);
+    classifierCache.mergeFromOrders(orders);
     return classifierCache.sortedShopItems;
+  }
+
+  /// Пополнить кеш магазинов из текущего `orders`. Вызывается на каждой
+  /// точке загрузки orders (handleRefresh, смена вкладки, пагинация,
+  /// WS-push) — гарантирует, что кеш растёт даже если пользователь
+  /// никогда не открывал фильтр.
+  ///
+  /// Без этого вызова: юзер на пустой вкладке открывает фильтр →
+  /// `buildShopItems()` строит из пустого `orders` → кеш не пополняется →
+  /// tile «Магазин» disabled, выбрать заказчика нельзя.
+  void _refreshShopCache() {
+    classifierCache.mergeFromOrders(orders);
   }
 
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
@@ -462,6 +464,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           }
           loadingMore = false;
         });
+        _refreshShopCache(); // ← кеш заказчиков для фильтра
       }
     } catch (e) {
       debugPrint('Ошибка при загрузке старых заказов (loadMore): $e');
@@ -544,6 +547,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           orders.removeWhere((o) => o['id'].toString() == id);
         }
       });
+
+      _refreshShopCache(); // ← кеш заказчиков для фильтра (WS create/update)
 
       // Переприменяем локальные фильтры (по велаятам/этрапам),
       // чтобы новый или обновленный сокет-заказ сразу правильно отфильтровался на экране
@@ -654,6 +659,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       ordersLoading = false;
       activeOrdersCount = activeCount;
     });
+    _refreshShopCache(); // ← кеш заказчиков для фильтра
     // Не блокируем UI — fire-and-forget. Менеджер сам ничего не делает,
     // если активных заказов 0 (просто отменяет уведомление).
     unawaited(_syncActiveOrdersNotification());

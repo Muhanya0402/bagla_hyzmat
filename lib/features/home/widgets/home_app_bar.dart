@@ -88,7 +88,7 @@ class HomeLogoRow extends StatelessWidget {
           ).then((_) => onRefresh());
         },
         child: _BalanceChip(
-          label: authProv.balancePoints.toDouble().toStringAsFixed(0),
+          label: _formatted(authProv.balancePoints.toDouble()),
           chipColor: c.inkMuted,
           tintColor: c.bg,
         ),
@@ -137,6 +137,14 @@ class HomeLogoRow extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatted(double v) {
+  if (v == v.truncateToDouble()) return v.toStringAsFixed(0);
+  return v
+      .toStringAsFixed(2)
+      .replaceAll(RegExp(r'0+$'), '')
+      .replaceAll(RegExp(r'\.$'), '');
 }
 
 class _BalanceChip extends StatelessWidget {

@@ -244,14 +244,26 @@ class OrderService {
       // Lean explicit field list. Если у Directus role нет прав на одно из
       // этих полей (или relation), он вернёт 403. В этом случае fallback'имся
       // на `*` который возвращает только разрешённые поля.
+      // `shop_name` / `shop_title` НЕ запрашиваем — этих колонок на
+      // collection `orders` нет (имя магазина живёт на связанном
+      // customer'e через `shopId` M2A). Раньше они тут были и Directus
+      // мог отдавать 403 за несуществующее поле → fallback на `*` →
+      // вся lean-оптимизация (~60% уменьшение payload'а) терялась.
+      //
+      // Имя подставляется в decorate-цикле ниже: order['shop_name'] =
+      // customer.name + customer.surname.
       const leanFields = 'id,order_status,transport_type,'
           'total_amount,delivery_amount,points_amount,cashback_amount,'
           'comment,time_of_delivery,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
-          'shop_name,shop_title,shop_phone,client_phone,courier_phone,'
+          'shop_phone,client_phone,courier_phone,'
           'category,multiple_items,'
           'pictures.directus_files_id,'
-          'courierId.item,courierId.collection';
+          // M2A relations — `item` это UUID связанной сущности, `collection`
+          // имя коллекции. `shopId` нужен чтобы в decorate-цикле подтянуть
+          // имя магазина из customers.
+          'courierId.item,courierId.collection,'
+          'shopId.item,shopId.collection';
 
       String buildUrl(String fields) => '/items/orders'
           '?$filterQuery'
@@ -284,59 +296,75 @@ class OrderService {
 
       final List<dynamic> orders = response.data['data'] as List<dynamic>;
 
-      final Set<String> courierIds = {};
-      for (final order in orders) {
-        final courierId = order['courierId'];
-        if (courierId is List && courierId.isNotEmpty) {
-          final first = courierId[0];
-          if (first is Map) {
-            final id = first['item']?.toString();
-            if (id != null) courierIds.add(id);
-          }
-        }
+      // Собираем ID курьеров И магазинов в один проход — потом единый
+      // batch-fetch по `customers`, чтобы не делать два запроса.
+      // Оба поля (`courierId`, `shopId`) — M2A relation, первый элемент
+      // — `{item: <uuid>, collection: 'customers'}`.
+      String? extractFirstM2AItemId(dynamic field) {
+        if (field is! List || field.isEmpty) return null;
+        final first = field[0];
+        if (first is! Map) return null;
+        return first['item']?.toString();
       }
 
-      final Map<String, Map<String, dynamic>> courierMap = {};
-      if (courierIds.isNotEmpty) {
+      final Set<String> customerIds = {};
+      for (final order in orders) {
+        final cid = extractFirstM2AItemId(order['courierId']);
+        if (cid != null) customerIds.add(cid);
+        final sid = extractFirstM2AItemId(order['shopId']);
+        if (sid != null) customerIds.add(sid);
+      }
+
+      final Map<String, Map<String, dynamic>> customerMap = {};
+      if (customerIds.isNotEmpty) {
         try {
-          final courierResp = await _apiClient.dio.get(
+          final resp = await _apiClient.dio.get(
             '/items/customers',
             queryParameters: {
-              'filter[id][_in]': courierIds.join(','),
+              'filter[id][_in]': customerIds.join(','),
               'fields': 'id,name,surname,selfie_scan',
             },
           );
-          final courierData = courierResp.data?['data'];
-          if (courierData is List) {
-            for (final c in courierData) {
+          final data = resp.data?['data'];
+          if (data is List) {
+            for (final c in data) {
               final id = c['id']?.toString();
-              if (id != null) courierMap[id] = Map<String, dynamic>.from(c);
+              if (id != null) customerMap[id] = Map<String, dynamic>.from(c);
             }
           }
         } catch (_) {}
       }
 
       for (final order in orders) {
-        final courierId = order['courierId'];
-        if (courierId is List && courierId.isNotEmpty) {
-          final first = courierId[0];
-          if (first is Map) {
-            final id = first['item']?.toString();
-            if (id != null && courierMap.containsKey(id)) {
-              final c = courierMap[id]!;
-              order['courier_name'] = '${c['name'] ?? ''} ${c['surname'] ?? ''}'
-                  .trim();
-              // selfie_scan может быть UUID-строкой или expanded Map.
-              final selfie = c['selfie_scan'];
-              final selfieId = selfie == null
-                  ? ''
-                  : selfie is Map
-                      ? (selfie['id']?.toString() ?? '')
-                      : selfie.toString();
-              if (selfieId.isNotEmpty) {
-                order['courier_selfie_file_id'] = selfieId;
-              }
-            }
+        // ── Decorate courier_name + selfie ─────────────────────────────
+        final courierItemId = extractFirstM2AItemId(order['courierId']);
+        if (courierItemId != null && customerMap.containsKey(courierItemId)) {
+          final c = customerMap[courierItemId]!;
+          order['courier_name'] =
+              '${c['name'] ?? ''} ${c['surname'] ?? ''}'.trim();
+          final selfie = c['selfie_scan'];
+          final selfieId = selfie == null
+              ? ''
+              : selfie is Map
+                  ? (selfie['id']?.toString() ?? '')
+                  : selfie.toString();
+          if (selfieId.isNotEmpty) {
+            order['courier_selfie_file_id'] = selfieId;
+          }
+        }
+
+        // ── Decorate shop_name из связанного customer'а ────────────────
+        // Колонки `shop_name`/`shop_title` на orders нет — имя живёт на
+        // customer'e через `shopId` M2A. Подставляем в тот же ключ
+        // `shop_name`, чтобы остальной код (OrderDto.shopName,
+        // ClassifierCache.mergeFromOrders, фильтр-модалка) читал из
+        // привычного места без специальной обработки M2A.
+        final shopItemId = extractFirstM2AItemId(order['shopId']);
+        if (shopItemId != null && customerMap.containsKey(shopItemId)) {
+          final s = customerMap[shopItemId]!;
+          final fullName = '${s['name'] ?? ''} ${s['surname'] ?? ''}'.trim();
+          if (fullName.isNotEmpty) {
+            order['shop_name'] = fullName;
           }
         }
       }

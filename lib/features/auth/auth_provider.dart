@@ -36,6 +36,22 @@ class AuthProvider extends ChangeNotifier {
   String _districtId = '';
   String _etraptId = '';
   String _provinceId = '';
+
+  // Лейблы локации магазина — двуязычные.
+  // Нужны при создании заказа: поля `shop_adress` (RU) и `shop_adresstk`
+  // (TK) формируются по принципу «<etrap> - <district>», аналогично
+  // delivery-адресу. Раньше в `createOrder` отправлялось `auth.address`
+  // в оба поля → реально TK-версия дублировала RU. AuthRepository уже
+  // сохраняет эти лейблы в SharedPreferences при логине/refresh профиля
+  // (`province_ru`, `province_tk`, `etrap_ru`, `etrap_tk`, `district_ru`,
+  // `district_tk`) — мы их сюда подгружаем, чтобы UI/createOrder могли
+  // строить адрес без отдельных prefs-чтений.
+  String _provinceRu = '';
+  String _provinceTk = '';
+  String _etrapRu = '';
+  String _etrapTk = '';
+  String _districtRu = '';
+  String _districtTk = '';
   String _role = 'client';
   String _status = 'pending';
   double _rating = 0.0;
@@ -64,6 +80,40 @@ class AuthProvider extends ChangeNotifier {
   String get districtId => _districtId;
   String get etraptId => _etraptId;
   String get provinceId => _provinceId;
+
+  // Лейблы локации магазина.
+  String get provinceRu => _provinceRu;
+  String get provinceTk => _provinceTk;
+  String get etrapRu => _etrapRu;
+  String get etrapTk => _etrapTk;
+  String get districtRu => _districtRu;
+  String get districtTk => _districtTk;
+
+  /// Адрес магазина в RU для поля `shop_adress` при создании заказа.
+  /// Строится по тому же правилу, что delivery-адрес в create_order_screen:
+  ///   - есть район        → `etrap - district`
+  ///   - есть только etrap → `etrap`
+  ///   - только province   → `province`
+  /// Если все три пусты — возвращает `_address` как fallback (старое
+  /// поведение, не ломаем legacy для случая когда `address` всё-таки есть).
+  String get shopAddressRu {
+    if (_districtRu.isNotEmpty && _etrapRu.isNotEmpty) {
+      return '$_etrapRu - $_districtRu';
+    }
+    if (_etrapRu.isNotEmpty) return _etrapRu;
+    if (_provinceRu.isNotEmpty) return _provinceRu;
+    return _address;
+  }
+
+  /// То же что `shopAddressRu`, но на туркменском — для поля `shop_adresstk`.
+  String get shopAddressTk {
+    if (_districtTk.isNotEmpty && _etrapTk.isNotEmpty) {
+      return '$_etrapTk - $_districtTk';
+    }
+    if (_etrapTk.isNotEmpty) return _etrapTk;
+    if (_provinceTk.isNotEmpty) return _provinceTk;
+    return _address;
+  }
   String get role => _role.toLowerCase().trim();
   String get status => _status.toLowerCase().trim();
 
@@ -135,6 +185,16 @@ class AuthProvider extends ChangeNotifier {
     _districtId = prefs.getString('district_id') ?? '';
     _etraptId = prefs.getString('etrap_id') ?? '';
     _provinceId = prefs.getString('province_id') ?? '';
+    // Лейблы пишутся в эти же prefs ключи из AuthRepository при логине
+    // и refreshProfile — просто читаем их сюда. Если на момент входа в
+    // приложение ключей нет (свежая установка / logout) — пустые строки,
+    // shopAddressRu/Tk вернёт `_address` как fallback.
+    _provinceRu = prefs.getString('province_ru') ?? '';
+    _provinceTk = prefs.getString('province_tk') ?? '';
+    _etrapRu = prefs.getString('etrap_ru') ?? '';
+    _etrapTk = prefs.getString('etrap_tk') ?? '';
+    _districtRu = prefs.getString('district_ru') ?? '';
+    _districtTk = prefs.getString('district_tk') ?? '';
     _role = prefs.getString('role') ?? 'client';
     _status = prefs.getString('status') ?? 'pending';
     _rating = prefs.getDouble('rating') ?? 0.0;
@@ -227,6 +287,47 @@ class AuthProvider extends ChangeNotifier {
     extractId(user['district'], (v) => _districtId = v);
     extractId(user['etrap'], (v) => _etraptId = v);
     extractId(user['province'], (v) => _provinceId = v);
+
+    // Лейблы локации — берём из expanded-объектов если они есть.
+    // AuthRepository тоже их сохраняет в prefs (см. `fetchProfileFromServer`),
+    // но на момент verify-flow свежие значения приходят в `user` и
+    // здесь же должны попасть в state, иначе `shopAddressRu/Tk` останутся
+    // пусты до следующего `loadUserData()`.
+    void extractLabels(
+      dynamic raw, {
+      required String ruKey,
+      required String tkKey,
+      required void Function(String) ru,
+      required void Function(String) tk,
+    }) {
+      if (raw is! Map) return;
+      final r = (raw[ruKey] ?? '').toString();
+      final t = (raw[tkKey] ?? '').toString();
+      if (r.isNotEmpty) ru(r);
+      if (t.isNotEmpty) tk(t);
+    }
+
+    extractLabels(
+      user['district'],
+      ruKey: 'district_ru',
+      tkKey: 'district_tk',
+      ru: (v) => _districtRu = v,
+      tk: (v) => _districtTk = v,
+    );
+    extractLabels(
+      user['etrap'],
+      ruKey: 'etrap_ru',
+      tkKey: 'etrap_tk',
+      ru: (v) => _etrapRu = v,
+      tk: (v) => _etrapTk = v,
+    );
+    extractLabels(
+      user['province'],
+      ruKey: 'province_ru',
+      tkKey: 'province_tk',
+      ru: (v) => _provinceRu = v,
+      tk: (v) => _provinceTk = v,
+    );
 
     debugPrint(
       '📡 AuthProvider: ID=$_userId status=$_status role=$_role district=$_districtId',
@@ -489,6 +590,12 @@ class AuthProvider extends ChangeNotifier {
     _districtId = '';
     _etraptId = '';
     _provinceId = '';
+    _provinceRu = '';
+    _provinceTk = '';
+    _etrapRu = '';
+    _etrapTk = '';
+    _districtRu = '';
+    _districtTk = '';
     _role = 'client';
     _status = 'pending';
     _balancePoints = 0.0;

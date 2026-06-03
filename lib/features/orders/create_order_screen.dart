@@ -514,8 +514,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
             : _selectedEtrap != null
             ? _selectedEtrap!.tk
             : _selectedProvince!.tk,
-        shopAddress: auth.address,
-        shopAddressTk: auth.address,
+        // Адрес магазина (RU/TK) строится по тому же принципу, что
+        // delivery-адрес выше — из province/etrap/district магазина,
+        // которые AuthProvider подгружает из prefs (туда их пишет
+        // AuthRepository при логине/refresh профиля). Раньше тут было
+        // `auth.address` в оба поля → TK-версия совпадала с RU и
+        // фронт у курьера показывал русский адрес при туркменском UI.
+        // Если все три уровня пусты — оба геттера возвращают `_address`
+        // как fallback, поведение legacy сохраняется.
+        shopAddress: auth.shopAddressRu,
+        shopAddressTk: auth.shopAddressTk,
         transportType: _transportType,
         phone: _phoneController.text,
         comment: '',

@@ -126,9 +126,7 @@ class CourierFilters {
         ? this.deliveryDistrict
         : deliveryDistrict as CourierFilterItem?,
     shop: shop == _s ? this.shop : shop as CourierFilterItem?,
-    category: category == _s
-        ? this.category
-        : category as CourierFilterItem?,
+    category: category == _s ? this.category : category as CourierFilterItem?,
   );
 }
 
@@ -173,6 +171,40 @@ class ClassifierCache {
     final list = shopItemsCache.values.toList();
     list.sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
     return list;
+  }
+
+  /// Пополнить кеш магазинов из сырого списка orders. Вызывается
+  /// контроллером после каждой успешной загрузки orders (handleRefresh,
+  /// смена вкладки, пагинация, WS-push). Так кеш растёт независимо от
+  /// открытия фильтр-модалки → tile «Магазин» в фильтре никогда не
+  /// будет пустым, если хоть один заказ когда-то был виден.
+  ///
+  /// «Лучшее» имя побеждает: если у магазина был заказ без `shop_name`,
+  /// а потом пришёл с именем — обновляем item на двухстрочный
+  /// (имя + телефон).
+  void mergeFromOrders(List<dynamic> orders) {
+    final bestName = <String, String>{};
+    for (final o in orders) {
+      if (o is! Map) continue;
+      final phone = (o['shop_phone'] ?? '').toString().trim();
+      if (phone.isEmpty) continue;
+      final name = (o['shop_name'] ?? o['shop_title'] ?? '').toString().trim();
+      if (name.isEmpty) {
+        bestName.putIfAbsent(phone, () => '');
+      } else {
+        bestName[phone] = name;
+      }
+    }
+
+    final fresh = bestName.entries.map(
+      (e) => CourierFilterItem(
+        id: e.key,
+        label: e.value.isNotEmpty ? e.value : e.key,
+        subtitle: e.value.isNotEmpty ? e.key : null,
+        searchKeywords: '${e.value} ${e.key}',
+      ),
+    );
+    mergeShopItems(fresh);
   }
 }
 
@@ -849,10 +881,12 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                   final cats = await _loadShopCategories();
                   if (!mounted) return;
                   final items = cats
-                      .map((c) => CourierFilterItem(
-                            id: c.id.toString(),
-                            label: c.label(widget.isRu),
-                          ))
+                      .map(
+                        (c) => CourierFilterItem(
+                          id: c.id.toString(),
+                          label: c.label(widget.isRu),
+                        ),
+                      )
                       .toList();
                   final res = await _openPicker(
                     title: w.filterCategorySection,
@@ -860,9 +894,11 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                     selectedId: _draft.category?.id,
                   );
                   if (res == null) return;
-                  setState(() => _draft = _draft.copyWith(
-                        category: _isCleared(res) ? null : res,
-                      ));
+                  setState(
+                    () => _draft = _draft.copyWith(
+                      category: _isCleared(res) ? null : res,
+                    ),
+                  );
                 },
                 onClear: _draft.category != null
                     ? () => setState(
@@ -1048,27 +1084,41 @@ class _CourierFilterModalState extends State<CourierFilterModal>
 
               // ── Shop ─────────────────────────────────────────────────────
               _sectionLabel(w.filterShopLabel),
-              _pickerTile(
-                icon: Icons.store_outlined,
-                hint: w.filterPickShop,
-                selected: _draft.shop,
-                disabled: widget.shopItems.isEmpty,
-                onTap: () async {
-                  final res = await _openPicker(
-                    title: w.filterShopLabel,
-                    itemsFuture: Future.value(widget.shopItems),
-                    selectedId: _draft.shop?.id,
-                  );
-                  if (res == null) return;
-                  setState(
-                    () => _draft = _draft.copyWith(
-                      shop: _isCleared(res) ? null : res,
-                    ),
+              // ⚠️ Читаем магазины НАПРЯМУЮ из кеша, не из `widget.shopItems`.
+              // `shopItems` — снимок на момент открытия модалки. Если юзер
+              // открыл фильтр когда orders пуст (refresh / срезанная вкладка),
+              // снимок пустой → tile был бы disabled, выбрать заказчика нельзя.
+              // Кеш же пополняется после каждой загрузки orders (см.
+              // home_screen_controller) — там магазины из всех прошлых
+              // выгрузок, даже если текущий список пуст.
+              Builder(
+                builder: (ctx) {
+                  final shopList = widget.cache.sortedShopItems;
+                  return _pickerTile(
+                    icon: Icons.store_outlined,
+                    hint: w.filterPickShop,
+                    selected: _draft.shop,
+                    disabled: shopList.isEmpty,
+                    onTap: () async {
+                      final res = await _openPicker(
+                        title: w.filterShopLabel,
+                        itemsFuture: Future.value(shopList),
+                        selectedId: _draft.shop?.id,
+                      );
+                      if (res == null) return;
+                      setState(
+                        () => _draft = _draft.copyWith(
+                          shop: _isCleared(res) ? null : res,
+                        ),
+                      );
+                    },
+                    onClear: _draft.shop != null
+                        ? () => setState(
+                            () => _draft = _draft.copyWith(shop: null),
+                          )
+                        : null,
                   );
                 },
-                onClear: _draft.shop != null
-                    ? () => setState(() => _draft = _draft.copyWith(shop: null))
-                    : null,
               ),
               const SizedBox(height: 18),
 
@@ -1472,8 +1522,8 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                           // что это магазин (имя+телефон),
                                           // показываем store. Иначе location.
                                           : (item.subtitle != null
-                                              ? Icons.store_outlined
-                                              : Icons.location_on_outlined),
+                                                ? Icons.store_outlined
+                                                : Icons.location_on_outlined),
                                       size: 14,
                                       color: isActive ? c.ink : c.inkSoft,
                                     ),
