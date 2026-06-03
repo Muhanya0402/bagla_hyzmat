@@ -10,7 +10,12 @@ import 'package:flutter/material.dart';
 
 class UnreadNotificationsModal extends StatelessWidget {
   final List<NotificationDto> notifications;
-  final VoidCallback onMarkAllRead;
+
+  /// Должен возвращать `Future` — модалка дождётся завершения, чтобы
+  /// показать loading-state и не закрыться раньше, чем PATCH сервер
+  /// отработает. Раньше тут был `VoidCallback`, async-функция
+  /// уходила в fire-and-forget, пользователь видел «нажал — ничего».
+  final Future<void> Function() onMarkAllRead;
 
   /// Called after the sheet closes. Caller handles screen navigation.
   final void Function(NotificationDto)? onNotificationTap;
@@ -43,7 +48,7 @@ class UnreadNotificationsModal extends StatelessWidget {
 
 class _UnreadModalBody extends StatefulWidget {
   final List<NotificationDto> notifications;
-  final VoidCallback onMarkAllRead;
+  final Future<void> Function() onMarkAllRead;
   final void Function(NotificationDto)? onNotificationTap;
   final AppLocalizations words;
   final bool isRu;
@@ -63,15 +68,36 @@ class _UnreadModalBody extends StatefulWidget {
 class _UnreadModalBodyState extends State<_UnreadModalBody> {
   late final List<NotificationDto> _items;
 
+  /// Идёт ли сейчас запрос «прочитать все». Используется чтобы:
+  ///   1) показать спиннер вместо иконки на кнопке
+  ///   2) заблокировать повторные тапы
+  bool _marking = false;
+
   @override
   void initState() {
     super.initState();
     _items = List<NotificationDto>.from(widget.notifications);
   }
 
-  void _onMarkAll() {
-    widget.onMarkAllRead();
-    if (mounted) Navigator.pop(context);
+  Future<void> _onMarkAll() async {
+    if (_marking) return; // защита от двойного тапа
+    setState(() => _marking = true);
+
+    // Захватываем navigator ДО await — после он может быть уже не валиден.
+    final nav = Navigator.of(context);
+
+    try {
+      // Дожидаемся завершения server PATCH. Без await пользователь видел
+      // «нажал — модалка закрылась, ничего не поменялось». Теперь модалка
+      // не закроется пока сервер не подтвердит (или не упадёт).
+      await widget.onMarkAllRead();
+    } catch (_) {
+      // Ошибку проглатываем — caller сам решает что с ней делать,
+      // у нас тут только UI: закрыть модалку либо снять loading.
+    }
+
+    if (!mounted) return;
+    nav.pop();
   }
 
   void _onTap(NotificationDto notif) {
@@ -149,6 +175,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
                     _MarkAllButton(
                       label: widget.words.notifMarkAll,
                       onTap: _onMarkAll,
+                      loading: _marking,
                     ),
                   ],
                 ),
@@ -323,7 +350,12 @@ class _NotifRowState extends State<_NotifRow> {
 class _MarkAllButton extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
-  const _MarkAllButton({required this.label, required this.onTap});
+  final bool loading;
+  const _MarkAllButton({
+    required this.label,
+    required this.onTap,
+    this.loading = false,
+  });
 
   @override
   State<_MarkAllButton> createState() => _MarkAllButtonState();
@@ -336,23 +368,42 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return GestureDetector(
+      // **opaque** — гарантированно ловим тап в любой точке prefix-padding'а,
+      // а не только под иконкой/текстом (как было раньше с маленькой
+      // паддингом 2/4 — пользователь мазал мимо).
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
+      // Используем `onTap` вместо `onTapUp`. onTapUp не срабатывает,
+      // если палец чуть-чуть сдвинулся между down и up — для маленькой
+      // кнопки это давало ощущение «нажал, не отработало». onTap имеет
+      // более forgiving детекцию (gesture arena → tap recogniser).
+      onTap: widget.loading ? null : widget.onTap,
+      onTapDown: widget.loading ? null : (_) => setState(() => _pressed = true),
+      onTapUp: widget.loading ? null : (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         scale: _pressed ? 0.95 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+        child: Container(
+          // Увеличили hit-area: было 2/4 → стало 10/8 + min height 36
+          // (комфортный 44-точечный target по HIG/Material).
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.done_all_rounded, size: 13, color: c.ink),
+              if (widget.loading)
+                SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: c.ink,
+                  ),
+                )
+              else
+                Icon(Icons.done_all_rounded, size: 13, color: c.ink),
               const SizedBox(width: 5),
               Text(
                 widget.label,

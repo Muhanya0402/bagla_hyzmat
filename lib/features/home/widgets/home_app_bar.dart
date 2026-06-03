@@ -89,8 +89,8 @@ class HomeLogoRow extends StatelessWidget {
         },
         child: _BalanceChip(
           label: authProv.balancePoints.toDouble().toStringAsFixed(0),
-          chipColor: c.amber,
-          tintColor: c.amberTint,
+          chipColor: c.inkMuted,
+          tintColor: c.bg,
         ),
       );
     } else {
@@ -153,10 +153,10 @@ class _BalanceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: tintColor,
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: chipColor.withValues(alpha: 0.2)),
       ),
       child: Row(

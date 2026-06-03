@@ -22,11 +22,11 @@ class HomeLevelBar extends StatelessWidget {
         Container(
           width: 30,
           height: 30,
-          decoration: BoxDecoration(color: c.ink, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: c.amber, shape: BoxShape.circle),
           alignment: Alignment.center,
           child: Text(
             '$level',
-            style: AppText.extraBold(fontSize: 9, color: Colors.white),
+            style: AppText.extraBold(fontSize: 9, color: c.inklabel),
           ),
         ),
 
@@ -50,7 +50,7 @@ class HomeLevelBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.amberTint,
                   borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: c.ink.withValues(alpha: 0.18)),
+                  border: Border.all(color: c.amber.withValues(alpha: 0.18)),
                 ),
                 child: Stack(
                   alignment: Alignment.centerLeft,
@@ -63,12 +63,12 @@ class HomeLevelBar extends StatelessWidget {
                       height: 30,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [c.ink, c.ink.withValues(alpha: 0.72)],
+                          colors: [c.amber, c.amber.withValues(alpha: 0.72)],
                         ),
                         borderRadius: BorderRadius.circular(100),
                         boxShadow: [
                           BoxShadow(
-                            color: c.ink.withValues(alpha: 0.22),
+                            color: c.amber.withValues(alpha: 0.22),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -90,7 +90,7 @@ class HomeLevelBar extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: AppText.semiBold(
                                 fontSize: 9,
-                                color: onFill ? Colors.white : Colors.white,
+                                color: onFill ? c.inklabel : c.inklabel,
                               ),
                             ),
                           ),
