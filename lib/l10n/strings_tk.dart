@@ -637,6 +637,12 @@ const Map<String, String> stringsTk = {
   'activeOrdersBtnCall': 'Jaň etmek',
   'activeOrdersBtnComplete': 'Tamamlamak',
   'activeOrdersBtnCancel': 'Ýatyrmak',
+  'activeOrdersBtnVerify': 'Kody tassyklaň',
+  'activeOrdersEnterCodeTitle': 'Müşderiden kody giriziň',
+  'activeOrdersCodeSentBody': 'Kod müşderä SMS arkaly ugradyldy',
+  'activeOrdersWrongCode': 'Kody nädogry, gaýtadan synanyşyň',
+  'activeOrdersCodeFailed': 'Kody ugratmak başartmady',
+  'activeOrdersCompleted': 'Sargyt tamamlandy ✓',
   // ── Принудительный logout при истечении сессии ─────────────────────────────
   'sessionExpiredTitle': 'Sessiýanyň möhleti gutardy',
   'sessionExpiredBody':

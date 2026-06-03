@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../orders/order_service.dart';
 import 'active_order_snapshot.dart';
 
 /// Менеджер «персистентного» уведомления с активными заказами.
@@ -40,14 +43,26 @@ abstract final class ActiveOrdersNotification {
   static const _kTitleKey = 'active_orders_title';
   static const _kCallLabelKey = 'active_orders_call_label';
   static const _kCompleteLabelKey = 'active_orders_complete_label';
+  static const _kVerifyLabelKey = 'active_orders_verify_label';
+  static const _kEnterCodeTitleKey = 'active_orders_enter_code_title';
+  static const _kCodeSentBodyKey = 'active_orders_code_sent_body';
+  static const _kCompletedBodyKey = 'active_orders_completed_body';
   static const _kPrefixIndexKey = 'active_orders_index_template';
+  /// Префикс per-order ключа «код уже отправлен клиенту, ждём ввод».
+  /// Полный ключ: `<prefix><orderId>`.
+  static const _kCodeSentPrefix = 'active_orders_code_sent_';
 
   // Action keys — должны быть стабильными между релизами, потому что Android
   // может «доставить» action после рестарта приложения.
   static const _actPrev = 'ACTIVE_ORDERS_PREV';
   static const _actNext = 'ACTIVE_ORDERS_NEXT';
   static const _actCall = 'ACTIVE_ORDERS_CALL';
-  static const _actComplete = 'ACTIVE_ORDERS_COMPLETE';
+  /// Первый шаг завершения — генерирует код, отправляет клиенту по СМС,
+  /// перестраивает уведомление в «введите код» режим.
+  static const _actGenerateCode = 'ACTIVE_ORDERS_GEN_CODE';
+  /// Второй шаг — кнопка с `requireInputText: true` (Android RemoteInput).
+  /// При нажатии в `action.buttonKeyInput` приходит введённый код.
+  static const _actVerifyCode = 'ACTIVE_ORDERS_VERIFY_CODE';
 
   // ── Initialization ─────────────────────────────────────────────────────
 
@@ -93,6 +108,32 @@ abstract final class ActiveOrdersNotification {
       onActionReceivedMethod: onActionReceivedMethod,
     );
 
+    // ⚠️ Без этого флэша баг «нажал в шторке — ничего не работает, пока
+    // не зайду в приложение». Объяснение:
+    //
+    // Когда процесс приложения killed (Android battery saver, swap),
+    // user тапает кнопку action в шторке → нативная часть awesome_notif
+    // ставит action в очередь, но НЕ доставляет его автоматически в
+    // `onActionReceivedMethod` при cold start. Action ждёт в нативной
+    // очереди и достаётся только через явный `getInitialNotificationAction()`.
+    //
+    // Если не вытащить — пользователю кажется что кнопка не сработала.
+    // Когда он откроет app и тапнет кнопку повторно (уже в alive-режиме),
+    // только тогда оно отработает в main isolate'е.
+    //
+    // Делаем flush после `setListeners` — обработчик уже привязан, action
+    // прокинется в него корректно. removeFromActionEvents=true — чистим
+    // очередь, чтобы не сработало повторно в следующий запуск.
+    final pending = await AwesomeNotifications().getInitialNotificationAction(
+      removeFromActionEvents: true,
+    );
+    if (pending != null && pending.buttonKeyPressed.isNotEmpty) {
+      // Запускаем в main isolate'е — здесь все плагины (url_launcher,
+      // dio, flutter_secure_storage) уже зарегистрированы. Это надёжнее,
+      // чем background isolate с урезанным engine'ом.
+      unawaited(onActionReceivedMethod(pending));
+    }
+
     // Запросить разрешение если ещё не дано.
     final allowed = await AwesomeNotifications().isNotificationAllowed();
     if (!allowed) {
@@ -118,6 +159,10 @@ abstract final class ActiveOrdersNotification {
     required String Function(int index, int total) indexTemplate,
     required String callBtnLabel,
     required String completeBtnLabel,
+    required String verifyBtnLabel,
+    required String enterCodeTitle,
+    required String codeSentBody,
+    required String completedBody,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -128,14 +173,27 @@ abstract final class ActiveOrdersNotification {
       return;
     }
 
-    // Сохраняем снимки и шаблоны для background handler.
+    // Сохраняем снимки и все локализованные шаблоны для background handler.
     await prefs.setString(_kOrdersKey, ActiveOrderSnapshot.encodeList(orders));
     await prefs.setString(_kTitleKey, title);
     await prefs.setString(_kCallLabelKey, callBtnLabel);
     await prefs.setString(_kCompleteLabelKey, completeBtnLabel);
+    await prefs.setString(_kVerifyLabelKey, verifyBtnLabel);
+    await prefs.setString(_kEnterCodeTitleKey, enterCodeTitle);
+    await prefs.setString(_kCodeSentBodyKey, codeSentBody);
+    await prefs.setString(_kCompletedBodyKey, completedBody);
     // Шаблон индекса — упрощённо сохраняем формат «{i} / {n}», который
     // background handler сможет применить без l10n.
     await prefs.setString(_kPrefixIndexKey, indexTemplate(0, 0));
+
+    // Чистим code_sent флаги для заказов, которых больше нет в списке
+    // (например, заказ завершился и пропал из активных).
+    final currentIds = orders.map((o) => o.id).toSet();
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith(_kCodeSentPrefix)) continue;
+      final orderId = key.substring(_kCodeSentPrefix.length);
+      if (!currentIds.contains(orderId)) await prefs.remove(key);
+    }
 
     // Текущий индекс: если стал out-of-range (заказ убрался), сбрасываем.
     int idx = prefs.getInt(_kIndexKey) ?? 0;
@@ -182,8 +240,16 @@ abstract final class ActiveOrdersNotification {
     final title = prefs.getString(_kTitleKey) ?? 'Bagla';
     final callLabel = prefs.getString(_kCallLabelKey) ?? 'Call';
     final completeLabel = prefs.getString(_kCompleteLabelKey) ?? 'Done';
+    final verifyLabel = prefs.getString(_kVerifyLabelKey) ?? 'Verify';
+    final enterCodeTitle =
+        prefs.getString(_kEnterCodeTitleKey) ?? 'Enter code';
+    final codeSentBody =
+        prefs.getString(_kCodeSentBodyKey) ?? 'Code sent to client';
     // Простой формат шаблона: «Заказ {i} из {n}»
     final indexLine = 'Заказ ${idx + 1} из ${list.length}';
+
+    // Per-order state: код уже отправлен клиенту?
+    final codeSent = prefs.getBool('$_kCodeSentPrefix${order.id}') ?? false;
 
     final actions = <NotificationActionButton>[
       // ‹ — предыдущий заказ. Показываем только если есть куда листать.
@@ -202,14 +268,28 @@ abstract final class ActiveOrdersNotification {
           actionType: ActionType.SilentAction,
           autoDismissible: false,
         ),
-      // Завершить — только когда заказ active (не для published у магазина).
-      if (order.status == 'active')
-        NotificationActionButton(
-          key: _actComplete,
-          label: completeLabel,
-          actionType: ActionType.SilentAction,
-          autoDismissible: false,
-        ),
+      // Кнопка завершения — двухстадийная:
+      // 1) код ещё не отправлен → «Завершить» (запустит generateDeliveryCode)
+      // 2) код отправлен → «Подтвердить код» с RemoteInput-текстовым полем
+      if (order.status == 'active') ...[
+        if (!codeSent)
+          NotificationActionButton(
+            key: _actGenerateCode,
+            label: completeLabel,
+            actionType: ActionType.SilentAction,
+            autoDismissible: false,
+          )
+        else
+          NotificationActionButton(
+            key: _actVerifyCode,
+            label: verifyLabel,
+            actionType: ActionType.SilentAction,
+            autoDismissible: false,
+            // RemoteInput — пользователь вводит 4-значный код прямо в шторку.
+            // Текст приходит в `ReceivedAction.buttonKeyInput`.
+            requireInputText: true,
+          ),
+      ],
       // › — следующий заказ.
       if (list.length > 1)
         NotificationActionButton(
@@ -220,12 +300,17 @@ abstract final class ActiveOrdersNotification {
         ),
     ];
 
+    // Body меняется в зависимости от стадии.
+    final body = codeSent
+        ? '#${order.shortId}\n$codeSentBody\n→ $enterCodeTitle'
+        : '#${order.shortId}\n${order.addressLine}';
+
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: _kNotifId,
         channelKey: _channelKey,
         title: '$title  ·  $indexLine',
-        body: '#${order.shortId}\n${order.addressLine}',
+        body: body,
         notificationLayout: NotificationLayout.Default,
         category: NotificationCategory.Status,
         // Цвет brand-tint (использует <color name="notification_color"> из
@@ -289,15 +374,96 @@ abstract final class ActiveOrdersNotification {
         }
         break;
 
-      case _actComplete:
-        // НЕ делаем PATCH из background isolate'а — ненадёжно на китайских
-        // ROM'ах. Ставим pending-флаг, главный isolate подхватит его при
-        // следующем resume и сделает API call с правильной обработкой ошибок.
+      case _actGenerateCode:
+        // Шаг 1 завершения: генерим код, отправляем клиенту по СМС.
+        // OrderService инстанцируется свежий в background isolate'е —
+        // он внутри использует ApiClient singleton, который читает токен
+        // из SecureTokenStore. Всё работает потому что awesome_notifications
+        // регистрирует Flutter plugins для своего background isolate'а.
         final order = list[idx];
-        await prefs.setString(_kPendingActionKey, 'complete:${order.id}');
-        // Открываем приложение через cancel'нутый notification + payload,
-        // чтобы пользователь увидел результат.
-        // (На iOS приложение откроется автоматически при tap'е на уведомление.)
+        if (order.courierId.isEmpty) break;
+        try {
+          final svc = OrderService();
+          final res = await svc.generateDeliveryCode(
+            orderId: order.id,
+            courierId: order.courierId,
+            clientPhone: order.phoneToCall,
+          );
+          if (res['success'] == true) {
+            await prefs.setBool('$_kCodeSentPrefix${order.id}', true);
+            // Пересоздаём notification — теперь покажется
+            // «Введите код» с RemoteInput-полем.
+            await _renderAt(idx);
+          }
+          // На fail — ничего не меняем, кнопка «Завершить» остаётся.
+        } catch (_) {
+          // silent fail — пользователь попробует снова
+        }
+        break;
+
+      case _actVerifyCode:
+        // Шаг 2: пользователь ввёл код в RemoteInput, текст в buttonKeyInput.
+        final order = list[idx];
+        final code = action.buttonKeyInput.trim();
+        if (code.length != 4) break;
+        try {
+          final svc = OrderService();
+          final res = await svc.verifyDeliveryCode(
+            orderId: order.id,
+            code: code,
+          );
+          if (res['success'] == true) {
+            // Заказ закрыт. Чистим code_sent флаг, ставим pending
+            // action — main isolate при следующем resume сделает refresh
+            // и UI отразит новый статус.
+            await prefs.remove('$_kCodeSentPrefix${order.id}');
+            await prefs.setString(
+              _kPendingActionKey,
+              'completed:${order.id}',
+            );
+            // Показываем «Заказ завершён» как новое уведомление кратко,
+            // а sticky-notification оставляем — main isolate при refresh'е
+            // его уберёт если активных заказов больше нет.
+            final completedBody = prefs.getString(_kCompletedBodyKey) ??
+                'Order completed ✓';
+            final title = prefs.getString(_kTitleKey) ?? 'Bagla';
+            await AwesomeNotifications().createNotification(
+              content: NotificationContent(
+                id: _kNotifId + 1, // отдельный id, чтобы не схлопнулось
+                channelKey: _channelKey,
+                title: title,
+                body: completedBody,
+                category: NotificationCategory.Status,
+                autoDismissible: true,
+              ),
+            );
+            // Скрываем sticky — main isolate его пересоздаст с актуальным
+            // списком (без завершённого заказа).
+            await AwesomeNotifications().cancel(_kNotifId);
+          } else {
+            // Неверный код — оставляем notification с input'ом,
+            // показываем ошибку в title временно.
+            final wrongCodeBody = prefs.getString(_kCodeSentBodyKey) ??
+                'Wrong code, try again';
+            // Re-render с сообщением об ошибке (просто пересоздадим,
+            // body уже включает codeSentBody — пользователь поймёт что
+            // надо ещё раз).
+            await _renderAt(idx);
+            // Отдельное короткое heads-up уведомление с ошибкой.
+            await AwesomeNotifications().createNotification(
+              content: NotificationContent(
+                id: _kNotifId + 2,
+                channelKey: _channelKey,
+                title: 'Bagla',
+                body: wrongCodeBody,
+                category: NotificationCategory.Error,
+                autoDismissible: true,
+              ),
+            );
+          }
+        } catch (_) {
+          // silent fail — пользователь попробует снова
+        }
         break;
     }
   }

@@ -122,7 +122,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         deliveryEtrapId: filters.deliveryEtrap?.id,
         deliveryDistrictId: filters.deliveryDistrict?.id,
         shopPhone: filters.shop?.id,
-        orderStatus: selectedStatus,
+        orderStatus: null, // фильтр по статусу — клиентский, applyFilters()
         categoryFilter: filters.category?.id,
       );
 
@@ -154,7 +154,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         deliveryEtrapId: filters.deliveryEtrap?.id,
         deliveryDistrictId: filters.deliveryDistrict?.id,
         shopPhone: filters.shop?.id,
-        orderStatus: selectedStatus,
+        orderStatus: null, // фильтр по статусу — клиентский, applyFilters()
         categoryFilter: filters.category?.id,
       );
     } catch (e) {
@@ -201,16 +201,26 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
     switch (verb) {
       case 'complete':
+        // Legacy путь — без verification code. Оставлен для обратной
+        // совместимости (если кто-то задаст pending action из другого места).
         final ok = await orderService.updateStatus(
           orderId,
           'completed',
           userId: auth.userId,
         );
         if (!mounted) return;
-        if (ok) {
-          // Полный refresh: orders, level, active count + sync уведомления.
-          await handleRefresh();
-        }
+        if (ok) await handleRefresh();
+        break;
+
+      case 'completed':
+        // Notification handler уже успешно вызвал verifyDeliveryCode —
+        // статус заказа уже 'completed' на сервере. Нам остаётся только
+        // обновить UI + cashback (как делает order_detail_screen).
+        unawaited(orderService.applyCashbackIfOnTime(
+          orderId: orderId,
+          courierId: auth.userId,
+        ));
+        await handleRefresh();
         break;
     }
   }
@@ -359,19 +369,40 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   List<CourierFilterItem> buildShopItems() {
-    final seen = <String>{};
-    final result = <CourierFilterItem>[];
+    // 1) Из текущего `orders` строим Map<phone, bestName>.
+    //    Непустое имя перекрывает пустое — иначе кейс «первый заказ
+    //    без имени» убивал бы имя в фильтре.
+    final bestName = <String, String>{};
     for (final o in orders) {
       final phone = (o['shop_phone'] ?? '').toString().trim();
-      if (phone.isEmpty || !seen.add(phone)) continue;
-
+      if (phone.isEmpty) continue;
       final name = (o['shop_name'] ?? o['shop_title'] ?? '').toString().trim();
-      final label = name.isNotEmpty ? '$name ($phone)' : phone;
-
-      result.add(CourierFilterItem(id: phone, label: label));
+      if (name.isEmpty) {
+        bestName.putIfAbsent(phone, () => '');
+      } else {
+        bestName[phone] = name;
+      }
     }
-    result.sort((a, b) => a.label.compareTo(b.label));
-    return result;
+
+    // 2) Превращаем в items.
+    final fresh = bestName.entries.map(
+      (e) => CourierFilterItem(
+        id: e.key,
+        // Имя как primary (когда есть), телефон в subtitle.
+        // Безымянные — телефон в primary, subtitle = null.
+        label: e.value.isNotEmpty ? e.value : e.key,
+        subtitle: e.value.isNotEmpty ? e.key : null,
+        // Поиск работает и по имени, и по телефону.
+        searchKeywords: '${e.value} ${e.key}',
+      ),
+    );
+
+    // 3) Сливаем в накопительный кеш и возвращаем его отсортированную
+    //    версию. Это нужно чтобы tile «Магазин» в фильтр-модалке не был
+    //    disabled, когда текущий `orders` пуст (рефреш / срезанный
+    //    фильтр) — у нас всё ещё есть магазины из прошлых загрузок.
+    classifierCache.mergeShopItems(fresh);
+    return classifierCache.sortedShopItems;
   }
 
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
@@ -410,7 +441,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         deliveryEtrapId: filters.deliveryEtrap?.id,
         deliveryDistrictId: filters.deliveryDistrict?.id,
         shopPhone: filters.shop?.id,
-        orderStatus: selectedStatus,
+        orderStatus: null, // фильтр по статусу — клиентский, applyFilters()
         categoryFilter: filters.category?.id,
       );
 
@@ -473,7 +504,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       deliveryEtrapId: filters.deliveryEtrap?.id,
       deliveryDistrictId: filters.deliveryDistrict?.id,
       shopPhone: filters.shop?.id,
-      orderStatus: selectedStatus,
+      orderStatus: null, // WS подписан на все статусы, фильтр на клиенте
       categoryFilter: filters.category?.id,
     );
   }
@@ -547,7 +578,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       deliveryEtrapId: filters.deliveryEtrap?.id,
       deliveryDistrictId: filters.deliveryDistrict?.id,
       shopPhone: filters.shop?.id,
-      orderStatus: selectedStatus,
+      orderStatus: null, // WS подписан на все статусы, фильтр на клиенте
       categoryFilter: filters.category?.id,
     );
   }
@@ -586,7 +617,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
             deliveryEtrapId: filters.deliveryEtrap?.id,
             deliveryDistrictId: filters.deliveryDistrict?.id,
             shopPhone: filters.shop?.id,
-            orderStatus: selectedStatus,
+            orderStatus: null, // фильтр по статусу — клиентский, applyFilters()
             categoryFilter: filters.category?.id,
           )
           .then<List<dynamic>?>((v) => v)
@@ -671,7 +702,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           // Курьеру звоним клиенту, магазину — курьеру.
           phoneToCall: auth.isCourier ? dto.clientPhone : dto.courierPhone,
           status: dto.status,
-          courierId: dto.courierId,
+          // courierId нужен для `generateDeliveryCode` из notification.
+          // У курьера это его собственный userId (он же courier для своих
+          // активных заказов). У магазина — пустая строка (он не завершает).
+          courierId: auth.isCourier ? auth.userId : '',
         ),
       );
     }
@@ -684,6 +718,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           .replaceAll('{n}', '$n'),
       callBtnLabel: words.activeOrdersBtnCall,
       completeBtnLabel: words.activeOrdersBtnComplete,
+      verifyBtnLabel: words.activeOrdersBtnVerify,
+      enterCodeTitle: words.activeOrdersEnterCodeTitle,
+      codeSentBody: words.activeOrdersCodeSentBody,
+      completedBody: words.activeOrdersCompleted,
     );
   }
 
@@ -704,7 +742,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       deliveryEtrapId: filters.deliveryEtrap?.id,
       deliveryDistrictId: filters.deliveryDistrict?.id,
       shopPhone: filters.shop?.id,
-      orderStatus: selectedStatus,
+      orderStatus: null, // WS подписан на все статусы, фильтр на клиенте
       categoryFilter: filters.category?.id,
     );
   }

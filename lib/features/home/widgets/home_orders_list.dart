@@ -147,23 +147,50 @@ class _HomeOrdersListState extends State<HomeOrdersList> {
   @override
   Widget build(BuildContext context) {
     final content = _buildContent(context);
-    // Listener/NotificationListener нужны только когда есть реальный список
-    // и активирован горизонтальный свайп между табами.
-    //
-    // На empty/loading/error/shimmer состояниях мы возвращаем чистый
-    // content БЕЗ обёрток — иначе мой NotificationListener успевает
-    // заблокировать первый OverscrollNotification, RefreshIndicator
-    // не получает старт оверскролла, pull-to-refresh не активируется.
+
+    // Если свайп выключен — content как есть (client role, нет табов).
+    if (!widget.swipeEnabled) return content;
+
     final hasItems = widget.orders.isNotEmpty &&
         !widget.isLoading &&
         !widget.isReloading &&
         !widget.hasError;
-    if (!widget.swipeEnabled || !hasItems) return content;
 
+    // ──────────────────────────────────────────────────────────────────
+    // Empty / loading / error: оборачиваем ТОЛЬКО Listener'ом, БЕЗ
+    // NotificationListener'а.
+    //
+    // Почему: при пустом списке нет горизонтально/вертикально-конкурирующего
+    // скролла — внутри HomeEmptyState (или CircularProgressIndicator) сам
+    // ListView вертикальный, а горизонтальный drag не порождает scroll-
+    // notifications. Значит блокировать их незачем.
+    //
+    // А вот NotificationListener в empty-кейсе ЛОМАЛ pull-to-refresh: на
+    // первых пикселях вертикального drag'а `_direction == null`, он
+    // глотал ScrollStartNotification → RefreshIndicator никогда не видел
+    // начало overscroll'а → refresh не активировался.
+    //
+    // Translucent Listener видит pointer-events в пустых областях и
+    // вызывает onSwipe — ровно то что нужно для свайпа между табами.
+    if (!hasItems) {
+      return Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerCancel,
+        child: content,
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Non-empty: Listener + NotificationListener полный arbitration.
+    // Тут уже есть карточки и реальный вертикальный скролл, который
+    // может стартануть параллельно с горизонтальным жестом — поэтому
+    // нужно глотать scroll-notifications до момента определения
+    // направления, чтобы RefreshIndicator не «дёргался» при свайпе.
     return Listener(
-      // deferToChild по умолчанию — ListView/Scrollable получают события
-      // как обычно, мы ТОЛЬКО наблюдаем и решаем нужно ли подавить
-      // overscroll-уведомления.
+      behavior: HitTestBehavior.translucent,
       onPointerDown: _onPointerDown,
       onPointerMove: _onPointerMove,
       onPointerUp: _onPointerUp,

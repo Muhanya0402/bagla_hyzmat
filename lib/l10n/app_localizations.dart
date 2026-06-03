@@ -582,6 +582,12 @@ class AppLocalizations {
   String get activeOrdersBtnCall => get('activeOrdersBtnCall');
   String get activeOrdersBtnComplete => get('activeOrdersBtnComplete');
   String get activeOrdersBtnCancel => get('activeOrdersBtnCancel');
+  String get activeOrdersBtnVerify => get('activeOrdersBtnVerify');
+  String get activeOrdersEnterCodeTitle => get('activeOrdersEnterCodeTitle');
+  String get activeOrdersCodeSentBody => get('activeOrdersCodeSentBody');
+  String get activeOrdersWrongCode => get('activeOrdersWrongCode');
+  String get activeOrdersCodeFailed => get('activeOrdersCodeFailed');
+  String get activeOrdersCompleted => get('activeOrdersCompleted');
   // ── Session expired ────────────────────────────────────────────────────
   String get sessionExpiredTitle => get('sessionExpiredTitle');
   String get sessionExpiredBody => get('sessionExpiredBody');

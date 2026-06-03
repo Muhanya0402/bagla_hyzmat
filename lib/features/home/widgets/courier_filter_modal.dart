@@ -18,7 +18,32 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 class CourierFilterItem {
   final String id;
   final String label;
-  const CourierFilterItem({required this.id, required this.label});
+
+  /// Опциональная вторая строка (например, телефон под именем магазина).
+  /// Используется только в `_FilterPickerSheet` и в селектед-tile.
+  final String? subtitle;
+
+  /// Опциональная строка для поиска. Если задана — поиск идёт по ней
+  /// (не по label). Позволяет искать по полям, которых нет в видимой
+  /// надписи (например по телефону, когда показывается только имя).
+  /// Если null — поиск идёт по `label`.
+  final String? searchKeywords;
+
+  const CourierFilterItem({
+    required this.id,
+    required this.label,
+    this.subtitle,
+    this.searchKeywords,
+  });
+
+  /// Текст для нечёткого поиска. Всегда содержит хотя бы `label`.
+  String get _searchText =>
+      (searchKeywords ?? '$label ${subtitle ?? ''}').toLowerCase();
+
+  bool matchesQuery(String q) {
+    if (q.isEmpty) return true;
+    return _searchText.contains(q);
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -120,6 +145,35 @@ class ClassifierCache {
   final Map<String, List<CourierFilterItem>> etraps = {};
   final Map<String, List<CourierFilterItem>> districts = {};
   List<ShopCategory> shopCategories = [];
+
+  /// Накопительный кеш магазинов (телефон → item). Растёт по мере того
+  /// как пользователь видит новые заказы. Не стирается между перезагрузками
+  /// списка заказов — это решает кейс, когда юзер открывает фильтр на
+  /// «пустой» вкладке (refresh идёт / фильтр срезал всё) и tile «Магазин»
+  /// был бы disabled, потому что текущий `orders` пуст.
+  ///
+  /// Имя в значении всегда «лучшее» (непустое перекрывает пустое).
+  final Map<String, CourierFilterItem> shopItemsCache = {};
+
+  /// Сливает новые items в кеш. Если у уже закешированного был label
+  /// без имени (только телефон), а новый пришёл с именем — обновляем.
+  void mergeShopItems(Iterable<CourierFilterItem> items) {
+    for (final it in items) {
+      final old = shopItemsCache[it.id];
+      // Новый item с subtitle (= имя+телефон) всегда перекрывает старый
+      // без subtitle (= только телефон). Иначе оставляем кеш как есть.
+      if (old == null || (old.subtitle == null && it.subtitle != null)) {
+        shopItemsCache[it.id] = it;
+      }
+    }
+  }
+
+  /// Отсортированный список для UI.
+  List<CourierFilterItem> get sortedShopItems {
+    final list = shopItemsCache.values.toList();
+    list.sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+    return list;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -632,14 +686,36 @@ class _CourierFilterModalState extends State<CourierFilterModal>
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                has ? selected.label : hint,
-                overflow: TextOverflow.ellipsis,
-                style: disabled
-                    ? AppText.regular(fontSize: 13, color: c.border)
-                    : has
-                    ? AppText.semiBold(fontSize: 13, color: c.ink)
-                    : AppText.regular(fontSize: 13, color: c.inkSoft),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    has ? selected.label : hint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: disabled
+                        ? AppText.regular(fontSize: 13, color: c.border)
+                        : has
+                        ? AppText.semiBold(fontSize: 13, color: c.ink)
+                        : AppText.regular(fontSize: 13, color: c.inkSoft),
+                  ),
+                  // Двухстрочное отображение для магазинов: имя + телефон
+                  // под ним. Для province/etrap/district `subtitle` null —
+                  // эта строка не рендерится.
+                  if (has &&
+                      selected.subtitle != null &&
+                      selected.subtitle!.isNotEmpty &&
+                      !disabled) ...[
+                    const SizedBox(height: 1),
+                    Text(
+                      selected.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.regular(fontSize: 10.5, color: c.inkSoft),
+                    ),
+                  ],
+                ],
               ),
             ),
             if (has && !disabled && onClear != null)
@@ -1237,9 +1313,11 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final w = widget.words;
-    final filtered = widget.items
-        .where((i) => i.label.toLowerCase().contains(_q))
-        .toList();
+    // Поиск через `matchesQuery` — учитывает `searchKeywords` (имя+телефон
+    // для магазинов), а не только `label`. Раньше поиск шёл строго по
+    // `label`, и если в нём был только телефон — найти магазин по имени
+    // было невозможно.
+    final filtered = widget.items.where((i) => i.matchesQuery(_q)).toList();
 
     return Material(
       color: Colors.transparent,
@@ -1390,24 +1468,51 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                     child: Icon(
                                       isActive
                                           ? Icons.check_rounded
-                                          : Icons.location_on_outlined,
+                                          // Если item имеет subtitle, считаем
+                                          // что это магазин (имя+телефон),
+                                          // показываем store. Иначе location.
+                                          : (item.subtitle != null
+                                              ? Icons.store_outlined
+                                              : Icons.location_on_outlined),
                                       size: 14,
                                       color: isActive ? c.ink : c.inkSoft,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(
-                                      item.label,
-                                      style: isActive
-                                          ? AppText.semiBold(
-                                              fontSize: 14,
-                                              color: c.ink,
-                                            )
-                                          : AppText.regular(
-                                              fontSize: 14,
-                                              color: c.ink,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          item.label,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: isActive
+                                              ? AppText.semiBold(
+                                                  fontSize: 14,
+                                                  color: c.ink,
+                                                )
+                                              : AppText.regular(
+                                                  fontSize: 14,
+                                                  color: c.ink,
+                                                ),
+                                        ),
+                                        if (item.subtitle != null &&
+                                            item.subtitle!.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            item.subtitle!,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppText.regular(
+                                              fontSize: 11,
+                                              color: c.inkSoft,
                                             ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                   if (isActive)

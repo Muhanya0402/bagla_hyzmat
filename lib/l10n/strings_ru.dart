@@ -645,6 +645,12 @@ const Map<String, String> stringsRu = {
   'activeOrdersBtnCall': 'Позвонить',
   'activeOrdersBtnComplete': 'Завершить',
   'activeOrdersBtnCancel': 'Отменить',
+  'activeOrdersBtnVerify': 'Подтвердить код',
+  'activeOrdersEnterCodeTitle': 'Введите код от клиента',
+  'activeOrdersCodeSentBody': 'Код отправлен клиенту по СМС',
+  'activeOrdersWrongCode': 'Неверный код, попробуйте ещё раз',
+  'activeOrdersCodeFailed': 'Не удалось отправить код',
+  'activeOrdersCompleted': 'Заказ завершён ✓',
   // ── Принудительный logout при истечении сессии ─────────────────────────────
   'sessionExpiredTitle': 'Сессия истекла',
   'sessionExpiredBody':
