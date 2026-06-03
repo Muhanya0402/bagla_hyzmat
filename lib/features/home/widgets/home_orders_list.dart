@@ -238,15 +238,11 @@ class _HomeOrdersListState extends State<HomeOrdersList> {
     // Tab-switch shimmer — keeps old content feeling alive.
     if (isReloading) return const _ShimmerList();
 
-    // Initial load — full-screen spinner.
-    if (isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          color: AppColors.of(context).ink,
-          strokeWidth: 2,
-        ),
-      );
-    }
+    // Initial load — shimmer skeleton тоже. Раньше тут был
+    // CircularProgressIndicator, что давало ощущение «приложение
+    // подвисло». Skeleton намекает на структуру будущего списка
+    // и воспринимается как «уже почти готово».
+    if (isLoading) return const _ShimmerList();
     if (hasError) {
       return HomeEmptyState(
         icon: Icons.wifi_off_rounded,

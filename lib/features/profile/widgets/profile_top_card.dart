@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/core/widgets/user_avatar.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/levels/level_card_widget.dart';
@@ -240,13 +241,15 @@ class _ProfileTopCardState extends State<ProfileTopCard> {
               builder: (_, lp, _) {
                 final c2 = AppColors.of(context);
                 if (lp.isLoading || lp.currentLevel == null) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: Container(
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: c2.borderSoft,
-                        borderRadius: BorderRadius.circular(8),
+                  // Shimmer placeholder вместо статичной плашки —
+                  // визуально показывает что идёт загрузка.
+                  return const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Shimmer(
+                      child: ShimmerBox(
+                        width: double.infinity,
+                        height: 36,
+                        radius: 8,
                       ),
                     ),
                   );

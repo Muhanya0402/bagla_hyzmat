@@ -17,7 +17,18 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 class CourierFilterItem {
   final String id;
+
+  /// Legacy / язык-агностичный лейбл. Используется когда сущность
+  /// одноязычна (имя магазина, категория) и как fallback если
+  /// `labelRu`/`labelTk` не задано.
   final String label;
+
+  /// Двуязычные лейблы для province/etrap/district. Если заданы — UI
+  /// рендерит `localizedLabel(isRu)` и не зависит от того, на каком
+  /// языке был построен кеш. Раньше items создавались с одной строкой
+  /// `label: p.label(isRu)` → после смены языка кеш отдавал старые лейблы.
+  final String? labelRu;
+  final String? labelTk;
 
   /// Опциональная вторая строка (например, телефон под именем магазина).
   /// Используется только в `_FilterPickerSheet` и в селектед-tile.
@@ -32,13 +43,38 @@ class CourierFilterItem {
   const CourierFilterItem({
     required this.id,
     required this.label,
+    this.labelRu,
+    this.labelTk,
     this.subtitle,
     this.searchKeywords,
   });
 
-  /// Текст для нечёткого поиска. Всегда содержит хотя бы `label`.
-  String get _searchText =>
-      (searchKeywords ?? '$label ${subtitle ?? ''}').toLowerCase();
+  /// Лейбл с учётом текущего языка. Если двуязычные поля не заданы —
+  /// fallback на `label` (этот случай для shops/categories, у них один
+  /// язык — имя магазина).
+  String localizedLabel(bool isRu) {
+    if (isRu) {
+      final v = labelRu;
+      if (v != null && v.isNotEmpty) return v;
+    } else {
+      final v = labelTk;
+      if (v != null && v.isNotEmpty) return v;
+    }
+    return label;
+  }
+
+  /// Текст для нечёткого поиска. Содержит ОБА языка — чтобы юзер мог
+  /// искать «Ашгабат» при выборе на TK-локали и наоборот.
+  String get _searchText {
+    if (searchKeywords != null) return searchKeywords!.toLowerCase();
+    final parts = [
+      label,
+      ?labelRu,
+      ?labelTk,
+      ?subtitle,
+    ];
+    return parts.join(' ').toLowerCase();
+  }
 
   bool matchesQuery(String q) {
     if (q.isEmpty) return true;
@@ -530,19 +566,26 @@ class _CourierFilterModalState extends State<CourierFilterModal>
   // ── Loaders ────────────────────────────────────────────────────────────────
 
   Future<List<CourierFilterItem>> _loadProvinces() async {
-    if (widget.cache.provinces.isNotEmpty) return widget.cache.provinces;
+    if (widget.cache.provinces.isNotEmpty) return _sortedByLang(widget.cache.provinces);
     setState(() => _loadingAny = true);
     try {
       final resp = await widget.authRepo.getProvinces();
-      final items =
-          resp
-              .map<CourierFilterItem>(
-                (p) => CourierFilterItem(id: p.id, label: p.label(widget.isRu)),
-              )
-              .toList()
-            ..sort((a, b) => a.label.compareTo(b.label));
+      final items = resp
+          .map<CourierFilterItem>(
+            (p) => CourierFilterItem(
+              id: p.id,
+              // `label` — текущий язык для legacy-кода, который читает
+              // `item.label` напрямую. UI-рендер использует
+              // `localizedLabel(isRu)` и при смене языка возьмёт
+              // правильную версию из `labelRu`/`labelTk`.
+              label: p.label(widget.isRu),
+              labelRu: p.ru,
+              labelTk: p.tk,
+            ),
+          )
+          .toList();
       widget.cache.provinces = items;
-      return items;
+      return _sortedByLang(items);
     } catch (_) {
       return [];
     } finally {
@@ -552,25 +595,41 @@ class _CourierFilterModalState extends State<CourierFilterModal>
 
   Future<List<CourierFilterItem>> _loadEtraps(String provinceId) async {
     if (widget.cache.etraps.containsKey(provinceId)) {
-      return widget.cache.etraps[provinceId]!;
+      return _sortedByLang(widget.cache.etraps[provinceId]!);
     }
     setState(() => _loadingAny = true);
     try {
       final list = await widget.authRepo.getEtrapsByProvince(provinceId);
-      final items =
-          list
-              .map<CourierFilterItem>(
-                (e) => CourierFilterItem(id: e.id, label: e.label(widget.isRu)),
-              )
-              .toList()
-            ..sort((a, b) => a.label.compareTo(b.label));
+      final items = list
+          .map<CourierFilterItem>(
+            (e) => CourierFilterItem(
+              id: e.id,
+              label: e.label(widget.isRu),
+              labelRu: e.ru,
+              labelTk: e.tk,
+            ),
+          )
+          .toList();
       widget.cache.etraps[provinceId] = items;
-      return items;
+      return _sortedByLang(items);
     } catch (_) {
       return [];
     } finally {
       if (mounted) setState(() => _loadingAny = false);
     }
+  }
+
+  /// Сортируем по текущему языку при ВЫДАЧЕ, не при кешировании. Иначе
+  /// при смене языка порядок остался бы по первому языку.
+  List<CourierFilterItem> _sortedByLang(List<CourierFilterItem> items) {
+    final copy = List<CourierFilterItem>.from(items);
+    copy.sort(
+      (a, b) => a
+          .localizedLabel(widget.isRu)
+          .toLowerCase()
+          .compareTo(b.localizedLabel(widget.isRu).toLowerCase()),
+    );
+    return copy;
   }
 
   Future<List<ShopCategory>> _loadShopCategories() async {
@@ -590,20 +649,23 @@ class _CourierFilterModalState extends State<CourierFilterModal>
 
   Future<List<CourierFilterItem>> _loadDistricts(String etrapId) async {
     if (widget.cache.districts.containsKey(etrapId)) {
-      return widget.cache.districts[etrapId]!;
+      return _sortedByLang(widget.cache.districts[etrapId]!);
     }
     setState(() => _loadingAny = true);
     try {
       final list = await widget.authRepo.getDistrictsByEtrap(etrapId);
-      final items =
-          list
-              .map<CourierFilterItem>(
-                (d) => CourierFilterItem(id: d.id, label: d.label(widget.isRu)),
-              )
-              .toList()
-            ..sort((a, b) => a.label.compareTo(b.label));
+      final items = list
+          .map<CourierFilterItem>(
+            (d) => CourierFilterItem(
+              id: d.id,
+              label: d.label(widget.isRu),
+              labelRu: d.ru,
+              labelTk: d.tk,
+            ),
+          )
+          .toList();
       widget.cache.districts[etrapId] = items;
-      return items;
+      return _sortedByLang(items);
     } catch (_) {
       return [];
     } finally {
@@ -631,6 +693,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
         items: items,
         selectedId: selectedId,
         words: widget.words,
+        isRu: widget.isRu,
         onSelect: (id) {
           final item = items.firstWhere((i) => i.id == id);
           Navigator.pop(pickerCtx, item);
@@ -723,7 +786,10 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    has ? selected.label : hint,
+                    // `localizedLabel` подберёт RU/TK в зависимости от
+                    // текущей локали. Если поля двуязычные не заданы
+                    // (shops/categories — там один язык) — fallback на `label`.
+                    has ? selected.localizedLabel(widget.isRu) : hint,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: disabled
@@ -885,6 +951,11 @@ class _CourierFilterModalState extends State<CourierFilterModal>
                         (c) => CourierFilterItem(
                           id: c.id.toString(),
                           label: c.label(widget.isRu),
+                          // Кеш категорий — singleton; без двуязычных
+                          // лейблов после смены RU↔TK pickerщее
+                          // показывал бы вчерашнюю локаль.
+                          labelRu: c.labelRu,
+                          labelTk: c.labelTk,
                         ),
                       )
                       .toList();
@@ -1335,12 +1406,14 @@ class _FilterPickerSheet extends StatefulWidget {
   final void Function(String id) onSelect;
   final VoidCallback? onClear;
   final AppLocalizations words;
+  final bool isRu;
 
   const _FilterPickerSheet({
     required this.title,
     required this.items,
     required this.onSelect,
     required this.words,
+    required this.isRu,
     this.selectedId,
     this.onClear,
   });
@@ -1536,7 +1609,12 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          item.label,
+                                          // Локализованный лейбл — берёт
+                                          // RU/TK из item'а в зависимости
+                                          // от текущего языка. Fallback
+                                          // на `label` для одноязычных
+                                          // (shops, categories).
+                                          item.localizedLabel(widget.isRu),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: isActive

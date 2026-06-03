@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/point_icon.dart';
+import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/home/widgets/home_level_bar.dart';
 import 'package:bagla/features/levels/level_provider.dart';
@@ -68,31 +69,42 @@ class HomeLogoRow extends StatelessWidget {
 
     final Widget balanceChip;
     if (isCourier) {
-      balanceChip = GestureDetector(
-        onTap: () {
-          // Banned-курьер не имеет доступа к пополнению жетонов —
-          // показываем статус-баннер вместо формы top-up.
-          if (authProv.isBanned) {
-            BannedAccessSheet.show(context);
-            return;
-          }
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) => TopUpModal(
-              userId: authProv.userId,
-              role: authProv.role,
-              status: authProv.status,
-            ),
-          ).then((_) => onRefresh());
-        },
-        child: _BalanceChip(
-          label: _formatted(authProv.balancePoints.toDouble()),
-          chipColor: c.inkMuted,
-          tintColor: c.bg,
-        ),
-      );
+      // Cold start: профиль ещё не загружен → balancePoints дефолтные 0.0.
+      // Показываем shimmer-плейсхолдер, чтоб не дразнить юзера фейковым «0».
+      final profileReady = authProv.userId.isNotEmpty;
+      if (!profileReady) {
+        balanceChip = const Shimmer(
+          // Размер совпадает с реальным _BalanceChip — иконка 14 + 4 + ~30 текст,
+          // высота 22 (padding 5+5+12 text).
+          child: ShimmerBox(width: 58, height: 24, radius: 8),
+        );
+      } else {
+        balanceChip = GestureDetector(
+          onTap: () {
+            // Banned-курьер не имеет доступа к пополнению жетонов —
+            // показываем статус-баннер вместо формы top-up.
+            if (authProv.isBanned) {
+              BannedAccessSheet.show(context);
+              return;
+            }
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => TopUpModal(
+                userId: authProv.userId,
+                role: authProv.role,
+                status: authProv.status,
+              ),
+            ).then((_) => onRefresh());
+          },
+          child: _BalanceChip(
+            label: _formatted(authProv.balancePoints.toDouble()),
+            chipColor: c.inkMuted,
+            tintColor: c.bg,
+          ),
+        );
+      }
     } else {
       balanceChip = const SizedBox.shrink();
     }

@@ -375,6 +375,9 @@ const Map<String, String> stringsRu = {
   // Footer
   'profileFooterCopyright': '© {y}. Все права защищены.',
   'profileFooterVersion': 'Версия',
+  // Тема (light/dark) — лейбл в ThemeToggleTile в Profile.
+  'profileThemeLight': 'Светлая тема',
+  'profileThemeDark': 'Тёмная тема',
   // Support modal
   'supportTitle': 'Служба поддержки',
   'supportSubtitle': 'Мы на связи и готовы помочь вам с любым вопросом',

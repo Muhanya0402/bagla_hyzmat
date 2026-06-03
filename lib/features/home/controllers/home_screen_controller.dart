@@ -30,6 +30,14 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   String provinceLabel = '';
   String etrapId = '';
   String etrapLabel = '';
+
+  // Двуязычные лейблы для построения default-фильтров (province/etrap)
+  // — иначе CourierFilterItem попадал в фильтр с лейблом фиксированного
+  // языка, и после смены RU↔TK картинка в модалке оставалась на старом.
+  String provinceLabelRu = '';
+  String provinceLabelTk = '';
+  String etrapLabelRu = '';
+  String etrapLabelTk = '';
   bool _filtersEverApplied = false;
 
   Etrap? selectedEtrap;
@@ -355,9 +363,16 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final prefs = await SharedPreferences.getInstance();
 
     provinceId = prefs.getString('province_id') ?? '';
-    provinceLabel = prefs.getString(isRu ? 'province_ru' : 'province_tk') ?? '';
+    provinceLabelRu = prefs.getString('province_ru') ?? '';
+    provinceLabelTk = prefs.getString('province_tk') ?? '';
+    // `provinceLabel` оставлен для обратной совместимости — single-lang
+    // на момент инициализации. UI читает двуязычный через CourierFilterItem.
+    provinceLabel = isRu ? provinceLabelRu : provinceLabelTk;
+
     etrapId = prefs.getString('etrap_id') ?? '';
-    etrapLabel = prefs.getString(isRu ? 'etrap_ru' : 'etrap_tk') ?? '';
+    etrapLabelRu = prefs.getString('etrap_ru') ?? '';
+    etrapLabelTk = prefs.getString('etrap_tk') ?? '';
+    etrapLabel = isRu ? etrapLabelRu : etrapLabelTk;
 
     final savedTransport = prefs.getString('transport_type') ?? 'any';
     filters = filters.copyWith(transportFilter: savedTransport);
@@ -757,11 +772,24 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final isRu = context.read<LanguageProvider>().isRu;
     final words = context.read<LanguageProvider>().words;
 
+    // Передаём оба языка — модалка возьмёт нужный в зависимости от
+    // текущего locale. Без двуязычных лейблов после смены RU↔TK
+    // тут оставался застывший язык на момент initLocationFilter.
     final defaultProvince = provinceId.isNotEmpty
-        ? CourierFilterItem(id: provinceId, label: provinceLabel)
+        ? CourierFilterItem(
+            id: provinceId,
+            label: provinceLabel, // legacy fallback
+            labelRu: provinceLabelRu,
+            labelTk: provinceLabelTk,
+          )
         : null;
     final defaultEtrap = etrapId.isNotEmpty
-        ? CourierFilterItem(id: etrapId, label: etrapLabel)
+        ? CourierFilterItem(
+            id: etrapId,
+            label: etrapLabel,
+            labelRu: etrapLabelRu,
+            labelTk: etrapLabelTk,
+          )
         : null;
 
     // Строим shopItems ДО очистки orders

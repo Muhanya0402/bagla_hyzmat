@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 
 class HomeLevelBar extends StatelessWidget {
@@ -10,6 +11,24 @@ class HomeLevelBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+
+    // Первая загрузка (cold start): currentLevel ещё не получен.
+    // Показываем shimmer-плейсхолдер вместо «1 / 0 XP» с пустым прогрессом —
+    // юзеру было непонятно, грузится оно или это реальные данные.
+    if (provider.currentLevel == null) {
+      return const Shimmer(
+        child: Row(
+          children: [
+            // Badge-кружок 30×30.
+            ShimmerBox(width: 30, height: 30, radius: 15),
+            SizedBox(width: 6),
+            // Прогресс-капсула.
+            Expanded(child: ShimmerBox(width: double.infinity, height: 30, radius: 100)),
+          ],
+        ),
+      );
+    }
+
     final int level = provider.currentLevel?.levelNumber ?? 1;
     final double progress = provider.progressInLevel.clamp(0.0, 1.0);
 

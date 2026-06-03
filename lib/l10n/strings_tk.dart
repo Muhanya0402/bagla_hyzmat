@@ -370,6 +370,9 @@ const Map<String, String> stringsTk = {
   'profileSupportContact': 'Goldaw bilen habarlaşmak',
   'profileFooterCopyright': '© {y}. Ähli hukuklar goraglydyr.',
   'profileFooterVersion': 'Wersiýa',
+  // Tema (light/dark) — Profile-däki ThemeToggleTile-yň ýazgysy.
+  'profileThemeLight': 'Açyk tema',
+  'profileThemeDark': 'Garaňky tema',
   'supportTitle': 'Goldaw gullugy',
   'supportSubtitle': 'Islendik sowal boýunça size kömek bermäge taýýar',
   'supportHint': 'Soragyňyzy ýazyň...',

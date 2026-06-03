@@ -351,6 +351,9 @@ class AppLocalizations {
   String get profileSupportContact => get('profileSupportContact');
   String get profileFooterCopyright => get('profileFooterCopyright');
   String get profileFooterVersion => get('profileFooterVersion');
+  // Тема (light/dark) — лейбл в ThemeToggleTile в Profile.
+  String get profileThemeLight => get('profileThemeLight');
+  String get profileThemeDark => get('profileThemeDark');
   String get supportTitle => get('supportTitle');
   String get supportSubtitle => get('supportSubtitle');
   String get supportHint => get('supportHint');

@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme_provider.dart';
@@ -69,6 +70,8 @@ class ThemeToggleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
+    // Watch — чтобы лейбл сразу подменился при смене языка через LangToggle.
+    final words = context.watch<LanguageProvider>().words;
     final c = AppColors.of(context);
 
     return GestureDetector(
@@ -95,7 +98,7 @@ class ThemeToggleTile extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Text(
-                isDark ? 'Тёмная тема' : 'Светлая тема',
+                isDark ? words.profileThemeDark : words.profileThemeLight,
                 style: AppText.medium(fontSize: 14, color: c.ink),
               ),
             ),

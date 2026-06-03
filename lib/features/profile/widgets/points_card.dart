@@ -2,6 +2,7 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
+import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -69,13 +70,17 @@ class PointsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     isLoading
-                        ? Container(
-                            height: 24,
-                            width: 64,
-                            margin: const EdgeInsets.only(top: 2),
-                            decoration: BoxDecoration(
-                              color: c.amber.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                        ? const Padding(
+                            // Shimmer вместо статичной amber-плашки —
+                            // юзер сразу видит «грузится», а не задаётся
+                            // вопросом «это уже окончательное значение?».
+                            padding: EdgeInsets.only(top: 2),
+                            child: Shimmer(
+                              child: ShimmerBox(
+                                width: 64,
+                                height: 24,
+                                radius: 6,
+                              ),
                             ),
                           )
                         : Text(
