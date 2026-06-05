@@ -18,22 +18,22 @@ dependencies:
   pinput: ^5.0.0
   image_picker: ^1.0.7
   flutter_image_compress: ^2.3.0
+  
   # Persistent foreground notification для активных заказов курьера/магазина.
-  # Используем вместо flutter_local_notifications т.к. поддерживает action
-  # buttons, custom layouts, background handler и sticky notifications.
   awesome_notifications: ^0.10.0
-  # Keychain (iOS) / EncryptedSharedPreferences + Keystore (Android) для
-  # хранения access/refresh токенов. Plain SharedPreferences читается через
-  # ADB backup или root — недопустимо для финансовой части (балансы жетонов).
+  
+  # Keychain (iOS) / EncryptedSharedPreferences + Keystore (Android)
   flutter_secure_storage: ^9.2.2
   url_launcher: ^6.3.0
   package_info_plus: ^8.0.0
   mask_text_input_formatter: ^2.5.0
   dropdown_search: ^5.0.6
   web_socket_channel: ^2.4.0
+  
+  # Совместимая пара плагинов Firebase, которая без проблем разрешится во Flutter
   firebase_core: ^3.6.0
-  firebase_messaging: ^15.1.3
-  flutter_local_notifications: ^17.2.2
+  firebase_messaging: ^15.2.10
+  
   tutorial_coach_mark: ^1.2.11
   animations: ^2.0.11
   flutter_localizations:
@@ -45,12 +45,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
-
-
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/bagla_logo.png"
+  image_path_ios: "assets/images/bagla_logo_ios.png" # с отступами, как на Android
+  remove_alpha_ios: true # Apple запрещает прозрачность в иконках
+  background_color_ios: "#ffffff" # белый фон, как у Android
   min_sdk_android: 21 # android min sdk min:16, default 21
   web:
     generate: true

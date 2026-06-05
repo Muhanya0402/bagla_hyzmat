@@ -69,8 +69,8 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 320));
     if (!mounted) return;
     _dotsCtrl.repeat();
-
-    // 3. Run all init work; when done → exit animation
+  
+    // 3. Run all init wor  k; when done → exit animation
     await widget.onReady(_onDone);
   }
 

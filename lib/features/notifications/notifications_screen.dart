@@ -390,10 +390,12 @@ class NotificationsScreenState extends State<NotificationsScreen>
       appBar: AppBar(
         backgroundColor: c.bg,
         elevation: 0,
+        centerTitle: false,
         automaticallyImplyLeading: false,
         title: KeyedSubtree(
           key: _titleKey,
           child: Text(
+            
             words.notifTitle,
             style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
           ),

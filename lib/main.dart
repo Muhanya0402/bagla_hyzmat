@@ -13,6 +13,7 @@ import 'package:bagla/providers/role_provider.dart';
 import 'package:bagla/features/notifications/push_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -38,19 +39,21 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    if (kDebugMode) print('❌ Ошибка Firebase.initializeApp: $e');
-  }
+  // Firebase уже инициализирован в main(), повторный вызов не нужен
   if (kDebugMode) print('Фоновое сообщение: ${message.messageId}');
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // runApp is called immediately — SplashScreen shows while everything loads.
+
+  // Firebase инициализируется ПЕРВЫМ — до runApp, до любых сервисов
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(const AppBootstrap());
 }
 
@@ -83,18 +86,20 @@ class _AppBootstrapState extends State<AppBootstrap> {
   /// All async initialisation. Runs while SplashScreen plays.
   Future<void> _initialize(VoidCallback onSplashDone) async {
     await initializeDateFormatting('ru', null);
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Firebase и onBackgroundMessage уже зарегистрированы в main()
 
     final langProvider = LanguageProvider();
     await langProvider.loadSavedLanguage();
 
     final prefs = await SharedPreferences.getInstance();
     final themeProvider = ThemeProvider.fromPrefs(prefs);
+
     // Одноразовая миграция auth/refresh токенов из plain SharedPreferences
     // в secure storage (Keychain/Keystore). ОБЯЗАТЕЛЬНО до первой API-сессии,
     // потому что ApiClient interceptor читает токен из secure store.
     await SecureTokenStore.instance.migrateFromPrefsIfNeeded();
+
     // Привязываем session-expired toast к глобальному ScaffoldMessenger.
     // ApiClient вызовет это когда refresh-token протух → пользователь
     // окажется на /login и увидит объяснение, а не silent kick.
@@ -125,7 +130,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
         ),
       );
     };
+
     await TourManager.instance.init();
+
     // Persistent notification «Активные заказы» — канал + listeners один раз
     // за процесс. Title/desc берём из текущего языка (если поменяется на лету,
     // канал останется с прежним именем — это допустимо, имена видны только
@@ -225,7 +232,7 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('ru'), Locale('tk'), Locale('en')],
-      theme:     AppTheme.light,
+      theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
       home: home,

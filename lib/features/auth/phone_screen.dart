@@ -24,6 +24,9 @@ class _PhoneScreenState extends State<PhoneScreen>
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
 
+  // Cached so dispose() doesn't do an unsafe ancestor lookup via context.read.
+  TextEditingController? _phoneCtrl;
+
   final _phoneMask = MaskTextInputFormatter(
     mask: '## ## ## ##',
     filter: {'#': RegExp(r'[0-9]')},
@@ -42,13 +45,15 @@ class _PhoneScreenState extends State<PhoneScreen>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _shakeAnim = Tween<double>(begin: 0, end: 6)
-        .chain(CurveTween(curve: Curves.elasticIn))
-        .animate(_shakeCtrl);
+    _shakeAnim = Tween<double>(
+      begin: 0,
+      end: 6,
+    ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
 
     final ctrl = context.read<AuthProvider>().phoneController;
     ctrl.clear();
     ctrl.addListener(_onPhoneChanged);
+    _phoneCtrl = ctrl;
   }
 
   void _onPhoneChanged() {
@@ -59,10 +64,7 @@ class _PhoneScreenState extends State<PhoneScreen>
 
   @override
   void dispose() {
-    context
-        .read<AuthProvider>()
-        .phoneController
-        .removeListener(_onPhoneChanged);
+    _phoneCtrl?.removeListener(_onPhoneChanged);
     _shakeCtrl.dispose();
     super.dispose();
   }
@@ -166,115 +168,124 @@ class _PhoneScreenState extends State<PhoneScreen>
           constraints: const BoxConstraints(maxWidth: 480),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Top bar ────────────────────────────────────────────────
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    const BaglaLogo(width: 64, height: 32),
-                    const Spacer(),
-                    AuthLangSwitcher(
-                      isRu: lang.isRu,
-                      onToggle: lang.toggleLanguage,
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Top bar ────────────────────────────────────────────────
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            const BaglaLogo(width: 64, height: 32),
+                            const Spacer(),
+                            AuthLangSwitcher(
+                              isRu: lang.isRu,
+                              onToggle: lang.toggleLanguage,
+                            ),
+                            const SizedBox(width: 8),
+                            const ThemeToggleIcon(),
+                          ],
+                        ),
+
+                        const Spacer(flex: 2),
+
+                        // ── Title (serif, editorial) ───────────────────────────────
+                        Text(
+                          words.authPhoneTitle,
+                          style: AppText.serif(fontSize: 34),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          words.authPhoneSubtitle,
+                          style: AppText.regular(
+                            fontSize: 14.5,
+                            color: c.inkMuted,
+                          ).copyWith(height: 1.5, letterSpacing: 0.1),
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // ── Phone field label ──────────────────────────────────────
+                        Text(
+                          words.authPhoneFieldLabel,
+                          style: AppText.medium(
+                            fontSize: 12,
+                            color: c.inkMuted,
+                          ).copyWith(letterSpacing: 0.3),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // ── Phone field + inline error ─────────────────────────────
+                        AnimatedBuilder(
+                          animation: _shakeAnim,
+                          builder: (_, child) => Transform.translate(
+                            offset: Offset(_shakeAnim.value, 0),
+                            child: child,
+                          ),
+                          child: _PhoneField(
+                            controller: auth.phoneController,
+                            formatter: _phoneMask,
+                            hasError: hasPhoneError,
+                            onTapCountry: () => _openCountryPicker(context),
+                          ),
+                        ),
+                        AuthInlineError(message: _phoneError),
+
+                        const SizedBox(height: 18),
+
+                        // ── Policy checkbox + inline error ─────────────────────────
+                        AnimatedBuilder(
+                          animation: _shakeAnim,
+                          builder: (_, child) => Transform.translate(
+                            offset: Offset(_shakeAnim.value, 0),
+                            child: child,
+                          ),
+                          child: _PolicyCheckbox(
+                            accepted: _policyAccepted,
+                            hasError: _policyError != null,
+                            onChanged: (v) => setState(() {
+                              _policyAccepted = v;
+                              if (v) _policyError = null;
+                            }),
+                            onTapTerms: () => _openPolicy(context),
+                            onTapPrivacy: () => _openPolicy(context),
+                          ),
+                        ),
+                        AuthInlineError(message: _policyError),
+
+                        const SizedBox(height: 28),
+
+                        // ── Submit button ──────────────────────────────────────────
+                        AuthGradientButton(
+                          label: words.authSendCodeBtn,
+                          isLoading: isLoading,
+                          onPressed: _onSubmit,
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // ── Edge note ──────────────────────────────────────────────
+                        Center(
+                          child: Text(
+                            words.authSmsConsent,
+                            textAlign: TextAlign.center,
+                            style: AppText.regular(
+                              fontSize: 11.5,
+                              color: c.inkSoft,
+                            ).copyWith(height: 1.4),
+                          ),
+                        ),
+
+                        const Spacer(flex: 3),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    const ThemeToggleIcon(),
-                  ],
-                ),
-
-                const Spacer(flex: 2),
-
-                // ── Title (serif, editorial) ───────────────────────────────
-                Text(
-                  words.authPhoneTitle,
-                  style: AppText.serif(fontSize: 34),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  words.authPhoneSubtitle,
-                  style: AppText.regular(
-                    fontSize: 14.5,
-                    color: c.inkMuted,
-                  ).copyWith(height: 1.5, letterSpacing: 0.1),
-                ),
-
-                const SizedBox(height: 36),
-
-                // ── Phone field label ──────────────────────────────────────
-                Text(
-                  words.authPhoneFieldLabel,
-                  style: AppText.medium(
-                    fontSize: 12,
-                    color: c.inkMuted,
-                  ).copyWith(letterSpacing: 0.3),
-                ),
-                const SizedBox(height: 8),
-
-                // ── Phone field + inline error ─────────────────────────────
-                AnimatedBuilder(
-                  animation: _shakeAnim,
-                  builder: (_, child) => Transform.translate(
-                    offset: Offset(_shakeAnim.value, 0),
-                    child: child,
-                  ),
-                  child: _PhoneField(
-                    controller: auth.phoneController,
-                    formatter: _phoneMask,
-                    hasError: hasPhoneError,
-                    onTapCountry: () => _openCountryPicker(context),
                   ),
                 ),
-                AuthInlineError(message: _phoneError),
-
-                const SizedBox(height: 18),
-
-                // ── Policy checkbox + inline error ─────────────────────────
-                AnimatedBuilder(
-                  animation: _shakeAnim,
-                  builder: (_, child) => Transform.translate(
-                    offset: Offset(_shakeAnim.value, 0),
-                    child: child,
-                  ),
-                  child: _PolicyCheckbox(
-                    accepted: _policyAccepted,
-                    hasError: _policyError != null,
-                    onChanged: (v) => setState(() {
-                      _policyAccepted = v;
-                      if (v) _policyError = null;
-                    }),
-                    onTapTerms: () => _openPolicy(context),
-                    onTapPrivacy: () => _openPolicy(context),
-                  ),
-                ),
-                AuthInlineError(message: _policyError),
-
-                const SizedBox(height: 28),
-
-                // ── Submit button ──────────────────────────────────────────
-                AuthGradientButton(
-                  label: words.authSendCodeBtn,
-                  isLoading: isLoading,
-                  onPressed: _onSubmit,
-                ),
-
-                const SizedBox(height: 18),
-
-                // ── Edge note ──────────────────────────────────────────────
-                Center(
-                  child: Text(
-                    words.authSmsConsent,
-                    textAlign: TextAlign.center,
-                    style: AppText.regular(
-                      fontSize: 11.5,
-                      color: c.inkSoft,
-                    ).copyWith(height: 1.4),
-                  ),
-                ),
-
-                const Spacer(flex: 3),
-              ],
+              ),
             ),
           ),
         ),
@@ -304,7 +315,7 @@ class _PhoneField extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final borderColor = hasError ? c.errorMuted : c.border;
-    final fillColor   = hasError ? c.errorTint  : c.surface;
+    final fillColor = hasError ? c.errorTint : c.surface;
     final dividerColor = hasError
         ? c.errorMuted.withValues(alpha: 0.35)
         : c.borderSoft;
@@ -344,10 +355,7 @@ class _PhoneField extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     '+993',
-                    style: AppText.semiBold(
-                      fontSize: 15,
-                      color: c.ink,
-                    ),
+                    style: AppText.semiBold(fontSize: 15, color: c.ink),
                   ),
                   const SizedBox(width: 4),
                   Icon(
@@ -364,8 +372,10 @@ class _PhoneField extends StatelessWidget {
               controller: controller,
               keyboardType: TextInputType.phone,
               inputFormatters: [formatter],
-              style: AppText.medium(fontSize: 17, color: c.ink)
-                  .copyWith(letterSpacing: 0.4),
+              style: AppText.medium(
+                fontSize: 17,
+                color: c.ink,
+              ).copyWith(letterSpacing: 0.4),
               cursorColor: hasError ? c.errorMuted : c.ink,
               cursorWidth: 1.5,
               decoration: InputDecoration(
@@ -408,8 +418,8 @@ class _PolicyCheckbox extends StatelessWidget {
     final boxBorder = accepted
         ? c.ink
         : hasError
-            ? c.errorMuted
-            : c.border;
+        ? c.errorMuted
+        : c.border;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,8 +516,7 @@ class _CountrySheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: c.surface,
                 borderRadius: BorderRadius.circular(14),
@@ -523,10 +532,7 @@ class _CountrySheet extends StatelessWidget {
                       children: [
                         Text(
                           words.authCountryTurkmenistan,
-                          style: AppText.semiBold(
-                            fontSize: 15,
-                            color: c.ink,
-                          ),
+                          style: AppText.semiBold(fontSize: 15, color: c.ink),
                         ),
                         const SizedBox(height: 2),
                         Text(
