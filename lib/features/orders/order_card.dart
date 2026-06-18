@@ -359,8 +359,9 @@ class _ActionButton extends StatelessWidget {
     return PressableScale(
       onTap: onTap,
       scale: 0.95,
+      haptic: HapticFeedbackType.medium, // «Взять заказ»/«Завершить» — значимое действие
       child: Container(
-        height: 36,
+        height: 40,
         decoration: BoxDecoration(
           color: c.ink.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(10),
@@ -377,7 +378,7 @@ class _ActionButton extends StatelessWidget {
             ),
             if (points > 0)
               Container(
-                height: 36,
+                height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: c.amberTint,
@@ -419,8 +420,9 @@ class _OutlineButton extends StatelessWidget {
     return PressableScale(
       onTap: onTap,
       scale: 0.95,
+      haptic: HapticFeedbackType.medium, // «Отменить заказ»
       child: Container(
-        height: 34,
+        height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           border: Border.all(color: c.errorMuted.withValues(alpha: 0.4)),

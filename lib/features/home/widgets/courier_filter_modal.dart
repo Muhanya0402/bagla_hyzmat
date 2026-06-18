@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:bagla/core/app_text_styles.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
@@ -515,6 +516,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
 
   List<TargetFocus> _buildTourTargets() => [
     TourTarget.build(
+      id: 'courier_filter_0',
       key: _transportKey,
       titleRu: 'Вид транспорта',
       titleTk: 'Ulag görnüşi',
@@ -526,6 +528,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
       align: ContentAlign.bottom,
     ),
     TourTarget.build(
+      id: 'courier_filter_1',
       key: _applyKey,
       titleRu: 'Применить фильтры',
       titleTk: 'Süzgüçleri ulan',
@@ -866,16 +869,7 @@ class _CourierFilterModalState extends State<CourierFilterModal>
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Handle ───────────────────────────────────────────────────
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 3.5,
-                  decoration: BoxDecoration(
-                    color: c.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const SheetHandle(topPadding: 0),
               const SizedBox(height: 14),
 
               // ── Header ───────────────────────────────────────────────────
@@ -1456,18 +1450,8 @@ class _FilterPickerSheetState extends State<_FilterPickerSheet> {
           ),
           child: Column(
             children: [
-              const SizedBox(height: 10),
               // Handle
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 3.5,
-                  decoration: BoxDecoration(
-                    color: c.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const SheetHandle(),
               const SizedBox(height: 14),
               // Header
               Padding(

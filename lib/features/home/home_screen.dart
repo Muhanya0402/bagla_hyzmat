@@ -47,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen>
     startTourIfNeeded(
       screenKey: TourKeys.home,
       targetsBuilder: _buildTourTargets,
+      // Ранний гард: banned/pending не должны видеть тур (T4).
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
   }
 
@@ -118,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen>
     return [
       for (var i = 0; i < specs.length; i++)
         TourTarget.build(
+          id: 'home_$i',
           key: specs[i].$1,
           title: specs[i].$2,
           body: specs[i].$3,

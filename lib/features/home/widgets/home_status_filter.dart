@@ -5,7 +5,7 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/features/home/home_constants.dart';
 import 'package:provider/provider.dart';
 
-class HomeStatusFilter extends StatelessWidget {
+class HomeStatusFilter extends StatefulWidget {
   final String? selectedStatus;
   final ValueChanged<String?> onChanged;
   final Map<String?, int> counts;
@@ -16,6 +16,50 @@ class HomeStatusFilter extends StatelessWidget {
     required this.onChanged,
     this.counts = const {},
   });
+
+  @override
+  State<HomeStatusFilter> createState() => _HomeStatusFilterState();
+}
+
+class _HomeStatusFilterState extends State<HomeStatusFilter> {
+  final ScrollController _scrollCtrl = ScrollController();
+  // GlobalKey на каждый чип (по значению статуса) — для ensureVisible.
+  final Map<String?, GlobalKey> _chipKeys = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Первый кадр: подвести выбранный чип в зону видимости.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
+  @override
+  void didUpdateWidget(HomeStatusFilter old) {
+    super.didUpdateWidget(old);
+    // Статус сменился (тап/свайп) — центрируем новый активный чип.
+    if (old.selectedStatus != widget.selectedStatus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelected() {
+    if (!mounted) return;
+    final ctx = _chipKeys[widget.selectedStatus]?.currentContext;
+    if (ctx == null) return;
+    // alignment 0.5 — центрируем активный чип по горизонтали.
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   // HomeColors.dark (0xFF0F1117) is the "active" status colour — nearly black.
   // In dark mode it becomes invisible, so we swap it for the theme's ink colour.
@@ -29,16 +73,19 @@ class HomeStatusFilter extends StatelessWidget {
     final words = context.watch<LanguageProvider>().words;
     final filters = getStatusFilters(words);
     return SingleChildScrollView(
+      controller: _scrollCtrl,
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.only(right: 16),
       child: Row(
         children: filters.map((f) {
-          final bool sel = selectedStatus == f.value;
-          final int? count = counts[f.value];
+          final bool sel = widget.selectedStatus == f.value;
+          final key = _chipKeys.putIfAbsent(f.value, () => GlobalKey());
+          final int? count = widget.counts[f.value];
           final Color color = _resolveColor(f.color, context);
 
           return GestureDetector(
-            onTap: () => onChanged(f.value),
+            key: key,
+            onTap: () => widget.onChanged(f.value),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               margin: const EdgeInsets.only(right: 8),

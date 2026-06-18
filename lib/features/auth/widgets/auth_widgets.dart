@@ -1,6 +1,8 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 // ─── Логотип ──────────────────────────────────────────────────────────────────
 
@@ -12,11 +14,25 @@ class BaglaLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // В тёмной теме пробуем тёмный вариант логотипа (например, белый+оранжевый),
+    // чтобы чёрная часть не сливалась с фоном. Если файла нет — graceful
+    // fallback на основной `bagla_logo.png` (errorBuilder).
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const light = 'assets/images/bagla_logo.png';
+    const dark = 'assets/images/bagla_logo_dark.png';
+
     return Image.asset(
-      'assets/images/bagla_logo.png',
+      isDark ? dark : light,
       width: width,
       height: height,
       fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => Image.asset(
+        light,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+      ),
     );
   }
 }
@@ -29,17 +45,30 @@ class AuthBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: c.border, width: 1.5),
+    final label = context.read<LanguageProvider>().words.a11yBack;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        behavior: HitTestBehavior.opaque,
+        // Hit-area 44×44 (HIG/Material), визуал остаётся 38×38.
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: c.border, width: 1.5),
+              ),
+              child: Icon(Icons.arrow_back_ios_new, size: 14, color: c.ink),
+            ),
+          ),
         ),
-        child: Icon(Icons.arrow_back_ios_new, size: 14, color: c.ink),
       ),
     );
   }
@@ -60,22 +89,28 @@ class AuthLangSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return GestureDetector(
-      onTap: onToggle,
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: c.border, width: 1.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _LangTab(label: 'RU', active: isRu),
-            _LangTab(label: 'TK', active: !isRu),
-          ],
+    final label = context.read<LanguageProvider>().words.a11yLanguage;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onToggle,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: c.border, width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LangTab(label: 'RU', active: isRu),
+              _LangTab(label: 'TK', active: !isRu),
+            ],
+          ),
         ),
       ),
     );

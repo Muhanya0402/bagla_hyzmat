@@ -3,7 +3,9 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/theme/theme_toggle_button.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pinput/pinput.dart';
+import 'package:smart_auth/smart_auth.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bagla/features/auth/auth_provider.dart';
@@ -38,6 +40,17 @@ class _OtpScreenState extends State<OtpScreen>
   late final AnimationController _shakeCtrl;
   late final Animation<double> _shakeAnim;
 
+  // Пульс активной ячейки (glow + переливающийся border) — бесконечный loop.
+  late final AnimationController _pulseCtrl;
+  // Success-морфинг (ячейки → галочка) при верном коде.
+  late final AnimationController _successCtrl;
+  bool _success = false;
+
+  // Авто-чтение SMS-кода (A1). User Consent API — системный диалог
+  // «разрешить чтение SMS?», НЕ требует SMS-подписи приложения и
+  // изменений бэкенд-шаблона. Работает только на реальном Android-девайсе.
+  final SmsRetriever _smsRetriever = _OtpSmsRetriever(SmartAuth.instance);
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +74,17 @@ class _OtpScreenState extends State<OtpScreen>
       TweenSequenceItem(tween: Tween(begin: -5, end: 4), weight: 2),
       TweenSequenceItem(tween: Tween(begin: 4, end: 0), weight: 1),
     ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
+
+    // Бесконечный пульс активной ячейки (1.1с в одну сторону, reverse).
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+
+    _successCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+    );
   }
 
   void _onOtpChanged() {
@@ -117,7 +141,10 @@ class _OtpScreenState extends State<OtpScreen>
     _otpController.removeListener(_onOtpChanged);
     WidgetsBinding.instance.removeObserver(this);
     _shakeCtrl.dispose();
+    _pulseCtrl.dispose();
+    _successCtrl.dispose();
     _timer?.cancel();
+    _smsRetriever.dispose();
     super.dispose();
   }
 
@@ -127,13 +154,31 @@ class _OtpScreenState extends State<OtpScreen>
     final words = lang.words;
 
     if (!fromAutoComplete && auth.otpController.text.length < 4) return;
-    if (_disabled) return;
+    if (_disabled || _success) return;
 
-    final ok = await auth.verifyOtpAndLogin(context, lang, silent: true);
+    // autoNavigate: false — навигацию делаем САМИ после success-морфинга,
+    // чтобы пользователь увидел анимацию «галочки».
+    final ok = await auth.verifyOtpAndLogin(
+      context,
+      lang,
+      silent: true,
+      autoNavigate: false,
+    );
 
     if (!mounted) return;
 
-    if (ok) return;
+    if (ok) {
+      // ── Success-морфинг (#3) ──────────────────────────────────────────
+      HapticFeedback.lightImpact();
+      _pulseCtrl.stop();
+      setState(() => _success = true);
+      await _successCtrl.forward(from: 0);
+      await Future.delayed(const Duration(milliseconds: 320));
+      if (!mounted) return;
+      // Реплицируем AuthProvider._navigate — всегда на /home.
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
+      return;
+    }
 
     // ── Ошибка ────────────────────────────────────────────────────────────
     if (auth.lastErrorKind == AuthErrorKind.network) {
@@ -151,6 +196,7 @@ class _OtpScreenState extends State<OtpScreen>
       _forceError = true;
       _disabled = true;
     });
+    HapticFeedback.heavyImpact(); // усиленный фидбек на неверный код (#4)
     _shakeCtrl.forward(from: 0);
 
     // После shake'а: чистим ячейки и убираем красный фон,
@@ -198,27 +244,45 @@ class _OtpScreenState extends State<OtpScreen>
     ),
   );
 
-  PinTheme _focusedTheme(AppColors c) => _defaultTheme(c).copyWith(
-    decoration: BoxDecoration(
-      color: c.surface,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: c.ink, width: 1.5),
-      boxShadow: [
-        BoxShadow(
-          color: c.ink.withValues(alpha: 0.10),
-          blurRadius: 14,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-  );
+  /// Активная ячейка (#2 glow-pulse + #6 переливающийся border).
+  /// [t] ∈ [0,1] — фаза пульса из `_pulseCtrl`.
+  PinTheme _focusedTheme(AppColors c, double t) {
+    // Border «переливается» между ink и accent по фазе t.
+    final borderColor = Color.lerp(c.ink, c.accent, t)!;
+    // Glow дышит: blur и прозрачность тени растут к пику пульса.
+    final glowAlpha = 0.10 + 0.22 * t;
+    final glowBlur = 12.0 + 12.0 * t;
+    return _defaultTheme(c).copyWith(
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1.5 + 0.5 * t),
+        boxShadow: [
+          BoxShadow(
+            color: c.accent.withValues(alpha: glowAlpha),
+            blurRadius: glowBlur,
+            spreadRadius: 0.5 * t,
+          ),
+        ],
+      ),
+    );
+  }
 
+  /// Заполненная ячейка (#1 заливка акцентом). Scale-bounce даёт
+  /// `pinAnimationType: scale` + easeOutBack на самом Pinput.
   PinTheme _submittedTheme(AppColors c) => _defaultTheme(c).copyWith(
     textStyle: AppText.serif(fontSize: 26, letterSpacing: 0, color: c.ink),
     decoration: BoxDecoration(
-      color: c.borderSoft,
+      color: c.emeraldTint,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: c.accent, width: 1),
+      border: Border.all(color: c.accent, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: c.accent.withValues(alpha: 0.18),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
     ),
   );
 
@@ -232,6 +296,14 @@ class _OtpScreenState extends State<OtpScreen>
       color: c.errorTint,
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: c.errorMuted, width: 1.5),
+      // Красный pulse-glow на ошибке (#4).
+      boxShadow: [
+        BoxShadow(
+          color: c.errorMuted.withValues(alpha: 0.28),
+          blurRadius: 14,
+          spreadRadius: 1,
+        ),
+      ],
     ),
   );
 
@@ -299,34 +371,62 @@ class _OtpScreenState extends State<OtpScreen>
 
                 const SizedBox(height: 40),
 
-                // ── Pinput (горизонтальный shake при ошибке) ───────────────
+                // ── Pinput ↔ Success-морфинг ──────────────────────────────
                 Center(
-                  child: AnimatedBuilder(
-                    animation: _shakeAnim,
-                    builder: (_, child) => Transform.translate(
-                      offset: Offset(_shakeAnim.value, 0),
-                      child: child,
-                    ),
-                    child: Pinput(
-                      length: 4,
-                      controller: auth.otpController,
-                      defaultPinTheme: _defaultTheme(c),
-                      focusedPinTheme: _focusedTheme(c),
-                      submittedPinTheme: _submittedTheme(c),
-                      errorPinTheme: _errorTheme(c),
-                      forceErrorState: _forceError,
-                      separatorBuilder: (_) => const SizedBox(width: 12),
-                      showCursor: true,
-                      cursor: Container(
-                        width: 1.5,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: c.ink,
-                          borderRadius: BorderRadius.circular(1),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: ScaleTransition(
+                        scale: Tween(begin: 0.85, end: 1.0).animate(
+                          CurvedAnimation(parent: anim, curve: Curves.easeOut),
                         ),
+                        child: child,
                       ),
-                      onCompleted: (_) => _onVerify(fromAutoComplete: true),
                     ),
+                    child: _success
+                        ? _SuccessCheck(key: const ValueKey('ok'), ctrl: _successCtrl)
+                        : AnimatedBuilder(
+                            key: const ValueKey('pins'),
+                            // Слушаем shake И pulse — оба влияют на отрисовку.
+                            animation: Listenable.merge([_shakeAnim, _pulseCtrl]),
+                            builder: (_, _) {
+                              final t = Curves.easeInOut.transform(
+                                _pulseCtrl.value,
+                              );
+                              return Transform.translate(
+                                offset: Offset(_shakeAnim.value, 0),
+                                child: Pinput(
+                                  length: 4,
+                                  controller: auth.otpController,
+                                  smsRetriever: _smsRetriever, // авто-чтение SMS
+                                  // #5 spring-появление цифры (overshoot).
+                                  pinAnimationType: PinAnimationType.scale,
+                                  animationCurve: Curves.easeOutBack,
+                                  animationDuration:
+                                      const Duration(milliseconds: 300),
+                                  defaultPinTheme: _defaultTheme(c),
+                                  focusedPinTheme: _focusedTheme(c, t), // #2/#6
+                                  submittedPinTheme: _submittedTheme(c), // #1
+                                  errorPinTheme: _errorTheme(c), // #4
+                                  forceErrorState: _forceError,
+                                  separatorBuilder: (_) =>
+                                      const SizedBox(width: 12),
+                                  showCursor: true,
+                                  cursor: Container(
+                                    width: 1.5,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: c.ink,
+                                      borderRadius: BorderRadius.circular(1),
+                                    ),
+                                  ),
+                                  onCompleted: (_) =>
+                                      _onVerify(fromAutoComplete: true),
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ),
 
@@ -375,6 +475,56 @@ class _OtpScreenState extends State<OtpScreen>
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Success check (#3) — заливка-круг + галочка с bounce-появлением
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _SuccessCheck extends StatelessWidget {
+  final AnimationController ctrl;
+  const _SuccessCheck({super.key, required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    // Круг масштабируется с overshoot, галочка проявляется чуть позже.
+    final circleScale = CurvedAnimation(
+      parent: ctrl,
+      curve: Curves.easeOutBack,
+    );
+    final checkFade = CurvedAnimation(
+      parent: ctrl,
+      curve: const Interval(0.35, 1.0, curve: Curves.easeOut),
+    );
+    return SizedBox(
+      height: 64,
+      child: Center(
+        child: ScaleTransition(
+          scale: circleScale,
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: c.accent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: c.accent.withValues(alpha: 0.35),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: FadeTransition(
+              opacity: checkFade,
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 34),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Private widgets
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -407,6 +557,32 @@ class _SubtleTimer extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ── SMS auto-read (A1) ────────────────────────────────────────────────────────
+
+/// Реализация pinput-овского [SmsRetriever] поверх smart_auth.
+/// Использует User Consent API: показывает системный диалог подтверждения
+/// чтения SMS, извлекает код дефолтным matcher'ом `\d{4,8}` (ловит 4-значный).
+/// НЕ требует SMS app-signature (в отличие от Retriever API).
+class _OtpSmsRetriever implements SmsRetriever {
+  _OtpSmsRetriever(this._smartAuth);
+  final SmartAuth _smartAuth;
+
+  @override
+  bool get listenForMultipleSms => false;
+
+  @override
+  Future<String?> getSmsCode() async {
+    final res = await _smartAuth.getSmsWithUserConsentApi();
+    if (res.hasData) return res.data?.code;
+    return null;
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _smartAuth.removeUserConsentApiListener();
   }
 }
 

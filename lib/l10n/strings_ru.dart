@@ -249,6 +249,7 @@ const Map<String, String> stringsRu = {
       'С вашего баланса будет списано {points} баллов. Приступить?',
   'confirmNoPoints': 'Заказ будет закреплён за вами. Приступить?',
   'tooManyOrders': 'Нельзя брать больше 3 заказов одновременно',
+  'transportMismatch': 'Этот заказ требует другой тип транспорта',
   'networkError': 'Ошибка сети. Попробуйте позже.',
   'orderDone': 'Заказ выполнен!',
   'deliveredOnTime': 'Вы доставили заказ вовремя',
@@ -378,6 +379,14 @@ const Map<String, String> stringsRu = {
   // Тема (light/dark) — лейбл в ThemeToggleTile в Profile.
   'profileThemeLight': 'Светлая тема',
   'profileThemeDark': 'Тёмная тема',
+  'profileReplayTour': 'Повторить обучение',
+  // Accessibility — метки для screen-reader.
+  'a11yBack': 'Назад',
+  'a11yLanguage': 'Сменить язык',
+  'a11yTheme': 'Сменить тему',
+  'a11yClose': 'Закрыть',
+  'a11yMarkAllRead': 'Отметить все прочитанными',
+  'a11yFilter': 'Фильтры',
   // TopUp modal — пополнение жетонов курьера.
   'topUpHeaderTitle': 'Пополнение баланса',
   'topUpHeaderSubtitle': 'Жетоны нужны для принятия заказов',

@@ -20,6 +20,7 @@ import 'package:bagla/models/province.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 // ─── Какое фото грузим ────────────────────────────────────────────────────────
@@ -105,10 +106,126 @@ class _RegistrationDetailsScreenState
     _loadProvinces();
     if (widget.role == 'shop') _loadCategories();
     _searchController.addListener(_onSearchChanged);
+    // Прогресс-бар реагирует на ввод имени/названия — обновляем при печати.
+    _c1.addListener(_onAnyFieldChanged);
+    _c2.addListener(_onAnyFieldChanged);
+    _c3.addListener(_onAnyFieldChanged);
+    _restoreDraft(); // A3 — восстановить незаконченный черновик
     startTourIfNeeded(
       screenKey: TourKeys.regDetails,
       targetsBuilder: _buildTourTargets,
     );
+  }
+
+  /// Лёгкий ребилд для обновления прогресс-бара при вводе текста + сохранение
+  /// черновика (debounced).
+  void _onAnyFieldChanged() {
+    if (mounted) setState(() {});
+    _scheduleDraftSave();
+  }
+
+  // ── Draft (A3) ───────────────────────────────────────────────────────────
+  // Сохраняем ТОЛЬКО безопасно-сериализуемое: текстовые поля, транспорт,
+  // категорию. Локацию и фото НЕ восстанавливаем — там async-загрузка
+  // моделей с сервера и валидность файлов, авто-restore рискован.
+  Timer? _draftDebounce;
+
+  String get _draftKey => 'reg_draft_${widget.role}';
+
+  void _scheduleDraftSave() {
+    _draftDebounce?.cancel();
+    _draftDebounce = Timer(const Duration(milliseconds: 400), _saveDraft);
+  }
+
+  Future<void> _saveDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final map = <String, String>{
+        'c1': _c1.text,
+        'c2': _c2.text,
+        'c3': _c3.text,
+        'transport': _transportType,
+        'category': _selectedCategory?.id.toString() ?? '',
+      };
+      // Простая сериализация key=value через -разделитель.
+      final encoded = map.entries.map((e) => '${e.key}${e.value}').join('');
+      await prefs.setString(_draftKey, encoded);
+    } catch (_) {
+      // Сохранение черновика — best-effort, на ошибку молчим.
+    }
+  }
+
+  Future<void> _restoreDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_draftKey);
+      if (raw == null || raw.isEmpty) return;
+      final map = <String, String>{};
+      for (final pair in raw.split('')) {
+        final i = pair.indexOf('');
+        if (i > 0) map[pair.substring(0, i)] = pair.substring(i + 1);
+      }
+      if (!mounted) return;
+      setState(() {
+        if ((map['c1'] ?? '').isNotEmpty) _c1.text = map['c1']!;
+        if ((map['c2'] ?? '').isNotEmpty) _c2.text = map['c2']!;
+        if ((map['c3'] ?? '').isNotEmpty) _c3.text = map['c3']!;
+        final t = map['transport'];
+        if (t != null && t.isNotEmpty) _transportType = t;
+      });
+      // Категорию восстанавливаем после загрузки списка (match по id).
+      _pendingCategoryId = map['category'];
+    } catch (_) {
+      // Восстановление — best-effort.
+    }
+  }
+
+  /// id категории из черновика, ждёт загрузки _categories для match'а.
+  String? _pendingCategoryId;
+
+  /// Применить отложенную категорию из черновика после загрузки списка.
+  void _applyPendingCategory() {
+    final id = _pendingCategoryId;
+    if (id == null) return;
+    final cats = _categories;
+    if (cats == null) return;
+    for (final cat in cats) {
+      if (cat.id.toString() == id) {
+        _selectedCategory = cat;
+        break;
+      }
+    }
+    _pendingCategoryId = null;
+  }
+
+  Future<void> _clearDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (_) {}
+  }
+
+  /// Доля заполнения формы 0..1 для прогресс-бара (A2).
+  /// Курьер: имя+фамилия+отчество + локация + 4 фото = 8 пунктов.
+  /// Магазин: название + локация + категория = 3 пункта.
+  double _completionFraction() {
+    final isCourier = widget.role == 'courier';
+    int total;
+    int done = 0;
+    if (isCourier) {
+      total = 8;
+      if (_c1.text.trim().isNotEmpty) done++;
+      if (_c2.text.trim().isNotEmpty) done++;
+      if (_c3.text.trim().isNotEmpty) done++;
+      if (_locationSelected) done++;
+      done += _photos.values.where((f) => f != null).length; // 0..4
+    } else {
+      total = 3;
+      if (_c1.text.trim().isNotEmpty) done++;
+      if (_locationSelected) done++;
+      if (_selectedCategory != null) done++;
+    }
+    return (done / total).clamp(0.0, 1.0);
   }
 
   /// Тур-шаги под роль:
@@ -120,6 +237,7 @@ class _RegistrationDetailsScreenState
     final isCourier = widget.role == 'courier';
     return [
       TourTarget.build(
+        id: 'reg_details_location',
         key: _locationKey,
         title: words.tourRegLocationTitle,
         body: words.tourRegLocationBody,
@@ -127,12 +245,14 @@ class _RegistrationDetailsScreenState
       ),
       if (isCourier)
         TourTarget.build(
+          id: 'reg_details_photos',
           key: _photosKey,
           title: words.tourRegPhotosTitle,
           body: words.tourRegPhotosBody,
           align: ContentAlign.top,
         ),
       TourTarget.build(
+        id: 'reg_details_submit',
         key: _submitKey,
         title: words.tourRegSubmitTitle,
         body: words.tourRegSubmitBody,
@@ -146,7 +266,10 @@ class _RegistrationDetailsScreenState
     try {
       final list = await _authRepo.getShopCategories();
       if (!mounted) return;
-      setState(() => _categories = list.isNotEmpty ? list : kLocalShopCategories);
+      setState(() {
+        _categories = list.isNotEmpty ? list : kLocalShopCategories;
+        _applyPendingCategory();
+      });
     } catch (_) {
       // Сеть/сервер недоступны — даём пользователю продолжить с локальным
       // списком. На submit Directus всё равно проверит m2o-связь.
@@ -172,9 +295,16 @@ class _RegistrationDetailsScreenState
   void dispose() {
     _messenger?.clearSnackBars();
     _searchDebounce?.cancel();
-    _c1.dispose();
-    _c2.dispose();
-    _c3.dispose();
+    _draftDebounce?.cancel();
+    _c1
+      ..removeListener(_onAnyFieldChanged)
+      ..dispose();
+    _c2
+      ..removeListener(_onAnyFieldChanged)
+      ..dispose();
+    _c3
+      ..removeListener(_onAnyFieldChanged)
+      ..dispose();
     _f1.dispose();
     _f2.dispose();
     _f3.dispose();
@@ -499,6 +629,7 @@ class _RegistrationDetailsScreenState
       // (Dio receiveTimeout) → пользователь застрял на форме с loader'ом.
       // Теперь рефреш улетает в фон, новые данные подхватятся когда придут.
       _showToast(words.regSuccessSubmit, isSuccess: true);
+      unawaited(_clearDraft()); // A3 — черновик больше не нужен
       // Fire-and-forget refresh — успешно дойдёт до home или нет, нам всё
       // равно. MainShell сам сделает refresh при mount'е.
       auth.refreshProfile().catchError((_) {});
@@ -633,7 +764,10 @@ class _RegistrationDetailsScreenState
         final (value, label, icon) = opt;
         final isSelected = _transportType == value;
         return GestureDetector(
-          onTap: () => setState(() => _transportType = value),
+          onTap: () {
+            setState(() => _transportType = value);
+            _scheduleDraftSave();
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             margin: const EdgeInsets.only(bottom: 10),
@@ -707,7 +841,10 @@ class _RegistrationDetailsScreenState
             children: _categories!.map((cat) {
               final isSelected = _selectedCategory?.id == cat.id;
               return GestureDetector(
-                onTap: () => setState(() => _selectedCategory = cat),
+                onTap: () {
+                  setState(() => _selectedCategory = cat);
+                  _scheduleDraftSave();
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
                   padding: const EdgeInsets.fromLTRB(11, 8, 14, 8),
@@ -1133,16 +1270,20 @@ class _RegistrationDetailsScreenState
         backgroundColor: c.bg,
         elevation: 0,
         scrolledUnderElevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: c.border),
+        leading: Semantics(
+          button: true,
+          label: words.a11yBack,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: c.border),
+              ),
+              child: Icon(Icons.arrow_back_ios_new, color: c.ink, size: 16),
             ),
-            child: Icon(Icons.arrow_back_ios_new, color: c.ink, size: 16),
           ),
         ),
         actions: [
@@ -1152,8 +1293,19 @@ class _RegistrationDetailsScreenState
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: c.borderSoft),
+          preferredSize: const Size.fromHeight(3),
+          // Прогресс заполнения формы (A2) — тонкая брендовая полоса.
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: _completionFraction()),
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 3,
+              backgroundColor: c.borderSoft,
+              valueColor: AlwaysStoppedAnimation(c.ink),
+            ),
+          ),
         ),
       ),
       body: GestureDetector(
@@ -1210,6 +1362,8 @@ class _RegistrationDetailsScreenState
                       controller: _c1,
                       focusNode: _f1,
                       icon: Icons.badge_outlined,
+                      textInputAction: TextInputAction.next,
+                      nextFocus: _f2,
                     ),
                     const SizedBox(height: 12),
                     _InputField(
@@ -1219,6 +1373,8 @@ class _RegistrationDetailsScreenState
                       controller: _c2,
                       focusNode: _f2,
                       icon: Icons.badge_outlined,
+                      textInputAction: TextInputAction.next,
+                      nextFocus: _f3,
                     ),
                     const SizedBox(height: 12),
                     _InputField(
@@ -1228,6 +1384,7 @@ class _RegistrationDetailsScreenState
                       controller: _c3,
                       focusNode: _f3,
                       icon: Icons.badge_outlined,
+                      textInputAction: TextInputAction.done,
                     ),
                   ],
                   const SizedBox(height: 32),
@@ -1483,6 +1640,13 @@ class _InputField extends StatefulWidget {
   final TextEditingController controller;
   final IconData icon;
   final FocusNode? focusNode;
+
+  /// Кнопка действия на клавиатуре (next/done) — A8 цепочка фокуса.
+  final TextInputAction? textInputAction;
+
+  /// Куда перевести фокус по «Далее». Если null — закрыть клавиатуру.
+  final FocusNode? nextFocus;
+
   const _InputField({
     required this.label,
     required this.hint,
@@ -1490,6 +1654,8 @@ class _InputField extends StatefulWidget {
     required this.controller,
     required this.icon,
     this.focusNode,
+    this.textInputAction,
+    this.nextFocus,
   });
 
   @override
@@ -1525,6 +1691,15 @@ class _InputFieldState extends State<_InputField> {
     return TextFormField(
       controller: widget.controller,
       focusNode: _focus,
+      textInputAction: widget.textInputAction,
+      onFieldSubmitted: (_) {
+        final next = widget.nextFocus;
+        if (next != null) {
+          FocusScope.of(context).requestFocus(next);
+        } else {
+          FocusScope.of(context).unfocus();
+        }
+      },
       style: AppText.regular(fontSize: 15, color: c.ink),
       decoration: InputDecoration(
         labelText: widget.label,

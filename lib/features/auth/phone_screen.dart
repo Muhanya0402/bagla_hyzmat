@@ -1,10 +1,13 @@
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/theme/theme_toggle_button.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/auth/widgets/auth_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_auth/smart_auth.dart';
 
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -54,6 +57,42 @@ class _PhoneScreenState extends State<PhoneScreen>
     ctrl.clear();
     ctrl.addListener(_onPhoneChanged);
     _phoneCtrl = ctrl;
+
+    // Подставить номер с SIM (Android Phone Number Hint API). Показывает
+    // системный шит выбора номера — без READ_PHONE-разрешений.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryPickSimNumber());
+  }
+
+  /// Phone Number Hint (Android): системный диалог выбирает номер SIM,
+  /// мы подставляем его в поле. На iOS / без Google Play — тихий no-op
+  /// (там работает клавиатурный autofill по `autofillHints`).
+  Future<void> _tryPickSimNumber() async {
+    final ctrl = _phoneCtrl;
+    if (ctrl == null || ctrl.text.isNotEmpty) return; // не перетираем ввод
+    try {
+      final res = await SmartAuth.instance.requestPhoneNumberHint();
+      if (!mounted || !res.hasData) return;
+      final raw = res.data;
+      if (raw == null || raw.isEmpty) return;
+
+      // E.164 (+99365xxxxxx) → 8 цифр номера ТМ.
+      var digits = raw.replaceAll(RegExp(r'\D'), '');
+      if (digits.startsWith('993')) digits = digits.substring(3);
+      if (digits.length > 8) digits = digits.substring(digits.length - 8);
+      if (digits.isEmpty) return;
+
+      // Прогоняем через маску `## ## ## ##`, синхронизируя её состояние.
+      final formatted = _phoneMask.formatEditUpdate(
+        const TextEditingValue(),
+        TextEditingValue(
+          text: digits,
+          selection: TextSelection.collapsed(offset: digits.length),
+        ),
+      );
+      ctrl.value = formatted;
+    } catch (_) {
+      // нет Play Services / отмена / iOS — игнорируем.
+    }
   }
 
   void _onPhoneChanged() {
@@ -69,13 +108,21 @@ class _PhoneScreenState extends State<PhoneScreen>
     super.dispose();
   }
 
-  void _shake() => _shakeCtrl.forward(from: 0);
+  void _shake() {
+    HapticFeedback.mediumImpact(); // тактильный фидбек на ошибку
+    _shakeCtrl.forward(from: 0);
+  }
+
+  /// Допустимые первые цифры мобильного номера Туркменистана (после +993).
+  /// Вынесено в константу (A13): при добавлении нового префикса оператором
+  /// достаточно поправить здесь, а не искать magic-строки в логике.
+  static const _validMobilePrefixes = {'6', '7'};
 
   bool _isValidPhone(String input) {
     final clean = '+993${input.replaceAll(RegExp(r'\D'), '')}';
     if (clean.length != 12) return false;
     final fourth = clean.substring(4, 5);
-    return fourth == '6' || fourth == '7';
+    return _validMobilePrefixes.contains(fourth);
   }
 
   void _openPolicy(BuildContext ctx) {
@@ -251,8 +298,7 @@ class _PhoneScreenState extends State<PhoneScreen>
                               _policyAccepted = v;
                               if (v) _policyError = null;
                             }),
-                            onTapTerms: () => _openPolicy(context),
-                            onTapPrivacy: () => _openPolicy(context),
+                            onTapPolicy: () => _openPolicy(context),
                           ),
                         ),
                         AuthInlineError(message: _policyError),
@@ -357,12 +403,8 @@ class _PhoneField extends StatelessWidget {
                     '+993',
                     style: AppText.semiBold(fontSize: 15, color: c.ink),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: c.inkMuted,
-                  ),
+                  // Chevron убран: страна одна (Туркменистан), выбор фейковый.
+                  // Вернуть, когда появятся другие страны.
                 ],
               ),
             ),
@@ -371,7 +413,13 @@ class _PhoneField extends StatelessWidget {
             child: TextField(
               controller: controller,
               keyboardType: TextInputType.phone,
-              inputFormatters: [formatter],
+              // Нормализатор ДО маски: срезает код страны 993 при массовой
+              // вставке (autofill/paste/SIM-hint), оставляя 8 цифр. Обычный
+              // посимвольный ввод пропускает без изменений.
+              inputFormatters: [const _TmPhoneNormalizer(), formatter],
+              // Autofill: система предложит сохранённый номер над клавиатурой.
+              autofillHints: const [AutofillHints.telephoneNumberDevice],
+              textInputAction: TextInputAction.done,
               style: AppText.medium(
                 fontSize: 17,
                 color: c.ink,
@@ -395,19 +443,49 @@ class _PhoneField extends StatelessWidget {
   }
 }
 
+/// Срезает код страны Туркменистана (993) при МАССОВОЙ вставке номера
+/// (autofill-чип клавиатуры, paste, SIM Phone-Number-Hint), оставляя
+/// локальные 8 цифр. Обычный посимвольный ввод (≤8 цифр) пропускается
+/// без изменений — его обрабатывает маска `## ## ## ##`.
+///
+/// Пример: «+99364012282» / «99364012282» → «64012282» → маска «64 01 22 82».
+class _TmPhoneNormalizer extends TextInputFormatter {
+  const _TmPhoneNormalizer();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    // Обычный ввод — не трогаем, пусть маска форматирует как раньше.
+    if (digits.length <= 8) return newValue;
+
+    var d = digits;
+    if (d.startsWith('993')) d = d.substring(3); // код страны
+    if (d.length > 8) d = d.substring(d.length - 8); // на всякий случай — хвост
+    return TextEditingValue(
+      text: d,
+      selection: TextSelection.collapsed(offset: d.length),
+    );
+  }
+}
+
 class _PolicyCheckbox extends StatelessWidget {
   final bool accepted;
   final bool hasError;
   final ValueChanged<bool> onChanged;
-  final VoidCallback onTapTerms;
-  final VoidCallback onTapPrivacy;
+
+  /// Один колбэк: оба документа открывают один и тот же PolicyScreen.
+  /// Раньше было два визуально раздельных линка (Terms / Privacy),
+  /// которые вели в одно место — вводило в заблуждение.
+  final VoidCallback onTapPolicy;
 
   const _PolicyCheckbox({
     required this.accepted,
     required this.hasError,
     required this.onChanged,
-    required this.onTapTerms,
-    required this.onTapPrivacy,
+    required this.onTapPolicy,
   });
 
   @override
@@ -453,26 +531,18 @@ class _PolicyCheckbox extends StatelessWidget {
               ),
               children: [
                 TextSpan(text: words.authPolicyAgreePrefix),
+                // Единый подчёркнутый линк: «Условия использования и
+                // Политику конфиденциальности» → один PolicyScreen.
                 TextSpan(
-                  text: words.authPolicyTerms,
+                  text:
+                      '${words.authPolicyTerms}${words.authPolicyAnd}${words.authPolicyPrivacy}',
                   style: TextStyle(
                     color: c.ink,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
                     decorationColor: c.ink,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = onTapTerms,
-                ),
-                TextSpan(text: words.authPolicyAnd),
-                TextSpan(
-                  text: words.authPolicyPrivacy,
-                  style: TextStyle(
-                    color: c.ink,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                    decorationColor: c.ink,
-                  ),
-                  recognizer: TapGestureRecognizer()..onTap = onTapPrivacy,
+                  recognizer: TapGestureRecognizer()..onTap = onTapPolicy,
                 ),
               ],
             ),
@@ -499,17 +569,7 @@ class _CountrySheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 18),
-                decoration: BoxDecoration(
-                  color: c.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            const SheetHandle(topPadding: 0, bottomPadding: 18),
             Text(
               words.authCountryTitle,
               style: AppText.serif(fontSize: 22, letterSpacing: -0.3),

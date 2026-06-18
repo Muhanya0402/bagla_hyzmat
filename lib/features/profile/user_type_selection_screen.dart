@@ -36,6 +36,7 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen>
     final isRu = context.read<LanguageProvider>().isRu;
     return [
       TourTarget.build(
+        id: 'user_type_shop',
         key: _shopKey,
         titleRu: 'Магазин / бизнес',
         titleTk: 'Dükан / biznes',
@@ -47,6 +48,7 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen>
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'user_type_courier',
         key: _courierKey,
         titleRu: 'Курьер',
         titleTk: 'Kurýer',
@@ -71,16 +73,20 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen>
       appBar: AppBar(
         backgroundColor: c.bg,
         elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: c.border),
+        leading: Semantics(
+          button: true,
+          label: words.a11yBack,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: c.border),
+              ),
+              child: Icon(Icons.arrow_back_ios_new, color: c.ink, size: 16),
             ),
-            child: Icon(Icons.arrow_back_ios_new, color: c.ink, size: 16),
           ),
         ),
         bottom: PreferredSize(

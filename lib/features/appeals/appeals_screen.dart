@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
@@ -45,12 +46,14 @@ class _AppealsScreenState extends State<AppealsScreen>
     final words = context.read<LanguageProvider>().words;
     return [
       TourTarget.build(
+        id: 'appeals_0',
         key: _newKey,
         title: words.tourAppealsCreateTitle,
         body: words.tourAppealsCreateBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'appeals_1',
         key: _listKey,
         title: words.tourAppealsListTitle,
         body: words.tourAppealsListBody,
@@ -155,12 +158,7 @@ class _AppealsScreenState extends State<AppealsScreen>
 
   Widget _buildBody(BuildContext context, AppLocalizations words) {
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          color: AppColors.of(context).ink,
-          strokeWidth: 2,
-        ),
-      );
+      return const ShimmerListSkeleton(itemHeight: 76);
     }
 
     if (_error != null) {

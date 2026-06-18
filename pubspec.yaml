@@ -16,6 +16,7 @@ dependencies:
   intl: 0.20.2
   provider: ^6.1.2
   pinput: ^5.0.0
+  smart_auth: ^3.0.1
   image_picker: ^1.0.7
   flutter_image_compress: ^2.3.0
   
@@ -49,9 +50,14 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/bagla_logo.png"
-  image_path_ios: "assets/images/bagla_logo_ios.png" # с отступами, как на Android
+  image_path_ios: "assets/images/bagla_logo.png" # единый файл для всех платформ
   remove_alpha_ios: true # Apple запрещает прозрачность в иконках
   background_color_ios: "#ffffff" # белый фон, как у Android
+  # Adaptive-иконка (Android 8+): белый фон + логотип как foreground.
+  # Система сама добавляет safe-zone отступы и маску — иконка аккуратная
+  # без отдельного квадратного кропа широкого логотипа.
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/images/bagla_logo.png"
   min_sdk_android: 21 # android min sdk min:16, default 21
   web:
     generate: true

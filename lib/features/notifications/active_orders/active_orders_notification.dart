@@ -390,13 +390,25 @@ abstract final class ActiveOrdersNotification {
 
       case _actGenerateCode:
         // Шаг 1 завершения: генерим код, отправляем клиенту по СМС.
-        // OrderService инстанцируется свежий в background isolate'е —
-        // он внутри использует ApiClient singleton, который читает токен
-        // из SecureTokenStore. Всё работает потому что awesome_notifications
-        // регистрирует Flutter plugins для своего background isolate'а.
         final order = list[idx];
         if (order.courierId.isEmpty) break;
+
+        // ⚠️ RATE-LIMIT: защита от harassment'а клиента + расхода SMS-бюджета.
+        // Если за последние 60 секунд уже отправляли код — игнорируем тап.
+        // На сервере должен быть свой rate-limit, это клиентский guard.
+        final lastSentKey = 'active_orders_gen_at_${order.id}';
+        final lastSentMs = prefs.getInt(lastSentKey) ?? 0;
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        const cooldownMs = 60 * 1000;
+        if (nowMs - lastSentMs < cooldownMs) {
+          break;
+        }
+
         try {
+          // Помечаем «отправку начали» ДО HTTP — если юзер быстро тапнет
+          // ещё раз, второй вызов отскочит от cooldown'а.
+          await prefs.setInt(lastSentKey, nowMs);
+
           final svc = OrderService();
           final res = await svc.generateDeliveryCode(
             orderId: order.id,
@@ -405,13 +417,16 @@ abstract final class ActiveOrdersNotification {
           );
           if (res['success'] == true) {
             await prefs.setBool('$_kCodeSentPrefix${order.id}', true);
-            // Пересоздаём notification — теперь покажется
-            // «Введите код» с RemoteInput-полем.
+            // Пересоздаём notification — теперь «Введите код» с RemoteInput.
             await _renderAt(idx);
+          } else {
+            // HTTP не вышел успешно — снимаем cooldown, чтоб юзер мог
+            // ретрайнуть сразу, не ждать 60 сек.
+            await prefs.remove(lastSentKey);
           }
-          // На fail — ничего не меняем, кнопка «Завершить» остаётся.
         } catch (_) {
-          // silent fail — пользователь попробует снова
+          // Снимаем cooldown при ошибке (network blip и т.п.).
+          await prefs.remove(lastSentKey);
         }
         break;
 

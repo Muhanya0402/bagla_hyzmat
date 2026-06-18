@@ -6,6 +6,7 @@ import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagla/features/notifications/push_notification_service.dart';
@@ -71,7 +72,11 @@ class AuthProvider extends ChangeNotifier {
   bool get isCodeSent => _isCodeSent;
   bool get isLoading => _isLoading;
   AuthErrorKind get lastErrorKind => _lastErrorKind;
-  String get token => _token;
+  // ⚠️ НЕ выставляем `_token` через getter — токен должен жить только
+  // внутри SecureTokenStore и ApiClient. Раньше тут был
+  // `String get token => _token;` — теоретически любой виджет мог
+  // случайно залогировать `auth.token`. Если когда-то понадобится
+  // — читай через `SecureTokenStore.instance.getAccessToken()`.
   String get userId => _userId;
   String get name => _name;
   String get surname => _surname;
@@ -195,8 +200,14 @@ class AuthProvider extends ChangeNotifier {
     _etrapTk = prefs.getString('etrap_tk') ?? '';
     _districtRu = prefs.getString('district_ru') ?? '';
     _districtTk = prefs.getString('district_tk') ?? '';
-    _role = prefs.getString('role') ?? 'client';
-    _status = prefs.getString('status') ?? 'pending';
+    // Whitelist на чтении из prefs — на случай если предыдущий setUserData
+    // успел сохранить мусор (legacy).
+    const allowedRolesL = {'courier', 'shop', 'business', 'client'};
+    const allowedStatusesL = {'active', 'pending', 'banned', 'published', 'rejected'};
+    final rawRoleL = prefs.getString('role') ?? 'client';
+    _role = allowedRolesL.contains(rawRoleL) ? rawRoleL : 'client';
+    final rawStatusL = prefs.getString('status') ?? 'pending';
+    _status = allowedStatusesL.contains(rawStatusL) ? rawStatusL : 'pending';
     _rating = prefs.getDouble('rating') ?? 0.0;
     _balancePoints = prefs.getDouble('balance_points') ?? 0.0;
     _walletBalance = prefs.getDouble('wallet_balance') ?? 0.0;
@@ -224,7 +235,7 @@ class AuthProvider extends ChangeNotifier {
       final userData = await _authRepo.fetchProfileFromServer(_phone);
       if (userData != null) setUserData(userData);
     } catch (e) {
-      debugPrint('❌ Ошибка обновления профиля: $e');
+      if (kDebugMode) debugPrint('❌ Ошибка обновления профиля');
     }
   }
 
@@ -238,8 +249,15 @@ class AuthProvider extends ChangeNotifier {
     _surname = user['surname'] ?? '';
     _phone = user['phone'] ?? _phone;
     _address = user['address'] ?? _address;
-    _role = user['role'] ?? 'client';
-    _status = (user['status']?.toString() ?? 'pending').toLowerCase().trim();
+    // ⚠️ Whitelist для role/status — на случай если сервер вернёт
+    // мусор или атакующий компрометирует ответ. Иначе любое значение
+    // улетает в state и в prefs (например role='admin').
+    const allowedRoles = {'courier', 'shop', 'business', 'client'};
+    const allowedStatuses = {'active', 'pending', 'banned', 'published', 'rejected'};
+    final rawRole = (user['role'] ?? 'client').toString().toLowerCase().trim();
+    _role = allowedRoles.contains(rawRole) ? rawRole : 'client';
+    final rawStatus = (user['status']?.toString() ?? 'pending').toLowerCase().trim();
+    _status = allowedStatuses.contains(rawStatus) ? rawStatus : 'pending';
     _rating = (user['rating'] ?? 0.0).toDouble();
     _balancePoints = (user['balance_points'] ?? 0.0).toDouble();
     _walletBalance = (user['wallet_balance'] ?? 0.0).toDouble();
@@ -329,9 +347,10 @@ class AuthProvider extends ChangeNotifier {
       tk: (v) => _provinceTk = v,
     );
 
-    debugPrint(
-      '📡 AuthProvider: ID=$_userId status=$_status role=$_role district=$_districtId',
-    );
+    // Не логируем ID/status/role/district в release — это PII.
+    if (kDebugMode) {
+      debugPrint('📡 AuthProvider: setUserData → status=$_status role=$_role');
+    }
 
     final prefs = await SharedPreferences.getInstance();
     // Access token — в secure storage, не в plain prefs.
@@ -511,7 +530,7 @@ class AuthProvider extends ChangeNotifier {
       if (!context.mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } catch (e) {
-      debugPrint('❌ Ошибка skipOnboarding: $e');
+      if (kDebugMode) debugPrint('❌ Ошибка skipOnboarding');
     } finally {
       _setLoading(false);
     }
@@ -535,7 +554,7 @@ class AuthProvider extends ChangeNotifier {
     _address = newAddress;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('shop_address', newAddress);
-    debugPrint('🏠 Адрес магазина обновлён: $_address');
+    if (kDebugMode) debugPrint('🏠 Адрес магазина обновлён');
     notifyListeners();
   }
 
@@ -543,7 +562,7 @@ class AuthProvider extends ChangeNotifier {
     _districtId = newDistrictId;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('district_id', newDistrictId);
-    debugPrint('📍 Район обновлён: $_districtId');
+    if (kDebugMode) debugPrint('📍 Район обновлён');
     notifyListeners();
   }
 

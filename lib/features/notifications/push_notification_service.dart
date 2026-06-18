@@ -1,10 +1,15 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/secure_token_store.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
+import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
+import 'package:bagla/features/orders/order_detail_screen.dart';
+import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/main.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
@@ -32,8 +37,8 @@ class PushNotificationService {
   Future<void> _initializeOnce() async {
     // 1. Инициализация Awesome Notifications и создание канала
     await AwesomeNotifications().initialize(
-      // null использует дефолтную иконку приложения (или укажите 'resource://drawable/ic_notification')
-      null, 
+      // Small-иконка (статус-бар) — монохромный силуэт ic_notification.
+      'resource://drawable/ic_notification',
       [
         NotificationChannel(
           channelKey: 'bagla_channel',
@@ -72,6 +77,8 @@ class PushNotificationService {
             channelKey: 'bagla_channel',
             title: notification.title,
             body: notification.body,
+            // Цветной логотип Bagla справа в уведомлении (#1).
+            largeIcon: 'resource://mipmap/launcher_icon',
             // Передаем payload (data) в виде Map<String, String>
             payload: message.data.map((key, value) => MapEntry(key, value.toString())),
           ),
@@ -98,7 +105,9 @@ class PushNotificationService {
     try {
       final String? token = await _messaging.getToken();
       if (token != null) {
-        if (kDebugMode) print('✅ FCM Token sync: $token');
+        // ⚠️ НЕ логируем сам FCM-token — это identifier устройства,
+        // которым можно отправлять push'и (включая spoofing).
+        if (kDebugMode) print('✅ FCM Token sync (len=${token.length})');
         await _saveTokenToDirectus(token);
       }
     } catch (e) {
@@ -160,6 +169,32 @@ class PushNotificationService {
         await NotificationService().markAsRead(notifId);
       } else {
         await NotificationService().markAllAsRead(userId);
+      }
+    }
+
+    // #3: если payload содержит id заказа — открываем сам заказ, а не
+    // раздел уведомлений.
+    final orderId = notifOrderId(data);
+    if (orderId != null) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        // ctx взят свежим из navigatorKey и read вызывается синхронно —
+        // across-async-gap здесь ложноположительный.
+        // ignore: use_build_context_synchronously
+        final auth = ctx.read<AuthProvider>();
+        final order = await OrderService().getOrderById(orderId);
+        if (order != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => OrderDetailScreen(
+                order: order,
+                role: auth.role,
+                currentUserId: auth.userId,
+              ),
+            ),
+          );
+          return;
+        }
       }
     }
 

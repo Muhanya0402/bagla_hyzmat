@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -45,14 +46,7 @@ class BannedAccessSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Handle bar
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: c.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
+          const SheetHandle(topPadding: 0),
           const SizedBox(height: 20),
 
           // ── Статус-баннер (тот же, что _buildStatusBanner в home_screen)

@@ -125,3 +125,49 @@ class ShimmerBox extends StatelessWidget {
     );
   }
 }
+
+/// Готовый скелетон-список карточек для контентных загрузок (уведомления,
+/// апелляции и т.п.). Единый визуальный «грузится» по всему приложению
+/// вместо разрозненных CircularProgressIndicator.
+///
+/// [itemCount] — сколько карточек-заглушек, [itemHeight] — высота каждой.
+class ShimmerListSkeleton extends StatelessWidget {
+  final int itemCount;
+  final double itemHeight;
+  final EdgeInsets padding;
+
+  const ShimmerListSkeleton({
+    super.key,
+    this.itemCount = 6,
+    this.itemHeight = 76,
+    this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer(
+      child: ListView.separated(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: padding,
+        itemCount: itemCount,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, _) => Row(
+          children: [
+            ShimmerBox(width: 44, height: 44, radius: 12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerBox(width: double.infinity, height: 12, radius: 6),
+                  const SizedBox(height: 8),
+                  ShimmerBox(width: 160, height: 11, radius: 6),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

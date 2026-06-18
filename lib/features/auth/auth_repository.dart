@@ -7,7 +7,7 @@ import 'package:bagla/models/district.dart';
 import 'package:bagla/models/province.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api_client.dart';
 
@@ -24,11 +24,11 @@ class AuthRepository {
 
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
-      debugPrint('──────────────────────────────────────');
-      debugPrint(
-        '📤 SEND_OTP →  POST ${_api.dio.options.baseUrl}/items/otp_codes',
-      );
-      debugPrint('   payload: {identifier: $cleanPhone}');
+      // ⚠️ Не логируем телефон в release — это PII. В debug — короткая запись
+      // без payload'а; полную диагностику смотри в Charles/network-debugger.
+      if (kDebugMode) {
+        debugPrint('📤 SEND_OTP → POST /items/otp_codes');
+      }
 
       final response = await _api.dio.post(
         '/items/otp_codes',
@@ -38,16 +38,14 @@ class AuthRepository {
         ),
       );
 
-      debugPrint('✅ SEND_OTP ← ${response.statusCode}  data: ${response.data}');
-      debugPrint('──────────────────────────────────────');
+      if (kDebugMode) {
+        debugPrint('✅ SEND_OTP ← ${response.statusCode}');
+      }
       return response.statusCode == 200 || response.statusCode == 204;
     } on DioException catch (e) {
-      debugPrint('❌ SEND_OTP ERROR');
-      debugPrint('   type   : ${e.type}');
-      debugPrint('   message: ${e.message}');
-      debugPrint('   status : ${e.response?.statusCode}');
-      debugPrint('   data   : ${e.response?.data}');
-      debugPrint('──────────────────────────────────────');
+      if (kDebugMode) {
+        debugPrint('❌ SEND_OTP ERROR  status=${e.response?.statusCode} type=${e.type}');
+      }
       return false;
     }
   }
@@ -58,9 +56,12 @@ class AuthRepository {
       final cleanCode = code.trim();
       const flowPath = '/flows/trigger/851636a4-92c7-40e5-993b-e9d41fdeff73';
 
-      debugPrint('──────────────────────────────────────');
-      debugPrint('📤 VERIFY_OTP →  POST ${_api.dio.options.baseUrl}$flowPath');
-      debugPrint('   payload: {identifier: $cleanPhone, code: $cleanCode}');
+      // ⚠️ КРИТИЧНО: НЕ логируем code (OTP) и телефон — это SMS-OTP
+      // секрет. Раньше тут было `debugPrint('payload: code: $cleanCode')`
+      // → utp + телефон видны в logcat (доступно через adb / Console).app).
+      if (kDebugMode) {
+        debugPrint('📤 VERIFY_OTP → POST $flowPath');
+      }
 
       final response = await _api.dio.post(
         flowPath,
@@ -70,9 +71,9 @@ class AuthRepository {
         ),
       );
 
-      debugPrint('✅ VERIFY_OTP ← ${response.statusCode}');
-      debugPrint('   data keys: ${(response.data as Map?)?.keys.toList()}');
-      debugPrint('──────────────────────────────────────');
+      if (kDebugMode) {
+        debugPrint('✅ VERIFY_OTP ← ${response.statusCode}');
+      }
 
       final data = response.data as Map<String, dynamic>;
 
@@ -100,12 +101,9 @@ class AuthRepository {
       }
       return null;
     } on DioException catch (e) {
-      debugPrint('❌ VERIFY_OTP ERROR');
-      debugPrint('   type   : ${e.type}');
-      debugPrint('   message: ${e.message}');
-      debugPrint('   status : ${e.response?.statusCode}');
-      debugPrint('   data   : ${e.response?.data}');
-      debugPrint('──────────────────────────────────────');
+      if (kDebugMode) {
+        debugPrint('❌ VERIFY_OTP ERROR status=${e.response?.statusCode} type=${e.type}');
+      }
       return null;
     }
   }
@@ -132,7 +130,9 @@ class AuthRepository {
       }
       return false;
     } on DioException catch (e) {
-      debugPrint("Ошибка PATCH профиля: ${e.response?.data}");
+      if (kDebugMode) {
+        debugPrint("Ошибка PATCH профиля status=${e.response?.statusCode}");
+      }
       return false;
     }
   }
@@ -142,11 +142,9 @@ class AuthRepository {
     try {
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
 
-      debugPrint('──────────────────────────────────────');
-      debugPrint(
-        '📤 FETCH_PROFILE →  GET ${_api.dio.options.baseUrl}/items/customers',
-      );
-      debugPrint('   filter phone: $cleanPhone');
+      if (kDebugMode) {
+        debugPrint('📤 FETCH_PROFILE → GET /items/customers');
+      }
 
       final response = await _api.dio.get(
         '/items/customers',
@@ -162,27 +160,20 @@ class AuthRepository {
         },
       );
 
-      debugPrint('✅ FETCH_PROFILE ← ${response.statusCode}');
       final List data = response.data['data'];
-      debugPrint('   records found: ${data.length}');
+      if (kDebugMode) {
+        debugPrint('✅ FETCH_PROFILE ← ${response.statusCode} records=${data.length}');
+      }
 
       if (data.isNotEmpty) {
         final user = data[0];
-        debugPrint('📡 Получен статус от сервера: ${user['status']}');
-        debugPrint(
-          '   id=${user['id']}  role=${user['role']}  name=${user['name']}',
-        );
-        debugPrint('──────────────────────────────────────');
+        // НЕ логируем id/role/name/status — это PII клиента/курьера.
         await _saveUserToLocal(user);
         return user;
       }
-      debugPrint('⚠️  FETCH_PROFILE — пользователь не найден');
-      debugPrint('──────────────────────────────────────');
       return null;
     } catch (e) {
-      debugPrint('❌ FETCH_PROFILE ERROR');
-      debugPrint('   $e');
-      debugPrint('──────────────────────────────────────');
+      if (kDebugMode) debugPrint('❌ FETCH_PROFILE ERROR');
       return null;
     }
   }
@@ -197,7 +188,7 @@ class AuthRepository {
       final response = await _api.dio.post('/files', data: formData);
       return response.data['data']['id'];
     } catch (e) {
-      debugPrint("Ошибка загрузки файла: $e");
+      if (kDebugMode) debugPrint("Ошибка загрузки файла");
       return null;
     }
   }
@@ -222,7 +213,9 @@ class AuthRepository {
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } on DioException catch (e) {
-      debugPrint("❌ Ошибка M2A: ${e.response?.data}");
+      if (kDebugMode) {
+        debugPrint("❌ requestTopUp status=${e.response?.statusCode}");
+      }
       return false;
     }
   }
@@ -338,7 +331,9 @@ class AuthRepository {
         );
       }).toList();
     } on DioException catch (e) {
-      debugPrint('❌ getShopCategories: ${e.response?.statusCode} ${e.message}');
+      if (kDebugMode) {
+        debugPrint('❌ getShopCategories status=${e.response?.statusCode}');
+      }
       rethrow;
     }
   }
@@ -388,7 +383,7 @@ class AuthRepository {
       final List data = res.data['data'];
       return data.map((e) => District.fromJson(e)).toList();
     } catch (e) {
-      debugPrint("Ошибка поиска районов: $e");
+      if (kDebugMode) debugPrint("Ошибка поиска районов");
       return [];
     }
   }
@@ -400,7 +395,7 @@ class AuthRepository {
       accessToken: accessToken,
       refreshToken: refreshToken,
     );
-    debugPrint("✅ Токены сохранены (secure storage)");
+    if (kDebugMode) debugPrint("✅ Токены сохранены");
   }
 
   static Future<String?> getToken() =>
@@ -488,12 +483,7 @@ class AuthRepository {
     }
 
     await prefs.setBool('is_logged_in', true);
-    debugPrint(
-      "✅ Локальный кэш обновлен. "
-      "province=${_extractId(prov)} "
-      "etrap=${_extractId(etr)} "
-      "district=${_extractId(dist)}",
-    );
+    if (kDebugMode) debugPrint("✅ Локальный кэш обновлен");
   }
 
   static Future<bool> checkAuthStatus() async {

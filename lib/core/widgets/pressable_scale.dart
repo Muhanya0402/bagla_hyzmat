@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Универсальный "сжимающийся" wrapper для тач-фидбека.
 ///
@@ -29,6 +30,11 @@ class PressableScale extends StatefulWidget {
   final Curve curve;
   final HitTestBehavior behavior;
 
+  /// Тактильный фидбек при тапе. По умолчанию выключен (чтобы не вибрировать
+  /// на каждой мелкой кнопке). Включай для значимых действий — «Взять заказ»,
+  /// «Завершить», «Отменить».
+  final HapticFeedbackType? haptic;
+
   const PressableScale({
     super.key,
     required this.child,
@@ -37,14 +43,33 @@ class PressableScale extends StatefulWidget {
     this.duration = const Duration(milliseconds: 120),
     this.curve = Curves.easeOut,
     this.behavior = HitTestBehavior.opaque,
+    this.haptic,
   });
 
   @override
   State<PressableScale> createState() => _PressableScaleState();
 }
 
+/// Тип тактильного фидбека для [PressableScale].
+enum HapticFeedbackType { light, medium, heavy, selection }
+
 class _PressableScaleState extends State<PressableScale> {
   bool _pressed = false;
+
+  void _fireHaptic() {
+    switch (widget.haptic) {
+      case HapticFeedbackType.light:
+        HapticFeedback.lightImpact();
+      case HapticFeedbackType.medium:
+        HapticFeedback.mediumImpact();
+      case HapticFeedbackType.heavy:
+        HapticFeedback.heavyImpact();
+      case HapticFeedbackType.selection:
+        HapticFeedback.selectionClick();
+      case null:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +80,7 @@ class _PressableScaleState extends State<PressableScale> {
       onTapUp: enabled
           ? (_) {
               setState(() => _pressed = false);
+              _fireHaptic();
               widget.onTap!();
             }
           : null,

@@ -21,8 +21,12 @@ class _ThemeToggleIconState extends State<ThemeToggleIcon> {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
     final c = AppColors.of(context);
+    final label = context.read<LanguageProvider>().words.a11yTheme;
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown:  (_) => setState(() => _pressed = true),
       onTapUp:    (_) {
@@ -35,8 +39,8 @@ class _ThemeToggleIconState extends State<ThemeToggleIcon> {
         duration: const Duration(milliseconds: 110),
         curve: Curves.easeOutBack,
         child: Container(
-          width: 38,
-          height: 38,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: c.surface,
             borderRadius: BorderRadius.circular(12),
@@ -57,6 +61,7 @@ class _ThemeToggleIconState extends State<ThemeToggleIcon> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

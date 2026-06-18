@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ── SECRETS: signing keys + keystore passwords ────────────────────────────
+# НИКОГДА не коммитить — приватный ключ должен быть только локально / в CI.
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+ios/*.p12
+ios/Runner/GoogleService-Info.plist
+
+# Symbol files для деобфускации release crash-stack'ов — также секретны
+# (можно по ним восстановить логику кода).
+build/symbols/
+

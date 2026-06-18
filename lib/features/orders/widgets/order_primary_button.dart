@@ -38,6 +38,8 @@ class OrderPrimaryButton extends StatelessWidget {
       // Disabled state — onTap=null отключает таппы.
       onTap: isLoading ? null : onTap,
       curve: Curves.easeOutBack,
+      haptic: HapticFeedbackType.medium, // главное действие заказа
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: double.infinity,

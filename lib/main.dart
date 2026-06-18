@@ -39,8 +39,9 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Firebase уже инициализирован в main(), повторный вызов не нужен
-  if (kDebugMode) print('Фоновое сообщение: ${message.messageId}');
+  // Firebase уже инициализирован в main(), повторный вызов не нужен.
+  // Не логируем messageId — это корреляция с пользователем.
+  if (kDebugMode) print('Фоновое сообщение получено');
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -235,6 +236,22 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      // G7: ограничиваем системный масштаб шрифта. Дизайн рассчитан на
+      // фикс-размеры; при очень крупном системном шрифте (accessibility)
+      // вёрстка с фикс-высотами кнопок/чипов ломалась бы. Clamp 0.85–1.2 —
+      // уважаем настройку пользователя, но в безопасных пределах.
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: mq.textScaler.clamp(
+              minScaleFactor: 0.85,
+              maxScaleFactor: 1.2,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: home,
       onGenerateRoute: (settings) {
         if (settings.name == '/registration_details') {

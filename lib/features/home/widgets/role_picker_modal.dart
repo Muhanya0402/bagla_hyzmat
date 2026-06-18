@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/profile/registration_details_screen.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
@@ -27,15 +28,7 @@ class RolePickerEmbedded extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Handle ──────────────────────────────────────────────────
-            Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.of(context).border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            const SheetHandle(topPadding: 12, bottomPadding: 12),
 
             // ── Icon ────────────────────────────────────────────────────
             Container(

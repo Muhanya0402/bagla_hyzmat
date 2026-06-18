@@ -1,6 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
@@ -99,16 +100,7 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Handle ─────────────────────────────────────────────────
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.of(context).border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const SheetHandle(topPadding: 0),
               const SizedBox(height: 18),
 
               // ── Title ───────────────────────────────────────────────────

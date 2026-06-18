@@ -26,7 +26,11 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final bool has = widget.activeCount > 0;
-    return GestureDetector(
+    final label = context.read<LanguageProvider>().words.a11yFilter;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -83,6 +87,7 @@ class _HomeFilterButtonState extends State<HomeFilterButton> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -243,7 +248,12 @@ class GradientText extends StatelessWidget {
 class HomeEmptyState extends StatelessWidget {
   final IconData icon;
   final String text;
-  const HomeEmptyState({super.key, required this.icon, required this.text});
+
+  const HomeEmptyState({
+    super.key,
+    required this.icon,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {

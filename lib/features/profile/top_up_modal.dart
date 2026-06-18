@@ -4,6 +4,7 @@ import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/point_icon.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/profile/bank_picker.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
@@ -94,6 +95,18 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
     startTourIfNeeded(
       screenKey: TourKeys.topUpModal,
       targetsBuilder: _buildTourTargets,
+      // У модалки нет AuthProvider — гейтим по переданным role/status.
+      // client видит RolePicker, pending/restricted — RestrictedAccessView,
+      // в обоих случаях тур поверх пакетов жетонов не нужен.
+      shouldSkip: () {
+        final r = widget.role.toLowerCase().trim();
+        final s = widget.status.toLowerCase().trim();
+        final isClient = r == 'client';
+        final isRestricted =
+            (r == 'shop' || r == 'business' || r == 'courier') &&
+            (s == 'pending' || s == 'banned');
+        return isClient || isRestricted;
+      },
     );
   }
 
@@ -106,6 +119,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
     final w = lang.words;
     return [
       TourTarget.build(
+        id: 'top_up_0',
         key: _packagesKey,
         titleRu: w.topUpTourPackagesTitle,
         titleTk: w.topUpTourPackagesTitle,
@@ -115,6 +129,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
         align: ContentAlign.top,
       ),
       TourTarget.build(
+        id: 'top_up_1',
         key: _payKey,
         titleRu: w.topUpTourPayTitle,
         titleTk: w.topUpTourPayTitle,
@@ -203,7 +218,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _SheetHandle(),
+            const SheetHandle(),
 
             // ── Non-main states (client / restricted) ─────────────────────────
             if (isClient || isRestricted)
@@ -347,18 +362,22 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onClose,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: c.borderSoft,
-              shape: BoxShape.circle,
+        Semantics(
+          button: true,
+          label: words.a11yClose,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onClose,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: c.borderSoft,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.close_rounded, size: 16, color: c.inkMuted),
             ),
-            alignment: Alignment.center,
-            child: Icon(Icons.close_rounded, size: 16, color: c.inkMuted),
           ),
         ),
       ],
@@ -860,24 +879,4 @@ class _SecurityNote extends StatelessWidget {
 // Sheet handle
 // ═════════════════════════════════════════════════════════════════════════════
 
-class _SheetHandle extends StatelessWidget {
-  const _SheetHandle();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Center(
-        child: Container(
-          width: 32,
-          height: 3.5,
-          decoration: BoxDecoration(
-            color: c.border,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Граббер вынесен в общий core/widgets/sheet_handle.dart (SheetHandle).

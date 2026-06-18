@@ -115,37 +115,63 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text.toLowerCase());
     });
+    // Прогресс-бар реагирует на ввод цены/доставки/телефона.
+    _priceController.addListener(_onAnyFieldChanged);
+    _deliveryController.addListener(_onAnyFieldChanged);
+    _phoneController.addListener(_onAnyFieldChanged);
     _orderService.fetchPointsRules().then((rules) {
       setState(() => _pointsRules = rules);
     });
     startTourIfNeeded(
       screenKey: TourKeys.createOrder,
       targetsBuilder: _buildTourTargets,
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
+  }
+
+  void _onAnyFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Доля заполнения формы создания заказа 0..1 (O1).
+  /// Фото + телефон + дата + локация + цена + доставка = 6 пунктов.
+  double _completionFraction() {
+    int done = 0;
+    if (_images.isNotEmpty) done++;
+    if (_phoneController.text.trim().isNotEmpty) done++;
+    if (_selectedDateTime != null) done++;
+    if (_locationSelected) done++;
+    if (_priceController.text.trim().isNotEmpty) done++;
+    if (_deliveryController.text.trim().isNotEmpty) done++;
+    return (done / 6).clamp(0.0, 1.0);
   }
 
   List<TargetFocus> _buildTourTargets() {
     final words = context.read<LanguageProvider>().words;
     return [
       TourTarget.build(
+        id: 'create_order_0',
         key: _photoKey,
         title: words.tourCreateOrderPhotoTitle,
         body: words.tourCreateOrderPhotoBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'create_order_1',
         key: _dateKey,
         title: words.tourCreateOrderRecipientTitle,
         body: words.tourCreateOrderRecipientBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'create_order_2',
         key: _locationKey,
         title: words.tourCreateOrderLocationTitle,
         body: words.tourCreateOrderLocationBody,
         align: ContentAlign.top,
       ),
       TourTarget.build(
+        id: 'create_order_3',
         key: _submitKey,
         title: words.tourCreateOrderSubmitTitle,
         body: words.tourCreateOrderSubmitBody,
@@ -158,9 +184,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   @override
   void dispose() {
     _descController.dispose();
-    _phoneController.dispose();
-    _priceController.dispose();
-    _deliveryController.dispose();
+    _phoneController
+      ..removeListener(_onAnyFieldChanged)
+      ..dispose();
+    _priceController
+      ..removeListener(_onAnyFieldChanged)
+      ..dispose();
+    _deliveryController
+      ..removeListener(_onAnyFieldChanged)
+      ..dispose();
     _dateTimeController.dispose();
     _searchCtrl.dispose();
     _phoneFocus.dispose();
@@ -640,18 +672,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         backgroundColor: AppColors.of(context).bg,
         elevation: 0,
         centerTitle: false,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.of(context).borderSoft,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: AppColors.of(context).inkMuted,
-              size: 16,
+        leading: Semantics(
+          button: true,
+          label: words.a11yBack,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.of(context).borderSoft,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppColors.of(context).inkMuted,
+                size: 16,
+              ),
             ),
           ),
         ),
@@ -660,8 +696,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
           style: AppText.serif(fontSize: 20, color: AppColors.of(context).ink),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.of(context).border),
+          preferredSize: const Size.fromHeight(3),
+          // Прогресс заполнения заказа (O1).
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: _completionFraction()),
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 3,
+              backgroundColor: AppColors.of(context).borderSoft,
+              valueColor: AlwaysStoppedAnimation(AppColors.of(context).ink),
+            ),
+          ),
         ),
       ),
       body: GestureDetector(

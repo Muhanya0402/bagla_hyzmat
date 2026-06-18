@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
@@ -75,12 +76,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
     return [
       TourTarget.build(
+        id: 'order_detail_0',
         key: _routeKey,
         title: words.tourOrderRouteTitle,
         body: words.tourOrderRouteBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'order_detail_1',
         key: _actionKey,
         title: words.tourOrderActionTitle,
         body: words.tourOrderActionBody,
@@ -109,6 +112,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     startTourIfNeeded(
       screenKey: TourKeys.orderDetail,
       targetsBuilder: _buildTourTargets,
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
     _loadPicturesIfNeeded();
   }
@@ -216,7 +220,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         children: [
           // ── Countdown (courier) — own StatefulWidget, never triggers
           //    parent setState; calls _onDeadlineExpired() exactly once.
-          if (!isShop)
+          //    #6-fix: показываем ТОЛЬКО для активного заказа. Раньше
+          //    рендерился для любого не-shop статуса, и после завершения
+          //    (completed/canceled) таймер кэшбека продолжал тикать.
+          if (!isShop && dto.status == 'active')
             _animated(
               RepaintBoundary(
                 child: OrderCountdownCard(
@@ -228,7 +235,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               ),
               _a0,
             ),
-          if (!isShop) const SizedBox(height: 10),
+          if (!isShop && dto.status == 'active') const SizedBox(height: 10),
 
           // ── Route timeline ───────────────────────────────────────────────
           KeyedSubtree(
@@ -520,6 +527,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     filled: true,
                     isLoading: isLoading,
                     onTap: () async {
+                      // Захватываем messenger ДО await — после async-gap
+                      // lookup через ctx ненадёжен (O3).
+                      final messenger = ScaffoldMessenger.of(ctx);
                       setS(() => isLoading = true);
                       final result = await service.generateDeliveryCode(
                         orderId: orderId,
@@ -531,7 +541,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                         if (result['success'] == true) codeSent = true;
                       });
                       if (result['success'] != true && ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text(words.codeSendError),
                             backgroundColor: c.errorMuted,
@@ -579,6 +589,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     onTap: () async {
                       final code = codeCtrl.text.trim();
                       if (code.length != 4) return;
+                      final messenger = ScaffoldMessenger.of(ctx); // до await (O3)
                       setS(() => isLoading = true);
                       final result = await service.verifyDeliveryCode(
                         orderId: orderId,
@@ -615,7 +626,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       } else {
                         codeCtrl.clear();
                         if (ctx.mounted) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(
                               content: Text(
                                 result['message'] ?? words.wrongCode,
@@ -674,19 +685,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     ).then((_) => widget.onUpdate?.call());
   }
 
-  Widget _handle() {
-    final c = AppColors.of(context);
-    return Center(
-      child: Container(
-        width: 36,
-        height: 4,
-        decoration: BoxDecoration(
-          color: c.border,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
-  }
+  Widget _handle() => const SheetHandle(topPadding: 0);
 }
 
 

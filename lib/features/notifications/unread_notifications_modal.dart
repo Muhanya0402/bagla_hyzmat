@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/l10n/app_localizations.dart';
@@ -130,17 +131,7 @@ class _UnreadModalBodyState extends State<_UnreadModalBody> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Handle ────────────────────────────────────────────────
-              const SizedBox(height: 10),
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: c.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const SheetHandle(),
               const SizedBox(height: 14),
 
               // ── Header ────────────────────────────────────────────────

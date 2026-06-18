@@ -110,12 +110,14 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen>
     final words = context.read<LanguageProvider>().words;
     return [
       TourTarget.build(
+        id: 'reg_fix_summary',
         key: _summaryKey,
         title: words.tourRegFixSummaryTitle,
         body: words.tourRegFixSummaryBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'reg_fix_submit',
         key: _submitKey,
         title: words.tourRegFixSubmitTitle,
         body: words.tourRegFixSubmitBody,

@@ -184,56 +184,51 @@ class OrderService {
     String? categoryFilter,
   }) async {
     try {
-      final filters = <String>[];
+      // ⚠️ SECURITY: используем `Map<String, dynamic>` для queryParameters —
+      // Dio URL-encod'ит значения. Раньше тут строилась raw URL-строка
+      // `filter[shop_phone][_eq]=$shopPhone` → user input (телефон,
+      // categoryFilter, ...) попадал в URL без encoding'а → потенциальный
+      // filter-injection (атакующий через `&filter[admin][_eq]=true`
+      // менял предикаты запроса).
+      //
+      // Для multi-value ключей с одним именем (несколько `filter[...]`
+      // с разными путями ключа) используем разные суффиксы — Dio
+      // нормально передаёт их как отдельные query params.
+      final Map<String, dynamic> qp = {};
 
       if (role == 'courier') {
         if (myOrdersOnly) {
-          filters.add('filter[courierId][item:customers][id][_eq]=$userId');
+          qp['filter[courierId][item:customers][id][_eq]'] = userId;
         } else {
-          filters.add('filter[order_status][_nin]=completed,canceled');
-          filters.add('filter[courierId][_null]=true');
+          qp['filter[order_status][_nin]'] = 'completed,canceled';
+          qp['filter[courierId][_null]'] = 'true';
         }
       } else if (role == 'shop' || role == 'business') {
-        filters.add('filter[shopId][item:customers][id][_eq]=$userId');
+        qp['filter[shopId][item:customers][id][_eq]'] = userId;
       } else {
-        filters.add('filter[courierId][_null]=true');
-        filters.add('filter[order_status][_nin]=completed,canceled');
+        qp['filter[courierId][_null]'] = 'true';
+        qp['filter[order_status][_nin]'] = 'completed,canceled';
       }
 
       // ── Серверная фильтрация ───────────────────────────────────────
       if (transportFilter != null && transportFilter != 'any') {
-        filters.add('filter[transport_type][_eq]=$transportFilter');
+        qp['filter[transport_type][_eq]'] = transportFilter;
       }
-      if (shopProvinceId != null) {
-        filters.add('filter[shop_province][_eq]=$shopProvinceId');
-      }
-      if (shopEtrapId != null) {
-        filters.add('filter[shop_etrap][_eq]=$shopEtrapId');
-      }
-      if (shopDistrictId != null) {
-        filters.add('filter[shop_district][_eq]=$shopDistrictId');
-      }
-      if (deliveryProvinceId != null) {
-        filters.add('filter[province][_eq]=$deliveryProvinceId');
-      }
-      if (deliveryEtrapId != null) {
-        filters.add('filter[etrap][_eq]=$deliveryEtrapId');
-      }
-      if (deliveryDistrictId != null) {
-        filters.add('filter[district][_eq]=$deliveryDistrictId');
-      }
-      if (shopPhone != null) {
-        filters.add('filter[shop_phone][_eq]=$shopPhone');
-      }
-      if (orderStatus != null) {
-        filters.add('filter[order_status][_eq]=$orderStatus');
-      }
+      if (shopProvinceId != null) qp['filter[shop_province][_eq]'] = shopProvinceId;
+      if (shopEtrapId != null) qp['filter[shop_etrap][_eq]'] = shopEtrapId;
+      if (shopDistrictId != null) qp['filter[shop_district][_eq]'] = shopDistrictId;
+      if (deliveryProvinceId != null) qp['filter[province][_eq]'] = deliveryProvinceId;
+      if (deliveryEtrapId != null) qp['filter[etrap][_eq]'] = deliveryEtrapId;
+      if (deliveryDistrictId != null) qp['filter[district][_eq]'] = deliveryDistrictId;
+      if (shopPhone != null) qp['filter[shop_phone][_eq]'] = shopPhone;
+      if (orderStatus != null) qp['filter[order_status][_eq]'] = orderStatus;
       if (categoryFilter != null && categoryFilter.isNotEmpty) {
-        filters.add('filter[category][_eq]=$categoryFilter');
+        qp['filter[category][_eq]'] = categoryFilter;
       }
+      qp['sort'] = '-date_created';
+      qp['limit'] = limit;
+      qp['offset'] = offset;
       // ─────────────────────────────────────────────────────────────
-
-      final filterQuery = filters.join('&');
       // Явный список полей, нужных OrderDto.fromMap. До рефактора
       // запрашивался `*` + 18 expanded полей локации, которые DTO даже
       // не читает — впустую съедали ~60% payload'а.
@@ -265,28 +260,24 @@ class OrderService {
           'courierId.item,courierId.collection,'
           'shopId.item,shopId.collection';
 
-      String buildUrl(String fields) => '/items/orders'
-          '?$filterQuery'
-          '&sort=-date_created'
-          '&fields=$fields'
-          '&limit=$limit'
-          '&offset=$offset';
-
       Response response;
       try {
-        response = await _apiClient.dio.get(buildUrl(leanFields));
+        response = await _apiClient.dio.get(
+          '/items/orders',
+          queryParameters: {...qp, 'fields': leanFields},
+        );
       } on DioException catch (e) {
         // 403 на lean-fields обычно значит что какое-то поле/relation
-        // закрыто permissions в Directus (например `directus_files`,
-        // `courierId` junction, etc.). Логируем диагностику и retry с `*`,
-        // который вернёт только то, что у роли есть в access policy.
+        // закрыто permissions в Directus. Retry с `*` (только то, что
+        // разрешает access policy).
         if (e.response?.statusCode == 403) {
           if (kDebugMode) {
             print('⚠️ getOrders 403 with lean fields — retrying with *');
-            print('   URL: ${e.requestOptions.path}');
-            print('   Response: ${e.response?.data}');
           }
-          response = await _apiClient.dio.get(buildUrl('*'));
+          response = await _apiClient.dio.get(
+            '/items/orders',
+            queryParameters: {...qp, 'fields': '*'},
+          );
         } else {
           rethrow;
         }
@@ -387,6 +378,108 @@ class OrderService {
     } catch (e) {
       if (kDebugMode) print('Ошибка getOrders: $e');
       rethrow;
+    }
+  }
+
+  // ─── 3.4. Один заказ по id (для deep-link из push-уведомления) ────────────
+
+  /// Загружает один заказ по [orderId] и декорирует его так же, как
+  /// `getOrders` (подставляет `shop_name` / `courier_name` из связанных
+  /// customer'ов через M2A `shopId` / `courierId`).
+  ///
+  /// Возвращает `Map<String, dynamic>` готовый для `OrderDto.fromMap` и
+  /// `OrderDetailScreen(order: ...)`, либо `null` если заказ не найден /
+  /// нет доступа / сетевая ошибка. Не бросает — вызывается из обработчика
+  /// тапа по уведомлению, где UI не должен падать.
+  Future<Map<String, dynamic>?> getOrderById(String orderId) async {
+    if (orderId.isEmpty) return null;
+    try {
+      const fields = 'id,order_status,transport_type,'
+          'total_amount,delivery_amount,points_amount,cashback_amount,'
+          'comment,time_of_delivery,'
+          'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
+          'shop_phone,client_phone,courier_phone,'
+          'category,multiple_items,'
+          'pictures.directus_files_id,'
+          'courierId.item,courierId.collection,'
+          'shopId.item,shopId.collection';
+
+      Response response;
+      try {
+        response = await _apiClient.dio.get(
+          '/items/orders/$orderId',
+          queryParameters: {'fields': fields},
+        );
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 403) {
+          response = await _apiClient.dio.get(
+            '/items/orders/$orderId',
+            queryParameters: {'fields': '*'},
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      final data = response.data?['data'];
+      if (data is! Map) return null;
+      final order = Map<String, dynamic>.from(data);
+
+      // Decorate shop_name / courier_name (см. getOrders).
+      String? firstM2AItemId(dynamic field) {
+        if (field is! List || field.isEmpty) return null;
+        final first = field[0];
+        if (first is! Map) return null;
+        return first['item']?.toString();
+      }
+
+      final ids = <String>{};
+      final cid = firstM2AItemId(order['courierId']);
+      if (cid != null) ids.add(cid);
+      final sid = firstM2AItemId(order['shopId']);
+      if (sid != null) ids.add(sid);
+
+      if (ids.isNotEmpty) {
+        try {
+          final resp = await _apiClient.dio.get(
+            '/items/customers',
+            queryParameters: {
+              'filter[id][_in]': ids.join(','),
+              'fields': 'id,name,surname,selfie_scan',
+            },
+          );
+          final list = resp.data?['data'];
+          if (list is List) {
+            final map = <String, Map<String, dynamic>>{};
+            for (final c in list) {
+              final id = c['id']?.toString();
+              if (id != null) map[id] = Map<String, dynamic>.from(c);
+            }
+            if (cid != null && map.containsKey(cid)) {
+              final c = map[cid]!;
+              order['courier_name'] =
+                  '${c['name'] ?? ''} ${c['surname'] ?? ''}'.trim();
+              final selfie = c['selfie_scan'];
+              final selfieId = selfie == null
+                  ? ''
+                  : selfie is Map
+                      ? (selfie['id']?.toString() ?? '')
+                      : selfie.toString();
+              if (selfieId.isNotEmpty) order['courier_selfie_file_id'] = selfieId;
+            }
+            if (sid != null && map.containsKey(sid)) {
+              final s = map[sid]!;
+              final full = '${s['name'] ?? ''} ${s['surname'] ?? ''}'.trim();
+              if (full.isNotEmpty) order['shop_name'] = full;
+            }
+          }
+        } catch (_) {}
+      }
+
+      return order;
+    } catch (e) {
+      if (kDebugMode) print('Ошибка getOrderById: $e');
+      return null;
     }
   }
 
@@ -501,7 +594,8 @@ class OrderService {
         },
       );
       final data = _parseFlow(response.data);
-      if (kDebugMode) print('generateDeliveryCode: $data');
+      // ⚠️ НЕ логируем `data` — содержит delivery_code (SMS-OTP клиента).
+      if (kDebugMode) print('generateDeliveryCode: ok');
 
       if (data['delivery_code'] != null) {
         return {'success': true, 'code': data['delivery_code'].toString()};
@@ -530,7 +624,8 @@ class OrderService {
         data: {'order_id': orderId, 'code': code},
       );
       final data = _parseFlow(response.data);
-      if (kDebugMode) print('verifyDeliveryCode: $data');
+      // ⚠️ НЕ логируем `data` — содержит код доставки.
+      if (kDebugMode) print('verifyDeliveryCode: ok');
 
       Map<String, dynamic>? found;
       if (data['success'] != null) {

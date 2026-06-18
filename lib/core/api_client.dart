@@ -11,9 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Поведение:
 ///   1. Каждый запрос подписывается текущим `auth_token` из prefs.
-///   2. Если сервер вернул 401/403 — запускаем refresh через `/auth/refresh`.
-///      Если refresh успешен — повторяем оригинальный запрос с новым токеном.
-///      Если refresh упал — чистим токены, редиректим на /login.
+///   2. Если сервер вернул 401 (протухший access-token) — запускаем refresh
+///      через `/auth/refresh`. Если refresh успешен — повторяем оригинальный
+///      запрос с новым токеном. Если refresh упал по auth-причине — чистим
+///      токены, редиректим на /login (сетевые осечки сессию не убивают).
+///      403 (нет прав) НЕ триггерит refresh — это permission, не auth.
 ///   3. **Refresh-singleflight**: если другой запрос уже refresh'ит, мы ждём
 ///      его completion (через `Completer`), а не запускаем второй параллельный.
 ///   4. **Timeout**: refresh-запрос ограничен 10 сек. Если висит — все
@@ -108,9 +110,14 @@ class ApiClient {
         onError: (DioException e, handler) async {
           final statusCode = e.response?.statusCode;
 
-          // Не наш кейс: не 401/403, или это сам /auth/refresh упал
-          // (чтобы не зациклиться).
-          if ((statusCode != 401 && statusCode != 403) ||
+          // Только 401 = протухший/невалидный access-token → refresh.
+          // 403 в Directus = «аутентифицирован, но нет прав» (permission) —
+          // refresh не поможет, а раньше любой 403 (напр. lean-fields в
+          // getOrders или закрытый ресурс) дёргал refresh и при его осечке
+          // выкидывал юзера из аккаунта (#7). Пропускаем 403 наверх —
+          // caller обработает (getOrders сам ретраит с `fields=*`).
+          // Также не трогаем сам /auth/refresh, чтобы не зациклиться.
+          if (statusCode != 401 ||
               e.requestOptions.path.contains('/auth/refresh')) {
             return handler.next(e);
           }
@@ -220,13 +227,40 @@ class ApiClient {
       }
     } catch (err) {
       if (kDebugMode) debugPrint('🔑 Token refresh FAILED: $err');
-      await _forceSessionExpired();
+      // #7: выкидываем из аккаунта ТОЛЬКО при реальном auth-failure
+      // (сервер сказал 401/403 на /auth/refresh, нет refresh-token'а,
+      // битый ответ). При транзиентной сетевой ошибке (timeout, обрыв
+      // соединения) refresh-token ещё валиден — НЕ убиваем сессию, иначе
+      // юзера выбрасывает при каждом флапе сети «в непонятный момент».
+      if (_isFatalRefreshError(err)) {
+        await _forceSessionExpired();
+      }
       rethrow;
     } finally {
       // Освобождаем lock в любом случае — следующий 401-запрос сможет
       // запустить новый refresh (например, после успешного re-login'а).
       _refreshFuture = null;
     }
+  }
+
+  /// Отличает «фатальную» ошибку refresh'а (сессия реально мертва →
+  /// logout) от транзиентной сетевой (refresh-token валиден → сессию
+  /// сохраняем, запрос просто провалится и повторится позже).
+  ///
+  ///   - DioException c ответом сервера 401/403 → refresh-token невалиден
+  ///     (фатально).
+  ///   - DioException без ответа (timeout / connectionError / etc.) →
+  ///     сетевая проблема (НЕ фатально).
+  ///   - Прочие DioException c кодом (500, 502, ...) → серверная проблема,
+  ///     НЕ вина токена (НЕ фатально).
+  ///   - Не-Dio Exception (нет refresh-token'а / битый ответ без
+  ///     access_token) → сессию восстановить нечем (фатально).
+  bool _isFatalRefreshError(Object err) {
+    if (err is DioException) {
+      final sc = err.response?.statusCode;
+      return sc == 401 || sc == 403;
+    }
+    return true;
   }
 
   /// Полностью завершить текущую сессию: чистим токены, перебрасываем
@@ -239,6 +273,15 @@ class ApiClient {
   /// **Идемпотентно** — повторный вызов безопасен (после первого clear
   /// токенов нет, навигация на /login со /login это no-op).
   Future<void> _forceSessionExpired() async {
+    // ⚠️ Best-effort server-side revoke ДО локального clear — если
+    // refresh-token валиден (но access протух), сервер должен пометить
+    // его как использованный. Иначе украденный refresh-token живёт до
+    // своего собственного expiry даже после нашего «logout».
+    //
+    // Silent fail — главное локально очистить. Сетевые проблемы не должны
+    // блокировать user-flow.
+    await SecureTokenStore.instance.revokeOnServer(_baseUrl);
+
     await SecureTokenStore.instance.clear();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_logged_in', false);

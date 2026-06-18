@@ -1,5 +1,6 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
@@ -32,6 +33,20 @@ class TakeOrderFlow {
   TakeOrderFlow._();
 
   static const int _maxActiveOrders = 3;
+
+  /// Ранг «грузоподъёмности» транспорта. Курьер может взять заказ, только
+  /// если его ранг ≥ ранга заказа. Заказ 'any' (пешком/любой) доступен всем.
+  static int _transportRank(String? t) => switch (t) {
+        'truck' => 2, // грузовой
+        'car' => 1, // легковой
+        _ => 0, // any / пешком / неизвестно
+      };
+
+  static bool _canFulfillTransport(
+    String? courierTransport,
+    String? orderTransport,
+  ) =>
+      _transportRank(courierTransport) >= _transportRank(orderTransport);
 
   static Future<void> tryTake(
     BuildContext context, {
@@ -68,6 +83,27 @@ class TakeOrderFlow {
 
     // 3. Не активный курьер — ничего не делаем (UI не должен показать кнопку).
     if (!auth.isCourier || !auth.isActive) return;
+
+    // 3.5. Тип транспорта (#5). Курьер не может взять заказ, требующий
+    // более «грузоподъёмного» транспорта, чем у него (легковой ≠ грузовой).
+    // Ранг: пешком/any = 0, легковой = 1, грузовой = 2. Курьер должен
+    // иметь ранг ≥ ранга заказа.
+    if (!_canFulfillTransport(auth.transportType, dto.transportType)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            words.transportMismatch,
+            style: AppText.regular(fontSize: 13, color: c.errorMuted),
+          ),
+          backgroundColor: c.errorTint,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
 
     // 4. Лимит активных заказов.
     final service = OrderService();
@@ -165,16 +201,7 @@ class TakeOrderFlow {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: c.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const SheetHandle(topPadding: 0),
               const SizedBox(height: 24),
               RestrictedAccessView(onActionPressed: () => Navigator.pop(ctx)),
             ],

@@ -1,7 +1,10 @@
 plugins {
     id("com.android.application") apply false
     id("org.jetbrains.kotlin.android") apply false
-    id("com.google.gms.google-services") version "4.4.4" apply false
+    // Версия google-services объявлена в settings.gradle.kts (4.3.15).
+    // Здесь — без version, иначе «plugin already on classpath with a
+    // different version».
+    id("com.google.gms.google-services") apply false
 }
 
 allprojects {

@@ -249,6 +249,7 @@ const Map<String, String> stringsTk = {
   'confirmWithPoints': 'Balansyňyzdan {points} bal aýrylar. Dowam etmek?',
   'confirmNoPoints': 'Sargyt size berkidiler. Dowam etmek?',
   'tooManyOrders': 'Bir wagtda 3-den köp sargyt almak bolmaýar',
+  'transportMismatch': 'Bu sargyt başga ulag görnüşini talap edýär',
   'networkError': 'Tor ýalňyşlygy. Soňra synanyşyň.',
   'orderDone': 'Sargyt tamamlandy!',
   'deliveredOnTime': 'Sargydy wagtynda eltip berdiňiz',
@@ -373,6 +374,14 @@ const Map<String, String> stringsTk = {
   // Tema (light/dark) — Profile-däki ThemeToggleTile-yň ýazgysy.
   'profileThemeLight': 'Açyk tema',
   'profileThemeDark': 'Garaňky tema',
+  'profileReplayTour': 'Gollanmany gaýtadan görkez',
+  // Accessibility — screen-reader ýazgylary.
+  'a11yBack': 'Yza',
+  'a11yLanguage': 'Dili çalyş',
+  'a11yTheme': 'Temany çalyş',
+  'a11yClose': 'Ýap',
+  'a11yMarkAllRead': 'Hemmesini okaldy diýip belle',
+  'a11yFilter': 'Süzgüçler',
   // TopUp modal — kurýeriň nişanlaryny doldurmak.
   'topUpHeaderTitle': 'Balans doldur',
   'topUpHeaderSubtitle': 'Sargytlary kabul etmek üçin nişanlar gerek',

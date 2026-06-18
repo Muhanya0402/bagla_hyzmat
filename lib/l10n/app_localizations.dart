@@ -233,6 +233,7 @@ class AppLocalizations {
   String get confirmWithPoints => get('confirmWithPoints');
   String get confirmNoPoints => get('confirmNoPoints');
   String get tooManyOrders => get('tooManyOrders');
+  String get transportMismatch => get('transportMismatch');
   String get orderDone => get('orderDone');
   String get deliveredOnTime => get('deliveredOnTime');
   String get deliveryOnTimeSub => get('deliveryOnTimeSub');
@@ -354,6 +355,16 @@ class AppLocalizations {
   // Тема (light/dark) — лейбл в ThemeToggleTile в Profile.
   String get profileThemeLight => get('profileThemeLight');
   String get profileThemeDark => get('profileThemeDark');
+  // Повтор онбординг-тура из Profile.
+  String get profileReplayTour => get('profileReplayTour');
+
+  // ── Accessibility (screen-reader метки для icon-only кнопок) ───────────
+  String get a11yBack => get('a11yBack');
+  String get a11yLanguage => get('a11yLanguage');
+  String get a11yTheme => get('a11yTheme');
+  String get a11yClose => get('a11yClose');
+  String get a11yMarkAllRead => get('a11yMarkAllRead');
+  String get a11yFilter => get('a11yFilter');
 
   // ── TopUp modal (пополнение жетонов) ───────────────────────────────────
   String get topUpHeaderTitle => get('topUpHeaderTitle');

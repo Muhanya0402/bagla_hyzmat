@@ -5,6 +5,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/theme/theme_toggle_button.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
@@ -43,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     startTourIfNeeded(
       screenKey: TourKeys.profile,
       targetsBuilder: _buildTourTargets,
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
   }
 
@@ -92,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return [
       for (var i = 0; i < specs.length; i++)
         TourTarget.build(
+          id: 'profile_$i',
           key: specs[i].$1,
           title: specs[i].$2,
           body: specs[i].$3,
@@ -288,6 +291,17 @@ class _ProfileScreenState extends State<ProfileScreen>
     items.add(
       Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
     );
+    items.add(
+      ProfileMenuTile(
+        icon: Icons.replay_rounded,
+        title: words.profileReplayTour,
+        onTap: () => _replayAllTours(context),
+      ),
+    );
+
+    items.add(
+      Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+    );
     items.add(const ThemeToggleTile());
 
     return Container(
@@ -304,6 +318,18 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
+
+  /// Сбрасывает все туры текущего пользователя и сразу переигрывает тур
+  /// профиля (мгновенный feedback). Остальные экраны покажут тур при
+  /// следующем заходе. Задействует replayTour из AppTourMixin (T6).
+  Future<void> _replayAllTours(BuildContext context) async {
+    await TourManager.instance.resetAllForCurrentUser();
+    if (!mounted) return;
+    // SnackBar НЕ показываем: он спрятался бы под затемнением тура.
+    // Сам тур, всплывающий сразу, — достаточное подтверждение.
+    replayTour(screenKey: TourKeys.profile, targetsBuilder: _buildTourTargets);
+  }
+
   void _openTopUp(BuildContext context, AuthProvider auth) {
     // Заблокированный курьер не имеет доступа к пополнению жетонов.
     if (auth.isBanned) {

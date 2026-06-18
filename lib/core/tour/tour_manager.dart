@@ -20,7 +20,7 @@ class TourManager {
   /// Должен быть вызван до любого чтения состояния.
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
-    debugPrint('🗺️  TourManager инициализирован');
+    if (kDebugMode) debugPrint('🗺️  TourManager инициализирован');
   }
 
   /// Установить активного пользователя. Все последующие чтения/записи
@@ -29,30 +29,58 @@ class TourManager {
   void setUserId(String userId) {
     if (_userId == userId) return;
     _userId = userId;
-    debugPrint('🗺️  TourManager.userId → "${userId.isEmpty ? "<empty>" : userId}"');
+    // Не логируем userId в release — PII.
+    if (kDebugMode) {
+      debugPrint('🗺️  TourManager.userId → "${userId.isEmpty ? "<empty>" : "set"}"');
+    }
   }
 
   /// true — тур на этом экране уже был показан/пропущен для текущего user'а.
+  ///
+  /// ⚠️ T5-fix: если userId задан, легаси-глобальный ключ
+  /// (`tour_passed_<screen>` без uid) ТОЖЕ считается «seen». Это закрывает
+  /// race на cold-start: если `markSeen` успел записать глобальный ключ ДО
+  /// того как появился userId, теперь мы его уважаем и не показываем тур
+  /// повторно.
   bool isSeen(String screenKey) {
-    final seen =
-        _prefs?.getBool(TourKeys.prefsKey(screenKey, userId: _userId)) ?? false;
-    debugPrint('🗺️  isSeen[$screenKey | uid=$_userId] = $seen');
+    final p = _prefs;
+    if (p == null) return false;
+    final scoped =
+        p.getBool(TourKeys.prefsKey(screenKey, userId: _userId)) ?? false;
+    if (_userId.isEmpty) {
+      if (kDebugMode) debugPrint('🗺️  isSeen[$screenKey] = $scoped');
+      return scoped;
+    }
+    final legacy = p.getBool(TourKeys.prefsKey(screenKey)) ?? false;
+    final seen = scoped || legacy;
+    if (kDebugMode) debugPrint('🗺️  isSeen[$screenKey] = $seen');
     return seen;
   }
 
   /// Вызывается при завершении или пропуске тура.
+  ///
+  /// T5-fix: при наличии userId пишем account-scoped ключ И заодно чистим
+  /// возможный легаси-глобальный ключ, чтобы не оставлять мусор в prefs.
   Future<void> markSeen(String screenKey) async {
-    await _prefs?.setBool(
-      TourKeys.prefsKey(screenKey, userId: _userId),
-      true,
-    );
-    debugPrint('🗺️  markSeen[$screenKey | uid=$_userId] → сохранено');
+    final p = _prefs;
+    if (p == null) return;
+    await p.setBool(TourKeys.prefsKey(screenKey, userId: _userId), true);
+    if (_userId.isNotEmpty) {
+      // Подчищаем легаси-ключ если он образовался во время cold-start race.
+      await p.remove(TourKeys.prefsKey(screenKey));
+    }
+    if (kDebugMode) debugPrint('🗺️  markSeen[$screenKey] → сохранено');
   }
 
   /// Сброс одного экрана (кнопка «Повторить гид» в настройках).
   Future<void> resetScreen(String screenKey) async {
-    await _prefs?.remove(TourKeys.prefsKey(screenKey, userId: _userId));
-    debugPrint('🗺️  resetScreen[$screenKey | uid=$_userId] → сброшено');
+    final p = _prefs;
+    if (p == null) return;
+    await p.remove(TourKeys.prefsKey(screenKey, userId: _userId));
+    // Сбрасываем и легаси-ключ — иначе replay не сработает (isSeen вернёт
+    // true по легаси-ключу).
+    await p.remove(TourKeys.prefsKey(screenKey));
+    if (kDebugMode) debugPrint('🗺️  resetScreen[$screenKey] → сброшено');
   }
 
   /// Полный сброс туров **только для текущего пользователя**.
@@ -66,9 +94,9 @@ class TourManager {
     for (final k in tourKeys) {
       await _prefs?.remove(k);
     }
-    debugPrint(
-      '🗺️  resetAllForCurrentUser[uid=$_userId] → сброшено ${tourKeys.length} туров',
-    );
+    if (kDebugMode) {
+      debugPrint('🗺️  resetAllForCurrentUser → сброшено ${tourKeys.length} туров');
+    }
   }
 
   /// Все tour-ключи всех пользователей. Используется в AuthProvider/Repo
@@ -88,9 +116,13 @@ class TourManager {
     for (final entry in snapshot.entries) {
       await p.setBool(entry.key, entry.value);
     }
-    debugPrint('🗺️  restoreSnapshot → восстановлено ${snapshot.length} ключей');
+    if (kDebugMode) {
+      debugPrint('🗺️  restoreSnapshot → восстановлено ${snapshot.length} ключей');
+    }
   }
 
-  /// Legacy API. Удалит ВСЕ туры всех пользователей. Использовать с осторожностью.
-  Future<void> resetAll() async => resetAllForCurrentUser();
+  // T7-fix: удалён вводящий в заблуждение `resetAll()` — его docstring
+  // обещал «удалить ВСЕ туры всех пользователей», но реализация просто
+  // делегировала в resetAllForCurrentUser(). Метод нигде не вызывался.
+  // Нужен полный сброс — используй resetAllForCurrentUser() явно.
 }

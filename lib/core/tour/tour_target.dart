@@ -31,6 +31,11 @@ class TourTarget {
 
   static TargetFocus build({
     required GlobalKey key,
+    // Стабильный идентификатор шага (T10). Если не задан — fallback на
+    // key.hashCode. Явный id предпочтительнее: hashCode уникален per-
+    // инстанс GlobalKey, но при пересоздании ключа меняется, а
+    // tutorial_coach_mark использует identify для трекинга шагов.
+    String? id,
     // ── New (preferred) — single localized string ──────────────────────────
     String? title,
     String? body,
@@ -57,7 +62,7 @@ class TourTarget {
         ? ContentAlign.custom
         : align;
     return TargetFocus(
-      identify: key.hashCode.toString(),
+      identify: id ?? key.hashCode.toString(),
       keyTarget: key,
       shape: shape,
       radius: radius,
@@ -74,6 +79,7 @@ class TourTarget {
             body: effectiveBody,
             isLast: isLast,
             onNext: controller.next,
+            onSkip: controller.skip,
           ),
         ),
       ],
@@ -88,24 +94,33 @@ class _TourCard extends StatelessWidget {
   final String body;
   final bool isLast;
   final VoidCallback onNext;
+  final VoidCallback onSkip;
 
   const _TourCard({
     required this.title,
     required this.body,
     required this.isLast,
     required this.onNext,
+    required this.onSkip,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    // Читаем язык из провайдера — кнопке нужны Далее/Indiki или Понятно/Düşnükli.
-    final isRu = context.watch<LanguageProvider>().isRu;
+    // `read`, не `watch`: тур транзиентный, язык не меняется во время показа.
+    // watch вызывал бы лишние rebuild'ы overlay-контента.
+    final isRu = context.read<LanguageProvider>().isRu;
     final nextLabel = isLast
         ? (isRu ? 'Понятно' : 'Düşnükli')
         : (isRu ? 'Далее' : 'Indiki');
+    final skipLabel = isRu ? 'Пропустить' : 'Geç';
 
-    return Container(
+    // #2-fix: пакет НЕ оборачивает контент-карточку в SafeArea (только
+    // Skip-кнопку). Без этого карточка с кнопкой «Понятно» при размещении
+    // у верха экрана уходит за статус-бар. SafeArea сдвигает её в
+    // безопасную зону (сверху — из-под статус-бара, снизу — из-под навбара).
+    return SafeArea(
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
@@ -135,11 +150,44 @@ class _TourCard extends StatelessWidget {
                 .copyWith(height: 1.5),
           ),
           const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _TourNextButton(label: nextLabel, onPressed: onNext),
+          // Skip + Next в одном ряду внутри карточки. Раньше «Пропустить»
+          // была отдельной плавающей кнопкой внизу справа и наезжала на
+          // «Далее» (#8) — теперь обе живут в карточке и не пересекаются.
+          Row(
+            children: [
+              if (!isLast)
+                _TourSkipButton(label: skipLabel, onPressed: onSkip),
+              const Spacer(),
+              _TourNextButton(label: nextLabel, onPressed: onNext),
+            ],
           ),
         ],
+      ),
+      ),
+    );
+  }
+}
+
+class _TourSkipButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  const _TourSkipButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          child: Text(
+            label,
+            style: AppText.medium(fontSize: 13, color: c.inkSoft),
+          ),
+        ),
       ),
     );
   }

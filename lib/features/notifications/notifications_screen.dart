@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
@@ -9,6 +10,8 @@ import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
+import 'package:bagla/features/orders/order_detail_screen.dart';
+import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -70,9 +73,14 @@ class NotificationsScreenState extends State<NotificationsScreen>
     startTourIfNeeded(
       screenKey: TourKeys.notifications,
       targetsBuilder: _buildTourTargets,
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
 
     _scrollCtrl.addListener(_onScroll);
+    // Подписка на глобальный сигнал «прочитанность изменилась» — чтобы
+    // после «Прочитать все» в unread-модалке (с home) список здесь
+    // обновился сам, без pull-to-refresh.
+    NotificationService.readStateRevision.addListener(_onReadStateChanged);
 
     if (_userId.isNotEmpty) {
       _loadNotifications();
@@ -88,6 +96,13 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
       auth.addListener(listener);
     }
+  }
+
+  /// Сработал глобальный сигнал прочитанности (markAsRead/markAllAsRead из
+  /// любого места — модалка с home, пуш и т.д.). Тихо перезагружаем список.
+  void _onReadStateChanged() {
+    if (!mounted || _userId.isEmpty) return;
+    _loadNotifications(silent: true);
   }
 
   @override
@@ -108,6 +123,7 @@ class NotificationsScreenState extends State<NotificationsScreen>
       _service.markAllAsRead(_userId);
     }
     _messenger?.clearSnackBars();
+    NotificationService.readStateRevision.removeListener(_onReadStateChanged);
 
     _scrollCtrl
       ..removeListener(_onScroll)
@@ -357,18 +373,21 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
     return [
       TourTarget.build(
+        id: 'notif_0',
         key: _titleKey,
         title: words.tourNotifTitleTitle,
         body: words.tourNotifTitleBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'notif_1',
         key: _markAllKey,
         title: words.tourNotifMarkAllTitle,
         body: words.tourNotifMarkAllBody,
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
+        id: 'notif_2',
         key: _listKey,
         title: words.tourNotifListTitle,
         body: words.tourNotifListBody,
@@ -395,7 +414,6 @@ class NotificationsScreenState extends State<NotificationsScreen>
         title: KeyedSubtree(
           key: _titleKey,
           child: Text(
-            
             words.notifTitle,
             style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
           ),
@@ -421,12 +439,28 @@ class NotificationsScreenState extends State<NotificationsScreen>
   Widget _buildBody(AppLocalizations words) {
     final c = AppColors.of(context);
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: c.ink, strokeWidth: 2),
+      return const ShimmerListSkeleton(itemHeight: 72);
+    }
+    // #2-fix: пустое и error-состояния тоже должны тянуться вниз для refresh.
+    // Раньше они были не-скроллируемыми Center'ами без RefreshIndicator —
+    // pull-to-refresh не работал (особенно заметно у наблюдателя с пустым
+    // списком, когда новое уведомление нельзя было подтянуть).
+    if (_items.isEmpty) {
+      final content = (_hasError) ? _buildError(words) : _buildEmpty(words);
+      return RefreshIndicator(
+        color: c.ink,
+        backgroundColor: c.surface,
+        onRefresh: _refresh,
+        child: LayoutBuilder(
+          builder: (_, constraints) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(height: constraints.maxHeight, child: content),
+            ],
+          ),
+        ),
       );
     }
-    if (_hasError && _items.isEmpty) return _buildError(words);
-    if (_items.isEmpty) return _buildEmpty(words);
 
     final groups = _groupItems();
     final bottomReserve = MainShell.bottomReserve(context) + 8;
@@ -490,10 +524,47 @@ class NotificationsScreenState extends State<NotificationsScreen>
   Widget _card(NotificationDto n) => _NotifCard(
         key: ValueKey(n.id),
         notif: n,
-        onTap: () {
-          if (!n.isRead) _markRead(n.id);
-        },
+        onTap: () => _openNotification(n),
       );
+
+  /// Тап по уведомлению: помечаем прочитанным и, если это уведомление о
+  /// заказе с известным id — открываем сам заказ (#3), а не остаёмся в
+  /// списке уведомлений.
+  Future<void> _openNotification(NotificationDto n) async {
+    if (!n.isRead) _markRead(n.id);
+
+    if (!notifIsOrder(n.type)) return;
+    final orderId = notifOrderId(n.raw);
+    if (orderId == null) return;
+
+    final auth = context.read<AuthProvider>();
+    final words = context.read<LanguageProvider>().words;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final order = await OrderService().getOrderById(orderId);
+    if (!mounted) return;
+    if (order == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(words.error, style: AppText.regular(fontSize: 13)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => OrderDetailScreen(
+          order: order,
+          role: auth.role,
+          currentUserId: auth.userId,
+          onUpdate: refresh,
+        ),
+      ),
+    );
+  }
 
   // ── Empty state ─────────────────────────────────────────────────────────
 

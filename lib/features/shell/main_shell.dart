@@ -57,6 +57,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     GlobalKey<NavigatorState>(),
   ];
 
+  // Прямой ключ на экран уведомлений — чтобы вызвать refresh() при
+  // переключении на таб. Раньше делалось через findAncestorStateOfType
+  // от контекста Navigator'а, но экран — ПОТОМОК Navigator'а, не предок,
+  // поэтому state всегда был null и рефреш не срабатывал.
+  final GlobalKey<NotificationsScreenState> _notifKey = GlobalKey();
+
   late final List<_DepthObserver> _observers;
 
   int _unreadCount = 0;
@@ -103,11 +109,11 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     setState(() => _currentIndex = index);
 
     if (index == 1) {
-      final ctx = _navigatorKeys[1].currentContext;
-      if (ctx != null) {
-        final state = ctx.findAncestorStateOfType<NotificationsScreenState>();
-        state?.refresh();
-      }
+      // Рефреш списка уведомлений при заходе на таб (после первого кадра,
+      // т.к. таб мог только что развернуться из Offstage).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _notifKey.currentState?.refresh();
+      });
     }
 
     if (index == 1 && _unreadCount > 0) {
@@ -188,7 +194,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         body: Stack(
           children: [
             _buildTab(0, const HomeScreen()),
-            _buildTab(1, const NotificationsScreen()),
+            _buildTab(1, NotificationsScreen(key: _notifKey)),
             _buildTab(2, const ProfileScreen()),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),

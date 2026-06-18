@@ -33,6 +33,30 @@ IconData notifTypeIcon(String type) {
   }
 }
 
+/// True для уведомлений, связанных с конкретным заказом (тап ведёт в заказ).
+bool notifIsOrder(String type) => type == 'new_order' || type == 'order_status';
+
+/// Извлекает id заказа из сырых данных уведомления.
+///
+/// Источник может быть разным: строка из БД (`NotificationDto.raw`) или
+/// FCM-payload (`message.data`). Поле может называться по-разному, поэтому
+/// проверяем несколько кандидатов. Значение бывает строкой (id) или
+/// relation-объектом (`{id: ...}`).
+String? notifOrderId(Map<String, dynamic> raw) {
+  for (final key in const ['order_id', 'orderId', 'order']) {
+    final v = raw[key];
+    if (v == null) continue;
+    if (v is Map) {
+      final id = v['id']?.toString();
+      if (id != null && id.isNotEmpty) return id;
+      continue;
+    }
+    final s = v.toString();
+    if (s.isNotEmpty && s != 'null') return s;
+  }
+  return null;
+}
+
 String notifFormatDate(String? dateStr, AppLocalizations w) {
   if (dateStr == null) return '';
   try {
