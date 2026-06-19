@@ -68,14 +68,38 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
     final fullReason = option.label + (comment.isNotEmpty ? ': $comment' : '');
 
     setState(() => _isLoading = true);
-    await widget.service.updateStatus(
+    // CAS-отмена: применяется только если заказ ещё published/active.
+    // Защита от отмены уже доставленного заказа при устаревшем UI магазина.
+    final outcome = await widget.service.cancelOrderIfOpen(
       widget.orderId,
-      'canceled',
       cancelReason: fullReason,
       shopId: widget.currentUserId,
     );
+    if (!mounted) return;
     setState(() => _isLoading = false);
-    if (mounted) Navigator.pop(context);
+
+    if (outcome == CancelOutcome.alreadyClosed) {
+      final c = AppColors.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.words.orderAlreadyClosed,
+            style: AppText.regular(fontSize: 13, color: c.errorMuted),
+          ),
+          backgroundColor: c.errorTint,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      Navigator.pop(context);
+      // Рефрешим — UI подтянет актуальный (терминальный) статус.
+      widget.onSuccess?.call();
+      return;
+    }
+
+    Navigator.pop(context);
     widget.onSuccess?.call();
   }
 

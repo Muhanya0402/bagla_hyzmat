@@ -5,6 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/api_client.dart';
 
+/// Результат условной отмены заказа [OrderService.cancelOrderIfOpen].
+enum CancelOutcome {
+  /// Отмена применена (заказ был published/active).
+  applied,
+
+  /// Заказ уже терминальный (completed/canceled) — отмена не выполнена.
+  alreadyClosed,
+
+  /// Сетевая/серверная ошибка.
+  error,
+}
+
 class OrderService {
   final ApiClient _apiClient = ApiClient();
 
@@ -133,6 +145,57 @@ class OrderService {
   }
 
   // ─── 2. ОБНОВЛЕНИЕ СТАТУСА ────────────────────────────────────────────────
+
+  /// Атомарная отмена заказа (CAS / optimistic concurrency).
+  ///
+  /// Проблема: экран магазина мог показывать УСТАРЕВШИЙ статус (например, при
+  /// ошибке соединения realtime не дошёл), поэтому кнопка «Отменить» оставалась
+  /// видимой для уже доставленного заказа. Безусловный PATCH перезаписывал
+  /// `completed` → `canceled`, ломая целостность (бонусы уже начислены).
+  ///
+  /// Решение: bulk-update с фильтром `order_status IN (published, active)`.
+  /// Это одна атомарная `UPDATE … WHERE` на стороне БД — гонки нет.
+  /// Если фильтр не совпал (заказ уже терминальный), Directus вернёт пустой
+  /// массив → отмена НЕ применяется.
+  Future<CancelOutcome> cancelOrderIfOpen(
+    String orderId, {
+    required String cancelReason,
+    String? shopId,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {
+        'order_status': 'canceled',
+        'cancel_reason': cancelReason,
+      };
+      if (shopId != null) data['cancelled_by'] = 'shop';
+
+      final response = await _apiClient.dio.patch(
+        '/items/orders',
+        data: {
+          'query': {
+            'filter': {
+              'id': {'_eq': orderId},
+              'order_status': {
+                '_in': ['published', 'active'],
+              },
+            },
+          },
+          'data': data,
+        },
+      );
+
+      final body = response.data;
+      final updated = (body is Map) ? body['data'] : null;
+      if (updated is List && updated.isNotEmpty) {
+        return CancelOutcome.applied;
+      }
+      // Фильтр не совпал — заказ уже completed/canceled.
+      return CancelOutcome.alreadyClosed;
+    } catch (e) {
+      if (kDebugMode) print('Ошибка cancelOrderIfOpen: $e');
+      return CancelOutcome.error;
+    }
+  }
 
   Future<bool> updateStatus(
     String orderId,

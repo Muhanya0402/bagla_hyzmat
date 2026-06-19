@@ -250,6 +250,7 @@ const Map<String, String> stringsTk = {
   'confirmNoPoints': 'Sargyt size berkidiler. Dowam etmek?',
   'tooManyOrders': 'Bir wagtda 3-den köp sargyt almak bolmaýar',
   'transportMismatch': 'Bu sargyt başga ulag görnüşini talap edýär',
+  'orderAlreadyClosed': 'Sargyt eýýäm tamamlandy ýa-da ýatyryldy',
   'networkError': 'Tor ýalňyşlygy. Soňra synanyşyň.',
   'orderDone': 'Sargyt tamamlandy!',
   'deliveredOnTime': 'Sargydy wagtynda eltip berdiňiz',

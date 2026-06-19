@@ -31,12 +31,18 @@ class OrderDetailScreen extends StatefulWidget {
   final String currentUserId;
   final VoidCallback? onUpdate;
 
+  /// Авто-открытие формы подтверждения завершения заказа сразу после входа.
+  /// Используется при переходе из sticky-уведомления «Активные заказы»
+  /// по кнопке «Завершить» — курьер сразу попадает на форму ввода кода.
+  final bool autoOpenFinish;
+
   const OrderDetailScreen({
     super.key,
     required this.order,
     required this.role,
     required this.currentUserId,
     this.onUpdate,
+    this.autoOpenFinish = false,
   });
 
   @override
@@ -109,11 +115,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     _a4 = _ia(s ? 0.3 : 0.4, s ? 0.75 : 0.85);
     _a5 = _ia(s ? 0.35 : 0.45, s ? 0.8 : 0.9);
     WidgetsBinding.instance.addPostFrameCallback((_) => _animCtrl.forward());
-    startTourIfNeeded(
-      screenKey: TourKeys.orderDetail,
-      targetsBuilder: _buildTourTargets,
-      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
-    );
+    // При входе из уведомления «Завершить» — не показываем тур, сразу
+    // открываем форму подтверждения завершения.
+    if (widget.autoOpenFinish) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final orderId = (widget.order['id'] ?? '').toString();
+        final status = (widget.order['order_status'] ?? '').toString();
+        if (orderId.isEmpty || status != 'active' || widget.role == 'shop') {
+          return;
+        }
+        final words = context.read<LanguageProvider>().words;
+        _showDeliveryCodeModal(context, orderId, OrderService(), words);
+      });
+    } else {
+      startTourIfNeeded(
+        screenKey: TourKeys.orderDetail,
+        targetsBuilder: _buildTourTargets,
+        shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
+      );
+    }
     _loadPicturesIfNeeded();
   }
 

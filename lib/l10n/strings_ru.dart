@@ -250,6 +250,7 @@ const Map<String, String> stringsRu = {
   'confirmNoPoints': 'Заказ будет закреплён за вами. Приступить?',
   'tooManyOrders': 'Нельзя брать больше 3 заказов одновременно',
   'transportMismatch': 'Этот заказ требует другой тип транспорта',
+  'orderAlreadyClosed': 'Заказ уже завершён или отменён',
   'networkError': 'Ошибка сети. Попробуйте позже.',
   'orderDone': 'Заказ выполнен!',
   'deliveredOnTime': 'Вы доставили заказ вовремя',

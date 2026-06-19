@@ -2,6 +2,7 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/secure_token_store.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
@@ -204,10 +205,29 @@ class PushNotificationService {
 
 /// Специфичный для AwesomeNotifications контроллер перехвата событий тапа.
 /// Методы ДОЛЖНЫ быть статическими (`@pragma("vm:entry-point")`).
+///
+/// ⚠️ Это ЕДИНЫЙ диспетчер action-событий. И `ActiveOrdersNotification`, и
+/// `PushNotificationService` зовут `setListeners`, но листенер в пакете один
+/// на процесс — второй вызов перетирает первый. Раньше push-листенер
+/// затирал листенер активных заказов → кнопки sticky-уведомления (стрелки
+/// `‹ ›`, звонок, завершение) переставали работать. Теперь push-листенер
+/// делегирует такие экшены их собственному обработчику.
+///
+/// `@pragma('vm:entry-point')` на КЛАССЕ обязателен: для killed-app экшены
+/// (SilentBackgroundAction) исполняются в отдельном isolate'е, где tree-
+/// shaker'у нужно явно сохранить класс.
+@pragma('vm:entry-point')
 class NotificationController {
   @pragma("vm:entry-point")
   static Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
-    // Вытаскиваем payload и перенаправляем в наш стандартный обработчик тапа
+    // Экшены sticky-уведомления «Активные заказы» обрабатывает их handler.
+    final btn = receivedAction.buttonKeyPressed;
+    if (receivedAction.channelKey == 'active_orders' ||
+        btn.startsWith('ACTIVE_ORDERS_')) {
+      await ActiveOrdersNotification.onActionReceivedMethod(receivedAction);
+      return;
+    }
+    // Обычный push: тап по телу уведомления → маршрутизация.
     final Map<String, dynamic> data = receivedAction.payload ?? {};
     PushNotificationService()._handleNotificationTap(data);
   }

@@ -153,10 +153,11 @@ class _TourCard extends StatelessWidget {
           // Skip + Next в одном ряду внутри карточки. Раньше «Пропустить»
           // была отдельной плавающей кнопкой внизу справа и наезжала на
           // «Далее» (#8) — теперь обе живут в карточке и не пересекаются.
+          // «Пропустить» показываем на ВСЕХ шагах (включая последний), чтобы
+          // из гида всегда был явный выход — на одношаговых турах его не было.
           Row(
             children: [
-              if (!isLast)
-                _TourSkipButton(label: skipLabel, onPressed: onSkip),
+              _TourSkipButton(label: skipLabel, onPressed: onSkip),
               const Spacer(),
               _TourNextButton(label: nextLabel, onPressed: onNext),
             ],

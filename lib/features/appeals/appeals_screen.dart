@@ -44,6 +44,7 @@ class _AppealsScreenState extends State<AppealsScreen>
 
   List<TargetFocus> _buildTourTargets() {
     final words = context.read<LanguageProvider>().words;
+
     return [
       TourTarget.build(
         id: 'appeals_0',
@@ -57,7 +58,11 @@ class _AppealsScreenState extends State<AppealsScreen>
         key: _listKey,
         title: words.tourAppealsListTitle,
         body: words.tourAppealsListBody,
+        // Список занимает весь экран до низа. При ContentAlign.top карточка
+        // уезжала под статус-бар (зоны над целью нет). Прибиваем её к низу
+        // над навбаром — тот же приём, что для ленты заказов на главной.
         align: ContentAlign.top,
+        customPosition: CustomTargetContentPosition(bottom: 110),
         isLast: true,
       ),
     ];

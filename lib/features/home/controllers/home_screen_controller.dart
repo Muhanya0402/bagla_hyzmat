@@ -6,6 +6,7 @@ import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/notifications/active_orders/active_order_snapshot.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
 import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -74,7 +75,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     // приложение из background. Здесь применяем pending action из
     // persistent notification (например, «Завершить» нажатый из шторки).
     _lifecycleListener = AppLifecycleListener(
-      onResume: () => unawaited(_processPendingAction()),
+      onResume: () => unawaited(_drainPendingAction()),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initAuth = context.read<AuthProvider>();
@@ -117,7 +118,31 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       // отдельные вызовы больше не нужны.
       // checkUnreadNotifications — асинхронно, не блокирует UI стартом.
       unawaited(checkUnreadNotifications());
+
+      // Cold-start: экшен из шторки («Завершить») записан в prefs ещё на
+      // этапе initialize — вычитываем его теперь, когда home готов.
+      unawaited(_drainPendingAction());
     });
+  }
+
+  bool _drainingPending = false;
+
+  /// Дренаж pending action с повтором. Кнопка `Default` выводит app на
+  /// передний план (срабатывает onResume) часто РАНЬШЕ, чем хэндлер
+  /// уведомления успевает записать pending action в prefs. Поэтому проверяем
+  /// сразу и ещё раз через короткую задержку. `consumePendingAction` удаляет
+  /// ключ, так что повторный вызов безопасен (двойной навигации не будет).
+  Future<void> _drainPendingAction() async {
+    if (_drainingPending) return;
+    _drainingPending = true;
+    try {
+      await _processPendingAction();
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (!mounted) return;
+      await _processPendingAction();
+    } finally {
+      _drainingPending = false;
+    }
   }
 
   Future<void> changeFilterIndex(int index) async {
@@ -209,6 +234,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   /// в `ActiveOrdersNotification.onActionReceivedMethod`.
   ///
   /// Формат строки в prefs: `<verb>:<orderId>`. Поддерживается:
+  ///   - `open_finish:<id>` — открыть заказ и форму подтверждения завершения
   ///   - `complete:<id>` — PATCH status='completed'
   ///   - (расширяемо: `cancel:<id>`, `accept:<id>`)
   ///
@@ -227,6 +253,26 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final auth = context.read<AuthProvider>();
 
     switch (verb) {
+      case 'open_finish':
+        // Кнопка «Завершить» из sticky-уведомления: открываем сам заказ и
+        // форму подтверждения завершения (ввод кода), а не завершаем втихую.
+        final order = await orderService.getOrderById(orderId);
+        if (!mounted) return;
+        if (order != null) {
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => OrderDetailScreen(
+                order: order,
+                role: auth.role,
+                currentUserId: auth.userId,
+                autoOpenFinish: true,
+                onUpdate: handleRefresh,
+              ),
+            ),
+          );
+        }
+        break;
+
       case 'complete':
         // Legacy путь — без verification code. Оставлен для обратной
         // совместимости (если кто-то задаст pending action из другого места).
