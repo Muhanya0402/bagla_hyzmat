@@ -108,7 +108,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     );
     // Pre-cache all animations once — build() never allocates new objects.
     final s = widget.role == 'shop';
-    _a0 = _ia(0.0,          0.45);
+    _a0 = _ia(0.0, 0.45);
     _a1 = _ia(s ? 0.0 : 0.1, s ? 0.45 : 0.55);
     _a2 = _ia(s ? 0.1 : 0.2, s ? 0.55 : 0.65);
     _a3 = _ia(s ? 0.2 : 0.3, s ? 0.65 : 0.75);
@@ -241,10 +241,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         children: [
           // ── Countdown (courier) — own StatefulWidget, never triggers
           //    parent setState; calls _onDeadlineExpired() exactly once.
-          //    #6-fix: показываем ТОЛЬКО для активного заказа. Раньше
-          //    рендерился для любого не-shop статуса, и после завершения
-          //    (completed/canceled) таймер кэшбека продолжал тикать.
-          if (!isShop && dto.status == 'active')
+          //    Показываем для статусов active или published. После завершения
+          //    (completed/canceled) таймер кэшбека НЕ тикает.
+          if (dto.status == 'active' || dto.status == 'published')
             _animated(
               RepaintBoundary(
                 child: OrderCountdownCard(
@@ -256,7 +255,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               ),
               _a0,
             ),
-          if (!isShop && dto.status == 'active') const SizedBox(height: 10),
+          if (dto.status == 'active' || dto.status == 'published')
+            const SizedBox(height: 10),
 
           // ── Route timeline ───────────────────────────────────────────────
           KeyedSubtree(
@@ -333,8 +333,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 title: words.commentSection,
                 child: Text(
                   dto.comment,
-                  style: AppText.regular(fontSize: 13, color: c.ink)
-                      .copyWith(height: 1.5),
+                  style: AppText.regular(
+                    fontSize: 13,
+                    color: c.ink,
+                  ).copyWith(height: 1.5),
                 ),
               ),
               _a5,
@@ -401,7 +403,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       ),
     );
   }
-
 
   // ── Price block ────────────────────────────────────────────────────────────
   // ── Images ─────────────────────────────────────────────────────────────────
@@ -610,7 +611,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     onTap: () async {
                       final code = codeCtrl.text.trim();
                       if (code.length != 4) return;
-                      final messenger = ScaffoldMessenger.of(ctx); // до await (O3)
+                      final messenger = ScaffoldMessenger.of(
+                        ctx,
+                      ); // до await (O3)
                       setS(() => isLoading = true);
                       final result = await service.verifyDeliveryCode(
                         orderId: orderId,
@@ -708,6 +711,3 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
   Widget _handle() => const SheetHandle(topPadding: 0);
 }
-
-
-
