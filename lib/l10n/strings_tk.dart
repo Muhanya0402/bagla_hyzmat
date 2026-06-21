@@ -134,6 +134,7 @@ const Map<String, String> stringsTk = {
   'errorPhonePrefix': 'Belgi +993 bilen başlamaly',
   'errorPhoneLength': 'Doly belgini giriziň (8 sany san)',
   'errorCodeSend': 'Kod ibermekde ýalňyşlyk',
+  'errorCodeSendHint': 'Belgi dogry, ýöne kod iberilmedi. Biraz soňra gaýtadan synanyşyň.',
   'errorInvalidCode': 'Nädogry kod',
   'errorConnection': 'Aragatnaşyk ýalňyşlygy',
   'profileTitle': 'Şahsy otag',

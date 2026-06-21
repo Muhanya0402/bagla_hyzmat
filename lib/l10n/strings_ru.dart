@@ -133,6 +133,7 @@ const Map<String, String> stringsRu = {
   'errorPhonePrefix': 'Номер должен начинаться с +993',
   'errorPhoneLength': 'Введите полный номер (8 цифр)',
   'errorCodeSend': 'Ошибка отправки кода',
+  'errorCodeSendHint': 'Номер верный, но код не отправился. Попробуйте ещё раз чуть позже.',
   'errorInvalidCode': 'Неверный код',
   'errorConnection': 'Ошибка соединения',
   'profileTitle': 'Личный кабинет',

@@ -119,6 +119,7 @@ class AppLocalizations {
   String get errorPhonePrefix => get('errorPhonePrefix');
   String get errorPhoneLength => get('errorPhoneLength');
   String get errorCodeSend => get('errorCodeSend');
+  String get errorCodeSendHint => get('errorCodeSendHint');
   String get errorInvalidCode => get('errorInvalidCode');
   String get errorConnection => get('errorConnection');
   String get profileTitle => get('profileTitle');

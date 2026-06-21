@@ -191,6 +191,14 @@ class _PhoneScreenState extends State<PhoneScreen>
         title: words.errNetworkTitle,
         message: words.errNetwork,
       );
+    } else if (auth.lastErrorKind == AuthErrorKind.serverBusy) {
+      // Номер корректный (прошёл _isValidPhone), но сервер не отправил код.
+      // НЕ показываем «не хватает цифр» — это вводит в заблуждение.
+      showAuthNetworkBanner(
+        context,
+        title: words.errorCodeSend,
+        message: words.errorCodeSendHint,
+      );
     } else {
       setState(() => _phoneError = words.errPhoneFormat);
       _shake();
