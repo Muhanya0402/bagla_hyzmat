@@ -482,6 +482,8 @@ class AppLocalizations {
   String get photoPickerNoAccess => get('photoPickerNoAccess');
   String get photoPickerOpenSettings => get('photoPickerOpenSettings');
   String get photoPickerEmpty => get('photoPickerEmpty');
+  String get photoPickerDone => get('photoPickerDone');
+  String get photoPickerNoCamera => get('photoPickerNoCamera');
   String get regToastFixTitle => get('regToastFixTitle');
   String get regErrorLocationRequired => get('regErrorLocationRequired');
   String get regErrorCategoryRequired => get('regErrorCategoryRequired');

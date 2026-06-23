@@ -521,6 +521,8 @@ const Map<String, String> stringsTk = {
   'photoPickerNoAccess': 'Suratlara rugsat ýok. Sazlamalarda galereýa rugsat beriň.',
   'photoPickerOpenSettings': 'Sazlamalary açmak',
   'photoPickerEmpty': 'Galereýada entek surat ýok',
+  'photoPickerDone': 'Taýýar',
+  'photoPickerNoCamera': 'Kamera elýeterli däl',
   'regToastFixTitle': 'Düzetmeli',
   'regErrorLocationRequired': 'Ýerleşişi saýlaň — welaýat, etrap we etrapça',
   'regErrorCategoryRequired': 'Dükan kategoriýasyny saýlaň',
@@ -585,7 +587,7 @@ const Map<String, String> stringsTk = {
   'rejectionReasonOrgName': 'Edaranyň ady',
   'rejectionReasonCategory': 'Dükan kategoriýasy',
   // ── Home / orders banner ───────────────────────────────────────────────────
-  'homeNoConnection': 'Serwer bilen baglanyşyk ýok',
+  'homeNoConnection': 'Baglanyşyk ýok',
   'ordersLoadError': 'Ýüklemekde säwlik. Aşak süýşüriň.',
   'shopEmptyList': 'Häzirçe sargyt ýok',
   'ordersAllLoaded': 'Ähli sargyt ýüklendi',

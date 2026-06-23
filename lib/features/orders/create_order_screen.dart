@@ -944,17 +944,25 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
           if (index == _images.length) {
             return GestureDetector(
               onTap: () async {
-                // Единый «2-в-1» пикер (камера + сетка галереи), по одному фото.
-                final picked = await PhotoPickerSheet.show(context);
-                if (picked == null || !mounted) return;
-                // Сжимаем в WebP + EXIF strip.
-                final compressed = await ImageCompression.compress(
-                  picked,
-                  ImagePresets.orderItem,
+                // Единый «2-в-1» пикер (камера + сетка галереи), мультивыбор
+                // в пределах оставшихся слотов (всего до 3 фото).
+                final remaining = 3 - _images.length;
+                if (remaining <= 0) return;
+                final files = await PhotoPickerSheet.show(
+                  context,
+                  maxAssets: remaining,
+                );
+                if (files.isEmpty || !mounted) return;
+                // Параллельное сжатие в WebP + EXIF strip.
+                final compressed = await Future.wait(
+                  files.map((f) =>
+                      ImageCompression.compress(f, ImagePresets.orderItem)),
                 );
                 if (!mounted) return;
-                setState(() => _images =
-                    [..._images, XFile(compressed.path)].take(3).toList());
+                setState(() => _images = [
+                      ..._images,
+                      ...compressed.map((f) => XFile(f.path)),
+                    ].take(3).toList());
               },
               child: Container(
                 width: 84,

@@ -530,6 +530,8 @@ const Map<String, String> stringsRu = {
   'photoPickerNoAccess': 'Нет доступа к фото. Разрешите доступ к галерее в настройках.',
   'photoPickerOpenSettings': 'Открыть настройки',
   'photoPickerEmpty': 'В галерее пока нет фото',
+  'photoPickerDone': 'Готово',
+  'photoPickerNoCamera': 'Камера недоступна',
   'regToastFixTitle': 'Нужно исправить',
   'regErrorLocationRequired': 'Выберите место — велаят, этрап и район',
   'regErrorCategoryRequired': 'Выберите категорию магазина',
@@ -594,7 +596,7 @@ const Map<String, String> stringsRu = {
   'rejectionReasonOrgName': 'Название организации',
   'rejectionReasonCategory': 'Категория магазина',
   // ── Home / orders banner ───────────────────────────────────────────────────
-  'homeNoConnection': 'Нет соединения с сервером',
+  'homeNoConnection': 'Нет соединения',
   'ordersLoadError': 'Ошибка загрузки. Потяните вниз.',
   'shopEmptyList': 'У вас пока нет заказов',
   'ordersAllLoaded': 'Все заказы загружены',

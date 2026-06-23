@@ -446,12 +446,12 @@ class _RegistrationDetailsScreenState
   }
 
   Future<void> _pickImage(_PhotoSlot slot) async {
-    // Единый «2-в-1» пикер: камера + инлайн-сетка галереи. Возвращает File.
-    final picked = await PhotoPickerSheet.show(context);
-    if (picked == null || !mounted) return;
+    // Единый «2-в-1» пикер (камера + сетка галереи). Здесь нужен один файл.
+    final files = await PhotoPickerSheet.show(context);
+    if (files.isEmpty || !mounted) return;
     // Сжимаем нативно в WebP + EXIF strip.
     final compressed = await ImageCompression.compress(
-      picked,
+      files.first,
       _presetFor(slot),
     );
     if (!mounted) return;

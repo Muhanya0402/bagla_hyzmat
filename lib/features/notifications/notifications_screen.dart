@@ -610,6 +610,9 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
   // ── Error state ─────────────────────────────────────────────────────────
 
+  // Состояние ошибки — единый вид с home_screen (HomeEmptyState):
+  // нейтральная иконка wifi_off в рамке + текст, без кнопки «Повторить»
+  // (обновление — pull-to-refresh, как на главной).
   Widget _buildError(AppLocalizations words) {
     final c = AppColors.of(context);
     return Center(
@@ -622,28 +625,21 @@ class NotificationsScreenState extends State<NotificationsScreen>
               width: 68,
               height: 68,
               decoration: BoxDecoration(
-                color: c.errorTint,
+                color: c.bg,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: c.errorMuted.withValues(alpha: 0.25),
-                ),
+                border: Border.all(color: c.border),
               ),
               child: Icon(
-                Icons.cloud_off_rounded,
+                Icons.wifi_off_rounded,
                 size: 28,
-                color: c.errorMuted,
+                color: c.ink.withValues(alpha: 0.3),
               ),
             ),
             const SizedBox(height: 14),
             Text(
               words.notifLoadError,
               textAlign: TextAlign.center,
-              style: AppText.semiBold(fontSize: 15, color: c.ink),
-            ),
-            const SizedBox(height: 14),
-            _RetryButton(
-              label: words.notifRetry,
-              onPressed: () => _loadNotifications(),
+              style: AppText.medium(fontSize: 13, color: c.inkSoft),
             ),
           ],
         ),
@@ -751,42 +747,6 @@ class _MarkAllButtonState extends State<_MarkAllButton> {
 // ═════════════════════════════════════════════════════════════════════════════
 // Retry button (error state)
 // ═════════════════════════════════════════════════════════════════════════════
-
-class _RetryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  const _RetryButton({required this.label, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
-            color: c.ink,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.refresh_rounded, color: Colors.white, size: 15),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppText.semiBold(fontSize: 13, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Notification card

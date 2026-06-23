@@ -22,6 +22,9 @@ dependencies:
   # Чтение медиатеки для кастомного инлайн-пикера фото (плитка «Камера» +
   # сетка последних фото в собственном UI) — PhotoPickerSheet.
   photo_manager: ^3.6.0
+  # Живой видоискатель камеры внутри PhotoPickerSheet (WB-стиль): preview,
+  # затвор, переключение фронт/тыл — без выхода в системную камеру.
+  camera: ^0.11.0
   
   # Persistent foreground notification для активных заказов курьера/магазина.
   awesome_notifications: ^0.10.0
