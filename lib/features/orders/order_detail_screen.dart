@@ -80,22 +80,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
 
     if (auth.shouldSkipTour) return const [];
 
+    // Кнопка действия есть только для активных/свободных заказов. Для
+    // завершённого/отменённого _buildActionButton возвращает SizedBox.shrink(),
+    // и шаг тура «Действие» подсвечивал бы пустую полоску внизу — поэтому в
+    // таких статусах этот шаг не показываем.
+    final status = (widget.order['order_status'] ?? '').toString();
+    final hasAction = status == 'published' || status == 'active';
+
     return [
       TourTarget.build(
         id: 'order_detail_0',
         key: _routeKey,
         title: words.tourOrderRouteTitle,
         body: words.tourOrderRouteBody,
+        isLast: !hasAction,
         align: ContentAlign.bottom,
       ),
-      TourTarget.build(
-        id: 'order_detail_1',
-        key: _actionKey,
-        title: words.tourOrderActionTitle,
-        body: words.tourOrderActionBody,
-        isLast: true,
-        align: ContentAlign.top,
-      ),
+      if (hasAction)
+        TourTarget.build(
+          id: 'order_detail_1',
+          key: _actionKey,
+          title: words.tourOrderActionTitle,
+          body: words.tourOrderActionBody,
+          isLast: true,
+          align: ContentAlign.top,
+        ),
     ];
   }
 

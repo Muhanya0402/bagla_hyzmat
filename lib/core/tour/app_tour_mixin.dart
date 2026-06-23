@@ -56,6 +56,14 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
   TutorialCoachMark? _coachMark;
   Timer? _tourRetryTimer;
 
+  // Сохранённые параметры последнего startTourIfNeeded — нужны, чтобы
+  // повторно попытаться запустить тур, когда Offstage-таб развернулся
+  // (см. retryTourOnBecameVisible).
+  String? _savedScreenKey;
+  List<TargetFocus> Function()? _savedTargetsBuilder;
+  bool Function()? _savedShouldSkip;
+  bool _savedForceShow = false;
+
   /// Запускает тур, если экран ещё не пройден.
   ///
   /// Если виджет находится в неактивном `Offstage`-табе (MainShell), тур
@@ -77,6 +85,13 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
     // ещё может не знать `_userId` (AuthProvider.loadUserData ещё в полёте).
     // isSeen с пустым namespace вернёт false, тур запустится впустую. Все
     // проверки делаются в `_tryLaunch` ПОСЛЕ синхронизации userId.
+
+    // Сохраняем параметры для возможного повторного запуска при
+    // разворачивании Offstage-таба (retryTourOnBecameVisible).
+    _savedScreenKey = screenKey;
+    _savedTargetsBuilder = targetsBuilder;
+    _savedShouldSkip = shouldSkip;
+    _savedForceShow = forceShow;
 
     // Ранний skip-гард — banned/pending не должны даже планировать тур.
     if (!forceShow && shouldSkip != null && shouldSkip()) return;
@@ -120,6 +135,35 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
           forceShow: forceShow,
         );
       }
+    });
+  }
+
+  /// Повторная попытка запустить тур, когда экран стал ВИДИМЫМ (его таб
+  /// развернулся из Offstage в MainShell).
+  ///
+  /// Зачем: в MainShell все табы создаются на старте app внутри Offstage,
+  /// поэтому `initState` (и его polling видимости с лимитом ~12с) у
+  /// Notifications/Profile отрабатывает задолго до того, как пользователь
+  /// откроет таб — ретрай истекает, и тур там «не срабатывает». MainShell
+  /// зовёт этот метод при переключении на таб.
+  ///
+  /// Безопасно вызывать повторно: `_tryLaunch` сам проверит isSeen и
+  /// глобальный лок, так что тур не запустится дважды.
+  void retryTourOnBecameVisible() {
+    final key = _savedScreenKey;
+    final builder = _savedTargetsBuilder;
+    if (key == null || builder == null) return;
+    if (_coachMark != null) return; // наш тур уже показывается
+    _tourRetryTimer?.cancel();
+    _retryAttempts = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_isVisible()) return;
+      _tryLaunch(
+        screenKey: key,
+        targetsBuilder: builder,
+        shouldSkip: _savedShouldSkip,
+        forceShow: _savedForceShow,
+      );
     });
   }
 

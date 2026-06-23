@@ -26,10 +26,10 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen>
+class ProfileScreenState extends State<ProfileScreen>
     with AppTourMixin<ProfileScreen> {
   // ── Tour anchors — повешены на сами виджеты, а не на Padding'и ──────────
   final _topCardKey = GlobalKey();

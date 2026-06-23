@@ -10,11 +10,17 @@ class HomeStatusFilter extends StatefulWidget {
   final ValueChanged<String?> onChanged;
   final Map<String?, int> counts;
 
+  /// Значения статусов, которые НЕ показывать. Например, для курьера во
+  /// вкладке «Мои заказы» прячем 'published' («Свободные») — взятый заказ
+  /// не может быть свободным.
+  final Set<String?> excludeValues;
+
   const HomeStatusFilter({
     super.key,
     required this.selectedStatus,
     required this.onChanged,
     this.counts = const {},
+    this.excludeValues = const {},
   });
 
   @override
@@ -71,7 +77,9 @@ class _HomeStatusFilterState extends State<HomeStatusFilter> {
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
-    final filters = getStatusFilters(words);
+    final filters = getStatusFilters(words)
+        .where((f) => !widget.excludeValues.contains(f.value))
+        .toList();
     return SingleChildScrollView(
       controller: _scrollCtrl,
       scrollDirection: Axis.horizontal,

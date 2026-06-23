@@ -276,6 +276,11 @@ class _HomeScreenState extends State<HomeScreen>
                 child: HomeStatusFilter(
                   selectedStatus: selectedStatus,
                   onChanged: (v) => setState(() => selectedStatus = v),
+                  // Курьер во вкладке «Мои заказы»: прячем «Свободные»
+                  // (published) — взятый заказ не может быть свободным.
+                  excludeValues: (isCourier && selectedFilterIndex == 1)
+                      ? const {'published'}
+                      : const {},
                   counts: {
                     for (final f in getStatusFilters(words))
                       f.value: orders
@@ -317,14 +322,20 @@ class _HomeScreenState extends State<HomeScreen>
                         changeFilterIndex(i);
                       }
                     : null,
-                // Shop: свайп по статусам
-                swipeStatuses: isShop && isActive
-                    ? [
-                        for (final f in getStatusFilters(words)) f.value,
-                      ]
-                    : null,
+                // Свайп по статусам: магазин (все статусы) + курьер во вкладке
+                // «Мои заказы» (без «Свободные» — взятый заказ не бывает
+                // свободным, совпадает со скрытым чипом).
+                swipeStatuses: (isShop && isActive)
+                    ? [for (final f in getStatusFilters(words)) f.value]
+                    : (isCourier && isActive && selectedFilterIndex == 1)
+                        ? [
+                            for (final f in getStatusFilters(words))
+                              if (f.value != 'published') f.value,
+                          ]
+                        : null,
                 selectedStatus: selectedStatus,
-                onStatusSwipe: isShop && isActive
+                onStatusSwipe: ((isShop && isActive) ||
+                        (isCourier && isActive && selectedFilterIndex == 1))
                     ? (v) => setState(() => selectedStatus = v)
                     : null,
               ),

@@ -11,7 +11,7 @@ import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/features/profile/rejection_codes.dart';
-import 'package:bagla/features/profile/widgets/image_source_picker.dart';
+import 'package:bagla/core/widgets/photo_picker_sheet.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -224,12 +224,11 @@ class _RegistrationFixScreenState extends State<RegistrationFixScreen>
       };
 
   Future<void> _pickImage(_Photo slot) async {
-    final source = await ImageSourcePicker.show(context);
-    if (source == null || !mounted) return;
-    final image = await _picker.pickImage(source: source);
-    if (image == null || !mounted) return;
+    // Единый «2-в-1» пикер: камера + инлайн-сетка галереи. Возвращает File.
+    final picked = await PhotoPickerSheet.show(context);
+    if (picked == null || !mounted) return;
     final compressed =
-        await ImageCompression.compress(File(image.path), _presetFor(slot));
+        await ImageCompression.compress(picked, _presetFor(slot));
     if (!mounted) return;
     setState(() => _photos[slot] = compressed);
   }

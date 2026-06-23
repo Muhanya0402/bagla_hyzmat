@@ -131,6 +131,12 @@ class _HomeOrdersListState extends State<HomeOrdersList> {
         widget.onStatusSwipe!(list[idx + 1]);
       } else if (!forward && idx > 0) {
         widget.onStatusSwipe!(list[idx - 1]);
+      } else if (!forward &&
+          idx == 0 &&
+          widget.onSwipe != null &&
+          widget.selectedFilterIndex == 1) {
+        // Курьер: на первом статусе свайп вправо возвращает на вкладку «Все».
+        widget.onSwipe!(0);
       }
       return;
     }

@@ -6,6 +6,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
+import 'package:bagla/core/widgets/photo_picker_sheet.dart';
 import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
@@ -86,8 +87,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         return words.transportAny;
     }
   }
-  final _picker = ImagePicker();
-
   // ── Location ───────────────────────────────────────────────────────────────
   List<Province> _provinces = [];
   List<Etrap> _etraps = [];
@@ -945,21 +944,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
           if (index == _images.length) {
             return GestureDetector(
               onTap: () async {
-                // image_picker даёт «как есть» (raw), потом сжимаем в WebP.
-                final selected = await _picker.pickMultiImage();
-                if (selected.isEmpty || !mounted) return;
-                // Параллельное сжатие — 3 фото обычно ~1-2 сек на средних телефонах.
-                final compressed = await Future.wait(
-                  selected.map((x) => ImageCompression.compress(
-                        File(x.path),
-                        ImagePresets.orderItem,
-                      )),
+                // Единый «2-в-1» пикер (камера + сетка галереи), по одному фото.
+                final picked = await PhotoPickerSheet.show(context);
+                if (picked == null || !mounted) return;
+                // Сжимаем в WebP + EXIF strip.
+                final compressed = await ImageCompression.compress(
+                  picked,
+                  ImagePresets.orderItem,
                 );
                 if (!mounted) return;
-                // image_picker отдаёт XFile — после сжатия XFile из File-пути.
-                final asXFiles = compressed.map((f) => XFile(f.path)).toList();
                 setState(() => _images =
-                    [..._images, ...asXFiles].take(3).toList());
+                    [..._images, XFile(compressed.path)].take(3).toList());
               },
               child: Container(
                 width: 84,

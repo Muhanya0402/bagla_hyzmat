@@ -62,6 +62,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   // от контекста Navigator'а, но экран — ПОТОМОК Navigator'а, не предок,
   // поэтому state всегда был null и рефреш не срабатывал.
   final GlobalKey<NotificationsScreenState> _notifKey = GlobalKey();
+  final GlobalKey<ProfileScreenState> _profileKey = GlobalKey();
 
   late final List<_DepthObserver> _observers;
 
@@ -108,13 +109,20 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     }
     setState(() => _currentIndex = index);
 
-    if (index == 1) {
-      // Рефреш списка уведомлений при заходе на таб (после первого кадра,
-      // т.к. таб мог только что развернуться из Offstage).
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    // После первого кадра (таб уже развернулся из Offstage):
+    //  - рефреш уведомлений;
+    //  - перезапуск гида для таба — на Offstage-табах initState отрабатывает
+    //    на старте app, и его 12-сек polling истекает до того, как юзер
+    //    откроет таб; здесь дожимаем запуск, когда таб реально стал видим.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (index == 1) {
         _notifKey.currentState?.refresh();
-      });
-    }
+        _notifKey.currentState?.retryTourOnBecameVisible();
+      } else if (index == 2) {
+        _profileKey.currentState?.retryTourOnBecameVisible();
+      }
+    });
 
     if (index == 1 && _unreadCount > 0) {
       setState(() => _unreadCount = 0);
@@ -195,7 +203,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
           children: [
             _buildTab(0, const HomeScreen()),
             _buildTab(1, NotificationsScreen(key: _notifKey)),
-            _buildTab(2, const ProfileScreen()),
+            _buildTab(2, ProfileScreen(key: _profileKey)),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutCubic,

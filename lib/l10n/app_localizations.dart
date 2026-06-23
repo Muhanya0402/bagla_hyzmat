@@ -476,6 +476,12 @@ class AppLocalizations {
   String get regPickFromCamera => get('regPickFromCamera');
   String get regPickFromGallery => get('regPickFromGallery');
   String get regPickCancel => get('regPickCancel');
+  String get photoPickerTitle => get('photoPickerTitle');
+  String get photoPickerCamera => get('photoPickerCamera');
+  String get photoPickerGallery => get('photoPickerGallery');
+  String get photoPickerNoAccess => get('photoPickerNoAccess');
+  String get photoPickerOpenSettings => get('photoPickerOpenSettings');
+  String get photoPickerEmpty => get('photoPickerEmpty');
   String get regToastFixTitle => get('regToastFixTitle');
   String get regErrorLocationRequired => get('regErrorLocationRequired');
   String get regErrorCategoryRequired => get('regErrorCategoryRequired');
