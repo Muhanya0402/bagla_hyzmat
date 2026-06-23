@@ -15,12 +15,18 @@ class HomeStatusFilter extends StatefulWidget {
   /// не может быть свободным.
   final Set<String?> excludeValues;
 
+  /// Желаемый порядок значений статусов. Если задан — чипы пересортируются
+  /// по нему (значения вне списка уходят в конец). Например, у курьера в
+  /// «Мои заказы»: «В работе» первым, «Все» последним.
+  final List<String?>? order;
+
   const HomeStatusFilter({
     super.key,
     required this.selectedStatus,
     required this.onChanged,
     this.counts = const {},
     this.excludeValues = const {},
+    this.order,
   });
 
   @override
@@ -80,6 +86,15 @@ class _HomeStatusFilterState extends State<HomeStatusFilter> {
     final filters = getStatusFilters(words)
         .where((f) => !widget.excludeValues.contains(f.value))
         .toList();
+    final order = widget.order;
+    if (order != null) {
+      int rank(String? v) {
+        final i = order.indexOf(v);
+        return i < 0 ? 9999 : i;
+      }
+
+      filters.sort((a, b) => rank(a.value).compareTo(rank(b.value)));
+    }
     return SingleChildScrollView(
       controller: _scrollCtrl,
       scrollDirection: Axis.horizontal,

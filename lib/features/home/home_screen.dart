@@ -281,6 +281,10 @@ class _HomeScreenState extends State<HomeScreen>
                   excludeValues: (isCourier && selectedFilterIndex == 1)
                       ? const {'published'}
                       : const {},
+                  // У курьера в «Мои заказы»: «В работе» первым, «Все» — последним.
+                  order: (isCourier && selectedFilterIndex == 1)
+                      ? const ['active', 'completed', 'canceled', null]
+                      : null,
                   counts: {
                     for (final f in getStatusFilters(words))
                       f.value: orders
@@ -327,11 +331,9 @@ class _HomeScreenState extends State<HomeScreen>
                 // свободным, совпадает со скрытым чипом).
                 swipeStatuses: (isShop && isActive)
                     ? [for (final f in getStatusFilters(words)) f.value]
+                    // Тот же порядок, что у чипов курьера: «В работе» → ... → «Все».
                     : (isCourier && isActive && selectedFilterIndex == 1)
-                        ? [
-                            for (final f in getStatusFilters(words))
-                              if (f.value != 'published') f.value,
-                          ]
+                        ? const ['active', 'completed', 'canceled', null]
                         : null,
                 selectedStatus: selectedStatus,
                 onStatusSwipe: ((isShop && isActive) ||

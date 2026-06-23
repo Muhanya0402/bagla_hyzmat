@@ -59,6 +59,8 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
 
   // ── Галерея ───────────────────────────────────────────────────────────────
   List<AssetEntity> _assets = const [];
+  List<AssetPathEntity> _albums = const [];
+  AssetPathEntity? _album;
   bool _galLoading = true;
   bool _galDenied = false;
   final List<AssetEntity> _selected = [];
@@ -72,8 +74,17 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initCamera();
-    _loadGallery();
+    _bootstrap();
+  }
+
+  /// Последовательно запрашиваем разрешения: сначала камеру, затем галерею.
+  /// Параллельный запрос конфликтовал — Android показывает диалоги по очереди,
+  /// и init камеры падал, пока висел диалог галереи (камера «недоступна» до
+  /// перезахода). Теперь запрашиваем по одному.
+  Future<void> _bootstrap() async {
+    await _initCamera();
+    if (!mounted) return;
+    await _loadGallery();
   }
 
   @override
@@ -99,7 +110,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     try {
       final cams = await availableCameras();
       if (cams.isEmpty) {
-        if (mounted) setState(() => _camReady = false);
+        if (mounted) setState(() => _camFailed = true);
         return;
       }
       _cameras = cams;
@@ -107,14 +118,21 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
       final backIdx = cams.indexWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
       );
-      await _setCamera(backIdx >= 0 ? backIdx : 0);
+      final idx = backIdx >= 0 ? backIdx : 0;
+      final ok = await _setCamera(idx);
+      // Первый initialize() мог упасть, пока пользователь ещё отвечал на
+      // диалог CAMERA-разрешения — повторяем один раз после его выдачи.
+      if (!ok && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        if (mounted) await _setCamera(idx);
+      }
     } catch (_) {
-      if (mounted) setState(() => _camReady = false);
+      if (mounted) setState(() => _camFailed = true);
     }
   }
 
-  Future<void> _setCamera(int index) async {
-    if (index < 0 || index >= _cameras.length) return;
+  Future<bool> _setCamera(int index) async {
+    if (index < 0 || index >= _cameras.length) return false;
     // ⚠️ Сначала ОСВОБОЖДАЕМ текущую камеру, потом инициализируем новую.
     // На Android две открытые камеры одновременно недопустимы — вторая
     // initialize() падает с «camera in use», из-за чего переключение
@@ -142,7 +160,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
       } catch (_) {}
       if (!mounted) {
         await controller.dispose();
-        return;
+        return false;
       }
       setState(() {
         _cam = controller;
@@ -154,6 +172,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
         _zoom = 1;
         _torch = false;
       });
+      return true;
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -161,6 +180,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
           _camFailed = true;
         });
       }
+      return false;
     }
   }
 
@@ -210,22 +230,84 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
         }
         return;
       }
-      final paths = await PhotoManager.getAssetPathList(
+      // onlyAll: false — получаем ВСЕ альбомы/папки (Камера, Скриншоты,
+      // Загрузки и т.д.), а не только «Recent», чтобы можно было выбирать
+      // изображения по папкам.
+      final albums = await PhotoManager.getAssetPathList(
         type: RequestType.image,
-        onlyAll: true,
+        onlyAll: false,
       );
-      if (paths.isEmpty) {
+      if (albums.isEmpty) {
         if (mounted) setState(() => _galLoading = false);
         return;
       }
-      final recent = await paths.first.getAssetListPaged(page: 0, size: 100);
+      _albums = albums;
+      await _selectAlbum(albums.first);
+    } catch (_) {
+      if (mounted) setState(() => _galLoading = false);
+    }
+  }
+
+  Future<void> _selectAlbum(AssetPathEntity album) async {
+    if (mounted) {
+      setState(() {
+        _album = album;
+        _galLoading = true;
+      });
+    }
+    try {
+      final assets = await album.getAssetListPaged(page: 0, size: 200);
       if (!mounted) return;
       setState(() {
-        _assets = recent;
+        _assets = assets;
         _galLoading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _galLoading = false);
+    }
+  }
+
+  Future<void> _openAlbumPicker() async {
+    if (_albums.isEmpty) return;
+    final c = AppColors.of(context);
+    final words = context.read<LanguageProvider>().words;
+    final selected = await showModalBottomSheet<AssetPathEntity>(
+      context: context,
+      backgroundColor: c.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: _albums.length,
+            itemBuilder: (_, i) {
+              final a = _albums[i];
+              final isSel = a.id == _album?.id;
+              return ListTile(
+                title: Text(
+                  a.name.isEmpty ? words.photoPickerGallery : a.name,
+                  style: AppText.medium(
+                    fontSize: 15,
+                    color: isSel ? c.ink : c.inkMuted,
+                  ),
+                ),
+                trailing: isSel ? Icon(Icons.check_rounded, color: c.ink) : null,
+                onTap: () => Navigator.pop(ctx, a),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    if (selected != null && selected.id != _album?.id) {
+      await _selectAlbum(selected);
     }
   }
 
@@ -459,9 +541,34 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Row(
               children: [
-                Text(
-                  words.photoPickerGallery,
-                  style: AppText.semiBold(fontSize: 15, color: c.ink),
+                // Кликабельный селектор альбома/папки.
+                Flexible(
+                  child: InkWell(
+                    onTap: _albums.length > 1 ? _openAlbumPicker : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _album?.name.isNotEmpty == true
+                                  ? _album!.name
+                                  : words.photoPickerGallery,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.semiBold(fontSize: 15, color: c.ink),
+                            ),
+                          ),
+                          if (_albums.length > 1) ...[
+                            const SizedBox(width: 4),
+                            Icon(Icons.keyboard_arrow_down_rounded,
+                                size: 20, color: c.inkMuted),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const Spacer(),
                 if (_multi && _selected.isNotEmpty)

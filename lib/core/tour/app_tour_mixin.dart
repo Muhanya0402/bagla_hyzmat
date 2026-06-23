@@ -295,17 +295,43 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
     }).toList();
   }
 
-  /// #3-fix: прокручивает таргет в видимую зону (по центру) перед фокусом.
+  /// #3-fix: прокручивает таргет в видимую зону перед фокусом, оставляя место
+  /// для карточки подсказки.
+  ///
+  /// Ключевой момент: выравнивание скролла зависит от того, КУДА растёт
+  /// карточка относительно цели:
+  ///   - `ContentAlign.bottom` (карточка СНИЗУ) → подводим цель к ВЕРХУ
+  ///     вьюпорта, чтобы внизу осталось место под карточку с кнопками;
+  ///   - `ContentAlign.top` (карточка СВЕРХУ) → подводим цель к НИЗУ;
+  ///   - иначе — центрируем.
+  /// Без этого у высоких целей (например блок «Местоположение») карточка
+  /// с «Понятно/Пропустить» уезжала за нижний край и была недоступна.
+  ///
   /// Для таргетов вне Scrollable (AppBar) — no-op. Пакет await'ит
   /// `beforeFocus`, поэтому spotlight берёт уже новую позицию.
   Future<void> _scrollTargetIntoView(TargetFocus target) async {
     final ctx = target.keyTarget?.currentContext;
     if (ctx == null) return;
-    if (Scrollable.maybeOf(ctx) == null) return; // не в скролле — двигать нечего
+    // ВАЖНО: не используем `Scrollable.maybeOf(ctx) == null` как гард —
+    // для контекста KeyedSubtree-якоря он возвращает null (ищет по element-
+    // дереву), хотя ensureVisible находит вьюпорт через render-дерево и
+    // отлично скроллит (так делает рабочий _scrollTo в форме регистрации).
+    // Для целей вне скролла (AppBar) ensureVisible просто бросит — ловим.
+
+    final ContentAlign align =
+        (target.contents != null && target.contents!.isNotEmpty)
+            ? target.contents!.first.align
+            : ContentAlign.bottom;
+    final double alignment = switch (align) {
+      ContentAlign.bottom => 0.12, // цель вверху → место под карточку снизу
+      ContentAlign.top => 0.88, // цель внизу → место под карточку сверху
+      _ => 0.5,
+    };
+
     try {
       await Scrollable.ensureVisible(
         ctx,
-        alignment: 0.5, // центр по вертикали: место и сверху, и снизу для карточки
+        alignment: alignment,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       );

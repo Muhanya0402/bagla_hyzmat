@@ -71,9 +71,12 @@ class CreateAppealSheetState extends State<CreateAppealSheet> {
   @override
   Widget build(BuildContext context) {
     final words = context.watch<LanguageProvider>().words;
+    final auth = context.read<AuthProvider>();
     final presets = [
       words.appealsPreset1,
-      words.appealsPreset2,
+      // «Вопрос по балансу» — только у курьера: у заказчика/наблюдателя
+      // баланса (жетонов) нет, тема не относится к ним.
+      if (auth.isCourier) words.appealsPreset2,
       words.appealsPreset3,
       words.appealsPreset4,
     ];

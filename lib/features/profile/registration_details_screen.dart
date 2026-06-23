@@ -111,6 +111,19 @@ class _RegistrationDetailsScreenState
     _c2.addListener(_onAnyFieldChanged);
     _c3.addListener(_onAnyFieldChanged);
     _restoreDraft(); // A3 — восстановить незаконченный черновик
+    // ⚠️ Тур стартует НЕ здесь, а после загрузки велаятов (_loadProvinces) —
+    // иначе подсветка шага «Местоположение» считается по ещё пустой (лоадер)
+    // секции, а после догрузки чипов секция вырастает и подсветка берёт лишь
+    // её верхнюю часть.
+  }
+
+  bool _tourStarted = false;
+
+  /// Запускает тур один раз, когда секция локации уже наполнена (велаяты
+  /// загружены) — чтобы подсветка «Местоположение» охватила всю секцию.
+  void _maybeStartTour() {
+    if (_tourStarted) return;
+    _tourStarted = true;
     startTourIfNeeded(
       screenKey: TourKeys.regDetails,
       targetsBuilder: _buildTourTargets,
@@ -332,6 +345,9 @@ class _RegistrationDetailsScreenState
       }
     } finally {
       if (mounted) setState(() => _loadingProvinces = false);
+      // Велаяты загружены (или загрузка завершилась) — теперь секция локации
+      // имеет финальную высоту, можно показывать тур с корректной подсветкой.
+      if (mounted) _maybeStartTour();
     }
   }
 
