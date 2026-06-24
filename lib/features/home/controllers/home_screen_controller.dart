@@ -148,15 +148,18 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   Future<void> changeFilterIndex(int index) async {
     if (selectedFilterIndex == index) return;
 
+    final isCourier = context.read<AuthProvider>().isCourier;
+
     // Shimmer skeleton — даёт визуальный feedback что данные грузятся.
     setState(() {
       selectedFilterIndex = index;
-      // Сбрасываем статус-фильтр на «Все» при смене вкладки. Иначе выбранный
-      // в «Мои заказы» статус (active/completed/canceled) протекал в
-      // «Доступные заказы» (там все заказы published) и отсекал их все —
-      // список казался пустым. Сброс гарантирует, что после переключения
-      // показываются заказы вкладки.
-      selectedStatus = null;
+      // Статус-фильтр при смене вкладки:
+      //  - курьер → «Мои заказы»: дефолт «В работе» (active) — самый частый
+      //    сценарий (активные доставки), а не «Все»;
+      //  - иначе («Доступные», или магазин): сбрасываем на «Все» (null).
+      // Сброс важен: иначе выбранный в «Мои заказы» статус протекал в
+      // «Доступные» (там все published) и отсекал их — список казался пустым.
+      selectedStatus = (isCourier && index == 1) ? 'active' : null;
       ordersReloading = true;
       httpOffset = 0;
       hasMore = true;

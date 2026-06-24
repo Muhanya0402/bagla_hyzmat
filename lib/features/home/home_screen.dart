@@ -214,7 +214,11 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.only(right: 16),
               child: KeyedSubtree(
                 key: _activeCounterKey,
-                child: ActiveOrdersCounter(current: activeOrdersCount, max: 3),
+                child: ActiveOrdersCounter(
+                  current: activeOrdersCount,
+                  max: 3,
+                  transportType: authProv.transportType,
+                ),
               ),
             ),
         ],

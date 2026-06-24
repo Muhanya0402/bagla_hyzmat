@@ -118,6 +118,8 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       if (!mounted) return;
       if (index == 1) {
         _notifKey.currentState?.refresh();
+        // Открыли уведомления → помечаем все прочитанными (кнопки больше нет).
+        _notifKey.currentState?.markAllReadOnOpen();
         _notifKey.currentState?.retryTourOnBecameVisible();
       } else if (index == 2) {
         _profileKey.currentState?.retryTourOnBecameVisible();

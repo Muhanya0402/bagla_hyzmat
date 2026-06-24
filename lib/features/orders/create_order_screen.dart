@@ -1,4 +1,6 @@
-﻿import 'dart:io';
+﻿import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/image_compression.dart';
 import 'package:bagla/core/image_picker_presets.dart';
@@ -24,6 +26,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 class CreateOrderScreen extends StatefulWidget {
@@ -126,10 +129,142 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       targetsBuilder: _buildTourTargets,
       shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
+    // Восстанавливаем незаконченный черновик заказа (если был).
+    _draftUserId = context.read<AuthProvider>().userId;
+    _restoreDraft();
   }
 
   void _onAnyFieldChanged() {
     if (mounted) setState(() {});
+    _scheduleDraftSave();
+  }
+
+  // ── Черновик заказа ────────────────────────────────────────────────────────
+  // Автосохранение формы в SharedPreferences (debounced), чтобы при выходе из
+  // приложения на полпути заказчик мог продолжить с того же места. Очищается
+  // после успешного создания заказа.
+  Timer? _draftDebounce;
+
+  // Кешируем в initState — чтобы async-методы черновика не читали context
+  // после await (виджет мог размонтироваться).
+  String _draftUserId = '';
+  String get _draftKey => 'order_draft_$_draftUserId';
+
+  void _scheduleDraftSave() {
+    _draftDebounce?.cancel();
+    _draftDebounce = Timer(const Duration(milliseconds: 400), _saveDraft);
+  }
+
+  Map<String, dynamic> _locToJson(dynamic o, String prefix) => {
+        '${prefix}_id': o.id,
+        '${prefix}_ru': o.ru,
+        '${prefix}_tk': o.tk,
+      };
+
+  Future<void> _saveDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draft = <String, dynamic>{
+        'phone': _phoneController.text,
+        'price': _priceController.text,
+        'delivery': _deliveryController.text,
+        'transport': _transportType,
+        'multiple': _multipleItems,
+        'dateTime': _selectedDateTime?.toIso8601String(),
+        'locationSelected': _locationSelected,
+        'images': _images.map((x) => x.path).toList(),
+        if (_selectedProvince != null)
+          'province': _locToJson(_selectedProvince, 'province'),
+        if (_selectedEtrap != null) ...{
+          'etrap': _locToJson(_selectedEtrap, 'etrap'),
+          'etrapProvinceId': _selectedEtrap!.provinceId,
+        },
+        if (_selectedDistrict != null)
+          'district': _locToJson(_selectedDistrict, 'district'),
+      };
+      await prefs.setString(_draftKey, jsonEncode(draft));
+    } catch (_) {
+      // best-effort — на ошибку молчим
+    }
+  }
+
+  Future<void> _restoreDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_draftKey);
+      if (raw == null || raw.isEmpty) return;
+      final d = jsonDecode(raw) as Map<String, dynamic>;
+      if (!mounted) return;
+
+      // Фото: оставляем только те, чьи файлы ещё существуют (ОС могла очистить
+      // временные файлы при перезапуске).
+      final imgs = <XFile>[];
+      for (final p in (d['images'] as List? ?? const [])) {
+        final path = p.toString();
+        if (path.isNotEmpty && File(path).existsSync()) imgs.add(XFile(path));
+      }
+
+      setState(() {
+        // Телефон прогоняем через маску, иначе _phoneMask.getUnmaskedText()
+        // вернёт пусто и валидация отвергнет восстановленный номер.
+        final phoneDigits =
+            (d['phone'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
+        if (phoneDigits.isNotEmpty) {
+          _phoneController.value = _phoneMask.formatEditUpdate(
+            const TextEditingValue(),
+            TextEditingValue(
+              text: phoneDigits,
+              selection: TextSelection.collapsed(offset: phoneDigits.length),
+            ),
+          );
+        }
+        _priceController.text = (d['price'] ?? '').toString();
+        _deliveryController.text = (d['delivery'] ?? '').toString();
+        _transportType = (d['transport'] ?? 'any').toString();
+        _multipleItems = d['multiple'] == true;
+        final dt = d['dateTime'];
+        _selectedDateTime = dt != null ? DateTime.tryParse(dt.toString()) : null;
+        _images = imgs.take(3).toList();
+
+        final prov = d['province'];
+        if (prov is Map) {
+          _selectedProvince = Province(
+            id: (prov['province_id'] ?? '').toString(),
+            ru: (prov['province_ru'] ?? '').toString(),
+            tk: (prov['province_tk'] ?? '').toString(),
+          );
+        }
+        final etr = d['etrap'];
+        if (etr is Map) {
+          _selectedEtrap = Etrap(
+            id: (etr['etrap_id'] ?? '').toString(),
+            ru: (etr['etrap_ru'] ?? '').toString(),
+            tk: (etr['etrap_tk'] ?? '').toString(),
+            provinceId: (d['etrapProvinceId'] ?? '').toString(),
+          );
+        }
+        final dist = d['district'];
+        if (dist is Map) {
+          _selectedDistrict = District(
+            id: (dist['district_id'] ?? '').toString(),
+            ru: (dist['district_ru'] ?? '').toString(),
+            tk: (dist['district_tk'] ?? '').toString(),
+          );
+        }
+        _locationSelected = d['locationSelected'] == true &&
+            _selectedProvince != null;
+      });
+    } catch (_) {
+      // повреждённый черновик — игнорируем
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    _draftDebounce?.cancel();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (_) {}
   }
 
   /// Доля заполнения формы создания заказа 0..1 (O1).
@@ -182,6 +317,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   @override
   void dispose() {
+    _draftDebounce?.cancel();
     _descController.dispose();
     _phoneController
       ..removeListener(_onAnyFieldChanged)
@@ -241,6 +377,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       _msg('${words.errorLoadEtraps}: $e', isError: true);
     } finally {
       setState(() => _loadingEtraps = false);
+      _scheduleDraftSave();
     }
   }
 
@@ -268,6 +405,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       _msg('${words.errorLoadDistricts}: $e', isError: true);
     } finally {
       setState(() => _loadingDistricts = false);
+      _scheduleDraftSave();
     }
   }
 
@@ -278,6 +416,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       _locationSelected = true;
     });
     _searchCtrl.clear();
+    _scheduleDraftSave();
   }
 
   void _resetLocationStep(int step) {
@@ -295,6 +434,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         _selectedDistrict = null;
       }
     });
+    _scheduleDraftSave();
   }
 
   // ── Date picker ────────────────────────────────────────────────────────────
@@ -353,6 +493,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         'dd.MM.yyyy HH:mm',
       ).format(_selectedDateTime!);
     });
+    _scheduleDraftSave();
   }
 
   /// Универсальный Cupertino-wheel в нижнем модальном листе.
@@ -575,6 +716,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         multipleItems: _multipleItems,
       );
 
+      // Заказ создан — черновик больше не нужен.
+      await _clearDraft();
       _msg(words.orderCreated);
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -875,7 +1018,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _multipleItems = !_multipleItems),
+      onTap: () {
+        setState(() => _multipleItems = !_multipleItems);
+        _scheduleDraftSave();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
@@ -963,6 +1109,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                       ..._images,
                       ...compressed.map((f) => XFile(f.path)),
                     ].take(3).toList());
+                _scheduleDraftSave();
               },
               child: Container(
                 width: 84,
@@ -1014,7 +1161,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                   top: 4,
                   right: 4,
                   child: GestureDetector(
-                    onTap: () => setState(() => _images.removeAt(index)),
+                    onTap: () {
+                      setState(() => _images.removeAt(index));
+                      _scheduleDraftSave();
+                    },
                     child: Container(
                       width: 22,
                       height: 22,
@@ -1232,10 +1382,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
             ),
             if (_selectedDateTime != null)
               GestureDetector(
-                onTap: () => setState(() {
-                  _selectedDateTime = null;
-                  _dateTimeController.clear();
-                }),
+                onTap: () {
+                  setState(() {
+                    _selectedDateTime = null;
+                    _dateTimeController.clear();
+                  });
+                  _scheduleDraftSave();
+                },
                 child: Container(
                   width: 26,
                   height: 26,
@@ -1319,7 +1472,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         final label = _transportLabel(value, words);
         final isSelected = _transportType == value;
         return GestureDetector(
-          onTap: () => setState(() => _transportType = value),
+          onTap: () {
+            setState(() => _transportType = value);
+            _scheduleDraftSave();
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.only(bottom: 6),

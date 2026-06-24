@@ -39,7 +39,6 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
   // Tour anchors.
   final _titleKey = GlobalKey();
-  final _markAllKey = GlobalKey();
   final _listKey = GlobalKey();
 
   List<NotificationDto> _items = [];
@@ -52,13 +51,6 @@ class NotificationsScreenState extends State<NotificationsScreen>
   // IDs optimistically marked as read locally but not yet confirmed by server.
   // Prevents pull-to-refresh from reverting them before the PATCH resolves.
   final Set<String> _pendingRead = {};
-
-  // ── Mark-all-read undo state ───────────────────────────────────────────
-  // Lifted to fields, чтобы dispose() мог корректно завершить операцию
-  // даже если пользователь успел разлогиниться/уйти с экрана.
-  Timer? _markAllTimer;
-  Set<String>? _markAllPendingIds;
-  bool _markAllUndone = false;
 
   // ScaffoldMessenger кэшируется через didChangeDependencies, потому что
   // в dispose() обращаться к context уже нельзя.
@@ -114,14 +106,6 @@ class NotificationsScreenState extends State<NotificationsScreen>
 
   @override
   void dispose() {
-    // Если был активный mark-all undo-window и пользователь не отменил —
-    // принудительно гасим SnackBar и сразу шлём PATCH (fire-and-forget).
-    _markAllTimer?.cancel();
-    final pending = _markAllPendingIds;
-    if (pending != null && !_markAllUndone && _userId.isNotEmpty) {
-      // Fire-and-forget — на экране нас уже нет.
-      _service.markAllAsRead(_userId);
-    }
     _messenger?.clearSnackBars();
     NotificationService.readStateRevision.removeListener(_onReadStateChanged);
 
@@ -129,6 +113,22 @@ class NotificationsScreenState extends State<NotificationsScreen>
       ..removeListener(_onScroll)
       ..dispose();
     super.dispose();
+  }
+
+  /// Авто-пометка всех уведомлений прочитанными при открытии экрана
+  /// (заменяет кнопку «Прочитать все»). Тихо, без снэкбара/undo.
+  /// Вызывается из MainShell при переключении на таб уведомлений.
+  void markAllReadOnOpen() {
+    if (_userId.isEmpty) return;
+    if (_items.any((n) => !n.isRead)) {
+      setState(() {
+        _items =
+            _items.map((n) => n.isRead ? n : n.copyWith(isRead: true)).toList();
+      });
+    }
+    // markAllAsRead сам обновит локальный кэш read-id, сервер и revision
+    // (внутри берёт реальный список непрочитанных — повторный вызов безопасен).
+    _service.markAllAsRead(_userId);
   }
 
   // ── Data ────────────────────────────────────────────────────────────────
@@ -223,118 +223,6 @@ class NotificationsScreenState extends State<NotificationsScreen>
     _pendingRead.remove(id);
   }
 
-  /// Mark-all с оптимистичным апдейтом + toast «Отменить» (5 сек).
-  Future<void> _markAllRead() async {
-    final words = context.read<LanguageProvider>().words;
-
-    // Снимок «было прочитано» — для undo.
-    final snapshot = {for (final n in _items) n.id: n.isRead};
-    final unreadIds = _items
-        .where((n) => !n.isRead)
-        .map((n) => n.id)
-        .toSet();
-    if (unreadIds.isEmpty) return;
-
-    _pendingRead.addAll(unreadIds);
-    setState(() {
-      _items = _items.map((n) => n.copyWith(isRead: true)).toList();
-    });
-
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    final c = AppColors.of(context);
-    const duration = Duration(seconds: 5);
-
-    // Сбрасываем и лифтим в поля — чтобы dispose() мог корректно отработать.
-    _markAllTimer?.cancel();
-    _markAllUndone = false;
-    _markAllPendingIds = unreadIds;
-
-    final controller = messenger.showSnackBar(
-      SnackBar(
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          MainShell.bottomReserve(context),
-        ),
-        backgroundColor: c.ink,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        content: Row(
-          children: [
-            // Круглый таймер обратного отсчёта слева (5 сек, линейный спад).
-            // Когда дойдёт до 0 — SnackBar закроется и PATCH уйдёт на сервер.
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 1.0, end: 0.0),
-                duration: duration,
-                curve: Curves.linear,
-                builder: (_, value, _) => CircularProgressIndicator(
-                  value: value,
-                  strokeWidth: 2,
-                  color: c.amber,
-                  backgroundColor: Colors.white.withValues(alpha: 0.18),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                words.notifMarkAllToast.replaceAll(
-                  '{n}',
-                  '${unreadIds.length}',
-                ),
-                style: AppText.medium(fontSize: 13, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-        action: SnackBarAction(
-          label: words.notifUndo,
-          textColor: c.amber,
-          onPressed: () {
-            _markAllUndone = true;
-            _markAllTimer?.cancel();
-            _markAllPendingIds = null;
-            _pendingRead.removeAll(unreadIds);
-            if (!mounted) return;
-            setState(() {
-              _items = _items
-                  .map(
-                    (n) => snapshot.containsKey(n.id)
-                        ? n.copyWith(isRead: snapshot[n.id])
-                        : n,
-                  )
-                  .toList();
-            });
-          },
-        ),
-      ),
-    );
-
-    // Ровно через 5 секунд:
-    //  – принудительно закрываем SnackBar (на случай если визуально завис),
-    //  – если не было Undo — отправляем PATCH на сервер.
-    _markAllTimer = Timer(duration, () async {
-      controller.close();
-      if (_markAllUndone) return;
-      try {
-        await _service.markAllAsRead(_userId);
-      } finally {
-        _pendingRead.removeAll(unreadIds);
-        if (identical(_markAllPendingIds, unreadIds)) {
-          _markAllPendingIds = null;
-        }
-      }
-    });
-  }
-
   void refresh() => _loadNotifications(silent: true);
 
   // ── Group into today / yesterday / earlier ──────────────────────────────
@@ -380,13 +268,6 @@ class NotificationsScreenState extends State<NotificationsScreen>
         align: ContentAlign.bottom,
       ),
       TourTarget.build(
-        id: 'notif_1',
-        key: _markAllKey,
-        title: words.tourNotifMarkAllTitle,
-        body: words.tourNotifMarkAllBody,
-        align: ContentAlign.bottom,
-      ),
-      TourTarget.build(
         id: 'notif_2',
         key: _listKey,
         title: words.tourNotifListTitle,
@@ -418,15 +299,8 @@ class NotificationsScreenState extends State<NotificationsScreen>
             style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
           ),
         ),
-        actions: [
-          KeyedSubtree(
-            key: _markAllKey,
-            child: _MarkAllButton(
-              onTap: _markAllRead,
-              label: words.notifMarkAll,
-            ),
-          ),
-        ],
+        // Кнопка «Прочитать все» убрана: при открытии экрана все уведомления
+        // помечаются прочитанными автоматически (markAllReadOnOpen из MainShell).
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
           child: Container(height: 0.5, color: c.border),
@@ -682,71 +556,6 @@ class _SectionLabel extends StatelessWidget {
     );
   }
 }
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Mark-all button
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _MarkAllButton extends StatefulWidget {
-  final VoidCallback onTap;
-  final String label;
-  const _MarkAllButton({required this.onTap, required this.label});
-
-  @override
-  State<_MarkAllButton> createState() => _MarkAllButtonState();
-}
-
-class _MarkAllButtonState extends State<_MarkAllButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: Builder(
-        builder: (context) {
-          final c = AppColors.of(context);
-          return AnimatedScale(
-            scale: _pressed ? 0.95 : 1.0,
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            child: Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-              decoration: BoxDecoration(
-                color: c.emeraldTint,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: c.ink.withValues(alpha: 0.25)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.done_all_rounded, color: c.ink, size: 13),
-                  const SizedBox(width: 5),
-                  Text(
-                    widget.label,
-                    style: AppText.semiBold(fontSize: 12, color: c.ink),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Retry button (error state)
-// ═════════════════════════════════════════════════════════════════════════════
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Notification card

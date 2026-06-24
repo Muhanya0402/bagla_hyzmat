@@ -186,11 +186,28 @@ class _RoleSelectionBannerState extends State<RoleSelectionBanner> {
 class ActiveOrdersCounter extends StatelessWidget {
   final int current;
   final int max;
+
+  /// Тип транспорта курьера — определяет иконку счётчика
+  /// ('car' → авто, 'truck' → грузовик, иначе → пешком/любой).
+  final String? transportType;
+
   const ActiveOrdersCounter({
     super.key,
     required this.current,
     required this.max,
+    this.transportType,
   });
+
+  IconData _transportIcon() {
+    switch (transportType) {
+      case 'car':
+        return Icons.directions_car_outlined;
+      case 'truck':
+        return Icons.local_shipping_outlined;
+      default:
+        return Icons.directions_run_outlined;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +225,7 @@ class ActiveOrdersCounter extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.local_shipping_outlined, size: 13, color: c),
+          Icon(_transportIcon(), size: 13, color: c),
           const SizedBox(width: 5),
           RichText(
             text: TextSpan(

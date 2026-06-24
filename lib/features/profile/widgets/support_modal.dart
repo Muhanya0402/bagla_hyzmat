@@ -32,12 +32,17 @@ class _SupportModalState extends State<SupportModal> {
     super.dispose();
   }
 
-  List<String> _categories(AppLocalizations w) => [
-        w.supportCatOrder,
-        w.supportCatTokens,
-        w.supportCatBug,
-        w.supportCatIdea,
-      ];
+  List<String> _categories(AppLocalizations w) {
+    // «Списание жетонов» — только у курьера: у заказчика/наблюдателя
+    // жетонов нет, пункт к ним не относится.
+    final isCourier = context.read<AuthProvider>().isCourier;
+    return [
+      w.supportCatOrder,
+      if (isCourier) w.supportCatTokens,
+      w.supportCatBug,
+      w.supportCatIdea,
+    ];
+  }
 
   Future<void> _submit() async {
     final text = _ctrl.text.trim();
