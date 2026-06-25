@@ -57,6 +57,18 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   bool ordersLoading = true;
   bool ordersReloading = false; // true while switching tabs — shows shimmer
   bool ordersError = false;
+
+  /// Монотонный токен загрузки заказов. Каждая инициация загрузки
+  /// (`handleRefresh`, `changeFilterIndex`, применение фильтров) увеличивает
+  /// его и запоминает свою копию. Ответ применяется к `orders` ТОЛЬКО если
+  /// токен всё ещё актуален — иначе это «протухший» ответ предыдущей вкладки.
+  ///
+  /// Чинит баг: курьер переключается на «Мои заказы» (дефолт «В работе»),
+  /// но в фоне ещё не завершился стартовый `handleRefresh` для «Доступные».
+  /// Поздний ответ затирал `orders` published-заказами, а `selectedStatus`
+  /// уже = 'active' → applyFilters давал пусто. Список появлялся только
+  /// после ручного переключения статуса.
+  int _ordersReqToken = 0;
   int httpOffset = 0;
   bool hasMore = true;
   bool loadingMore = false;
@@ -148,6 +160,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   Future<void> changeFilterIndex(int index) async {
     if (selectedFilterIndex == index) return;
 
+    // Новая загрузка — инвалидируем любые ещё-летящие ответы (в т.ч.
+    // стартовый handleRefresh для «Доступные»), чтобы они не затёрли orders.
+    final token = ++_ordersReqToken;
+
     final isCourier = context.read<AuthProvider>().isCourier;
 
     // Shimmer skeleton — даёт визуальный feedback что данные грузятся.
@@ -186,7 +202,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         categoryFilter: filters.category?.id,
       );
 
-      if (mounted) {
+      if (mounted && token == _ordersReqToken) {
         setState(() {
           orders = fetchedOrders;
           ordersLoading = false;
@@ -220,7 +236,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       );
     } catch (e) {
       debugPrint('Ошибка при смене вкладки: $e');
-      if (mounted) {
+      if (mounted && token == _ordersReqToken) {
         setState(() {
           ordersLoading = false;
           ordersReloading = false;
@@ -662,6 +678,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     httpOffset = 0;
     hasMore = true;
 
+    // Токен этой загрузки. Если до её завершения стартует другая (смена
+    // вкладки/фильтра) — наш ответ устарел и применять его нельзя.
+    final token = ++_ordersReqToken;
+
     final auth = context.read<AuthProvider>();
     final isCourier = auth.userId.isNotEmpty && auth.role == 'courier';
     // Если профиль только что прилетел из verifyOTP — не дёргаем сервер
@@ -716,7 +736,18 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final fetchedOrdersOrNull = results[1] as List<dynamic>?;
     final activeCount = (results[3] as int?) ?? 0;
 
+    // Ответ устарел: пока ждали, пользователь сменил вкладку/фильтр и уже
+    // запущена новая загрузка. Применять этот `orders` нельзя — затрём
+    // актуальные данные. Счётчик активных заказов обновить всё же можно.
+    final ordersStale = token != _ordersReqToken;
+
     setState(() {
+      // Счётчик активных заказов не зависит от вкладки — обновляем всегда.
+      activeOrdersCount = activeCount;
+      if (ordersStale) {
+        // orders/ordersLoading/ordersError — ими владеет новый запрос, не трогаем.
+        return;
+      }
       if (fetchedOrdersOrNull != null) {
         orders = fetchedOrdersOrNull;
         ordersError = false;
@@ -727,9 +758,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         ordersError = true;
       }
       ordersLoading = false;
-      activeOrdersCount = activeCount;
     });
-    _refreshShopCache(); // ← кеш заказчиков для фильтра
+    if (!ordersStale) _refreshShopCache(); // ← кеш заказчиков для фильтра
     // Не блокируем UI — fire-and-forget. Менеджер сам ничего не делает,
     // если активных заказов 0 (просто отменяет уведомление).
     unawaited(_syncActiveOrdersNotification());

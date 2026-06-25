@@ -23,11 +23,15 @@ abstract final class ImageCompression {
   /// Если сжатие провалилось — возвращает исходный `source` без изменений.
   static Future<File> compress(File source, ImagePreset preset) async {
     try {
-      // Пишем результат в ту же директорию что исходник —
-      // image_picker уже положил файл в writable temp/cache, а path_provider
-      // не нужен в зависимостях.
+      // ⚠️ Пишем результат в системный temp-каталог приложения, НЕ рядом с
+      // исходником. Для фото из галереи `photo_manager`/`asset.file` отдаёт
+      // оригинал в общем хранилище (DCIM/Pictures) — и `cmp_*.webp` рядом с
+      // ним попадал в саму галерею как дубликат. `Directory.systemTemp` —
+      // приватный кэш приложения (Android: .../cache, iOS: sandbox tmp),
+      // который не индексируется медиатекой. path_provider не нужен.
       final ts = DateTime.now().microsecondsSinceEpoch;
-      final targetPath = '${source.parent.path}/cmp_$ts${preset.extension}';
+      final targetPath =
+          '${Directory.systemTemp.path}/cmp_$ts${preset.extension}';
 
       final result = await FlutterImageCompress.compressAndGetFile(
         source.absolute.path,
