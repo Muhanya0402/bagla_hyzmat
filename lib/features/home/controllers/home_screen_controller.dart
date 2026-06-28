@@ -494,7 +494,27 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
-    if (selectedStatus == null) return targetOrders;
+    if (selectedStatus == null) {
+      // Курьер во вкладке «Мои заказы», статус «Все»: сортируем по очередности
+      // статусов — в работе (active) → доставлено (completed) → отменено
+      // (canceled). Внутри группы порядок (по дате) сохраняется, т.к.
+      // группируем фильтрами поверх уже отсортированного списка (sort в Dart
+      // нестабилен — поэтому именно группировка, а не compare).
+      final isCourier = context.read<AuthProvider>().isCourier;
+      if (isCourier && selectedFilterIndex == 1) {
+        const groups = ['active', 'completed', 'canceled'];
+        String st(dynamic o) =>
+            (o['order_status'] ?? '').toString().toLowerCase();
+        final result = <dynamic>[];
+        for (final g in groups) {
+          result.addAll(targetOrders.where((o) => st(o) == g));
+        }
+        // Прочие статусы (на всякий случай) — в конец, сохраняя порядок.
+        result.addAll(targetOrders.where((o) => !groups.contains(st(o))));
+        return result;
+      }
+      return targetOrders;
+    }
     return targetOrders
         .where(
           (o) =>
@@ -678,6 +698,14 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     httpOffset = 0;
     hasMore = true;
 
+    // Pull-to-refresh не должен «терять» уже подгруженные пагинацией заказы.
+    // Запрашиваем как минимум столько, сколько сейчас на экране (но не меньше
+    // одной страницы). Без этого первая страница = pageSize, и после loadMore
+    // список схлопывался назад: создано 6 заказов → видно 5 → доскроллил →
+    // стало 6 → свайпнул сверху (refresh) → снова 5.
+    final int refreshLimit =
+        orders.length > pageSize ? orders.length : pageSize;
+
     // Токен этой загрузки. Если до её завершения стартует другая (смена
     // вкладки/фильтра) — наш ответ устарел и применять его нельзя.
     final token = ++_ordersReqToken;
@@ -714,6 +742,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
             shopPhone: filters.shop?.id,
             orderStatus: null, // фильтр по статусу — клиентский, applyFilters()
             categoryFilter: filters.category?.id,
+            limit: refreshLimit,
           )
           .then<List<dynamic>?>((v) => v)
           .catchError((_) => null),
@@ -751,6 +780,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       if (fetchedOrdersOrNull != null) {
         orders = fetchedOrdersOrNull;
         ordersError = false;
+        httpOffset = fetchedOrdersOrNull.length;
+        // Получили полную запрошенную «пачку» → возможно есть ещё страницы.
+        // Меньше запрошенного → данные на бэкенде кончились.
+        hasMore = fetchedOrdersOrNull.length >= refreshLimit;
       } else {
         // Запрос упал. Оставляем существующие `orders` (как раз тот случай
         // когда WS только что добавил новый заказ, а refresh не пришёл).
@@ -765,40 +798,62 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     unawaited(_syncActiveOrdersNotification());
   }
 
+  // In-flight guard для синхронизации уведомления. WS присылает события
+  // пачками (create/update/delete), а синхронизация теперь делает свой
+  // HTTP-запрос активных заказов — без guard'а это был бы шквал запросов.
+  // Пока один sync в полёте, остальные вызовы лишь поднимают флаг «нужен
+  // ещё прогон», и по завершении делается ровно один трейлинг-прогон с
+  // самым свежим состоянием.
+  bool _syncingNotif = false;
+  bool _resyncNotifPending = false;
+
   /// Синхронизировать persistent notification «Активные заказы».
   ///
-  /// Фильтрует текущий список `orders` под активные позиции
-  /// текущего пользователя, конвертирует в `ActiveOrderSnapshot`'ы,
-  /// передаёт менеджеру. На logout вызывается `hide()`.
-  ///
-  /// Ограничение: использует `orders` из текущей UI-вкладки. Если курьер
-  /// на «Все» — активные заказы там отсутствуют по дизайну, уведомление
-  /// будет пустым. Это OK для MVP — обычно курьер сидит на «Мои».
-  /// В Phase 2 можно сделать отдельный fetch активных заказов независимо
-  /// от UI-фильтра.
+  /// Источник правды — ОТДЕЛЬНЫЙ запрос активных заказов
+  /// (`orderService.getActiveOrders`), а НЕ пагинированный список `orders`.
+  /// Иначе при 10 активных, но 6 подгруженных в ленте, уведомление
+  /// показывало «из 6». На logout вызывается `hide()`.
   Future<void> _syncActiveOrdersNotification() async {
+    if (_syncingNotif) {
+      _resyncNotifPending = true;
+      return;
+    }
+    _syncingNotif = true;
+    try {
+      do {
+        _resyncNotifPending = false;
+        await _runActiveOrdersNotificationSync();
+      } while (_resyncNotifPending && mounted);
+    } finally {
+      _syncingNotif = false;
+    }
+  }
+
+  Future<void> _runActiveOrdersNotificationSync() async {
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
-    if (auth.userId.isEmpty) {
+    final role = auth.role;
+    final userId = auth.userId;
+    final isCourier = auth.isCourier;
+    if (userId.isEmpty) {
       await ActiveOrdersNotification.hide();
       return;
     }
+    // Локализацию захватываем ДО await — после async-паузы context может
+    // быть уже не валиден для повторного lookup.
     final lang = context.read<LanguageProvider>();
     final isRu = lang.isRu;
     final words = lang.words;
 
+    // Полный список активных заказов независимо от пагинации ленты.
+    final activeRaw =
+        await orderService.getActiveOrders(role: role, userId: userId);
+    if (!mounted) return;
+
     final snapshots = <ActiveOrderSnapshot>[];
-    for (final raw in orders) {
+    for (final raw in activeRaw) {
       if (raw is! Map) continue;
       final dto = OrderDto.fromMap(Map<String, dynamic>.from(raw));
-
-      // Курьер: показываем только взятые им active.
-      // Магазин: показываем published + active (его заказы в работе).
-      if (auth.isCourier && dto.status != 'active') continue;
-      if (auth.isShop && dto.status != 'published' && dto.status != 'active') {
-        continue;
-      }
-      if (auth.isClient) continue;
 
       snapshots.add(
         ActiveOrderSnapshot(
@@ -806,12 +861,12 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           shortId: dto.shortId,
           addressLine: dto.deliveryAddress(isRu),
           // Курьеру звоним клиенту, магазину — курьеру.
-          phoneToCall: auth.isCourier ? dto.clientPhone : dto.courierPhone,
+          phoneToCall: isCourier ? dto.clientPhone : dto.courierPhone,
           status: dto.status,
           // courierId нужен для `generateDeliveryCode` из notification.
           // У курьера это его собственный userId (он же courier для своих
           // активных заказов). У магазина — пустая строка (он не завершает).
-          courierId: auth.isCourier ? auth.userId : '',
+          courierId: isCourier ? userId : '',
         ),
       );
     }

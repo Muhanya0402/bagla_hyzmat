@@ -245,6 +245,10 @@ class OrderService {
     String? shopPhone,
     String? orderStatus,
     String? categoryFilter,
+    // Несколько статусов сразу (server `_in`). Например, для уведомления
+    // магазина — `['published','active']`. Если задан вместе с `orderStatus`,
+    // применяются оба фильтра (по сути избыточно — используйте что-то одно).
+    List<String>? orderStatusIn,
   }) async {
     try {
       // ⚠️ SECURITY: используем `Map<String, dynamic>` для queryParameters —
@@ -285,6 +289,9 @@ class OrderService {
       if (deliveryDistrictId != null) qp['filter[district][_eq]'] = deliveryDistrictId;
       if (shopPhone != null) qp['filter[shop_phone][_eq]'] = shopPhone;
       if (orderStatus != null) qp['filter[order_status][_eq]'] = orderStatus;
+      if (orderStatusIn != null && orderStatusIn.isNotEmpty) {
+        qp['filter[order_status][_in]'] = orderStatusIn.join(',');
+      }
       if (categoryFilter != null && categoryFilter.isNotEmpty) {
         qp['filter[category][_eq]'] = categoryFilter;
       }
@@ -748,6 +755,41 @@ class OrderService {
       if (kDebugMode) print('Ошибка getActiveOrdersCount: $e');
       return 0;
     }
+  }
+
+  /// Полный список активных заказов пользователя — НЕЗАВИСИМО от пагинации
+  /// ленты на главной. Нужен для persistent-уведомления «Активные заказы»:
+  /// иначе оно строилось из загруженной страницы `orders` и при 10 активных,
+  /// но 6 подгруженных, показывало «из 6».
+  ///
+  ///   - курьер → его заказы в статусе `active` (макс. 3 по бизнес-правилу);
+  ///   - магазин → его заказы в статусах `published` + `active`;
+  ///   - клиент → уведомления нет, пустой список.
+  ///
+  /// Лимит 100 — заведомо выше любого реалистичного числа активных заказов.
+  Future<List<dynamic>> getActiveOrders({
+    required String role,
+    required String userId,
+  }) async {
+    if (userId.isEmpty) return const [];
+    if (role == 'courier') {
+      return getOrders(
+        role: 'courier',
+        userId: userId,
+        myOrdersOnly: true,
+        orderStatusIn: const ['active'],
+        limit: 100,
+      );
+    }
+    if (role == 'shop' || role == 'business') {
+      return getOrders(
+        role: role,
+        userId: userId,
+        orderStatusIn: const ['published', 'active'],
+        limit: 100,
+      );
+    }
+    return const [];
   }
 
   // ─── 8. ПРАВИЛА НАЧИСЛЕНИЯ БАЛЛОВ ────────────────────────────────────────

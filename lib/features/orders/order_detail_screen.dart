@@ -203,6 +203,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     final langProvider = context.watch<LanguageProvider>();
     final words = langProvider.words;
     final isShop = widget.role == 'shop';
+    final isCourier = widget.role == 'courier';
     final isDataLocked = !isShop && dto.status == 'published';
 
     final c = AppColors.of(context);
@@ -252,7 +253,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
           //    parent setState; calls _onDeadlineExpired() exactly once.
           //    Показываем для статусов active или published. После завершения
           //    (completed/canceled) таймер кэшбека НЕ тикает.
-          if (dto.status == 'active' || dto.status == 'published')
+          //    ТОЛЬКО курьеру: кэшбек — его награда за доставку в срок,
+          //    заказчику (магазин/клиент) он не релевантен.
+          if (isCourier &&
+              (dto.status == 'active' || dto.status == 'published'))
             _animated(
               RepaintBoundary(
                 child: OrderCountdownCard(
@@ -264,7 +268,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               ),
               _a0,
             ),
-          if (dto.status == 'active' || dto.status == 'published')
+          if (isCourier &&
+              (dto.status == 'active' || dto.status == 'published'))
             const SizedBox(height: 10),
 
           // ── Route timeline ───────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bagla/core/app_text_styles.dart';
@@ -103,18 +104,28 @@ class _RegistrationDetailsScreenState
   @override
   void initState() {
     super.initState();
-    _loadProvinces();
-    if (widget.role == 'shop') _loadCategories();
     _searchController.addListener(_onSearchChanged);
     // Прогресс-бар реагирует на ввод имени/названия — обновляем при печати.
     _c1.addListener(_onAnyFieldChanged);
     _c2.addListener(_onAnyFieldChanged);
     _c3.addListener(_onAnyFieldChanged);
-    _restoreDraft(); // A3 — восстановить незаконченный черновик
+    _bootstrap();
     // ⚠️ Тур стартует НЕ здесь, а после загрузки велаятов (_loadProvinces) —
     // иначе подсветка шага «Местоположение» считается по ещё пустой (лоадер)
     // секции, а после догрузки чипов секция вырастает и подсветка берёт лишь
     // её верхнюю часть.
+  }
+
+  /// Порядок важен: СНАЧАЛА восстанавливаем черновик (он проставляет
+  /// pending-id'шники локации/категории), ПОТОМ грузим справочники — их
+  /// finally применяет pending по факту загрузки. Иначе была гонка: если
+  /// справочник велаятов успевал загрузиться раньше чтения prefs, локация
+  /// не восстанавливалась.
+  Future<void> _bootstrap() async {
+    await _restoreDraft(); // A3 — восстановить незаконченный черновик
+    if (!mounted) return;
+    _loadProvinces();
+    if (widget.role == 'shop') _loadCategories();
   }
 
   bool _tourStarted = false;
@@ -145,7 +156,13 @@ class _RegistrationDetailsScreenState
 
   String get _draftKey => 'reg_draft_${widget.role}';
 
+  /// Пока идёт восстановление черновика — не пишем его обратно. Иначе
+  /// каскадный restore локации (он дёргает _selectProvince/_selectEtrap)
+  /// сохранял бы промежуточное частичное состояние.
+  bool _restoringDraft = false;
+
   void _scheduleDraftSave() {
+    if (_restoringDraft) return;
     _draftDebounce?.cancel();
     _draftDebounce = Timer(const Duration(milliseconds: 400), _saveDraft);
   }
@@ -153,16 +170,24 @@ class _RegistrationDetailsScreenState
   Future<void> _saveDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final map = <String, String>{
+      final map = <String, dynamic>{
         'c1': _c1.text,
         'c2': _c2.text,
         'c3': _c3.text,
         'transport': _transportType,
         'category': _selectedCategory?.id.toString() ?? '',
+        // Локация — по id; восстанавливаем каскадом после загрузки справочников.
+        'province': _selectedProvince?.id ?? '',
+        'etrap': _selectedEtrap?.id ?? '',
+        'district': _selectedDistrict?.id ?? '',
+        // Фото — по путям файлов (лежат в temp приложения). При восстановлении
+        // берём только те, что ещё существуют на диске.
+        'photos': {
+          for (final e in _photos.entries)
+            if (e.value != null) e.key.name: e.value!.path,
+        },
       };
-      // Простая сериализация key=value через -разделитель.
-      final encoded = map.entries.map((e) => '${e.key}${e.value}').join('');
-      await prefs.setString(_draftKey, encoded);
+      await prefs.setString(_draftKey, jsonEncode(map));
     } catch (_) {
       // Сохранение черновика — best-effort, на ошибку молчим.
     }
@@ -173,28 +198,53 @@ class _RegistrationDetailsScreenState
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_draftKey);
       if (raw == null || raw.isEmpty) return;
-      final map = <String, String>{};
-      for (final pair in raw.split('')) {
-        final i = pair.indexOf('');
-        if (i > 0) map[pair.substring(0, i)] = pair.substring(i + 1);
-      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
       if (!mounted) return;
+      _restoringDraft = true;
+
+      String str(String k) => decoded[k]?.toString() ?? '';
+
       setState(() {
-        if ((map['c1'] ?? '').isNotEmpty) _c1.text = map['c1']!;
-        if ((map['c2'] ?? '').isNotEmpty) _c2.text = map['c2']!;
-        if ((map['c3'] ?? '').isNotEmpty) _c3.text = map['c3']!;
-        final t = map['transport'];
-        if (t != null && t.isNotEmpty) _transportType = t;
+        if (str('c1').isNotEmpty) _c1.text = str('c1');
+        if (str('c2').isNotEmpty) _c2.text = str('c2');
+        if (str('c3').isNotEmpty) _c3.text = str('c3');
+        if (str('transport').isNotEmpty) _transportType = str('transport');
+
+        // Фото — реконструируем File по сохранённому пути, если он ещё есть.
+        final photos = decoded['photos'];
+        if (photos is Map) {
+          for (final entry in photos.entries) {
+            final path = entry.value?.toString() ?? '';
+            if (path.isEmpty || !File(path).existsSync()) continue;
+            for (final slot in _PhotoSlot.values) {
+              if (slot.name == entry.key) {
+                _photos[slot] = File(path);
+                break;
+              }
+            }
+          }
+        }
       });
-      // Категорию восстанавливаем после загрузки списка (match по id).
-      _pendingCategoryId = map['category'];
+
+      // Категорию и локацию восстанавливаем после загрузки справочников
+      // (match по id) — см. _applyPendingCategory / _applyPendingLocation.
+      _pendingCategoryId = str('category');
+      _pendingProvinceId = str('province');
+      _pendingEtrapId = str('etrap');
+      _pendingDistrictId = str('district');
     } catch (_) {
       // Восстановление — best-effort.
+      _restoringDraft = false;
     }
   }
 
   /// id категории из черновика, ждёт загрузки _categories для match'а.
   String? _pendingCategoryId;
+  // id'шники локации из черновика — ждут загрузки справочников.
+  String? _pendingProvinceId;
+  String? _pendingEtrapId;
+  String? _pendingDistrictId;
 
   /// Применить отложенную категорию из черновика после загрузки списка.
   void _applyPendingCategory() {
@@ -209,6 +259,59 @@ class _RegistrationDetailsScreenState
       }
     }
     _pendingCategoryId = null;
+  }
+
+  /// Восстановить выбранную локацию из черновика. Каскад: велаят → этрап →
+  /// район, каждый уровень подгружает справочник следующего. Переиспользует
+  /// существующие _selectProvince/_selectEtrap/_selectDistrict, чтобы логика
+  /// «нет этрапов/районов → достаточно верхнего уровня» работала одинаково.
+  Future<void> _applyPendingLocation() async {
+    try {
+      final pid = _pendingProvinceId;
+      _pendingProvinceId = null;
+      if (pid == null || pid.isEmpty) return;
+
+      Province? prov;
+      for (final p in _provinces) {
+        if (p.id == pid) {
+          prov = p;
+          break;
+        }
+      }
+      if (prov == null) return;
+      await _selectProvince(prov);
+      if (!mounted) return;
+
+      final eid = _pendingEtrapId;
+      _pendingEtrapId = null;
+      if (eid == null || eid.isEmpty) return;
+      Etrap? et;
+      for (final e in _etraps) {
+        if (e.id == eid) {
+          et = e;
+          break;
+        }
+      }
+      if (et == null) return;
+      await _selectEtrap(et);
+      if (!mounted) return;
+
+      final did = _pendingDistrictId;
+      _pendingDistrictId = null;
+      if (did == null || did.isEmpty) return;
+      District? dist;
+      for (final d in _districts) {
+        if (d.id == did) {
+          dist = d;
+          break;
+        }
+      }
+      if (dist == null) return;
+      _selectDistrict(dist);
+    } finally {
+      // Каскад завершён — снова разрешаем автосохранение черновика.
+      _restoringDraft = false;
+    }
   }
 
   Future<void> _clearDraft() async {
@@ -262,7 +365,12 @@ class _RegistrationDetailsScreenState
           key: _photosKey,
           title: words.tourRegPhotosTitle,
           body: words.tourRegPhotosBody,
-          align: ContentAlign.top,
+          // ВАЖНО: bottom (а не top). Секция паспорта — высокая и последняя
+          // в списке, под ней — фиксированная кнопка «Сохранить». При top
+          // тур скроллил секцию ВНИЗ (alignment 0.88) — её низ уезжал под
+          // кнопку, и подсветка захватывала кнопку. bottom скроллит секцию
+          // ВВЕРХ (alignment 0.12), целиком над кнопкой — как у «Местоположение».
+          align: ContentAlign.bottom,
         ),
       TourTarget.build(
         id: 'reg_details_submit',
@@ -345,6 +453,9 @@ class _RegistrationDetailsScreenState
       }
     } finally {
       if (mounted) setState(() => _loadingProvinces = false);
+      // Справочник велаятов готов — восстанавливаем выбранную в черновике
+      // локацию каскадом (велаят → этрап → район). best-effort, не ждём.
+      if (mounted) unawaited(_applyPendingLocation());
       // Велаяты загружены (или загрузка завершилась) — теперь секция локации
       // имеет финальную высоту, можно показывать тур с корректной подсветкой.
       if (mounted) _maybeStartTour();
@@ -381,7 +492,10 @@ class _RegistrationDetailsScreenState
         _showToast(context.read<LanguageProvider>().words.regErrorLoadEtraps);
       }
     } finally {
-      if (mounted) setState(() => _loadingEtraps = false);
+      if (mounted) {
+        setState(() => _loadingEtraps = false);
+        _scheduleDraftSave();
+      }
     }
   }
 
@@ -415,7 +529,10 @@ class _RegistrationDetailsScreenState
         );
       }
     } finally {
-      if (mounted) setState(() => _loadingDistricts = false);
+      if (mounted) {
+        setState(() => _loadingDistricts = false);
+        _scheduleDraftSave();
+      }
     }
   }
 
@@ -427,6 +544,7 @@ class _RegistrationDetailsScreenState
       _searchController.clear();
       _locationSelected = true;
     });
+    _scheduleDraftSave();
   }
 
   void _resetLocationStep(int step) {
@@ -444,6 +562,7 @@ class _RegistrationDetailsScreenState
         _selectedDistrict = null;
       }
     });
+    _scheduleDraftSave();
   }
 
   // ── Photo ──────────────────────────────────────────────────────────────────
@@ -472,6 +591,7 @@ class _RegistrationDetailsScreenState
     );
     if (!mounted) return;
     setState(() => _photos[slot] = compressed);
+    _scheduleDraftSave();
   }
 
   /// Фото лица — сразу фронтальная камера, без выбора источника.
@@ -489,6 +609,7 @@ class _RegistrationDetailsScreenState
       );
       if (!mounted) return;
       setState(() => _photos[_PhotoSlot.selfie] = compressed);
+      _scheduleDraftSave();
     } catch (_) {
       // Камера недоступна / отказ в правах — молча. Пользователь увидит,
       // что слот пустой, и попробует снова.
