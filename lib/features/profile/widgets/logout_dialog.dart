@@ -1,6 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
+import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,9 @@ class LogoutDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final words = context.watch<LanguageProvider>().words;
+    // Жетоны и уровень (XP) есть только у курьера — заказчику/наблюдателю
+    // показываем упрощённый текст без их упоминания.
+    final isCourier = context.read<AuthProvider>().isCourier;
 
     return Material(
       color: Colors.transparent,
@@ -51,7 +55,7 @@ class LogoutDialog extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              words.logoutSubtitle,
+              isCourier ? words.logoutSubtitle : words.logoutSubtitleSimple,
               style: AppText.regular(fontSize: 13, color: c.inkMuted)
                   .copyWith(height: 1.55),
               textAlign: TextAlign.center,

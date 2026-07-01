@@ -63,6 +63,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   // поэтому state всегда был null и рефреш не срабатывал.
   final GlobalKey<NotificationsScreenState> _notifKey = GlobalKey();
   final GlobalKey<ProfileScreenState> _profileKey = GlobalKey();
+  final GlobalKey<HomeScreenState> _homeKey = GlobalKey();
 
   late final List<_DepthObserver> _observers;
 
@@ -123,6 +124,9 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         _notifKey.currentState?.retryTourOnBecameVisible();
       } else if (index == 2) {
         _profileKey.currentState?.retryTourOnBecameVisible();
+      } else if (index == 0) {
+        // Вернулись на вкладку заказов → у заказчика сбрасываем статус на «Все».
+        _homeKey.currentState?.resetStatusFilterForShop();
       }
     });
 
@@ -203,7 +207,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         backgroundColor: c.bg,
         body: Stack(
           children: [
-            _buildTab(0, const HomeScreen()),
+            _buildTab(0, HomeScreen(key: _homeKey)),
             _buildTab(1, NotificationsScreen(key: _notifKey)),
             _buildTab(2, ProfileScreen(key: _profileKey)),
             AnimatedPositioned(

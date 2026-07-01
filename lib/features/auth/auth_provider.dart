@@ -216,7 +216,11 @@ class AuthProvider extends ChangeNotifier {
     _selfieFileId = prefs.getString('selfie_file_id') ?? '';
     _rejectionReasons = prefs.getStringList('rejection_reasons') ?? const [];
 
-    if (_phone.isNotEmpty) phoneController.text = _phone;
+    // НЕ префиллим phoneController сохранённым номером: это поле ввода логина,
+    // и все его потребители (поле телефона, подзаголовок OTP, submit) ждут
+    // ЛОКАЛЬНЫЕ цифры и сами добавляют «+993». Если положить сюда полный E.164
+    // («+99365711128»), на повторном входе поле показывало «+993 +99365711128».
+    // Номер для отправки берётся из того, что пользователь введёт заново.
     // Привязываем тур-namespace к загруженному userId.
     TourManager.instance.setUserId(_userId);
     notifyListeners();

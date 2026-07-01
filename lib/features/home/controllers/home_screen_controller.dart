@@ -3,9 +3,8 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:bagla/features/auth/auth_provider.dart';
-import 'package:bagla/features/notifications/active_orders/active_order_snapshot.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
-import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/notifications/active_orders/active_orders_sync.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -82,12 +81,25 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   /// интерфейс наблюдателя.
   AppLifecycleListener? _lifecycleListener;
 
+  /// Минутный тик для «живого» обратного отсчёта в persistent-уведомлении.
+  /// awesome_notifications не умеет нативный count-down, поэтому остаток до
+  /// дедлайна пересчитываем перерисовкой уведомления раз в минуту (из кеша,
+  /// без сетевых запросов). В фоне уведомление и так обновляется на WS/refresh.
+  Timer? _notifTickTimer;
+
   void initController() {
     // Слушаем resume — это момент когда пользователь возвращается в
     // приложение из background. Здесь применяем pending action из
     // persistent notification (например, «Завершить» нажатый из шторки).
     _lifecycleListener = AppLifecycleListener(
       onResume: () => unawaited(_drainPendingAction()),
+    );
+
+    // Перерисовка уведомления раз в минуту — обновляет обратный отсчёт.
+    // `rerender` сам ничего не делает, если активных заказов нет.
+    _notifTickTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => unawaited(ActiveOrdersNotification.rerender()),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initAuth = context.read<AuthProvider>();
@@ -249,6 +261,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   void disposeController() {
     _lifecycleListener?.dispose();
     _lifecycleListener = null;
+    _notifTickTimer?.cancel();
+    _notifTickTimer = null;
     realtimeService.disconnect();
     scrollController.dispose();
   }
@@ -495,14 +509,20 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
     if (selectedStatus == null) {
-      // Курьер во вкладке «Мои заказы», статус «Все»: сортируем по очередности
-      // статусов — в работе (active) → доставлено (completed) → отменено
-      // (canceled). Внутри группы порядок (по дате) сохраняется, т.к.
-      // группируем фильтрами поверх уже отсортированного списка (sort в Dart
-      // нестабилен — поэтому именно группировка, а не compare).
-      final isCourier = context.read<AuthProvider>().isCourier;
-      if (isCourier && selectedFilterIndex == 1) {
-        const groups = ['active', 'completed', 'canceled'];
+      // Статус «Все»: сортируем по очередности статусов (порядок как у чипов).
+      // Внутри группы порядок (по дате) сохраняется, т.к. группируем фильтрами
+      // поверх уже отсортированного списка (sort в Dart нестабилен —
+      // поэтому именно группировка, а не compare).
+      //   - курьер, «Мои заказы»: В работе → Доставлено → Отменено;
+      //   - магазин: Свободные → В работе → Доставлено → Отменено.
+      final auth = context.read<AuthProvider>();
+      List<String>? groups;
+      if (auth.isCourier && selectedFilterIndex == 1) {
+        groups = const ['active', 'completed', 'canceled'];
+      } else if (auth.isShop) {
+        groups = const ['published', 'active', 'completed', 'canceled'];
+      }
+      if (groups != null) {
         String st(dynamic o) =>
             (o['order_status'] ?? '').toString().toLowerCase();
         final result = <dynamic>[];
@@ -510,7 +530,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           result.addAll(targetOrders.where((o) => st(o) == g));
         }
         // Прочие статусы (на всякий случай) — в конец, сохраняя порядок.
-        result.addAll(targetOrders.where((o) => !groups.contains(st(o))));
+        result.addAll(targetOrders.where((o) => !groups!.contains(st(o))));
         return result;
       }
       return targetOrders;
@@ -832,57 +852,13 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   Future<void> _runActiveOrdersNotificationSync() async {
     if (!mounted) return;
     final auth = context.read<AuthProvider>();
-    final role = auth.role;
-    final userId = auth.userId;
-    final isCourier = auth.isCourier;
-    if (userId.isEmpty) {
-      await ActiveOrdersNotification.hide();
-      return;
-    }
-    // Локализацию захватываем ДО await — после async-паузы context может
-    // быть уже не валиден для повторного lookup.
-    final lang = context.read<LanguageProvider>();
-    final isRu = lang.isRu;
-    final words = lang.words;
-
-    // Полный список активных заказов независимо от пагинации ленты.
-    final activeRaw =
-        await orderService.getActiveOrders(role: role, userId: userId);
-    if (!mounted) return;
-
-    final snapshots = <ActiveOrderSnapshot>[];
-    for (final raw in activeRaw) {
-      if (raw is! Map) continue;
-      final dto = OrderDto.fromMap(Map<String, dynamic>.from(raw));
-
-      snapshots.add(
-        ActiveOrderSnapshot(
-          id: dto.id,
-          shortId: dto.shortId,
-          addressLine: dto.deliveryAddress(isRu),
-          // Курьеру звоним клиенту, магазину — курьеру.
-          phoneToCall: isCourier ? dto.clientPhone : dto.courierPhone,
-          status: dto.status,
-          // courierId нужен для `generateDeliveryCode` из notification.
-          // У курьера это его собственный userId (он же courier для своих
-          // активных заказов). У магазина — пустая строка (он не завершает).
-          courierId: isCourier ? userId : '',
-        ),
-      );
-    }
-
-    await ActiveOrdersNotification.sync(
-      orders: snapshots,
-      title: words.activeOrdersNotifTitle,
-      indexTemplate: (i, n) => words.activeOrdersIndex
-          .replaceAll('{i}', '${i + 1}')
-          .replaceAll('{n}', '$n'),
-      callBtnLabel: words.activeOrdersBtnCall,
-      completeBtnLabel: words.activeOrdersBtnComplete,
-      verifyBtnLabel: words.activeOrdersBtnVerify,
-      enterCodeTitle: words.activeOrdersEnterCodeTitle,
-      codeSentBody: words.activeOrdersCodeSentBody,
-      completedBody: words.activeOrdersCompleted,
+    final locale = context.read<LanguageProvider>().locale;
+    // Сборка снимков + sync вынесены в общий context-free хелпер
+    // (ActiveOrdersSync) — тот же код переиспользует FCM background isolate.
+    await ActiveOrdersSync.run(
+      role: auth.role,
+      userId: auth.userId,
+      locale: locale,
     );
   }
 

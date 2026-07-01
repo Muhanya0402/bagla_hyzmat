@@ -123,6 +123,19 @@ const Map<String, String> stringsTk = {
   'fastDeliveryTitle': 'Şäher içinde\nçalt eltip bermek',
   'availiblorders': 'Elýeterli sargytlar',
   'feedbacks': 'Meniň ýüzlenmelerim',
+  // ── Amallaryň taryhy (eltip beriji) ──────────────────────────────────────
+  'txHistoryMenu': 'Amallaryň taryhy',
+  'txHistoryTitle': 'Amallaryň taryhy',
+  'txHistoryEmpty': 'Heniz amal ýok',
+  'txHistoryEmptyDesc':
+      'Bu ýerde hasaby doldurmalar, keşbek, bonuslar we tylla çykdajylary görüner.',
+  'txHistoryError': 'Ýüklemek başartmady',
+  'txHistoryPullRefresh': 'Täzelemek üçin aşak çekiň',
+  'txTopUp': 'Hasaby doldurmak',
+  'txOrderDebit': 'Sargyt üçin çykdajy',
+  'txCashback': 'Keşbek',
+  'txDailyBonus': 'Gündelik bonus',
+  'txOther': 'Hasaplama',
   'user': 'Ulanyjy',
   'phoneLabel': 'Telefon',
   'otpLabel': 'SMS kody',
@@ -416,6 +429,11 @@ const Map<String, String> stringsTk = {
   'logoutSubtitle':
       'Telefon belgiňiz arkaly islän wagtyňyz täzeden girip bilersiňiz. '
       'Maglumatlaryňyz, tyllalaryňyz we dereje (XP) saklanylar.',
+  // Sargyt beriji/synçy üçin — tylla we dereje (XP) agzalman, olar diňe
+  // eltip berijide bar.
+  'logoutSubtitleSimple':
+      'Telefon belgiňiz arkaly islän wagtyňyz täzeden girip bilersiňiz. '
+      'Ähli maglumatlaryňyz saklanylar.',
   'logoutStay': 'Galmak',
   'logoutConfirm': 'Çykmak',
   'tourProfileTitle': 'Siziň profiliňiz',
@@ -523,6 +541,9 @@ const Map<String, String> stringsTk = {
   'photoPickerEmpty': 'Galereýada entek surat ýok',
   'photoPickerDone': 'Taýýar',
   'photoPickerNoCamera': 'Kamera elýeterli däl',
+  'photoPickerLimited': 'Diňe saýlanan suratlar görkezilýär',
+  'photoPickerAllowMore': 'Ýene rugsat ber',
+  'photoPickerLimitedEmpty': 'Elýeterlilik çäkli. Rugsat berjek suratlaryňyzy saýlaň.',
   'regToastFixTitle': 'Düzetmeli',
   'regErrorLocationRequired': 'Ýerleşişi saýlaň — welaýat, etrap we etrapça',
   'regErrorCategoryRequired': 'Dükan kategoriýasyny saýlaň',
@@ -682,6 +703,9 @@ const Map<String, String> stringsTk = {
   'activeOrdersWrongCode': 'Kody nädogry, gaýtadan synanyşyň',
   'activeOrdersCodeFailed': 'Kody ugratmak başartmady',
   'activeOrdersCompleted': 'Sargyt tamamlandy ✓',
+  // Eltip bermegiň möhletine çenli yza hasaplaýyş — hemişelik bildirişde.
+  'activeOrdersTimeLeft': 'Galan wagt',
+  'activeOrdersTimeExpired': 'Möhlet gutardy',
   // ── Принудительный logout при истечении сессии ─────────────────────────────
   'sessionExpiredTitle': 'Sessiýanyň möhleti gutardy',
   'sessionExpiredBody':

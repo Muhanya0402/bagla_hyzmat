@@ -365,12 +365,13 @@ class _RegistrationDetailsScreenState
           key: _photosKey,
           title: words.tourRegPhotosTitle,
           body: words.tourRegPhotosBody,
-          // ВАЖНО: bottom (а не top). Секция паспорта — высокая и последняя
-          // в списке, под ней — фиксированная кнопка «Сохранить». При top
-          // тур скроллил секцию ВНИЗ (alignment 0.88) — её низ уезжал под
-          // кнопку, и подсветка захватывала кнопку. bottom скроллит секцию
-          // ВВЕРХ (alignment 0.12), целиком над кнопкой — как у «Местоположение».
-          align: ContentAlign.bottom,
+          // Секция паспорта — высокая. При align bottom карточка подсказки
+          // уходила ПОД секцию и её кнопка «Далее» оказывалась за нижним краем
+          // (под фиксированной кнопкой «Сохранить») — тур «зависал», нельзя
+          // было продвинуться. Пиним карточку у низа экрана (над кнопкой) через
+          // customPosition — как у длинного списка заказов на главной. Секция
+          // при этом центрируется (scroll 0.5) и не задевает кнопку «Сохранить».
+          customPosition: CustomTargetContentPosition(bottom: 130),
         ),
       TourTarget.build(
         id: 'reg_details_submit',

@@ -63,6 +63,10 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
   AssetPathEntity? _album;
   bool _galLoading = true;
   bool _galDenied = false;
+  /// Ограниченный доступ (Android 14+/iOS 14+): пользователь дал доступ только
+  /// к выбранным фото. Тогда показываем баннер «Разрешить ещё» для расширения
+  /// набора через системный диалог (`presentLimited`).
+  bool _galLimited = false;
   final List<AssetEntity> _selected = [];
 
   // Текущая высота выдвижного листа (для скрытия кнопок камеры при раскрытии).
@@ -225,11 +229,13 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
         if (mounted) {
           setState(() {
             _galDenied = true;
+            _galLimited = false;
             _galLoading = false;
           });
         }
         return;
       }
+      final limited = ps == PermissionState.limited;
       // onlyAll: false — получаем ВСЕ альбомы/папки (Камера, Скриншоты,
       // Загрузки и т.д.), а не только «Recent», чтобы можно было выбирать
       // изображения по папкам.
@@ -238,14 +244,41 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
         onlyAll: false,
       );
       if (albums.isEmpty) {
-        if (mounted) setState(() => _galLoading = false);
+        if (mounted) {
+          setState(() {
+            _galLimited = limited;
+            _galLoading = false;
+          });
+        }
         return;
       }
       _albums = albums;
+      if (mounted) setState(() => _galLimited = limited);
       await _selectAlbum(albums.first);
     } catch (_) {
       if (mounted) setState(() => _galLoading = false);
     }
+  }
+
+  /// Открывает системный диалог выбора доступных фото (при ограниченном
+  /// доступе) и перезагружает галерею под обновлённый набор.
+  Future<void> _requestMorePhotos() async {
+    try {
+      await PhotoManager.presentLimited();
+    } catch (_) {
+      // на старых Android/iOS presentLimited может быть недоступен — игнор
+    }
+    if (!mounted) return;
+    // Сбрасываем кеш путей/файлов, чтобы новый набор точно подтянулся.
+    await PhotoManager.clearFileCache();
+    if (!mounted) return;
+    setState(() {
+      _galLoading = true;
+      _albums = const [];
+      _album = null;
+      _assets = const [];
+    });
+    await _loadGallery();
   }
 
   Future<void> _selectAlbum(AssetPathEntity album) async {
@@ -589,6 +622,8 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
               ],
             ),
           ),
+          // Баннер ограниченного доступа — показан только при limited-доступе.
+          if (_galLimited && !_galLoading) _LimitedBanner(c: c, words: words, onTap: _requestMorePhotos),
           Expanded(child: _buildGalleryBody(scrollCtrl, c, words)),
         ],
       ),
@@ -608,6 +643,15 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
       );
     }
     if (_assets.isEmpty) {
+      // При ограниченном доступе пустой набор → предлагаем выбрать фото.
+      if (_galLimited) {
+        return _Message(
+          text: words.photoPickerLimitedEmpty,
+          actionLabel: words.photoPickerAllowMore,
+          onAction: _requestMorePhotos,
+          c: c,
+        );
+      }
       return _Message(text: words.photoPickerEmpty, c: c);
     }
     return GridView.builder(
@@ -723,6 +767,50 @@ class _RoundIcon extends StatelessWidget {
             height: 44,
             alignment: Alignment.center,
             child: Icon(icon, color: Colors.white, size: 24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Баннер ограниченного доступа к фото (Android 14+/iOS 14+).
+class _LimitedBanner extends StatelessWidget {
+  final AppColors c;
+  final dynamic words;
+  final VoidCallback onTap;
+  const _LimitedBanner({required this.c, required this.words, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Material(
+        color: c.amberTint,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 18, color: c.amber),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    words.photoPickerLimited,
+                    style: AppText.regular(fontSize: 12.5, color: c.ink)
+                        .copyWith(height: 1.3),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  words.photoPickerAllowMore,
+                  style: AppText.semiBold(fontSize: 12.5, color: c.amber),
+                ),
+              ],
+            ),
           ),
         ),
       ),

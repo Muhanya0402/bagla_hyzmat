@@ -23,11 +23,22 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class HomeScreenState extends State<HomeScreen>
     with HomeScreenController<HomeScreen>, AppTourMixin<HomeScreen> {
+  /// Сброс статус-фильтра на «Все» при возврате на вкладку заказов.
+  /// Только для заказчика (магазина): у курьера во вкладке «Мои заказы»
+  /// дефолт «В работе» — его не трогаем.
+  void resetStatusFilterForShop() {
+    if (!mounted) return;
+    final isShop = context.read<AuthProvider>().isShop;
+    if (!isShop) return;
+    if (selectedStatus == null) return;
+    setState(() => selectedStatus = null);
+  }
+
   // ── Tour anchors ──────────────────────────────────────────────────────────
   final _logoKey = GlobalKey(); // приветствие / level bar
   final _activeCounterKey = GlobalKey(); // ActiveOrdersCounter (courier)

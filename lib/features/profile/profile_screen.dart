@@ -256,6 +256,21 @@ class ProfileScreenState extends State<ProfileScreen>
     final words = context.watch<LanguageProvider>().words;
     final items = <Widget>[];
 
+    // История транзакций — только у курьера (жетоны/кэшбек/бонусы есть у него).
+    // Размещается выше «Обращений».
+    if (auth.isCourier) {
+      items.add(
+        ProfileMenuTile(
+          icon: Icons.receipt_long_outlined,
+          title: words.txHistoryMenu,
+          onTap: () => Navigator.pushNamed(context, '/transactions'),
+        ),
+      );
+      items.add(
+        Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+      );
+    }
+
     items.add(
       ProfileMenuTile(
         icon: Icons.inbox_outlined,

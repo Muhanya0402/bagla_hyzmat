@@ -631,6 +631,24 @@ class OrderService {
       if (kDebugMode) {
         print('✅ Кэшбек +${cashback.toInt()} → курьер $courierId');
       }
+
+      // Фиксируем начисление в журнале для «Истории транзакций».
+      // Best-effort: ошибка журналирования не должна ломать начисление.
+      try {
+        await _apiClient.dio.post('/items/points_transactions', data: {
+          'type': 'cashback',
+          'amount': cashback.toInt(),
+          'comment': 'Кэшбек за заказ #$orderId',
+          'customer_id': [
+            {'item': courierId, 'collection': 'customers'},
+          ],
+          'order_id': [
+            {'item': orderId, 'collection': 'orders'},
+          ],
+        });
+      } catch (e) {
+        if (kDebugMode) print('points_transactions(cashback) error: $e');
+      }
     } catch (e) {
       if (kDebugMode) print('Ошибка applyCashback: $e');
     }

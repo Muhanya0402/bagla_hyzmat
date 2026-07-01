@@ -47,6 +47,9 @@ abstract final class ActiveOrdersNotification {
   static const _kCodeSentBodyKey = 'active_orders_code_sent_body';
   static const _kCompletedBodyKey = 'active_orders_completed_body';
   static const _kPrefixIndexKey = 'active_orders_index_template';
+  // Локализованные подписи таймера обратного отсчёта до дедлайна доставки.
+  static const _kTimeLeftKey = 'active_orders_time_left';
+  static const _kTimeExpiredKey = 'active_orders_time_expired';
   /// Префикс per-order ключа «код уже отправлен клиенту, ждём ввод».
   /// Полный ключ: `<prefix><orderId>`.
   static const _kCodeSentPrefix = 'active_orders_code_sent_';
@@ -159,6 +162,8 @@ abstract final class ActiveOrdersNotification {
     required String enterCodeTitle,
     required String codeSentBody,
     required String completedBody,
+    String timeLeftLabel = 'Осталось',
+    String timeExpiredLabel = 'Срок истёк',
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -178,6 +183,8 @@ abstract final class ActiveOrdersNotification {
     await prefs.setString(_kEnterCodeTitleKey, enterCodeTitle);
     await prefs.setString(_kCodeSentBodyKey, codeSentBody);
     await prefs.setString(_kCompletedBodyKey, completedBody);
+    await prefs.setString(_kTimeLeftKey, timeLeftLabel);
+    await prefs.setString(_kTimeExpiredKey, timeExpiredLabel);
     // Шаблон индекса — упрощённо сохраняем формат «{i} / {n}», который
     // background handler сможет применить без l10n.
     await prefs.setString(_kPrefixIndexKey, indexTemplate(0, 0));
@@ -196,6 +203,20 @@ abstract final class ActiveOrdersNotification {
     if (idx >= orders.length) idx = 0;
     await prefs.setInt(_kIndexKey, idx);
 
+    await _renderAt(idx);
+  }
+
+  /// Перерисовать текущую карточку (тот же индекс) из уже сохранённых
+  /// снимков — без обращения к серверу. Нужно для «живого» обратного
+  /// отсчёта: вызывается по таймеру раз в минуту, чтобы пересчитать
+  /// остаток времени до дедлайна. Если активных заказов нет — no-op
+  /// (`_renderAt` сам отменит уведомление).
+  static Future<void> rerender() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = ActiveOrderSnapshot.decodeList(prefs.getString(_kOrdersKey));
+    if (list.isEmpty) return;
+    int idx = prefs.getInt(_kIndexKey) ?? 0;
+    if (idx < 0 || idx >= list.length) idx = 0;
     await _renderAt(idx);
   }
 
@@ -249,11 +270,15 @@ abstract final class ActiveOrdersNotification {
     //   пакета крутится на ГЛАВНОМ isolate и прерывается при terminate — из-за
     //   чего стрелки были ненадёжны.)
     //
-    // Call / Finish — `Default`: будят app в main isolate. «Позвонить»
-    //   запускает диалер (url_launcher), «Завершить» открывает сам заказ
-    //   и форму подтверждения завершения в приложении (через pending action).
-    //   На killed-app `SilentAction` молча падает — `Default` надёжно
-    //   выводит app на передний план.
+    // «Позвонить» — `SilentBackgroundAction`: исполняется в отдельном isolate
+    //   БЕЗ вывода Bagla на передний план — сразу открывает системный диалер
+    //   через url_launcher (`tel:` это системный intent, работает из background
+    //   isolate). Раньше тут был `Default`, который сперва поднимал app, и лишь
+    //   потом из него запускался набор — лишний шаг. SilentBackgroundAction
+    //   переживает killed-app (в отличие от `SilentAction` на главном isolate).
+    //
+    // «Завершить» — `Default`: открывает сам заказ и форму подтверждения
+    //   завершения в приложении (через pending action) — тут вывод app нужен.
     final actions = <NotificationActionButton>[
       if (list.length > 1)
         NotificationActionButton(
@@ -267,7 +292,7 @@ abstract final class ActiveOrdersNotification {
         NotificationActionButton(
           key: _actCall,
           label: callLabel,
-          actionType: ActionType.Default,
+          actionType: ActionType.SilentBackgroundAction,
           autoDismissible: false,
         ),
       // «Завершить» — открывает приложение на этом заказе и форму
@@ -288,7 +313,30 @@ abstract final class ActiveOrdersNotification {
         ),
     ];
 
-    final body = '#${order.shortId}\n${order.addressLine}';
+    // ── Строка обратного отсчёта до дедлайна доставки ────────────────────
+    // Считаем остаток ПРИ КАЖДОЙ перерисовке (sync / стрелки / минутный
+    // тик из foreground). Если дедлайна нет — строку не добавляем.
+    String timerLine = '';
+    if (order.deadline.isNotEmpty) {
+      try {
+        final deadline = DateTime.parse(order.deadline).toLocal();
+        final diff = deadline.difference(DateTime.now());
+        if (diff.isNegative) {
+          final exp = prefs.getString(_kTimeExpiredKey) ?? 'Срок истёк';
+          timerLine = '\n⏱ $exp';
+        } else {
+          final left = prefs.getString(_kTimeLeftKey) ?? 'Осталось';
+          final h = diff.inHours;
+          final m = diff.inMinutes.remainder(60);
+          final v = h > 0 ? '$hч $mм' : '$mм';
+          timerLine = '\n⏳ $left: $v';
+        }
+      } catch (_) {
+        // битый формат даты — просто без таймера
+      }
+    }
+
+    final body = '#${order.shortId}\n${order.addressLine}$timerLine';
 
     await AwesomeNotifications().createNotification(
       content: NotificationContent(

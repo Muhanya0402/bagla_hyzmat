@@ -23,7 +23,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/api_client.dart';
 import 'core/secure_token_store.dart';
 import 'features/notifications/active_orders/active_orders_notification.dart';
+import 'features/notifications/active_orders/active_orders_sync.dart';
 import 'features/profile/registration_details_screen.dart';
+import 'features/profile/transactions/transaction_history_screen.dart';
 import 'features/profile/registration_fix_screen.dart';
 import 'l10n/language_provider.dart';
 import 'features/auth/auth_repository.dart';
@@ -42,6 +44,20 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Firebase уже инициализирован в main(), повторный вызов не нужен.
   // Не логируем messageId — это корреляция с пользователем.
   if (kDebugMode) print('Фоновое сообщение получено');
+
+  // Если пуш про заказ (создание/смена статуса) — пересобираем persistent
+  // уведомление «Активные заказы» прямо из background isolate. Иначе у
+  // заказчика число активных заказов «зависало» в шторке, пока он не
+  // откроет приложение (в фоне WebSocket отключён, и пересчёта не было).
+  final type = (message.data['type'] ?? '').toString();
+  final hasOrder = (message.data['order_id'] ?? '').toString().isNotEmpty;
+  if (hasOrder || type.contains('order')) {
+    try {
+      await ActiveOrdersSync.runFromPrefs();
+    } catch (_) {
+      // background isolate best-effort — на ошибке молчим.
+    }
+  }
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -283,6 +299,11 @@ class MyApp extends StatelessWidget {
         }
         if (settings.name == '/appeals') {
           return MaterialPageRoute(builder: (_) => const AppealsScreen());
+        }
+        if (settings.name == '/transactions') {
+          return MaterialPageRoute(
+            builder: (_) => const TransactionHistoryScreen(),
+          );
         }
         if (settings.name == '/reg-fix') {
           return MaterialPageRoute(

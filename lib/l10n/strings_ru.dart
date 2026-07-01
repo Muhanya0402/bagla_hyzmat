@@ -122,6 +122,19 @@ const Map<String, String> stringsRu = {
   'fastDeliveryTitle': 'Быстрая доставка\nпо городу',
   'availiblorders': 'Доступные заказы',
   'feedbacks': 'Мои обращения',
+  // ── История транзакций (курьер) ──────────────────────────────────────────
+  'txHistoryMenu': 'История транзакций',
+  'txHistoryTitle': 'История транзакций',
+  'txHistoryEmpty': 'Пока нет операций',
+  'txHistoryEmptyDesc':
+      'Здесь появятся пополнения, кэшбек, бонусы и списания жетонов.',
+  'txHistoryError': 'Не удалось загрузить',
+  'txHistoryPullRefresh': 'Потяните вниз, чтобы обновить',
+  'txTopUp': 'Пополнение',
+  'txOrderDebit': 'Списание за заказ',
+  'txCashback': 'Кэшбек',
+  'txDailyBonus': 'Ежедневный бонус',
+  'txOther': 'Начисление',
   'user': 'Пользователь',
   'phoneLabel': 'Телефон',
   'otpLabel': 'Код из SMS',
@@ -424,6 +437,11 @@ const Map<String, String> stringsRu = {
   'logoutSubtitle':
       'Вы сможете войти снова в любой момент, используя свой номер телефона. '
       'Все ваши данные, жетоны и уровень (XP) будут сохранены.',
+  // Для заказчика/наблюдателя — без упоминания жетонов и уровня (XP),
+  // они есть только у курьера.
+  'logoutSubtitleSimple':
+      'Вы сможете войти снова в любой момент, используя свой номер телефона. '
+      'Все ваши данные будут сохранены.',
   'logoutStay': 'Остаться',
   'logoutConfirm': 'Выйти',
   // Tour
@@ -532,6 +550,9 @@ const Map<String, String> stringsRu = {
   'photoPickerEmpty': 'В галерее пока нет фото',
   'photoPickerDone': 'Готово',
   'photoPickerNoCamera': 'Камера недоступна',
+  'photoPickerLimited': 'Показаны только выбранные фото',
+  'photoPickerAllowMore': 'Разрешить ещё',
+  'photoPickerLimitedEmpty': 'Доступ ограничен. Выберите фото, к которым дать доступ.',
   'regToastFixTitle': 'Нужно исправить',
   'regErrorLocationRequired': 'Выберите место — велаят, этрап и район',
   'regErrorCategoryRequired': 'Выберите категорию магазина',
@@ -691,6 +712,9 @@ const Map<String, String> stringsRu = {
   'activeOrdersWrongCode': 'Неверный код, попробуйте ещё раз',
   'activeOrdersCodeFailed': 'Не удалось отправить код',
   'activeOrdersCompleted': 'Заказ завершён ✓',
+  // Таймер обратного отсчёта до дедлайна доставки в постоянном уведомлении.
+  'activeOrdersTimeLeft': 'Осталось',
+  'activeOrdersTimeExpired': 'Срок истёк',
   // ── Принудительный logout при истечении сессии ─────────────────────────────
   'sessionExpiredTitle': 'Сессия истекла',
   'sessionExpiredBody':

@@ -108,6 +108,18 @@ class AppLocalizations {
   String get welcomeToApp => get('welcomeToApp');
   String get fastDeliveryTitle => get('fastDeliveryTitle');
   String get feedbacks => get('feedbacks');
+  // ── История транзакций ──────────────────────────────────────────────────
+  String get txHistoryMenu => get('txHistoryMenu');
+  String get txHistoryTitle => get('txHistoryTitle');
+  String get txHistoryEmpty => get('txHistoryEmpty');
+  String get txHistoryEmptyDesc => get('txHistoryEmptyDesc');
+  String get txHistoryError => get('txHistoryError');
+  String get txHistoryPullRefresh => get('txHistoryPullRefresh');
+  String get txTopUp => get('txTopUp');
+  String get txOrderDebit => get('txOrderDebit');
+  String get txCashback => get('txCashback');
+  String get txDailyBonus => get('txDailyBonus');
+  String get txOther => get('txOther');
   String get user => get('user');
   String get phoneLabel => get('phoneLabel');
   String get otpLabel => get('otpLabel');
@@ -398,6 +410,7 @@ class AppLocalizations {
   String get supportCatIdea => get('supportCatIdea');
   String get logoutTitle => get('logoutTitle');
   String get logoutSubtitle => get('logoutSubtitle');
+  String get logoutSubtitleSimple => get('logoutSubtitleSimple');
   String get logoutStay => get('logoutStay');
   String get logoutConfirm => get('logoutConfirm');
   String get tourProfileTitle => get('tourProfileTitle');
@@ -484,6 +497,9 @@ class AppLocalizations {
   String get photoPickerEmpty => get('photoPickerEmpty');
   String get photoPickerDone => get('photoPickerDone');
   String get photoPickerNoCamera => get('photoPickerNoCamera');
+  String get photoPickerLimited => get('photoPickerLimited');
+  String get photoPickerAllowMore => get('photoPickerAllowMore');
+  String get photoPickerLimitedEmpty => get('photoPickerLimitedEmpty');
   String get regToastFixTitle => get('regToastFixTitle');
   String get regErrorLocationRequired => get('regErrorLocationRequired');
   String get regErrorCategoryRequired => get('regErrorCategoryRequired');
@@ -630,6 +646,8 @@ class AppLocalizations {
   String get activeOrdersWrongCode => get('activeOrdersWrongCode');
   String get activeOrdersCodeFailed => get('activeOrdersCodeFailed');
   String get activeOrdersCompleted => get('activeOrdersCompleted');
+  String get activeOrdersTimeLeft => get('activeOrdersTimeLeft');
+  String get activeOrdersTimeExpired => get('activeOrdersTimeExpired');
   // ── Session expired ────────────────────────────────────────────────────
   String get sessionExpiredTitle => get('sessionExpiredTitle');
   String get sessionExpiredBody => get('sessionExpiredBody');

@@ -23,6 +23,11 @@ class ActiveOrderSnapshot {
   /// Статус — 'published' / 'active' / etc. Влияет на доступные действия.
   final String status;
 
+  /// Дедлайн доставки (ISO-8601, как `time_of_delivery`). Пустая строка —
+  /// дедлайна нет (тогда таймер обратного отсчёта не показывается).
+  /// Время остатка считается при каждой перерисовке уведомления.
+  final String deadline;
+
   const ActiveOrderSnapshot({
     required this.id,
     required this.shortId,
@@ -30,6 +35,7 @@ class ActiveOrderSnapshot {
     required this.phoneToCall,
     required this.courierId,
     required this.status,
+    this.deadline = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -39,6 +45,7 @@ class ActiveOrderSnapshot {
         'phoneToCall': phoneToCall,
         'courierId': courierId,
         'status': status,
+        'deadline': deadline,
       };
 
   factory ActiveOrderSnapshot.fromJson(Map<String, dynamic> j) =>
@@ -49,6 +56,7 @@ class ActiveOrderSnapshot {
         phoneToCall: (j['phoneToCall'] ?? '').toString(),
         courierId: (j['courierId'] ?? '').toString(),
         status: (j['status'] ?? '').toString(),
+        deadline: (j['deadline'] ?? '').toString(),
       );
 
   static String encodeList(List<ActiveOrderSnapshot> list) =>
