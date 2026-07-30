@@ -120,6 +120,13 @@ class AppLocalizations {
   String get txCashback => get('txCashback');
   String get txDailyBonus => get('txDailyBonus');
   String get txOther => get('txOther');
+  // ── Гид по истории транзакций ───────────────────────────────────────────
+  String get tourTxTitleTitle => get('tourTxTitleTitle');
+  String get tourTxTitleBody => get('tourTxTitleBody');
+  String get tourTxListTitle => get('tourTxListTitle');
+  String get tourTxListBody => get('tourTxListBody');
+  String get tourTxTypesTitle => get('tourTxTypesTitle');
+  String get tourTxTypesBody => get('tourTxTypesBody');
   String get user => get('user');
   String get phoneLabel => get('phoneLabel');
   String get otpLabel => get('otpLabel');
@@ -492,6 +499,7 @@ class AppLocalizations {
   String get photoPickerTitle => get('photoPickerTitle');
   String get photoPickerCamera => get('photoPickerCamera');
   String get photoPickerGallery => get('photoPickerGallery');
+  String get photoPickerRecent => get('photoPickerRecent');
   String get photoPickerNoAccess => get('photoPickerNoAccess');
   String get photoPickerOpenSettings => get('photoPickerOpenSettings');
   String get photoPickerEmpty => get('photoPickerEmpty');
@@ -588,6 +596,8 @@ class AppLocalizations {
   // ── Bank picker ────────────────────────────────────────────────────────
   String get bankPickerTitle => get('bankPickerTitle');
   String get bankPickerEmpty => get('bankPickerEmpty');
+  String get bankPickerError => get('bankPickerError');
+  String get bankPickerRetry => get('bankPickerRetry');
   // ── Create order ───────────────────────────────────────────────────────
   String get createOrderTokensInfo => get('createOrderTokensInfo');
   // ── Restricted access ──────────────────────────────────────────────────

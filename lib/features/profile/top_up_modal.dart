@@ -27,15 +27,29 @@ class _TokenPackage {
   final int tokens;
   final _BadgeKind? badge;
 
-  const _TokenPackage({required this.tokens, this.badge});
+  /// Цена пакета в TMT из Directus (`token_package.price`).
+  /// `null` — цены нет (fallback-пакеты), тогда считаем `tokens × rate`.
+  /// Именно собственная цена даёт скидку за объём: чем больше пакет,
+  /// тем дешевле жетон.
+  final double? price;
+
+  const _TokenPackage({required this.tokens, this.badge, this.price});
 }
 
+/// Резервные пакеты — используются, пока грузится Directus или если
+/// коллекция `token_package` недоступна. Цены нет → считается по курсу.
 const _kPackages = [
   _TokenPackage(tokens: 10),
   _TokenPackage(tokens: 25, badge: _BadgeKind.popular),
   _TokenPackage(tokens: 50, badge: _BadgeKind.profitable),
   _TokenPackage(tokens: 100),
 ];
+
+_BadgeKind? _badgeFromString(String? raw) => switch (raw?.trim()) {
+      'popular' => _BadgeKind.popular,
+      'profitable' => _BadgeKind.profitable,
+      _ => null,
+    };
 
 String? _badgeText(_BadgeKind? kind, AppLocalizations w) {
   switch (kind) {
@@ -88,10 +102,15 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
   double _rate = 2.0;
   BankOption? _selectedBank;
 
+  /// Пакеты жетонов. Стартуем с резервных, затем подменяем на настроенные
+  /// в Directus (со скидкой за объём).
+  List<_TokenPackage> _packages = _kPackages;
+
   @override
   void initState() {
     super.initState();
     _loadRate();
+    _loadPackages();
     startTourIfNeeded(
       screenKey: TourKeys.topUpModal,
       targetsBuilder: _buildTourTargets,
@@ -146,6 +165,30 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
     if (mounted) setState(() => _rate = rate ?? 2.0);
   }
 
+  /// Пакеты жетонов из Directus (`token_package`). Цена задаётся на пакет,
+  /// поэтому крупные пакеты дешевле в пересчёте на жетон. При любой ошибке
+  /// молча остаёмся на резервных пакетах — модалка продолжает работать.
+  Future<void> _loadPackages() async {
+    final list = await _authRepo.fetchTokenPackages();
+    if (!mounted || list.isEmpty) return;
+    setState(() {
+      _packages = [
+        for (final p in list)
+          _TokenPackage(
+            tokens: p.tokens,
+            price: p.price,
+            badge: _badgeFromString(p.badge),
+          ),
+      ];
+      // Выбор мог указывать на пакет, которого больше нет.
+      if (_selectedPackageIndex != null &&
+          _selectedPackageIndex! >= _packages.length) {
+        _selectedPackageIndex = null;
+        _points = 0;
+      }
+    });
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -153,12 +196,25 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
   }
 
   void _selectPackage(int index) {
-    final pkg = _kPackages[index];
+    if (index < 0 || index >= _packages.length) return;
+    final pkg = _packages[index];
     setState(() {
       _selectedPackageIndex = index;
       _points = pkg.tokens;
       _controller.clear();
     });
+  }
+
+  /// Сумма к оплате. Если выбран пакет с собственной ценой — берём её
+  /// (иначе курьер увидел бы «85 TMT» на карточке, а списалось бы 100).
+  /// Произвольное количество жетонов считается по базовому курсу.
+  double get _amountTmt {
+    final idx = _selectedPackageIndex;
+    if (idx != null && idx < _packages.length) {
+      final price = _packages[idx].price;
+      if (price != null) return price;
+    }
+    return (_points * _rate).toDouble();
   }
 
   void _onCustomChanged(String val) {
@@ -176,7 +232,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
     final success = await _authRepo.requestTopUp(
       userId: widget.userId,
       points: _points,
-      amountTmt: (_points * _rate).toDouble(),
+      amountTmt: _amountTmt,
     );
     if (mounted) {
       setState(() => _isLoading = false);
@@ -269,7 +325,7 @@ class _TopUpModalState extends State<TopUpModal> with AppTourMixin<TopUpModal> {
                       KeyedSubtree(
                         key: _packagesKey,
                         child: _PackagesGrid(
-                          packages: _kPackages,
+                          packages: _packages,
                           selectedIndex: _selectedPackageIndex,
                           rate: _rate,
                           words: words,
@@ -536,7 +592,14 @@ class _PackageCardState extends State<_PackageCard> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final badge = _badgeText(widget.package.badge, widget.words);
-    final price = widget.package.tokens * widget.rate;
+    // Цена пакета из Directus, иначе — по базовому курсу.
+    final price = widget.package.price ?? widget.package.tokens * widget.rate;
+    // Выгода относительно базового курса: «−15%». Показываем только когда
+    // пакет реально дешевле — это и есть стимул брать объём побольше.
+    final basePrice = widget.package.tokens * widget.rate;
+    final discountPct = basePrice > 0 && price < basePrice
+        ? ((1 - price / basePrice) * 100).round()
+        : 0;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -603,12 +666,33 @@ class _PackageCardState extends State<_PackageCard> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _formatPrice(price),
-                    style: AppText.semiBold(
-                      fontSize: 13,
-                      color: widget.isSelected ? c.ink : c.inkMuted,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        _formatPrice(price),
+                        style: AppText.semiBold(
+                          fontSize: 13,
+                          color: widget.isSelected ? c.ink : c.inkMuted,
+                        ),
+                      ),
+                      if (discountPct > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: c.emeraldTint,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '-$discountPct%',
+                            style: AppText.bold(fontSize: 10, color: c.ink),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),

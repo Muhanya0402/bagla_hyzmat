@@ -302,7 +302,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         key: _locationKey,
         title: words.tourCreateOrderLocationTitle,
         body: words.tourCreateOrderLocationBody,
-        align: ContentAlign.top,
+        // Секция локации — предпоследняя в форме, поэтому доскроллить её до
+        // центра нельзя (упирается в конец скролла) и она остаётся в НИЖНЕЙ
+        // части экрана. Карточка у низа (bottom) её перекрывала. Пиним карточку
+        // у ВЕРХА — там свободно, секция видна целиком, а «Далее» всегда на
+        // экране (в отличие от align top, где карточка могла уехать за край).
+        customPosition: CustomTargetContentPosition(top: 8),
       ),
       TourTarget.build(
         id: 'create_order_3',

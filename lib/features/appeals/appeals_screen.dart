@@ -1,5 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/core/app_settings_provider.dart';
+import 'package:bagla/features/profile/utils/phone_launcher.dart';
 import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
@@ -39,6 +41,8 @@ class _AppealsScreenState extends State<AppealsScreen>
     startTourIfNeeded(
       screenKey: TourKeys.appeals,
       targetsBuilder: _buildTourTargets,
+      // Как и на остальных экранах — banned/pending/rejected гид не показываем.
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
   }
 
@@ -126,6 +130,33 @@ class _AppealsScreenState extends State<AppealsScreen>
             words.appealsTitle,
             style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
           ),
+          actions: [
+            // «Позвонить в поддержку» — перенесено сюда из отдельного пункта
+            // «Связаться с поддержкой» (объединили с обращениями).
+            if (context.watch<AppSettingsProvider>().supportPhone.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: GestureDetector(
+                  onTap: () => launchPhoneCall(
+                    context.read<AppSettingsProvider>().supportPhone,
+                  ),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.of(context).surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.of(context).border),
+                    ),
+                    child: Icon(
+                      Icons.call_outlined,
+                      color: AppColors.of(context).ink,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(0.5),
             child: Container(height: 0.5, color: AppColors.of(context).border),

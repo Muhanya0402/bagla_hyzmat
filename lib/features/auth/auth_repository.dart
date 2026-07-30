@@ -5,6 +5,7 @@ import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/models/district.dart';
 import 'package:bagla/models/province.dart';
+import 'package:bagla/models/token_package_option.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -222,7 +223,22 @@ class AuthRepository {
 
   // ─── Локация: Велаят → Этрап → Район ──────────────────────────────────────
 
+  // T4: справочники локаций почти не меняются, а грузятся при каждом открытии
+  // фильтра/регистрации и на старте. Кешируем в памяти с TTL. Этрапы/районы —
+  // по ключу родителя. Поисковые запросы по районам НЕ кешируем.
+  static const _locTtl = Duration(minutes: 30);
+  static List<Province>? _provincesCache;
+  static DateTime? _provincesAt;
+  static final Map<String, List<Etrap>> _etrapsCache = {};
+  static final Map<String, DateTime> _etrapsAt = {};
+  static final Map<String, List<District>> _districtsCache = {};
+  static final Map<String, DateTime> _districtsAt = {};
+
+  static bool _fresh(DateTime? at) =>
+      at != null && DateTime.now().difference(at) < _locTtl;
+
   Future<List<Province>> getProvinces() async {
+    if (_provincesCache != null && _fresh(_provincesAt)) return _provincesCache!;
     try {
       final res = await _api.dio.get(
         '/items/province',
@@ -232,13 +248,21 @@ class AuthRepository {
         },
       );
       final List data = res.data['data'];
-      return data.map((e) => Province.fromJson(e)).toList();
+      final list = data.map((e) => Province.fromJson(e)).toList();
+      if (list.isNotEmpty) {
+        _provincesCache = list;
+        _provincesAt = DateTime.now();
+      }
+      return list;
     } catch (e) {
+      if (_provincesCache != null) return _provincesCache!;
       throw Exception("Ошибка загрузки велаятов: $e");
     }
   }
 
   Future<List<Etrap>> getEtrapsByProvince(String provinceId) async {
+    final cached = _etrapsCache[provinceId];
+    if (cached != null && _fresh(_etrapsAt[provinceId])) return cached;
     try {
       final res = await _api.dio.get(
         '/items/etraps',
@@ -249,8 +273,12 @@ class AuthRepository {
         },
       );
       final List data = res.data['data'];
-      return data.map((e) => Etrap.fromJson(e)).toList();
+      final list = data.map((e) => Etrap.fromJson(e)).toList();
+      _etrapsCache[provinceId] = list;
+      _etrapsAt[provinceId] = DateTime.now();
+      return list;
     } catch (e) {
+      if (cached != null) return cached;
       throw Exception("Ошибка загрузки этрапов: $e");
     }
   }
@@ -260,6 +288,11 @@ class AuthRepository {
     String query = '',
     String lang = 'ru',
   }) async {
+    // Кеш только для полного списка (без поиска).
+    if (query.isEmpty) {
+      final cached = _districtsCache[etrapId];
+      if (cached != null && _fresh(_districtsAt[etrapId])) return cached;
+    }
     try {
       final params = <String, dynamic>{
         'fields': 'id,district_ru,district_tk,etrap',
@@ -279,8 +312,16 @@ class AuthRepository {
         queryParameters: params,
       );
       final List data = res.data['data'];
-      return data.map((e) => District.fromJson(e)).toList();
+      final list = data.map((e) => District.fromJson(e)).toList();
+      if (query.isEmpty) {
+        _districtsCache[etrapId] = list;
+        _districtsAt[etrapId] = DateTime.now();
+      }
+      return list;
     } catch (e) {
+      if (query.isEmpty && _districtsCache[etrapId] != null) {
+        return _districtsCache[etrapId]!;
+      }
       throw Exception("Ошибка загрузки районов: $e");
     }
   }
@@ -349,6 +390,37 @@ class AuthRepository {
       return (items.first['token_rate'] as num?)?.toDouble();
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Пакеты жетонов из Directus (`token_package`) — количество, цена и метка.
+  /// Собственная цена на пакет даёт скидку за объём. При любой ошибке
+  /// возвращаем пустой список: UI останется на резервных пакетах.
+  Future<List<TokenPackageOption>> fetchTokenPackages() async {
+    try {
+      final res = await _api.dio.get(
+        '/items/token_package',
+        queryParameters: {
+          'filter[is_active][_eq]': true,
+          'sort': 'sort_order',
+          'fields': 'id,tokens,price,badge,is_active,sort_order',
+        },
+      );
+      final data = res.data?['data'];
+      if (data is! List) return const [];
+      return data
+          .whereType<Map>()
+          .where((e) => e['tokens'] != null && e['price'] != null)
+          .map((e) => TokenPackageOption(
+                tokens: (e['tokens'] as num).toInt(),
+                price: (e['price'] as num).toDouble(),
+                badge: e['badge']?.toString(),
+              ))
+          .where((p) => p.tokens > 0)
+          .toList();
+    } catch (e) {
+      if (kDebugMode) debugPrint('fetchTokenPackages error: $e');
+      return const [];
     }
   }
 

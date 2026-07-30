@@ -2,6 +2,7 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/sheet_handle.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/levels/level_provider.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/orders/order_service.dart';
@@ -32,7 +33,9 @@ import 'package:provider/provider.dart';
 class TakeOrderFlow {
   TakeOrderFlow._();
 
-  static const int _maxActiveOrders = 3;
+  /// Базовый лимит активных заказов, если уровень курьера не загружен или
+  /// правило `max_active_orders` не настроено в Directus (`level_bonuses`).
+  static const int _defaultMaxActiveOrders = 3;
 
   /// Ранг «грузоподъёмности» транспорта. Курьер может взять заказ, только
   /// если его ранг ≥ ранга заказа. Заказ 'any' (пешком/любой) доступен всем.
@@ -105,12 +108,20 @@ class TakeOrderFlow {
       return;
     }
 
-    // 4. Лимит активных заказов.
+    // 4. Лимит активных заказов — зависит от уровня курьера
+    // (`level_bonuses.max_active_orders` в Directus). Чем выше уровень,
+    // тем больше заказов можно вести параллельно.
+    final maxActiveOrders =
+        context.read<LevelProvider>().currentLevel?.maxActiveOrders(
+              fallback: _defaultMaxActiveOrders,
+            ) ??
+            _defaultMaxActiveOrders;
+
     final service = OrderService();
     final activeCount = await service.getActiveOrdersCount(currentUserId);
     if (!context.mounted) return;
 
-    if (activeCount >= _maxActiveOrders) {
+    if (activeCount >= maxActiveOrders) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

@@ -19,6 +19,13 @@ class LevelBonus {
   );
 
   String label(bool isRu) => isRu ? labelRu : labelTk;
+
+  /// Тип бонуса: ежедневное начисление жетонов (обрабатывается cron-flow
+  /// «Ежедневные бонусы за уровни» на стороне Directus).
+  static const String typeDailyTokens = 'daily_tokens';
+
+  /// Тип бонуса: сколько заказов курьер может вести одновременно.
+  static const String typeMaxActiveOrders = 'max_active_orders';
 }
 
 class LevelDefinition {
@@ -69,6 +76,19 @@ class LevelDefinition {
   double get dailyTokens {
     final bonus = bonuses.where((b) => b.bonusType == 'daily_tokens').toList();
     return bonus.isNotEmpty ? bonus.first.valueNumber : 0.0;
+  }
+
+  /// Сколько заказов курьер этого уровня может вести одновременно.
+  /// Настраивается в Directus (`level_bonuses`, тип `max_active_orders`).
+  /// Если правило не задано — [fallback] (историческое значение 3).
+  int maxActiveOrders({int fallback = 3}) {
+    final bonus = bonuses
+        .where((b) => b.bonusType == LevelBonus.typeMaxActiveOrders)
+        .toList();
+    if (bonus.isEmpty) return fallback;
+    final v = bonus.first.valueNumber.toInt();
+    // Защита от пустого/битого правила: лимит не может быть меньше 1.
+    return v > 0 ? v : fallback;
   }
 }
 

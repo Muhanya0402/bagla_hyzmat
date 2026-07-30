@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "citadeles",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8137", "--directory", "F:/citadeles"],
+      "port": 8137
+    },
+    {
+      "name": "rm-app-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8899", "--directory", "C:/Users/dev4/AppData/Local/Temp/claude/C--MyProjects-balga/8a048f39-fae3-4e6c-ae3b-0ae9c74e9861/scratchpad"],
+      "port": 8899
+    }
+  ]
+}

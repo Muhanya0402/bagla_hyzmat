@@ -115,6 +115,10 @@ class TransactionService {
               // type 'credit' и пр. — считаем начислением.
               tokens = type == 'credit' ? amount.abs() : amount;
           }
+          // История — про ДВИЖЕНИЕ жетонов. Записи с нулевой суммой (например,
+          // списание за бесплатный заказ) реального движения не несут и только
+          // засоряют список — пропускаем их.
+          if (tokens == 0) continue;
           entries.add(
             TransactionEntry(
               date: _parseDate(raw['date_created']),
@@ -145,12 +149,16 @@ class TransactionService {
       if (data is List) {
         for (final raw in data) {
           if (raw is! Map) continue;
+          final points = _toDouble(raw['points']);
+          final money = _toDouble(raw['amountToBeReplenished']);
+          // Пустое пополнение (0 жетонов и 0 суммы) в историю не попадает.
+          if (points == 0 && money == 0) continue;
           entries.add(
             TransactionEntry(
               date: _parseDate(raw['date_created']),
               kind: TxKind.topUp,
-              tokens: _toDouble(raw['points']),
-              money: _toDouble(raw['amountToBeReplenished']),
+              tokens: points,
+              money: money,
             ),
           );
         }

@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'tour_manager.dart';
+import 'tour_target.dart';
 
 /// Mixin для `State<T>`. Инкапсулирует запуск тура, lifecycle-безопасность
 /// и интеграцию с TourManager.
@@ -280,6 +281,8 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
     final targets = _filterMountedTargets(targetsBuilder());
     if (targets.isEmpty) return;
     if (!mounted) return;
+    // Реально-последний шаг (после фильтрации) должен показывать «Понятно».
+    TourTarget.reflagLast(targets);
     _launch(screenKey: screenKey, targets: targets);
   }
 
@@ -425,6 +428,7 @@ mixin AppTourMixin<T extends StatefulWidget> on State<T> {
       if (!mounted) return;
       final targets = _filterMountedTargets(targetsBuilder());
       if (targets.isEmpty) return;
+      TourTarget.reflagLast(targets);
       _launch(screenKey: screenKey, targets: targets);
     });
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:bagla/models/cashback_rule.dart';
 import 'package:bagla/models/points_rule.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -21,6 +22,12 @@ class OrderService {
   final ApiClient _apiClient = ApiClient();
 
   static const int pageSize = 5;
+
+  /// T2: если у роли нет прав на lean-поля, Directus один раз вернёт 403,
+  /// после чего мы ЗАПОМИНАЕМ это и дальше сразу запрашиваем `fields:'*'`,
+  /// не тратя лишний запрос на заведомо-403 lean-попытку при КАЖДОЙ загрузке.
+  /// static — общий для всех инстансов `OrderService()` в рамках сессии.
+  static bool _orderFieldsForbidden = false;
 
   // ─── 1. СОЗДАНИЕ ЗАКАЗА ───────────────────────────────────────────────────
 
@@ -52,21 +59,39 @@ class OrderService {
     bool multipleItems = false,
   }) async {
     try {
-      List<String> fileIds = [];
-      for (var image in images) {
-        final formData = FormData.fromMap({
-          'file': await MultipartFile.fromFile(
-            image.path,
-            filename: image.name,
-          ),
-        });
-        final resFile = await _apiClient.dio.post('/files', data: formData);
-        if (resFile.data?['data'] != null) {
-          fileIds.add(resFile.data['data']['id']);
-        }
-      }
+      // ── Загрузка фото ПАРАЛЛЕЛЬНО (T1) ──────────────────────────────────
+      // Раньше был последовательный `for … await post('/files')` — N фото
+      // = сумма времён загрузок. Теперь грузим все сразу через Future.wait,
+      // сохраняя порядок (fileIds в том же порядке, что и images).
+      final uploaded = await Future.wait(
+        images.map((image) async {
+          try {
+            final formData = FormData.fromMap({
+              'file': await MultipartFile.fromFile(
+                image.path,
+                filename: image.name,
+              ),
+            });
+            final resFile =
+                await _apiClient.dio.post('/files', data: formData);
+            return resFile.data?['data']?['id']?.toString();
+          } catch (_) {
+            return null; // одно упавшее фото не валит весь заказ
+          }
+        }),
+      );
+      final List<String> fileIds = [
+        for (final id in uploaded)
+          if (id != null && id.isNotEmpty) id,
+      ];
 
-      final double cashbackAmount = (pointsAmount * 0.2).toDouble();
+      // Кэшбек — по правилам из Directus (`cashback_rule`), ЦЕЛЫМИ жетонами.
+      // Было `pointsAmount * 0.2`: при 2 жетонах давало 0.4, а начисление
+      // делает `toInt()` → курьер не получал ничего.
+      final int cashbackAmount = calculateCashback(
+        deliveryFee,
+        await fetchCashbackRules(),
+      );
 
       final orderData = {
         'order_status': 'published',
@@ -331,6 +356,14 @@ class OrderService {
           'shopId.item,shopId.collection';
 
       Response response;
+      // Если уже знаем, что роли не хватает прав на lean-поля — сразу `*`,
+      // без заведомо-403 попытки (T2).
+      if (_orderFieldsForbidden) {
+        response = await _apiClient.dio.get(
+          '/items/orders',
+          queryParameters: {...qp, 'fields': '*'},
+        );
+      } else {
       try {
         response = await _apiClient.dio.get(
           '/items/orders',
@@ -339,10 +372,11 @@ class OrderService {
       } on DioException catch (e) {
         // 403 на lean-fields обычно значит что какое-то поле/relation
         // закрыто permissions в Directus. Retry с `*` (только то, что
-        // разрешает access policy).
+        // разрешает access policy) и запоминаем это для будущих запросов.
         if (e.response?.statusCode == 403) {
+          _orderFieldsForbidden = true;
           if (kDebugMode) {
-            print('⚠️ getOrders 403 with lean fields — retrying with *');
+            print('⚠️ getOrders 403 with lean fields — switching to * (memoized)');
           }
           response = await _apiClient.dio.get(
             '/items/orders',
@@ -351,6 +385,7 @@ class OrderService {
         } else {
           rethrow;
         }
+      }
       }
 
       if (response.data?['data'] == null) return [];
@@ -475,6 +510,12 @@ class OrderService {
           'shopId.item,shopId.collection';
 
       Response response;
+      if (_orderFieldsForbidden) {
+        response = await _apiClient.dio.get(
+          '/items/orders/$orderId',
+          queryParameters: {'fields': '*'},
+        );
+      } else {
       try {
         response = await _apiClient.dio.get(
           '/items/orders/$orderId',
@@ -482,6 +523,7 @@ class OrderService {
         );
       } on DioException catch (e) {
         if (e.response?.statusCode == 403) {
+          _orderFieldsForbidden = true;
           response = await _apiClient.dio.get(
             '/items/orders/$orderId',
             queryParameters: {'fields': '*'},
@@ -489,6 +531,7 @@ class OrderService {
         } else {
           rethrow;
         }
+      }
       }
 
       final data = response.data?['data'];
@@ -812,14 +855,42 @@ class OrderService {
 
   // ─── 8. ПРАВИЛА НАЧИСЛЕНИЯ БАЛЛОВ ────────────────────────────────────────
 
+  // T4: правила начисления баллов — справочник, меняется редко. Кешируем
+  // в памяти с TTL, чтобы не запрашивать при каждом открытии создания заказа.
+  static List<PointsRule>? _pointsRulesCache;
+  static DateTime? _pointsRulesCachedAt;
+  static const _pointsRulesTtl = Duration(minutes: 30);
+
   Future<List<PointsRule>> fetchPointsRules() async {
+    final cached = _pointsRulesCache;
+    final at = _pointsRulesCachedAt;
+    if (cached != null &&
+        at != null &&
+        DateTime.now().difference(at) < _pointsRulesTtl) {
+      return cached;
+    }
     try {
+      // ⚠️ Коллекция называется `points_rule` (ед. ч.). Раньше здесь стояло
+      // `points_rules` — Directus отвечал 403, срабатывал catch, и приложение
+      // ВСЕГДА считало по захардкоженному fallback'у: правила из админки не
+      // работали вообще.
       final response = await _apiClient.dio.get(
-        '/items/points_rules',
+        '/items/points_rule',
         queryParameters: {'sort': '-min_amount'},
       );
       final List data = response.data['data'] as List;
-      return data.map((e) => PointsRule.fromJson(e)).toList();
+      final rules = data
+          .whereType<Map>()
+          // Незаполненные правила пропускаем: одна строка с `points: null`
+          // роняла парсинг всего списка → снова уходили в fallback.
+          .where((e) => e['min_amount'] != null && e['points'] != null)
+          .map((e) => PointsRule.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      if (rules.isNotEmpty) {
+        _pointsRulesCache = rules;
+        _pointsRulesCachedAt = DateTime.now();
+      }
+      return rules;
     } catch (e) {
       if (kDebugMode) print('Ошибка fetchPointsRules: $e');
       // fallback — старая логика, если Directus недоступен
@@ -836,6 +907,55 @@ class OrderService {
   int calculatePoints(double orderSum, List<PointsRule> rules) {
     for (final rule in rules) {
       if (orderSum >= rule.minAmount) return rule.points;
+    }
+    return 0;
+  }
+
+  // ─── 9. КЭШБЕК КУРЬЕРУ (правила из Directus) ──────────────────────────────
+
+  // Кеш с TTL — справочник, меняется редко (как points_rule).
+  static List<CashbackRule>? _cashbackRulesCache;
+  static DateTime? _cashbackRulesCachedAt;
+
+  /// Правила кэшбека из Directus (`cashback_rule`), отсортированы по убыванию
+  /// `min_amount` — чтобы `calculateCashback` брал первое подходящее.
+  Future<List<CashbackRule>> fetchCashbackRules() async {
+    final cached = _cashbackRulesCache;
+    final at = _cashbackRulesCachedAt;
+    if (cached != null &&
+        at != null &&
+        DateTime.now().difference(at) < _pointsRulesTtl) {
+      return cached;
+    }
+    try {
+      final response = await _apiClient.dio.get(
+        '/items/cashback_rule',
+        queryParameters: {'sort': '-min_amount'},
+      );
+      final data = response.data?['data'];
+      if (data is! List) return const [];
+      final rules = data
+          .whereType<Map>()
+          .where((e) => e['min_amount'] != null && e['cashback'] != null)
+          .map((e) => CashbackRule.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      if (rules.isNotEmpty) {
+        _cashbackRulesCache = rules;
+        _cashbackRulesCachedAt = DateTime.now();
+      }
+      return rules;
+    } catch (e) {
+      if (kDebugMode) print('Ошибка fetchCashbackRules: $e');
+      // Правил нет/недоступны — кэшбек просто не начисляем (0),
+      // без «изобретённых» значений.
+      return _cashbackRulesCache ?? const [];
+    }
+  }
+
+  /// Сколько жетонов кэшбека положено за доставку стоимостью [deliveryFee].
+  int calculateCashback(double deliveryFee, List<CashbackRule> rules) {
+    for (final rule in rules) {
+      if (deliveryFee >= rule.minAmount) return rule.cashback;
     }
     return 0;
   }

@@ -330,7 +330,11 @@ class HomeScreenState extends State<HomeScreen>
                 scrollController: scrollController,
                 authProv: authProv,
                 words: words,
-                onRefresh: handleRefresh,
+                // T3: обновление от карточек (закрытие детали, onUpdate) —
+                // через дебаунс, чтобы не перезагружать всю ленту на каждое
+                // открыл-закрыл. Pull-to-refresh (RefreshIndicator выше) —
+                // напрямую handleRefresh, мгновенно.
+                onRefresh: refreshFromCard,
                 swipeEnabled:
                     (isCourier && isActive) || (isShop && isActive),
                 // Courier: бинарный Все ↔ Мои

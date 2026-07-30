@@ -135,6 +135,17 @@ const Map<String, String> stringsRu = {
   'txCashback': 'Кэшбек',
   'txDailyBonus': 'Ежедневный бонус',
   'txOther': 'Начисление',
+  // ── Гид по истории транзакций ────────────────────────────────────────────
+  'tourTxTitleTitle': 'История транзакций',
+  'tourTxTitleBody':
+      'Здесь вся история: пополнения, списания жетонов, кэшбек и бонусы.',
+  'tourTxListTitle': 'Список операций',
+  'tourTxListBody':
+      'Записи идут от новых к старым. В каждой — тип операции, дата и сумма.',
+  'tourTxTypesTitle': 'Как читать запись',
+  'tourTxTypesBody':
+      'Пополнение, списание за заказ, кэшбек, ежедневный бонус. '
+      '«+» — начисление жетонов, «−» — списание.',
   'user': 'Пользователь',
   'phoneLabel': 'Телефон',
   'otpLabel': 'Код из SMS',
@@ -545,6 +556,8 @@ const Map<String, String> stringsRu = {
   'photoPickerTitle': 'Прикрепить фото',
   'photoPickerCamera': 'Камера',
   'photoPickerGallery': 'Выбрать из галереи',
+  // Системный альбом «все фото» (ОС отдаёт его как «Recent» по-английски).
+  'photoPickerRecent': 'Все фото',
   'photoPickerNoAccess': 'Нет доступа к фото. Разрешите доступ к галерее в настройках.',
   'photoPickerOpenSettings': 'Открыть настройки',
   'photoPickerEmpty': 'В галерее пока нет фото',
@@ -643,6 +656,8 @@ const Map<String, String> stringsRu = {
   // ── Bank picker ────────────────────────────────────────────────────────────
   'bankPickerTitle': 'ВЫБЕРИТЕ БАНК',
   'bankPickerEmpty': 'Банки недоступны',
+  'bankPickerError': 'Не удалось загрузить банки',
+  'bankPickerRetry': 'Повторить',
   // ── Create order ───────────────────────────────────────────────────────────
   'createOrderTokensInfo':
       'Публикация заказа: {n} жетонов. Будут списаны после принятия курьером',

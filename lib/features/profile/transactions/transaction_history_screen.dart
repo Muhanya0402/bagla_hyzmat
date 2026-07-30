@@ -1,5 +1,8 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/core/tour/app_tour_mixin.dart';
+import 'package:bagla/core/tour/tour_keys.dart';
+import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/core/widgets/shimmer.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
@@ -8,6 +11,7 @@ import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 /// История транзакций курьера: пополнения (сумма+жетоны), списания за заказы,
 /// кэшбек и ежедневные бонусы — единым списком, новые сверху.
@@ -19,16 +23,70 @@ class TransactionHistoryScreen extends StatefulWidget {
       _TransactionHistoryScreenState();
 }
 
-class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
+class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
+    with AppTourMixin<TransactionHistoryScreen> {
   final _service = TransactionService();
   List<TransactionEntry> _items = const [];
   bool _loading = true;
   bool _error = false;
 
+  // ── Tour anchors ──────────────────────────────────────────────────────────
+  final _titleKey = GlobalKey(); // заголовок в AppBar
+  final _listKey = GlobalKey(); // лента операций
+  final _firstItemKey = GlobalKey(); // первая запись (крупный план)
+
+  /// Гид запускаем один раз и ТОЛЬКО после загрузки данных — иначе он
+  /// подсветил бы shimmer вместо реальных записей.
+  bool _tourStarted = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  void _maybeStartTour() {
+    if (_tourStarted) return;
+    _tourStarted = true;
+    startTourIfNeeded(
+      screenKey: TourKeys.transactions,
+      targetsBuilder: _buildTourTargets,
+      shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
+    );
+  }
+
+  List<TargetFocus> _buildTourTargets() {
+    final words = context.read<LanguageProvider>().words;
+    return [
+      TourTarget.build(
+        id: 'tx_0',
+        key: _titleKey,
+        title: words.tourTxTitleTitle,
+        body: words.tourTxTitleBody,
+        align: ContentAlign.bottom,
+      ),
+      TourTarget.build(
+        id: 'tx_1',
+        key: _listKey,
+        title: words.tourTxListTitle,
+        body: words.tourTxListBody,
+        // Лента занимает экран до низа — прибиваем карточку к низу,
+        // как в «Обращениях» и на главной.
+        customPosition: CustomTargetContentPosition(bottom: 110),
+      ),
+      // Шаг про типы операций — только если есть хотя бы одна запись.
+      // При пустой истории у ключа нет context, и шаг отфильтруется
+      // (`_filterMountedTargets`), а «Понятно» проставится на предыдущем.
+      if (_items.isNotEmpty)
+        TourTarget.build(
+          id: 'tx_2',
+          key: _firstItemKey,
+          title: words.tourTxTypesTitle,
+          body: words.tourTxTypesBody,
+          customPosition: CustomTargetContentPosition(bottom: 110),
+          isLast: true,
+        ),
+    ];
   }
 
   Future<void> _load() async {
@@ -41,6 +99,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         _items = items;
         _loading = false;
       });
+      // Данные на экране — теперь якоря гида существуют.
+      _maybeStartTour();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -71,9 +131,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             child: Icon(Icons.arrow_back_ios_new_rounded, color: c.ink, size: 16),
           ),
         ),
-        title: Text(
-          words.txHistoryTitle,
-          style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
+        title: KeyedSubtree(
+          key: _titleKey,
+          child: Text(
+            words.txHistoryTitle,
+            style: AppText.serif(fontSize: 20, letterSpacing: -0.3),
+          ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
@@ -81,6 +144,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         ),
       ),
       body: RefreshIndicator(
+        key: _listKey,
         color: c.ink,
         backgroundColor: c.surface,
         onRefresh: _load,
@@ -116,7 +180,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
       itemCount: _items.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _TxTile(entry: _items[i], words: words),
+      itemBuilder: (_, i) {
+        final tile = _TxTile(entry: _items[i], words: words);
+        // Первая запись — якорь шага гида «Как читать запись».
+        return i == 0 ? KeyedSubtree(key: _firstItemKey, child: tile) : tile;
+      },
     );
   }
 
@@ -201,8 +269,11 @@ class _TxTile extends StatelessWidget {
         : entry.tokens < 0
             ? c.errorMuted
             : c.inkSoft;
-    final sign = entry.tokens > 0 ? '+' : '';
-    final tokenStr = '$sign${_trim(entry.tokens)}';
+    // Знак ставим ЯВНО и всегда: «+» — начисление, «-» — списание.
+    // Раньше минус приходил только из самого числа, а плюс был не у всех
+    // строк — на глаз было непонятно, пополнение это или списание.
+    final sign = entry.tokens > 0 ? '+' : '-';
+    final tokenStr = '$sign${_trim(entry.tokens.abs())}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -258,7 +329,9 @@ class _TxTile extends StatelessWidget {
                   children: [
                     Text(
                       tokenStr,
-                      style: AppText.semiBold(fontSize: 13.5, color: tokenColor),
+                      // Крупнее и жирнее прежнего: сумма со знаком — главное
+                      // в строке, её должно быть видно с первого взгляда.
+                      style: AppText.bold(fontSize: 15.5, color: tokenColor),
                     ),
                     const SizedBox(width: 3),
                     const PointIcon(size: 14),

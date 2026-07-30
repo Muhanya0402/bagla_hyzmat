@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
+import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -67,6 +68,14 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
   /// к выбранным фото. Тогда показываем баннер «Разрешить ещё» для расширения
   /// набора через системный диалог (`presentLimited`).
   bool _galLimited = false;
+
+  /// Guard: не даём стартовать двум загрузкам галереи одновременно.
+  /// Без него `presentLimited()` и resume-хендлер запускали `_loadGallery`
+  /// параллельно → два `requestPermissionExtend()` подряд (система повторно
+  /// показывала запрос доступа), а гонка двух `_selectAlbum` могла оставить
+  /// `_galLoading = true` навсегда — бесконечный спиннер.
+  bool _galLoadInFlight = false;
+
   final List<AssetEntity> _selected = [];
 
   // Текущая высота выдвижного листа (для скрытия кнопок камеры при раскрытии).
@@ -100,12 +109,23 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final cam = _cam;
-    if (cam == null || !cam.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
-      cam.dispose();
+      final cam = _cam;
+      if (cam != null && cam.value.isInitialized) cam.dispose();
     } else if (state == AppLifecycleState.resumed) {
-      _setCamera(_camIndex);
+      if (!mounted) return;
+      // Камеру пере-инициализируем, если она уже была получена ранее
+      // (на inactive её dispose'нули).
+      if (_cameras.isNotEmpty) _setCamera(_camIndex);
+      // Галерею перечитываем, если доступ был закрыт/ограничен: пользователь
+      // мог выдать его в системных настройках после «Открыть настройки».
+      // Без этого экран «Нет доступа» оставался висеть после возврата.
+      // `_galLoadInFlight` — чтобы не наложиться на уже идущую загрузку
+      // (например, запущенную из `_requestMorePhotos` после presentLimited).
+      if ((_galDenied || _galLimited) && !_galLoadInFlight) {
+        setState(() => _galLoading = true);
+        _loadGallery();
+      }
     }
   }
 
@@ -222,7 +242,26 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     if (nextIdx >= 0) await _setCamera(nextIdx);
   }
 
+  /// Отображаемое имя альбома.
+  ///
+  /// Системный альбом «все фото» плагин отдаёт как «Recent» / «All» /
+  /// «Camera Roll» — ВСЕГДА на английском, независимо от языка приложения
+  /// (это имя приходит от ОС, а не из наших переводов). Подменяем его на
+  /// локализованное. Пользовательские папки (Camera, Screenshots и т.п.)
+  /// оставляем как есть — это реальные имена каталогов.
+  String _albumLabel(AssetPathEntity? a, AppLocalizations words) {
+    if (a == null) return words.photoPickerRecent;
+    if (a.isAll) return words.photoPickerRecent;
+    final n = a.name.trim();
+    if (n.isEmpty) return words.photoPickerRecent;
+    const systemAll = {'recent', 'recents', 'all', 'all photos', 'camera roll'};
+    if (systemAll.contains(n.toLowerCase())) return words.photoPickerRecent;
+    return n;
+  }
+
   Future<void> _loadGallery() async {
+    if (_galLoadInFlight) return; // уже грузим — второй запрос не нужен
+    _galLoadInFlight = true;
     try {
       final ps = await PhotoManager.requestPermissionExtend();
       if (!ps.hasAccess) {
@@ -246,6 +285,9 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
       if (albums.isEmpty) {
         if (mounted) {
           setState(() {
+            // Доступ есть — снимаем «нет доступа», иначе флаг оставался true
+            // навсегда и resume-хендлер снова и снова просил разрешение.
+            _galDenied = false;
             _galLimited = limited;
             _galLoading = false;
           });
@@ -253,10 +295,17 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
         return;
       }
       _albums = albums;
-      if (mounted) setState(() => _galLimited = limited);
+      if (mounted) {
+        setState(() {
+          _galDenied = false;
+          _galLimited = limited;
+        });
+      }
       await _selectAlbum(albums.first);
     } catch (_) {
       if (mounted) setState(() => _galLoading = false);
+    } finally {
+      _galLoadInFlight = false;
     }
   }
 
@@ -272,12 +321,10 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     // Сбрасываем кеш путей/файлов, чтобы новый набор точно подтянулся.
     await PhotoManager.clearFileCache();
     if (!mounted) return;
-    setState(() {
-      _galLoading = true;
-      _albums = const [];
-      _album = null;
-      _assets = const [];
-    });
+    // Списки НЕ обнуляем: `_loadGallery` их всё равно перезапишет, а обнуление
+    // могло затереть данные уже идущей (запущенной из resume) загрузки —
+    // альбом пропадал из шапки, хотя фото подгружались.
+    setState(() => _galLoading = true);
     await _loadGallery();
   }
 
@@ -325,7 +372,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
               final isSel = a.id == _album?.id;
               return ListTile(
                 title: Text(
-                  a.name.isEmpty ? words.photoPickerGallery : a.name,
+                  _albumLabel(a, words),
                   style: AppText.medium(
                     fontSize: 15,
                     color: isSel ? c.ink : c.inkMuted,
@@ -586,9 +633,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
                         children: [
                           Flexible(
                             child: Text(
-                              _album?.name.isNotEmpty == true
-                                  ? _album!.name
-                                  : words.photoPickerGallery,
+                              _albumLabel(_album, words),
                               overflow: TextOverflow.ellipsis,
                               style: AppText.semiBold(fontSize: 15, color: c.ink),
                             ),

@@ -12,6 +12,7 @@ abstract final class TourKeys {
   static const userTypeSelection  = 'user_type_selection_screen';
   static const regDetails         = 'registration_details_screen';
   static const regFix             = 'registration_fix_screen';
+  static const transactions       = 'transaction_history_screen';
 
   /// SharedPrefs-ключ для тур-состояния.
   ///

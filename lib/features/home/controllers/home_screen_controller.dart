@@ -87,6 +87,21 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   /// без сетевых запросов). В фоне уведомление и так обновляется на WS/refresh.
   Timer? _notifTickTimer;
 
+  /// T3: дебаунс полного `handleRefresh` для частых триггеров от карточек
+  /// (закрытие детали заказа, `onUpdate`). Раньше каждое открыл-закрыл
+  /// перезагружало ВСЮ ленту (+profile/level/count). Теперь серия таких
+  /// событий схлопывается в один запрос. Pull-to-refresh (RefreshIndicator)
+  /// использует `handleRefresh` напрямую и НЕ дебаунсится.
+  Timer? _cardRefreshDebounce;
+
+  /// Обновление ленты по событию от карточки — с дебаунсом (см. выше).
+  void refreshFromCard() {
+    _cardRefreshDebounce?.cancel();
+    _cardRefreshDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) handleRefresh();
+    });
+  }
+
   void initController() {
     // Слушаем resume — это момент когда пользователь возвращается в
     // приложение из background. Здесь применяем pending action из
@@ -263,6 +278,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     _lifecycleListener = null;
     _notifTickTimer?.cancel();
     _notifTickTimer = null;
+    _cardRefreshDebounce?.cancel();
+    _cardRefreshDebounce = null;
     realtimeService.disconnect();
     scrollController.dispose();
   }

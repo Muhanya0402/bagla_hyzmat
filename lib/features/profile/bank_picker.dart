@@ -3,6 +3,8 @@ import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/base_url.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/l10n/language_provider.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -68,6 +70,13 @@ class BankOption {
 class BankService {
   final ApiClient _api = ApiClient();
 
+  /// Список активных банков.
+  ///
+  /// ⚠️ Ошибку НЕ глушим: раньше здесь был `catch (_) => []`, из-за чего
+  /// сетевой сбой/403 выглядел так же, как «банков не заведено» — на экране
+  /// висело «Банки недоступны» без причины и без возможности повторить.
+  /// Теперь исключение уходит наверх (UI покажет ошибку + «Повторить»),
+  /// а в debug пишем реальную причину: код ответа, тело и URL.
   Future<List<BankOption>> getBanks() async {
     try {
       final res = await _api.dio.get(
@@ -78,10 +87,23 @@ class BankService {
           'fields': 'id,name_ru,name_tk,primary_color,is_active,logo.id',
         },
       );
-      final List data = res.data['data'] as List;
-      return data.map((e) => BankOption.fromJson(e)).toList();
-    } catch (_) {
-      return [];
+      final data = res.data?['data'];
+      if (data is! List) return const [];
+      return data
+          .whereType<Map>()
+          .map((e) => BankOption.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '❌ getBanks: HTTP ${e.response?.statusCode} '
+          'url=${e.requestOptions.uri} body=${e.response?.data}',
+        );
+      }
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ getBanks parse error: $e');
+      rethrow;
     }
   }
 }
@@ -160,6 +182,46 @@ class _BankPickerSectionState extends State<BankPickerSection> {
                   itemCount: 4,
                   separatorBuilder: (_, _) => const SizedBox(width: 10),
                   itemBuilder: (_, _) => _BankSkeleton(),
+                ),
+              );
+            }
+
+            // Загрузка упала (сеть/права/сервер) — это НЕ «банков нет».
+            // Показываем ошибку и даём повторить, не перезагружая экран.
+            if (snap.hasError) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: c.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi_off_rounded, color: c.errorMuted, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        words.bankPickerError,
+                        style: AppText.regular(fontSize: 13, color: c.inkSoft),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () =>
+                          setState(() => _future = _service.getBanks()),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          words.bankPickerRetry,
+                          style: AppText.semiBold(fontSize: 13, color: c.ink),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }

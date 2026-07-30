@@ -6,8 +6,28 @@ import '../../core/api_client.dart';
 class LevelRepository {
   final ApiClient _api = ApiClient();
 
+  // T4: определения уровней — справочник, меняется крайне редко, а грузился
+  // на КАЖДЫЙ refresh (внутри LevelProvider.loadForUser). Кешируем в памяти
+  // с TTL, чтобы не дёргать сеть при каждом обновлении ленты.
+  static List<LevelDefinition>? _levelsCache;
+  static DateTime? _levelsCachedAt;
+  static const _levelsTtl = Duration(minutes: 30);
+
+  /// Сбросить кеш уровней (например, если админ поменял бонусы) — на будущее.
+  static void invalidateLevelsCache() {
+    _levelsCache = null;
+    _levelsCachedAt = null;
+  }
+
   /// Получить все уровни с бонусами
   Future<List<LevelDefinition>> getLevels() async {
+    final cached = _levelsCache;
+    final at = _levelsCachedAt;
+    if (cached != null &&
+        at != null &&
+        DateTime.now().difference(at) < _levelsTtl) {
+      return cached;
+    }
     try {
       final res = await _api.dio.get(
         '/items/level_definitions',
@@ -24,14 +44,22 @@ class LevelRepository {
 
       final List data = res.data['data'];
 
-      return data.map((e) => LevelDefinition.fromJson(e)).toList();
+      final levels = data.map((e) => LevelDefinition.fromJson(e)).toList();
+      // Кешируем только непустой ответ — пустой мог прийти из-за временной
+      // ошибки прав/сети, его кешировать нельзя.
+      if (levels.isNotEmpty) {
+        _levelsCache = levels;
+        _levelsCachedAt = DateTime.now();
+      }
+      return levels;
     } catch (e) {
       if (e is DioException) {
         debugPrint("STATUS: ${e.response?.statusCode}");
         debugPrint("DATA: ${e.response?.data}");
       }
       debugPrint("Ошибка загрузки уровней: $e");
-      return [];
+      // При ошибке — отдаём последний валидный кеш, если он есть.
+      return _levelsCache ?? [];
     }
   }
 

@@ -136,6 +136,19 @@ const Map<String, String> stringsTk = {
   'txCashback': 'Keşbek',
   'txDailyBonus': 'Gündelik bonus',
   'txOther': 'Hasaplama',
+  // ── Amallaryň taryhy boýunça gollanma ────────────────────────────────────
+  'tourTxTitleTitle': 'Amallaryň taryhy',
+  'tourTxTitleBody':
+      'Bu ýerde ähli taryh: hasaby doldurmalar, tylla çykdajylary, '
+      'keşbek we bonuslar.',
+  'tourTxListTitle': 'Amallaryň sanawy',
+  'tourTxListBody':
+      'Ýazgylar täzeden köne tarap gidýär. Her birinde — amalyň görnüşi, '
+      'senesi we möçberi.',
+  'tourTxTypesTitle': 'Ýazgyny nädip okamaly',
+  'tourTxTypesBody':
+      'Hasaby doldurmak, sargyt üçin çykdajy, keşbek, gündelik bonus. '
+      '«+» — tylla goşulýar, «−» — aýrylýar.',
   'user': 'Ulanyjy',
   'phoneLabel': 'Telefon',
   'otpLabel': 'SMS kody',
@@ -536,6 +549,8 @@ const Map<String, String> stringsTk = {
   'photoPickerTitle': 'Surat goşmak',
   'photoPickerCamera': 'Kamera',
   'photoPickerGallery': 'Galereýadan saýlaň',
+  // Ulgamyň «ähli suratlar» albomy (OS ony iňlisçe «Recent» diýip berýär).
+  'photoPickerRecent': 'Ähli suratlar',
   'photoPickerNoAccess': 'Suratlara rugsat ýok. Sazlamalarda galereýa rugsat beriň.',
   'photoPickerOpenSettings': 'Sazlamalary açmak',
   'photoPickerEmpty': 'Galereýada entek surat ýok',
@@ -634,6 +649,8 @@ const Map<String, String> stringsTk = {
   // ── Bank picker ────────────────────────────────────────────────────────────
   'bankPickerTitle': 'BANK SAÝLAŇ',
   'bankPickerEmpty': 'Banklar ýok',
+  'bankPickerError': 'Banklary ýükläp bolmady',
+  'bankPickerRetry': 'Gaýtadan synanyşyň',
   // ── Create order ───────────────────────────────────────────────────────────
   'createOrderTokensInfo':
       'Sargyt çap etmek: {n} nyşan. Kurýer kabul edenden soň ýazylyp alynar',

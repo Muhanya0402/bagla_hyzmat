@@ -371,7 +371,10 @@ class _RegistrationDetailsScreenState
           // было продвинуться. Пиним карточку у низа экрана (над кнопкой) через
           // customPosition — как у длинного списка заказов на главной. Секция
           // при этом центрируется (scroll 0.5) и не задевает кнопку «Сохранить».
-          customPosition: CustomTargetContentPosition(bottom: 130),
+          // Пиним карточку подсказки у ВЕРХА экрана: секция центрируется
+          // (scroll 0.5), и все 4 плитки видны ПОД карточкой. Раньше карточка
+          // была у низа и наезжала на нижние плитки.
+          customPosition: CustomTargetContentPosition(top: 8),
         ),
       TourTarget.build(
         id: 'reg_details_submit',

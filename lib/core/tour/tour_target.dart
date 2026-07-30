@@ -29,6 +29,15 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 class TourTarget {
   TourTarget._();
 
+  /// Реестр спеков карточек по `identify` — нужен, чтобы после фильтрации
+  /// «немонтированных» таргетов (`_filterMountedTargets`) пере-собрать
+  /// РЕАЛЬНО последний шаг с `isLast: true`. Без этого, если из списка
+  /// выпал шаг, помеченный isLast по индексу, на финальном шаге висела бы
+  /// «Далее» вместо «Понятно». Ключи стабильны и перезаписываются на каждом
+  /// запуске тура (targetsBuilder зовётся заново), поэтому строки всегда
+  /// на актуальном языке.
+  static final Map<String, _CardSpec> _specs = {};
+
   static TargetFocus build({
     required GlobalKey key,
     // Стабильный идентификатор шага (T10). Если не задан — fallback на
@@ -61,8 +70,15 @@ class TourTarget {
     final effectiveAlign = customPosition != null
         ? ContentAlign.custom
         : align;
+    final effectiveId = id ?? key.hashCode.toString();
+    _specs[effectiveId] = _CardSpec(
+      title: effectiveTitle,
+      body: effectiveBody,
+      align: effectiveAlign,
+      customPosition: customPosition,
+    );
     return TargetFocus(
-      identify: id ?? key.hashCode.toString(),
+      identify: effectiveId,
       keyTarget: key,
       shape: shape,
       radius: radius,
@@ -85,6 +101,48 @@ class TourTarget {
       ],
     );
   }
+
+  /// Гарантирует, что ФАКТИЧЕСКИ последний таргет списка помечен как последний
+  /// (кнопка «Понятно», а не «Далее»). Вызывается ПОСЛЕ фильтрации
+  /// немонтированных таргетов — на случай, если из списка выпал шаг, который
+  /// изначально был помечен isLast по индексу. Идемпотентна.
+  static void reflagLast(List<TargetFocus> targets) {
+    if (targets.isEmpty) return;
+    final last = targets.last;
+    final id = last.identify?.toString();
+    final spec = id == null ? null : _specs[id];
+    final contents = last.contents;
+    if (spec == null || contents == null) return;
+    contents
+      ..clear()
+      ..add(
+        TargetContent(
+          align: spec.align,
+          customPosition: spec.customPosition,
+          builder: (_, controller) => _TourCard(
+            title: spec.title,
+            body: spec.body,
+            isLast: true,
+            onNext: controller.next,
+            onSkip: controller.skip,
+          ),
+        ),
+      );
+  }
+}
+
+/// Снимок параметров карточки для пере-сборки последнего шага.
+class _CardSpec {
+  final String title;
+  final String body;
+  final ContentAlign align;
+  final CustomTargetContentPosition? customPosition;
+  const _CardSpec({
+    required this.title,
+    required this.body,
+    required this.align,
+    required this.customPosition,
+  });
 }
 
 // ─── Карточка подсказки ───────────────────────────────────────────────────────

@@ -16,7 +16,6 @@ import 'package:bagla/features/profile/widgets/menu_tile.dart';
 import 'package:bagla/features/profile/widgets/points_card.dart';
 import 'package:bagla/features/profile/widgets/profile_top_card.dart';
 import 'package:bagla/features/profile/widgets/role_selection_card.dart';
-import 'package:bagla/features/profile/widgets/support_modal.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -174,7 +173,6 @@ class ProfileScreenState extends State<ProfileScreen>
                   child: _buildMenu(
                     context: context,
                     auth: auth,
-                    supportPhone: settings.supportPhone,
                   ),
                 ),
               ),
@@ -250,7 +248,6 @@ class ProfileScreenState extends State<ProfileScreen>
   Widget _buildMenu({
     required BuildContext context,
     required AuthProvider auth,
-    required String supportPhone,
   }) {
     final c = AppColors.of(context);
     final words = context.watch<LanguageProvider>().words;
@@ -292,16 +289,9 @@ class ProfileScreenState extends State<ProfileScreen>
       );
     }
 
-    items.add(
-      Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
-    );
-    items.add(
-      ProfileMenuTile(
-        icon: Icons.headset_mic_outlined,
-        title: words.profileSupportContact,
-        onTap: () => _showSupportModal(context, supportPhone),
-      ),
-    );
+    // «Связаться с поддержкой» убрано: звонок в поддержку теперь на экране
+    // «Обращения» (кнопка в шапке) — чтобы не дублировать почти одинаковые
+    // разделы.
 
     items.add(
       Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
@@ -403,14 +393,4 @@ class ProfileScreenState extends State<ProfileScreen>
     navigator.pushNamedAndRemoveUntil('/login', (r) => false);
   }
 
-  void _showSupportModal(BuildContext context, String phone) {
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (_) => SupportModal(phone: phone),
-    );
-  }
 }

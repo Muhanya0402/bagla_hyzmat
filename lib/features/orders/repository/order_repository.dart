@@ -5,7 +5,8 @@ class OrderRepository {
   Future<List<PointsRule>> fetchPointsRules() async {
     final ApiClient api = ApiClient();
     final response = await api.dio.get(
-      '/items/points_rules',
+      // Коллекция в Directus называется в ед. числе — `points_rule`.
+      '/items/points_rule',
       queryParameters: {'sort': '-min_amount'},
     );
     final List data = response.data['data'] as List;

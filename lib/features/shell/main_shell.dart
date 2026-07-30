@@ -7,6 +7,7 @@ import 'package:bagla/features/notifications/notifications_screen.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
+import 'package:bagla/features/profile/transactions/transaction_history_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -275,6 +276,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     if (name == '/appeals') {
       return MaterialPageRoute(
         builder: (_) => const AppealsScreen(),
+        settings: settings,
+      );
+    }
+    if (name == '/transactions') {
+      return MaterialPageRoute(
+        builder: (_) => const TransactionHistoryScreen(),
         settings: settings,
       );
     }
