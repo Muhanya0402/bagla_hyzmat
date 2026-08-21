@@ -12,6 +12,24 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8899", "--directory", "C:/Users/dev4/AppData/Local/Temp/claude/C--MyProjects-balga/8a048f39-fae3-4e6c-ae3b-0ae9c74e9861/scratchpad"],
       "port": 8899
+    },
+    {
+      "name": "handmorph",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "F:/Projects/handmorph", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "superman",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "F:/Projects/superman-mos", "run", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "ragdoll",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "F:/Projects/ragdoll-brawl", "run", "dev"],
+      "port": 5175
     }
   ]
 }
