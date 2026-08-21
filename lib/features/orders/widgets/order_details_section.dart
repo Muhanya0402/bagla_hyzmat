@@ -4,6 +4,7 @@ import 'package:bagla/core/widgets/user_avatar.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/l10n/language_provider.dart';
+import 'package:bagla/utils/phone_format.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -155,7 +156,9 @@ class OrderDetailsSection extends StatelessWidget {
           icon: Icons.person_outline_rounded,
           iconColor: c.ink,
           label: isLocked ? words.phoneHidden : words.clientPhone,
-          value: isLocked ? words.phoneMasked : (phone.isEmpty ? '—' : phone),
+          value: isLocked
+              ? words.phoneMasked
+              : (phone.isEmpty ? '—' : formatPhoneCompact(phone)),
           trailing: phone.isNotEmpty && !isLocked
               ? _CallButton(onTap: () => _makeCall(phone))
               : null,
@@ -186,7 +189,7 @@ class OrderDetailsSection extends StatelessWidget {
                       ? '${words.courier} — $courierName'
                       : words.courier)
                 : words.orderSender,
-            value: counterPhone,
+            value: formatPhoneCompact(counterPhone),
             trailing: _CallButton(onTap: () => _makeCall(counterPhone)),
           ),
         ],

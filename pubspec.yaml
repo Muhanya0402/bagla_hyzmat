@@ -32,6 +32,11 @@ dependencies:
   # Keychain (iOS) / EncryptedSharedPreferences + Keystore (Android)
   flutter_secure_storage: ^9.2.2
   url_launcher: ^6.3.0
+  # Набор номера из ФОНОВОГО isolate (уведомление при выгруженном
+  # приложении): url_launcher требует foreground Activity и бросает
+  # NO_ACTIVITY, а AndroidIntent стартует intent через application
+  # context с FLAG_ACTIVITY_NEW_TASK.
+  android_intent_plus: ^5.0.0
   package_info_plus: ^8.0.0
   mask_text_input_formatter: ^2.5.0
   dropdown_search: ^5.0.6

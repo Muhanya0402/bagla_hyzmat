@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -270,12 +271,11 @@ abstract final class ActiveOrdersNotification {
     //   пакета крутится на ГЛАВНОМ isolate и прерывается при terminate — из-за
     //   чего стрелки были ненадёжны.)
     //
-    // «Позвонить» — `SilentBackgroundAction`: исполняется в отдельном isolate
-    //   БЕЗ вывода Bagla на передний план — сразу открывает системный диалер
-    //   через url_launcher (`tel:` это системный intent, работает из background
-    //   isolate). Раньше тут был `Default`, который сперва поднимал app, и лишь
-    //   потом из него запускался набор — лишний шаг. SilentBackgroundAction
-    //   переживает killed-app (в отличие от `SilentAction` на главном isolate).
+    // «Позвонить» — `SilentBackgroundAction`: без вывода Bagla на передний
+    //   план и с работой при ВЫГРУЖЕННОМ приложении. Раньше здесь ломался
+    //   набор номера: url_launcher на Android требует foreground Activity
+    //   (`ensureActivity()` бросает NO_ACTIVITY), а в фоновом isolate её нет.
+    //   Поэтому набор идёт через AndroidIntent — см. `_dial`.
     //
     // «Завершить» — `Default`: открывает сам заказ и форму подтверждения
     //   завершения в приложении (через pending action) — тут вывод app нужен.
@@ -292,6 +292,10 @@ abstract final class ActiveOrdersNotification {
         NotificationActionButton(
           key: _actCall,
           label: callLabel,
+          // SilentBackgroundAction: не выводит Баглу на передний план И
+          // переживает выгруженное приложение (отдельный isolate вне
+          // жизненного цикла app). Набор номера при этом делается НЕ через
+          // url_launcher — см. `_dial`.
           actionType: ActionType.SilentBackgroundAction,
           autoDismissible: false,
         ),
@@ -372,6 +376,44 @@ abstract final class ActiveOrdersNotification {
   ///   - url_launcher с tel: работает (вызывает системный intent)
   ///   - HTTP вызовы технически возможны, но Xiaomi/Huawei могут гасить
   ///     isolate раньше чем запрос успеет — поэтому делаем pending-action
+  /// Набор номера из обработчика уведомления — работает и когда приложение
+  /// ВЫГРУЖЕНО из памяти.
+  ///
+  /// ⚠️ Почему не `url_launcher`: на Android он требует foreground Activity —
+  /// `ensureActivity()` в url_launcher_android бросает `NO_ACTIVITY`. В
+  /// фоновом isolate Activity нет, поэтому кнопка молча не срабатывала.
+  /// `AndroidIntent` отправляет intent через application context, добавляя
+  /// `FLAG_ACTIVITY_NEW_TASK`, и в Activity не нуждается.
+  /// `url_launcher` оставлен запасным путём (iOS и прочие случаи).
+  ///
+  /// Видимость намерения `DIAL`/`tel:` уже объявлена в `<queries>` манифеста —
+  /// без этого Android 11+ скрыл бы диалер от приложения.
+  static Future<void> _dial(String phone) async {
+    final number = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    if (number.isEmpty) return;
+
+    if (Platform.isAndroid) {
+      try {
+        await AndroidIntent(
+          action: 'android.intent.action.DIAL',
+          data: 'tel:$number',
+        ).launch();
+        return;
+      } catch (_) {
+        // Не вышло — пробуем запасной путь ниже.
+      }
+    }
+
+    try {
+      await launchUrl(
+        Uri(scheme: 'tel', path: number),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      // Диалера нет / система отказала — тихо выходим, уведомление на месте.
+    }
+  }
+
   @pragma('vm:entry-point')
   static Future<void> onActionReceivedMethod(ReceivedAction action) async {
     final key = action.buttonKeyPressed;
@@ -398,13 +440,7 @@ abstract final class ActiveOrdersNotification {
         break;
 
       case _actCall:
-        final phone = list[idx].phoneToCall;
-        if (phone.isEmpty) return;
-        try {
-          await launchUrl(Uri(scheme: 'tel', path: phone));
-        } on PlatformException catch (_) {
-          // На некоторых девайсах нет diallera — silent fail.
-        }
+        await _dial(list[idx].phoneToCall);
         break;
 
       case _actFinish:

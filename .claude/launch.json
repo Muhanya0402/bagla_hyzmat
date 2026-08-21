@@ -4,32 +4,90 @@
     {
       "name": "citadeles",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8137", "--directory", "F:/citadeles"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8137",
+        "--directory",
+        "F:/citadeles"
+      ],
       "port": 8137
     },
     {
       "name": "rm-app-static",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8899", "--directory", "C:/Users/dev4/AppData/Local/Temp/claude/C--MyProjects-balga/8a048f39-fae3-4e6c-ae3b-0ae9c74e9861/scratchpad"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8899",
+        "--directory",
+        "C:/Users/dev4/AppData/Local/Temp/claude/C--MyProjects-balga/8a048f39-fae3-4e6c-ae3b-0ae9c74e9861/scratchpad"
+      ],
       "port": 8899
+    },
+    {
+      "name": "lavka-directus-proxy",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "C:/Users/dev4/AppData/Local/Temp/claude/C--MyProjects-balga/9b3cdcf0-e945-4bf7-adf4-fe82aa5b472a/scratchpad/directus_proxy.py"
+      ],
+      "port": 8055
+    },
+    {
+      "name": "lavka-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "F:/lavka-stack/admin",
+        "run",
+        "dev"
+      ],
+      "port": 3100
     },
     {
       "name": "handmorph",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "F:/Projects/handmorph", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "F:/Projects/handmorph",
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "superman",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "F:/Projects/superman-mos", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "F:/Projects/superman-mos",
+        "run",
+        "dev"
+      ],
       "port": 5174
     },
     {
       "name": "ragdoll",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "F:/Projects/ragdoll-brawl", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "F:/Projects/ragdoll-brawl",
+        "run",
+        "dev"
+      ],
       "port": 5175
+    },
+    {
+      "name": "zakupki-proto",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8911",
+        "--directory",
+        "C:/MyProjects/balga/docs/proto"
+      ],
+      "port": 8911
     }
   ]
 }
