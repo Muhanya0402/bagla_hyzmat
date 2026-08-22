@@ -159,7 +159,11 @@ class ProfileScreenState extends State<ProfileScreen>
                   child: PointsCard(
                     balance: auth.balancePoints.toDouble(),
                     isLoading: auth.userId.isEmpty,
-                    onTopUp: () => _openTopUp(context, auth),
+                    // Пополнение можно отключить из Directus
+                    // (app_settings.top_up_enabled).
+                    onTopUp: settings.topUpEnabled
+                        ? () => _openTopUp(context, auth)
+                        : null,
                     topUpKey: _topUpKey,
                   ),
                 ),

@@ -253,6 +253,7 @@ class AppLocalizations {
   String get confirmWithPoints => get('confirmWithPoints');
   String get confirmNoPoints => get('confirmNoPoints');
   String get tooManyOrders => get('tooManyOrders');
+  String get topUpDisabled => get('topUpDisabled');
   String get transportMismatch => get('transportMismatch');
   String get orderAlreadyClosed => get('orderAlreadyClosed');
   String get orderDone => get('orderDone');

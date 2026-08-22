@@ -267,17 +267,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     } catch (_) {}
   }
 
+  /// Нужны ли фото товара. У кафе/ресторана заказ — готовая еда,
+  /// фотографировать нечего: секция скрывается и не валидируется.
+  bool get _photosRequired => !context.read<AuthProvider>().isCafe;
+
   /// Доля заполнения формы создания заказа 0..1 (O1).
-  /// Фото + телефон + дата + локация + цена + доставка = 6 пунктов.
+  /// Телефон + дата + локация + цена + доставка (+ фото, если нужны).
   double _completionFraction() {
     int done = 0;
-    if (_images.isNotEmpty) done++;
+    if (_photosRequired && _images.isNotEmpty) done++;
     if (_phoneController.text.trim().isNotEmpty) done++;
     if (_selectedDateTime != null) done++;
     if (_locationSelected) done++;
     if (_priceController.text.trim().isNotEmpty) done++;
     if (_deliveryController.text.trim().isNotEmpty) done++;
-    return (done / 6).clamp(0.0, 1.0);
+    return (done / (_photosRequired ? 6 : 5)).clamp(0.0, 1.0);
   }
 
   List<TargetFocus> _buildTourTargets() {
@@ -626,8 +630,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   Future<void> _submitOrder(AppLocalizations words) async {
     final title = words.regToastFixTitle;
 
-    // ── 1. Фото обязательны ────────────────────────────────────────────────
-    if (_images.isEmpty) {
+    // ── 1. Фото обязательны (кроме кафе — там фотографировать нечего) ─────
+    if (_photosRequired && _images.isEmpty) {
       await _scrollToKey(_photoKey);
       _showErrorToast(title, words.addPhotoError);
       return;
@@ -876,6 +880,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                     children: [
+                      // У кафе/ресторана фото не нужны — секцию (вместе с
+                      // отметкой «несколько товаров», она тоже про фото)
+                      // не показываем. Шаг гида с этим якорем отфильтруется
+                      // сам: у ключа не будет context.
+                      if (_photosRequired)
                       KeyedSubtree(
                         key: _photoKey,
                         child: _section(
@@ -891,7 +900,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      if (_photosRequired) const SizedBox(height: 10),
                       KeyedSubtree(
                         key: _dateKey,
                         child: _section(

@@ -3,6 +3,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:bagla/features/auth/auth_provider.dart';
+import 'package:bagla/features/profile/utils/phone_launcher.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_sync.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
@@ -309,6 +310,13 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final auth = context.read<AuthProvider>();
 
     switch (verb) {
+      case 'call':
+        // Звонок из уведомления. Набираем здесь, а не в обработчике
+        // уведомления: только в main isolate есть Activity, без которой
+        // url_launcher бросает NO_ACTIVITY. `orderId` тут — это номер.
+        await launchPhoneCall(orderId);
+        break;
+
       case 'open_finish':
         // Кнопка «Завершить» из sticky-уведомления: открываем сам заказ и
         // форму подтверждения завершения (ввод кода), а не завершаем втихую.

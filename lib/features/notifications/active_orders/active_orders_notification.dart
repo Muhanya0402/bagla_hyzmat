@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:ui' show DartPluginRegistrant;
 
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'active_order_snapshot.dart';
 
@@ -271,11 +269,11 @@ abstract final class ActiveOrdersNotification {
     //   пакета крутится на ГЛАВНОМ isolate и прерывается при terminate — из-за
     //   чего стрелки были ненадёжны.)
     //
-    // «Позвонить» — `SilentBackgroundAction`: без вывода Bagla на передний
-    //   план и с работой при ВЫГРУЖЕННОМ приложении. Раньше здесь ломался
-    //   набор номера: url_launcher на Android требует foreground Activity
-    //   (`ensureActivity()` бросает NO_ACTIVITY), а в фоновом isolate её нет.
-    //   Поэтому набор идёт через AndroidIntent — см. `_dial`.
+    // «Позвонить» / «Завершить» — `Default`: будят app в main isolate.
+    //   Оба действия ставят pending action, который контроллер home
+    //   вычитывает при запуске/возврате. Для звонка это единственный
+    //   надёжный путь: url_launcher требует foreground Activity, а фоновый
+    //   isolate пакета не даёт ни Activity, ни полной регистрации плагинов.
     //
     // «Завершить» — `Default`: открывает сам заказ и форму подтверждения
     //   завершения в приложении (через pending action) — тут вывод app нужен.
@@ -292,11 +290,13 @@ abstract final class ActiveOrdersNotification {
         NotificationActionButton(
           key: _actCall,
           label: callLabel,
-          // SilentBackgroundAction: не выводит Баглу на передний план И
-          // переживает выгруженное приложение (отдельный isolate вне
-          // жизненного цикла app). Набор номера при этом делается НЕ через
-          // url_launcher — см. `_dial`.
-          actionType: ActionType.SilentBackgroundAction,
+          // `Default`: будит приложение и работает даже когда оно выгружено.
+          // Набор номера делаем НЕ здесь, а в main isolate через pending
+          // action — там есть Activity и живые плагины. Попытки звонить из
+          // фонового isolate (SilentAction/SilentBackgroundAction + intent)
+          // на устройстве не срабатывали: фоновый движок awesome_notifications
+          // не регистрирует Dart-плагины полноценно.
+          actionType: ActionType.Default,
           autoDismissible: false,
         ),
       // «Завершить» — открывает приложение на этом заказе и форму
@@ -376,46 +376,17 @@ abstract final class ActiveOrdersNotification {
   ///   - url_launcher с tel: работает (вызывает системный intent)
   ///   - HTTP вызовы технически возможны, но Xiaomi/Huawei могут гасить
   ///     isolate раньше чем запрос успеет — поэтому делаем pending-action
-  /// Набор номера из обработчика уведомления — работает и когда приложение
-  /// ВЫГРУЖЕНО из памяти.
-  ///
-  /// ⚠️ Почему не `url_launcher`: на Android он требует foreground Activity —
-  /// `ensureActivity()` в url_launcher_android бросает `NO_ACTIVITY`. В
-  /// фоновом isolate Activity нет, поэтому кнопка молча не срабатывала.
-  /// `AndroidIntent` отправляет intent через application context, добавляя
-  /// `FLAG_ACTIVITY_NEW_TASK`, и в Activity не нуждается.
-  /// `url_launcher` оставлен запасным путём (iOS и прочие случаи).
-  ///
-  /// Видимость намерения `DIAL`/`tel:` уже объявлена в `<queries>` манифеста —
-  /// без этого Android 11+ скрыл бы диалер от приложения.
-  static Future<void> _dial(String phone) async {
-    final number = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    if (number.isEmpty) return;
-
-    if (Platform.isAndroid) {
-      try {
-        await AndroidIntent(
-          action: 'android.intent.action.DIAL',
-          data: 'tel:$number',
-        ).launch();
-        return;
-      } catch (_) {
-        // Не вышло — пробуем запасной путь ниже.
-      }
-    }
-
-    try {
-      await launchUrl(
-        Uri(scheme: 'tel', path: number),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      // Диалера нет / система отказала — тихо выходим, уведомление на месте.
-    }
-  }
-
   @pragma('vm:entry-point')
   static Future<void> onActionReceivedMethod(ReceivedAction action) async {
+    // ⚠️ ОБЯЗАТЕЛЬНО первой строкой — иначе в ФОНОВОМ isolate не работает
+    // ничего. awesome_notifications не вызывает DartPluginRegistrant (в
+    // пакете эта строка закомментирована), а shared_preferences_android
+    // регистрируется именно на стороне Dart (`dartPluginClass`). Без неё
+    // `SharedPreferences.getInstance()` ниже падает, обработчик обрывается
+    // на первой же строке, и кнопки уведомления молчат при выгруженном
+    // приложении. Вызов идемпотентен и безопасен в main isolate.
+    DartPluginRegistrant.ensureInitialized();
+
     final key = action.buttonKeyPressed;
     if (key.isEmpty) return; // тап по самому уведомлению — открывает app
 
@@ -440,7 +411,13 @@ abstract final class ActiveOrdersNotification {
         break;
 
       case _actCall:
-        await _dial(list[idx].phoneToCall);
+        // Набираем не отсюда: приложение может быть выгружено, и плагины в
+        // фоне недоступны. Кладём pending action — контроллер home откроет
+        // диалер, как только приложение поднимется (тот же механизм, что у
+        // «Завершить»).
+        final phone = list[idx].phoneToCall;
+        if (phone.isEmpty) return;
+        await prefs.setString(_kPendingActionKey, 'call:$phone');
         break;
 
       case _actFinish:

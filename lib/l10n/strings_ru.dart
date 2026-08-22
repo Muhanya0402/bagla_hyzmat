@@ -273,6 +273,7 @@ const Map<String, String> stringsRu = {
   'confirmWithPoints':
       'С вашего баланса будет списано {points} баллов. Приступить?',
   'confirmNoPoints': 'Заказ будет закреплён за вами. Приступить?',
+  'topUpDisabled': 'Пополнение жетонов временно недоступно',
   'tooManyOrders': 'Нельзя брать больше 3 заказов одновременно',
   'transportMismatch': 'Этот заказ требует другой тип транспорта',
   'orderAlreadyClosed': 'Заказ уже завершён или отменён',

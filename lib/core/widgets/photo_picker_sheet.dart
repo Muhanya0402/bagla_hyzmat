@@ -124,7 +124,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
       // (например, запущенную из `_requestMorePhotos` после presentLimited).
       if ((_galDenied || _galLimited) && !_galLoadInFlight) {
         setState(() => _galLoading = true);
-        _loadGallery();
+        _loadGallery(recheckPermission: true);
       }
     }
   }
@@ -259,7 +259,36 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     return n;
   }
 
-  Future<void> _loadGallery() async {
+  /// Текущее состояние доступа к галерее — БЕЗ показа системного диалога.
+  ///
+  /// `requestPermissionExtend()` может вернуть состояние, каким оно было на
+  /// момент прошлого запроса. Из-за этого после «Разрешить все» баннер
+  /// ограниченного доступа продолжал висеть, хотя доступ уже полный.
+  /// `getPermissionState` спрашивает систему заново.
+  Future<PermissionState?> _currentPermission() async {
+    try {
+      return await PhotoManager.getPermissionState(
+        requestOption: const PermissionRequestOption(
+          androidPermission: AndroidPermission(
+            type: RequestType.image,
+            mediaLocation: false,
+          ),
+        ),
+      );
+    } catch (_) {
+      return null; // не поддерживается платформой — решаем по старому пути
+    }
+  }
+
+  /// [recheckPermission] — перепроверить доступ СВЕЖИМ запросом.
+  ///
+  /// На ПЕРВОЙ загрузке доверяем результату системного диалога
+  /// (`requestPermissionExtend`): он самый актуальный, а повторный запрос
+  /// сразу после диалога может ещё не отражать выданный ограниченный доступ
+  /// — из-за этого баннер «Разрешить ещё» не появлялся до перезахода.
+  /// При ПЕРЕПРОВЕРКЕ (возврат в приложение, после `presentLimited`) наоборот:
+  /// кешированный ответ может остаться `limited`, хотя доступ уже полный.
+  Future<void> _loadGallery({bool recheckPermission = false}) async {
     if (_galLoadInFlight) return; // уже грузим — второй запрос не нужен
     _galLoadInFlight = true;
     try {
@@ -274,7 +303,12 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
         }
         return;
       }
-      final limited = ps == PermissionState.limited;
+      var state = ps;
+      if (recheckPermission) {
+        final fresh = await _currentPermission();
+        if (fresh != null) state = fresh;
+      }
+      final limited = state == PermissionState.limited;
       // onlyAll: false — получаем ВСЕ альбомы/папки (Камера, Скриншоты,
       // Загрузки и т.д.), а не только «Recent», чтобы можно было выбирать
       // изображения по папкам.
@@ -325,7 +359,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     // могло затереть данные уже идущей (запущенной из resume) загрузки —
     // альбом пропадал из шапки, хотя фото подгружались.
     setState(() => _galLoading = true);
-    await _loadGallery();
+    await _loadGallery(recheckPermission: true);
   }
 
   Future<void> _selectAlbum(AssetPathEntity album) async {

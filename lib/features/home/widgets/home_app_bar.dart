@@ -11,6 +11,7 @@ import 'package:bagla/features/orders/order_realtime_service.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/features/profile/widgets/banned_access_sheet.dart';
 import 'package:bagla/l10n/language_provider.dart';
+import 'package:bagla/core/app_settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -87,6 +88,9 @@ class HomeLogoRow extends StatelessWidget {
               BannedAccessSheet.show(context);
               return;
             }
+            // Пополнение отключено администратором из Directus —
+            // модалку не открываем.
+            if (!context.read<AppSettingsProvider>().topUpEnabled) return;
             showModalBottomSheet(
               context: context,
               isScrollControlled: true,

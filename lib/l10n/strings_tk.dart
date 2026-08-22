@@ -275,6 +275,7 @@ const Map<String, String> stringsTk = {
   'confirmTitle': 'Sargydy kabul et',
   'confirmWithPoints': 'Balansyňyzdan {points} bal aýrylar. Dowam etmek?',
   'confirmNoPoints': 'Sargyt size berkidiler. Dowam etmek?',
+  'topUpDisabled': 'Tylla dolduryş wagtlaýyn elýeterli däl',
   'tooManyOrders': 'Bir wagtda 3-den köp sargyt almak bolmaýar',
   'transportMismatch': 'Bu sargyt başga ulag görnüşini talap edýär',
   'orderAlreadyClosed': 'Sargyt eýýäm tamamlandy ýa-da ýatyryldy',

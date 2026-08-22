@@ -8,6 +8,7 @@ import 'package:bagla/features/notifications/active_orders/active_orders_notific
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:bagla/features/auth/logout_prefs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagla/features/notifications/push_notification_service.dart';
 
@@ -157,7 +158,12 @@ class AuthProvider extends ChangeNotifier {
   double get balancePoints => _balancePoints;
   double get walletBalance => _walletBalance;
   String get transportType => _transportType;
-  String get category => _category;
+  String get category => _category.trim().toLowerCase();
+
+  /// Кафе/ресторан. У такого магазина заказ — это готовая еда, фотографировать
+  /// нечего: при создании заказа секция фото скрывается и не требуется.
+  /// Слаг `cafe` — id категории в Directus (`shop_categories`).
+  bool get isCafe => category == 'cafe';
   String get selfieFileId => _selfieFileId;
 
   /// Подписка на изменения токенов в secure storage. Срабатывает при
@@ -249,6 +255,13 @@ class AuthProvider extends ChangeNotifier {
     _token = user['access_token'] ?? user['token'] ?? _token;
     _userId =
         user['id']?.toString() ?? user['customer_ID']?.toString() ?? _userId;
+    // ⚠️ Тур-namespace выставляем СРАЗУ, а не в конце метода. Ниже идёт
+    // длинная цепочка `await prefs.set...`, и home успевает запустить гид
+    // раньше, чем `user_id` попадёт в prefs. Тогда `_tryLaunch` читает
+    // пустой id, работает в ГЛОБАЛЬНОМ namespace вместо `tour_passed_<id>_*`
+    // и показывает уже пройденный гид заново — баг «после перезахода в тот
+    // же аккаунт снова открывается гид». Вызов идемпотентен.
+    TourManager.instance.setUserId(_userId);
     _name = user['name'] ?? '';
     _surname = user['surname'] ?? '';
     _phone = user['phone'] ?? _phone;
@@ -580,23 +593,9 @@ class AuthProvider extends ChangeNotifier {
 
     // 2. Plain prefs cleanup с сохранением device-flag'ов.
     final prefs = await SharedPreferences.getInstance();
-    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
-    final savedLang = prefs.getString('language_code');
-    final isDarkMode = prefs.getBool('is_dark_mode');
-    final tokenMigrationDone =
-        prefs.getBool('secure_tokens_migrated_v1') ?? false;
-    // Account-scoped тур-состояния (всех пользователей) — сохраняем
-    // через TourManager, чтобы при возврате на этот аккаунт гид не
-    // показывался заново.
-    final tourSnapshot = TourManager.instance.snapshotAllTourKeys();
-    await prefs.clear();
-    if (onboardingDone) await prefs.setBool('onboarding_done', true);
-    if (savedLang != null) await prefs.setString('selected_lang', savedLang);
-    if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
-    if (tokenMigrationDone) {
-      await prefs.setBool('secure_tokens_migrated_v1', true);
-    }
-    await TourManager.instance.restoreSnapshot(tourSnapshot);
+    // Удаляем только данные аккаунта: туры и настройки устройства
+    // остаются на месте. См. clearAccountPrefs — почему не clear().
+    await clearAccountPrefs(prefs);
     // На время "нет активного userId" — глобальный namespace.
     TourManager.instance.setUserId('');
     // Локальный кэш прочитанных уведомлений принадлежит ушедшему пользователю.

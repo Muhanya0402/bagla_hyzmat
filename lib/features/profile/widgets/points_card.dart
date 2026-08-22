@@ -9,7 +9,9 @@ import 'package:provider/provider.dart';
 
 class PointsCard extends StatelessWidget {
   final double balance;
-  final VoidCallback onTopUp;
+  /// `null` — пополнение отключено администратором
+  /// (`app_settings.top_up_enabled`), кнопка не показывается.
+  final VoidCallback? onTopUp;
   final bool isLoading;
 
   /// Опциональный ключ для тур-анкера на кнопке «Пополнить».
@@ -18,7 +20,7 @@ class PointsCard extends StatelessWidget {
   const PointsCard({
     super.key,
     required this.balance,
-    required this.onTopUp,
+    this.onTopUp,
     this.isLoading = false,
     this.topUpKey,
   });
@@ -91,9 +93,10 @@ class PointsCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onTopUp != null)
               PressableScale(
                 key: topUpKey,
-                onTap: onTopUp,
+                onTap: onTopUp!,
                 scale: 0.94,
                 child: Container(
                   padding: const EdgeInsets.symmetric(

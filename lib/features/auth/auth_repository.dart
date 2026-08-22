@@ -9,6 +9,7 @@ import 'package:bagla/models/token_package_option.dart';
 import 'package:bagla/models/etrap.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:bagla/features/auth/logout_prefs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api_client.dart';
 
@@ -577,28 +578,11 @@ class AuthRepository {
     // 3. Чистим plain prefs (профильные данные, кэш и т.д.) с сохранением
     // device-level флагов.
     final prefs = await SharedPreferences.getInstance();
-    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
-    final savedLang = prefs.getString('language_code');
-    final selectedLang = prefs.getString('selected_lang');
-    final isDarkMode = prefs.getBool('is_dark_mode');
     // Migration-флаг — НЕ сбрасываем, иначе при следующем старте мы
     // попытаемся «мигрировать» пустые prefs обратно в secure store.
-    final tokenMigrationDone =
-        prefs.getBool('secure_tokens_migrated_v1') ?? false;
-    // Account-scoped тур-состояния всех пользователей — чтобы возврат
-    // на старый аккаунт не показывал гид заново.
-    final tourSnapshot = TourManager.instance.snapshotAllTourKeys();
-    await prefs.clear();
-    if (onboardingDone) await prefs.setBool('onboarding_done', true);
-    if (savedLang != null) await prefs.setString('language_code', savedLang);
-    if (selectedLang != null) {
-      await prefs.setString('selected_lang', selectedLang);
-    }
-    if (isDarkMode != null) await prefs.setBool('is_dark_mode', isDarkMode);
-    if (tokenMigrationDone) {
-      await prefs.setBool('secure_tokens_migrated_v1', true);
-    }
-    await TourManager.instance.restoreSnapshot(tourSnapshot);
+    // Удаляем только данные аккаунта: туры и настройки устройства
+    // остаются на месте. См. clearAccountPrefs — почему не clear().
+    await clearAccountPrefs(prefs);
     TourManager.instance.setUserId('');
   }
 }

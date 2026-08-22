@@ -155,6 +155,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     final cached = widget.order['pictures'];
     // Если в кэше уже Map-формат — ничего не делаем, всё уже есть.
     if (cached is List && cached.isNotEmpty && cached.first is Map) return;
+    // Пустой список — у заказа фото нет вовсе (например, заказ из кафе, где
+    // фотографировать нечего). Раньше сюда попадали и делали лишний запрос
+    // при КАЖДОМ открытии такого заказа. Секция фото и так не отрисуется.
+    if (cached is List && cached.isEmpty) return;
 
     final picsResult = await OrderService().getOrderPictures(orderId);
     if (!mounted) return;

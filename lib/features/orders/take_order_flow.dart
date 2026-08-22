@@ -1,6 +1,7 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/sheet_handle.dart';
+import 'package:bagla/core/app_settings_provider.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/levels/level_provider.dart';
 import 'package:bagla/features/home/widgets/role_picker_modal.dart';
@@ -140,6 +141,25 @@ class TakeOrderFlow {
 
     // 5. Недостаточно жетонов — открываем top-up.
     if (auth.balancePoints < dto.pointsAmount) {
+      // Пополнение может быть отключено администратором из Directus
+      // (`app_settings.top_up_enabled`) — тогда модалку не показываем,
+      // а честно сообщаем, что пополнить сейчас нельзя.
+      if (!context.read<AppSettingsProvider>().topUpEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              words.topUpDisabled,
+              style: AppText.regular(fontSize: 13, color: c.errorMuted),
+            ),
+            backgroundColor: c.errorTint,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
