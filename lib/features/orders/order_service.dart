@@ -276,6 +276,43 @@ class OrderService {
     }
   }
 
+  /// Актуальные статусы указанных заказов: `id -> order_status`.
+  ///
+  /// Лёгкая сверка — в ответе только `id` и статус, — не зависящая ни от
+  /// WebSocket, ни от пушей. Нужна, чтобы курьер узнал об отмене СВОЕГО
+  /// заказа, даже если событие до него не дошло: сейчас он об этом узнаёт
+  /// только из пуша, а тот теряется где-то за Directus (флоу отрабатывает
+  /// и отдаёт запрос в push-сервис успешно, но до устройства не доходит).
+  /// Курьер в это время продолжает везти отменённый заказ.
+  ///
+  /// Возвращает `null`, если запрос не удался — тогда ничего не меняем.
+  Future<Map<String, String>?> statusesFor(List<String> orderIds) async {
+    if (orderIds.isEmpty) return <String, String>{};
+    try {
+      final r = await _apiClient.dio.get(
+        '/items/orders',
+        queryParameters: {
+          'fields': 'id,order_status',
+          'limit': -1,
+          'filter[id][_in]': orderIds.join(','),
+        },
+      );
+      final data = r.data?['data'];
+      if (data is! List) return null;
+      final out = <String, String>{};
+      for (final e in data) {
+        if (e is! Map) continue;
+        final id = e['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        out[id] = (e['order_status'] ?? '').toString().toLowerCase().trim();
+      }
+      return out;
+    } catch (e) {
+      if (kDebugMode) print('Сверка статусов заказов не удалась: $e');
+      return null;
+    }
+  }
+
   /// Какие из показанных заказов пора убрать из ленты «Доступные».
   ///
   /// [shown] — id заказов, которые сейчас видит курьер как свободные;

@@ -68,6 +68,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   );
 
   DateTime? _selectedDateTime;
+
+  /// Срок доставки проставлен автоматически, а не выбран заказчиком.
+  /// Нужен, чтобы не отчитывать человека за значение, которое подставило
+  /// само приложение: если форма провисела открытой и «сейчас + 40 минут»
+  /// уже прошло, такой срок молча сдвигается, а не отвергается с ошибкой.
+  bool _deliveryTimeAuto = false;
   List<XFile> _images = [];
   String _transportType = 'any';
   bool _multipleItems = false;
@@ -128,6 +134,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       targetsBuilder: _buildTourTargets,
       shouldSkip: () => context.read<AuthProvider>().shouldSkipTour,
     );
+    // Срок доставки по умолчанию — ближайший допустимый (сегодня, через
+    // 40 минут). Раньше поле было пустым, и заказчику приходилось лезть в
+    // карусель даже когда его устраивало ближайшее время.
+    _prefillDeliveryTime();
     // Восстанавливаем незаконченный черновик заказа (если был).
     _draftUserId = context.read<AuthProvider>().userId;
     _restoreDraft();
@@ -221,8 +231,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         _deliveryController.text = (d['delivery'] ?? '').toString();
         _transportType = (d['transport'] ?? 'any').toString();
         _multipleItems = d['multiple'] == true;
+        // Пустое значение в черновике не должно затирать подставленный по
+        // умолчанию срок — иначе после возврата к черновику поле оказывалось
+        // пустым, хотя на свежей форме оно заполнено.
         final dt = d['dateTime'];
-        _selectedDateTime = dt != null ? DateTime.tryParse(dt.toString()) : null;
+        final restoredAt = dt != null ? DateTime.tryParse(dt.toString()) : null;
+        if (restoredAt != null) {
+          _selectedDateTime = restoredAt;
+          _deliveryTimeAuto = false;
+          _dateTimeController.text = DateFormat(
+            'dd.MM.yyyy HH:mm',
+          ).format(restoredAt);
+        }
         _images = imgs.take(3).toList();
 
         final prov = d['province'];
@@ -462,6 +482,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     return DateTime(up.year, up.month, up.day, up.hour, up.minute);
   }
 
+  /// Подставить срок доставки по умолчанию: ближайший допустимый момент,
+  /// то есть текущая дата плюс 40 минут (округлённые вверх до шага карусели).
+  void _prefillDeliveryTime() {
+    _selectedDateTime = _earliestDelivery;
+    _deliveryTimeAuto = true;
+    _dateTimeController.text = DateFormat(
+      'dd.MM.yyyy HH:mm',
+    ).format(_selectedDateTime!);
+  }
+
   /// Округлить минуты вниз до ближайшего шага (требование CupertinoDatePicker).
   DateTime _roundDownToInterval(DateTime dt, int interval) {
     final rounded = dt.minute - (dt.minute % interval);
@@ -519,6 +549,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     if (!mounted || time == null) return;
 
     setState(() {
+      _deliveryTimeAuto = false;
       _selectedDateTime = DateTime(
         date.year,
         date.month,
@@ -680,12 +711,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       _showErrorToast(title, words.selectTimeError);
       return;
     }
-    // Черновик мог пролежать так долго, что выбранный срок уже прошёл —
+    // Форма или черновик могли пролежать так долго, что срок уже прошёл —
     // карусель тут не помогает, проверяем перед отправкой.
     if (_selectedDateTime!.isBefore(_earliestDelivery)) {
-      await _scrollToKey(_dateKey);
-      _showErrorToast(title, words.deliveryTimeTooSoon);
-      return;
+      if (_deliveryTimeAuto) {
+        // Значение подставили мы сами, человек его не выбирал — молча
+        // сдвигаем на ближайший допустимый, а не показываем ошибку.
+        setState(_prefillDeliveryTime);
+      } else {
+        await _scrollToKey(_dateKey);
+        _showErrorToast(title, words.deliveryTimeTooSoon);
+        return;
+      }
     }
 
     final price = _priceController.text.trim();
@@ -1433,6 +1470,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                 onTap: () {
                   setState(() {
                     _selectedDateTime = null;
+                    _deliveryTimeAuto = false;
                     _dateTimeController.clear();
                   });
                   _scheduleDraftSave();
