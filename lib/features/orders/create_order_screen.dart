@@ -447,6 +447,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   // ── Date picker ────────────────────────────────────────────────────────────
 
+  /// Минимальный запас между созданием заказа и сроком доставки.
+  /// Раньше срок можно было поставить в прошлом — карусель времени шла без
+  /// нижней границы, и заказ создавался с уже истёкшим дедлайном.
+  static const Duration _minDeliveryLeadTime = Duration(minutes: 40);
+
+  /// Самый ранний допустимый срок доставки, округлённый ВВЕРХ до шага
+  /// карусели (5 минут). Вверх — потому что округление вниз дало бы время
+  /// раньше положенных 40 минут.
+  DateTime get _earliestDelivery {
+    final raw = DateTime.now().add(_minDeliveryLeadTime);
+    final rest = raw.minute % 5;
+    final up = rest == 0 ? raw : raw.add(Duration(minutes: 5 - rest));
+    return DateTime(up.year, up.month, up.day, up.hour, up.minute);
+  }
+
   /// Округлить минуты вниз до ближайшего шага (требование CupertinoDatePicker).
   DateTime _roundDownToInterval(DateTime dt, int interval) {
     final rounded = dt.minute - (dt.minute % interval);
@@ -459,32 +474,46 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   /// Результат пишется в `_selectedDateTime` + контроллер.
   Future<void> _pickDateTime() async {
     final words = context.read<LanguageProvider>().words;
-    final now = DateTime.now();
-    // Инициал должен быть кратен minuteInterval (5), иначе Cupertino падает.
-    final initial = _roundDownToInterval(_selectedDateTime ?? now, 5);
+    final earliest = _earliestDelivery;
+
+    // Стартуем от уже выбранного значения, но не раньше допустимого.
+    // Так дата по умолчанию — текущий день (а если до конца суток осталось
+    // меньше 40 минут, то следующий), и лишний раз её крутить не нужно.
+    final current = _selectedDateTime;
+    final initial = (current == null || current.isBefore(earliest))
+        ? earliest
+        : _roundDownToInterval(current, 5);
 
     final date = await _showCupertinoWheel(
       mode: CupertinoDatePickerMode.date,
       initial: initial,
-      minimum: DateTime(now.year, now.month, now.day),
-      maximum: now.add(const Duration(days: 14)),
+      // Нижняя граница — день самого раннего допустимого срока.
+      minimum: DateTime(earliest.year, earliest.month, earliest.day),
+      maximum: earliest.add(const Duration(days: 14)),
       title: words.deliveryPickDate,
     );
     if (!mounted || date == null) return;
 
+    // Если выбран день самого раннего срока — время нельзя ставить раньше
+    // него. На следующие дни ограничение не нужно: там любое время подходит.
+    final sameDay = date.year == earliest.year &&
+        date.month == earliest.month &&
+        date.day == earliest.day;
+
+    var timeInitial = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      initial.hour,
+      initial.minute,
+    );
+    if (sameDay && timeInitial.isBefore(earliest)) timeInitial = earliest;
+
     // Время — без даты в карусели, только часы:минуты.
     final time = await _showCupertinoWheel(
       mode: CupertinoDatePickerMode.time,
-      initial: _roundDownToInterval(
-        DateTime(
-          date.year,
-          date.month,
-          date.day,
-          initial.hour,
-          initial.minute,
-        ),
-        5,
-      ),
+      initial: _roundDownToInterval(timeInitial, 5),
+      minimum: sameDay ? earliest : null,
       title: words.deliveryPickTime,
     );
     if (!mounted || time == null) return;
@@ -649,6 +678,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     if (_selectedDateTime == null) {
       await _scrollToKey(_dateKey);
       _showErrorToast(title, words.selectTimeError);
+      return;
+    }
+    // Черновик мог пролежать так долго, что выбранный срок уже прошёл —
+    // карусель тут не помогает, проверяем перед отправкой.
+    if (_selectedDateTime!.isBefore(_earliestDelivery)) {
+      await _scrollToKey(_dateKey);
+      _showErrorToast(title, words.deliveryTimeTooSoon);
       return;
     }
 

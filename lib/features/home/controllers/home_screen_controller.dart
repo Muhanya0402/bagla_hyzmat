@@ -316,11 +316,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       case 'complete':
         // Legacy путь — без verification code. Оставлен для обратной
         // совместимости (если кто-то задаст pending action из другого места).
-        final ok = await orderService.updateStatus(
-          orderId,
-          'completed',
-          userId: auth.userId,
-        );
+        final ok = await orderService.updateStatus(orderId, 'completed');
         if (!mounted) return;
         if (ok) await handleRefresh();
         break;

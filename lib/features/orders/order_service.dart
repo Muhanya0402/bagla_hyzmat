@@ -262,7 +262,6 @@ class OrderService {
   /// владельца определить нельзя — тогда НЕ блокируем, чтобы не отрезать
   /// человека от собственного заказа. Настоящая защита данных — права на
   /// чтение в Directus, здесь только UI-барьер.
-  @visibleForTesting
   static bool canOpenOrder(
     Map<String, dynamic> order, {
     required String role,
@@ -362,21 +361,29 @@ class OrderService {
     return data.toString().contains('RECORD_NOT_UNIQUE');
   }
 
+  /// Безусловная смена статуса заказа.
+  ///
+  /// ⚠️ **Не использовать для взятия заказа.** Этот метод перезаписывает
+  /// состояние, не проверяя текущее, и именно так один заказ доставался
+  /// нескольким курьерам: у второго список не успевал обновиться, он жал
+  /// «Взять», и назначение первого молча затиралось. Для взятия есть
+  /// [claimOrder] — он проверяет на сервере, что заказ ещё свободен.
   Future<bool> updateStatus(
     String orderId,
     String newStatus, {
-    String? userId,
     String? courierPhone,
     String? cancelReason,
     String? shopId,
   }) async {
+    // Ловим попытку вернуться к небезопасному пути в разработке, до того как
+    // она доедет до пользователей.
+    assert(
+      newStatus != 'active',
+      'Взятие заказа идёт только через claimOrder — безусловный PATCH здесь '
+      'позволял двум курьерам забрать один заказ.',
+    );
     try {
       final Map<String, dynamic> data = {'order_status': newStatus};
-      if (newStatus == 'active' && userId != null) {
-        data['courierId'] = [
-          {'item': userId, 'collection': 'customers'},
-        ];
-      }
       if (newStatus == 'canceled' && shopId != null) {
         data['cancelled_by'] = 'shop';
       }

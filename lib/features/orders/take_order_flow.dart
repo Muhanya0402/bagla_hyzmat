@@ -8,6 +8,7 @@ import 'package:bagla/features/home/widgets/role_picker_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/features/orders/widgets/confirm_take_order_dialog.dart';
+import 'package:bagla/features/orders/widgets/order_taken_dialog.dart';
 import 'package:bagla/features/profile/restricted_access_view.dart';
 import 'package:bagla/features/profile/top_up_modal.dart';
 import 'package:bagla/l10n/language_provider.dart';
@@ -200,9 +201,11 @@ class TakeOrderFlow {
       case TakeOutcome.taken:
         onUpdate?.call();
       case TakeOutcome.alreadyTaken:
-        // Заказ занят кем-то другим. Показываем это прямо и обновляем
-        // список — устаревшая карточка должна уйти с экрана.
-        _showError(context, words.orderAlreadyTaken, c);
+        // Заказ занят кем-то другим. Именно диалог, а не всплывающая строка:
+        // курьер в этот момент уверен, что заказ его, и такое сообщение
+        // пропустить нельзя. Список обновляем — устаревшая карточка должна
+        // уйти с экрана.
+        await OrderTakenDialog.show(context, words);
         onUpdate?.call();
       case TakeOutcome.error:
         _showError(context, words.error, c);
