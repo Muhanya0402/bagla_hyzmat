@@ -9,9 +9,6 @@ import 'package:bagla/features/notifications/active_orders/active_orders_sync.da
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:bagla/models/district.dart';
-import 'package:bagla/models/etrap.dart';
 import 'package:bagla/features/home/widgets/courier_filter_modal.dart';
 import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
@@ -26,25 +23,6 @@ import 'package:bagla/features/auth/auth_repository.dart';
 mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   int selectedFilterIndex = 0;
   String? selectedStatus;
-
-  String provinceId = '';
-  String provinceLabel = '';
-  String etrapId = '';
-  String etrapLabel = '';
-
-  // Двуязычные лейблы для построения default-фильтров (province/etrap)
-  // — иначе CourierFilterItem попадал в фильтр с лейблом фиксированного
-  // языка, и после смены RU↔TK картинка в модалке оставалась на старом.
-  String provinceLabelRu = '';
-  String provinceLabelTk = '';
-  String etrapLabelRu = '';
-  String etrapLabelTk = '';
-  bool _filtersEverApplied = false;
-
-  Etrap? selectedEtrap;
-  District? selectedDistrict;
-  List<District> districts = [];
-  bool loadingDistricts = false;
 
   CourierFilters filters = const CourierFilters();
   final classifierCache = ClassifierCache();
@@ -141,8 +119,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       if (initRole == 'shop' || initRole == 'business') {
         selectedFilterIndex = 1;
       }
-      await initLocationFilter();
-
       // 1. Принудительно запускаем лоадер и загружаем данные по HTTP
       if (mounted) {
         setState(() => ordersLoading = true);
@@ -465,53 +441,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     );
   }
 
-  Future<void> initLocationFilter() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.role != 'courier') return;
-
-    final isRu = context.read<LanguageProvider>().isRu;
-    final prefs = await SharedPreferences.getInstance();
-
-    provinceId = prefs.getString('province_id') ?? '';
-    provinceLabelRu = prefs.getString('province_ru') ?? '';
-    provinceLabelTk = prefs.getString('province_tk') ?? '';
-    // `provinceLabel` оставлен для обратной совместимости — single-lang
-    // на момент инициализации. UI читает двуязычный через CourierFilterItem.
-    provinceLabel = isRu ? provinceLabelRu : provinceLabelTk;
-
-    etrapId = prefs.getString('etrap_id') ?? '';
-    etrapLabelRu = prefs.getString('etrap_ru') ?? '';
-    etrapLabelTk = prefs.getString('etrap_tk') ?? '';
-    etrapLabel = isRu ? etrapLabelRu : etrapLabelTk;
-
-    final savedTransport = prefs.getString('transport_type') ?? 'any';
-    filters = filters.copyWith(transportFilter: savedTransport);
-
-    if (etrapId.isNotEmpty) {
-      selectedEtrap = Etrap(
-        id: etrapId,
-        ru: prefs.getString('etrap_ru') ?? '',
-        tk: prefs.getString('etrap_tk') ?? '',
-        provinceId: provinceId,
-      );
-      loadDistricts(etrapId, silent: true);
-    }
-    selectedDistrict = null;
-    if (mounted) setState(() {});
-  }
-
-  Future<void> loadDistricts(String etrapId, {bool silent = false}) async {
-    if (!silent) setState(() => loadingDistricts = true);
-    try {
-      final list = await authRepo.getDistrictsByEtrap(etrapId);
-      if (mounted) setState(() => districts = list);
-    } catch (e) {
-      debugPrint('_loadDistricts error: $e');
-    } finally {
-      if (mounted && !silent) setState(() => loadingDistricts = false);
-    }
-  }
-
   /// Снимок магазинов для модалки. Пополнение кеша делается в
   /// `_refreshShopCache()` на каждой загрузке orders — здесь только
   /// возвращаем текущий снимок.
@@ -530,6 +459,36 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   /// tile «Магазин» disabled, выбрать заказчика нельзя.
   void _refreshShopCache() {
     classifierCache.mergeFromOrders(orders);
+  }
+
+  /// Подставить имя заказчика в заказ, пришедший по WebSocket.
+  ///
+  /// В `orders` имени нет — оно живёт на `customers` и подтягивается
+  /// отдельным запросом в `OrderService`. WS-события такой декорации не
+  /// проходят, поэтому у только что прилетевшего заказа строка «кто заказал»
+  /// осталась бы пустой до ближайшего обновления списка.
+  ///
+  /// Берём имя из накопительного кеша магазинов (телефон → item), который
+  /// контроллер и так пополняет после каждой загрузки. Сети здесь нет: если
+  /// магазин в кеше ещё не встречался, просто оставляем как есть — имя
+  /// появится после ближайшей загрузки списка.
+  void _decorateShopNameFromCache(dynamic order) {
+    if (order is! Map) return;
+    if ((order['shop_name'] ?? '').toString().trim().isNotEmpty) return;
+
+    final phone = (order['shop_phone'] ?? '').toString().trim();
+    if (phone.isEmpty) return;
+
+    final cached = classifierCache.shopItemsCache[phone];
+    // `subtitle == null` означает, что в кеше только телефон, а `label` —
+    // это он же, не имя. Такой item нам не подходит.
+    if (cached == null || cached.subtitle == null) return;
+
+    final name = cached.label.trim();
+    if (name.isEmpty) return;
+
+    order['shop_name'] = name;
+    order['shop_first_name'] = name.split(RegExp(r'\s+')).first;
   }
 
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
@@ -676,6 +635,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
       setState(() {
         final id = order['id'].toString();
+
+        // WS отдаёт заказ без имени заказчика — добираем из кеша.
+        if (event != 'delete') _decorateShopNameFromCache(order);
 
         if (event == 'create') {
           if (!orders.any((o) => o['id'].toString() == id)) {
@@ -913,26 +875,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     final isRu = context.read<LanguageProvider>().isRu;
     final words = context.read<LanguageProvider>().words;
 
-    // Передаём оба языка — модалка возьмёт нужный в зависимости от
-    // текущего locale. Без двуязычных лейблов после смены RU↔TK
-    // тут оставался застывший язык на момент initLocationFilter.
-    final defaultProvince = provinceId.isNotEmpty
-        ? CourierFilterItem(
-            id: provinceId,
-            label: provinceLabel, // legacy fallback
-            labelRu: provinceLabelRu,
-            labelTk: provinceLabelTk,
-          )
-        : null;
-    final defaultEtrap = etrapId.isNotEmpty
-        ? CourierFilterItem(
-            id: etrapId,
-            label: etrapLabel,
-            labelRu: etrapLabelRu,
-            labelTk: etrapLabelTk,
-          )
-        : null;
-
     // Строим shopItems ДО очистки orders
     final shopItems = buildShopItems();
 
@@ -942,15 +884,11 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       backgroundColor: Colors.transparent,
       builder: (modalCtx) => CourierFilterModal(
         initial: filters,
-        applyDefaults: !_filtersEverApplied,
         isRu: isRu,
         cache: classifierCache,
         authRepo: authRepo,
         shopItems: shopItems,
-        defaultProvince: defaultProvince,
-        defaultEtrap: defaultEtrap,
         onApply: (newFilters) {
-          _filtersEverApplied = true; // ← добавить
           setState(() {
             filters = newFilters;
             orders = [];
@@ -964,7 +902,6 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           _reconnectWsWithCurrentFilters();
         },
         onClear: () {
-          _filtersEverApplied = true; // ← добавить
           setState(() {
             filters = const CourierFilters();
             selectedStatus = null;

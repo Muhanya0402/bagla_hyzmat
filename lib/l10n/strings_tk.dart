@@ -277,6 +277,7 @@ const Map<String, String> stringsTk = {
   'confirmNoPoints': 'Sargyt size berkidiler. Dowam etmek?',
   'topUpDisabled': 'Tylla dolduryş wagtlaýyn elýeterli däl',
   'tooManyOrders': 'Bir wagtda 3-den köp sargyt almak bolmaýar',
+  'orderAlreadyTaken': 'Sargydy başga eltip beriji eýýäm aldy',
   'transportMismatch': 'Bu sargyt başga ulag görnüşini talap edýär',
   'orderAlreadyClosed': 'Sargyt eýýäm tamamlandy ýa-da ýatyryldy',
   'networkError': 'Tor ýalňyşlygy. Soňra synanyşyň.',
@@ -653,8 +654,6 @@ const Map<String, String> stringsTk = {
   'bankPickerError': 'Banklary ýükläp bolmady',
   'bankPickerRetry': 'Gaýtadan synanyşyň',
   // ── Create order ───────────────────────────────────────────────────────────
-  'createOrderTokensInfo':
-      'Sargyt çap etmek: {n} nyşan. Kurýer kabul edenden soň ýazylyp alynar',
   // ── Restricted access (banned/pending) ─────────────────────────────────────
   'restrictedDefaultTitle': 'Sargyt almaga rugsat wagtlaýyn çäklendirilen',
   'restrictedDefaultMessage':

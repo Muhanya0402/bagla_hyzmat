@@ -9,7 +9,6 @@ import 'package:bagla/core/tour/app_tour_mixin.dart';
 import 'package:bagla/core/tour/tour_keys.dart';
 import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/widgets/photo_picker_sheet.dart';
-import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
@@ -815,7 +814,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     final double deliveryFee = double.tryParse(_deliveryController.text) ?? 0;
     final double itemPrice = double.tryParse(_priceController.text) ?? 0;
     final double total = itemPrice + deliveryFee;
-    final int points = _orderService.calculatePoints(deliveryFee, _pointsRules);
 
     return Scaffold(
       backgroundColor: AppColors.of(context).bg,
@@ -951,7 +949,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                     ],
                   ),
                 ),
-                _buildBottomPanel(deliveryFee, total, points, words),
+                _buildBottomPanel(deliveryFee, total, words),
               ],
             ),
           ),
@@ -1946,7 +1944,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   Widget _buildBottomPanel(
     double delivery,
     double total,
-    int points,
     AppLocalizations words,
   ) {
     return Container(
@@ -1963,33 +1960,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (points > 0)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.of(context).amberTint,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.of(context).border),
-              ),
-              child: Row(
-                children: [
-                  PointIcon(size: 16, tintColor: AppColors.of(context).amber),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      words.createOrderTokensInfo
-                          .replaceAll('{n}', '$points'),
-                      style: AppText.medium(
-                        fontSize: 12,
-                        color: AppColors.of(context).ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Row(
             children: [
               Expanded(

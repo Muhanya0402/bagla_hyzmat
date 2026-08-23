@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:bagla/core/base_url.dart';
 import 'package:bagla/core/secure_token_store.dart';
+import 'package:bagla/core/tour/tour_manager.dart';
+import 'package:bagla/features/auth/logout_prefs.dart';
+import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
+import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/main.dart' show navigatorKey;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -283,8 +287,20 @@ class ApiClient {
     await SecureTokenStore.instance.revokeOnServer(_baseUrl);
 
     await SecureTokenStore.instance.clear();
+
+    // Дальше — ровно та же уборка, что и в `AuthProvider.logout()`.
+    // Раньше принудительный выход чистил только токены и флаг `is_logged_in`,
+    // а данные аккаунта оставались: в prefs висели `user_id` и `role` от
+    // мёртвой сессии, в шторке продолжало жить уведомление «Активные заказы»,
+    // а TourManager оставался в namespace ушедшего пользователя. Обычный
+    // выход всё это убирал — из-за расхождения поведение после повторного
+    // входа зависело от того, вышел пользователь сам или его выбило.
     final prefs = await SharedPreferences.getInstance();
+    await clearAccountPrefs(prefs);
     await prefs.setBool('is_logged_in', false);
+    TourManager.instance.setUserId('');
+    NotificationService.clearLocallyRead();
+    unawaited(ActiveOrdersNotification.hide());
     navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/login',
       (route) => false,

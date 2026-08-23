@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -51,6 +52,12 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
   bool _camFailed = false;
   bool _capturing = false;
 
+  /// Guard: не даём двум инициализациям камеры идти внахлёст. Во время
+  /// системного диалога доступа приложение успевает несколько раз получить
+  /// inactive/resumed, и без этого на каждый resume стартовал новый
+  /// `initialize()` поверх незавершённого предыдущего — отсюда подтормаживания.
+  bool _camInitInFlight = false;
+
   // Зум и вспышка.
   double _minZoom = 1;
   double _maxZoom = 1;
@@ -97,7 +104,8 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
   Future<void> _bootstrap() async {
     await _initCamera();
     if (!mounted) return;
-    await _loadGallery();
+    // Пикер открыт самим пользователем — здесь диалог доступа уместен.
+    await _loadGallery(askIfNeeded: true);
   }
 
   @override
@@ -110,13 +118,12 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive) {
-      final cam = _cam;
-      if (cam != null && cam.value.isInitialized) cam.dispose();
+      unawaited(_releaseCamera());
     } else if (state == AppLifecycleState.resumed) {
       if (!mounted) return;
       // Камеру пере-инициализируем, если она уже была получена ранее
       // (на inactive её dispose'нули).
-      if (_cameras.isNotEmpty) _setCamera(_camIndex);
+      if (_cameras.isNotEmpty) unawaited(_setCamera(_camIndex));
       // Галерею перечитываем, если доступ был закрыт/ограничен: пользователь
       // мог выдать его в системных настройках после «Открыть настройки».
       // Без этого экран «Нет доступа» оставался висеть после возврата.
@@ -124,9 +131,28 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
       // (например, запущенную из `_requestMorePhotos` после presentLimited).
       if ((_galDenied || _galLimited) && !_galLoadInFlight) {
         setState(() => _galLoading = true);
-        _loadGallery(recheckPermission: true);
+        // Без `askIfNeeded`: на возврате доступ только перепроверяем.
+        // Показ диалога отсюда закольцовывался сам на себя.
+        _loadGallery();
       }
     }
+  }
+
+  /// Освободить камеру, уходя в фон.
+  ///
+  /// `_cam` обнуляем и снимаем `_camReady` ДО `dispose()`. Раньше контроллер
+  /// освобождался, но ссылка и флаг оставались прежними — и `build()`
+  /// продолжал рисовать `CameraPreview` поверх уже освобождённого контроллера
+  /// (там же читается `previewSize`). Отсюда чёрные кадры, мигание и
+  /// исключения в логе, пока висел системный диалог доступа.
+  Future<void> _releaseCamera() async {
+    final cam = _cam;
+    if (cam == null) return;
+    _cam = null;
+    if (mounted) setState(() => _camReady = false);
+    try {
+      await cam.dispose();
+    } catch (_) {}
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -157,6 +183,16 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
 
   Future<bool> _setCamera(int index) async {
     if (index < 0 || index >= _cameras.length) return false;
+    if (_camInitInFlight) return false;
+    _camInitInFlight = true;
+    try {
+      return await _setCameraInner(index);
+    } finally {
+      _camInitInFlight = false;
+    }
+  }
+
+  Future<bool> _setCameraInner(int index) async {
     // ⚠️ Сначала ОСВОБОЖДАЕМ текущую камеру, потом инициализируем новую.
     // На Android две открытые камеры одновременно недопустимы — вторая
     // initialize() падает с «camera in use», из-за чего переключение
@@ -280,20 +316,34 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     }
   }
 
-  /// [recheckPermission] — перепроверить доступ СВЕЖИМ запросом.
+  /// [askIfNeeded] — разрешено ли показать СИСТЕМНЫЙ диалог доступа.
   ///
-  /// На ПЕРВОЙ загрузке доверяем результату системного диалога
-  /// (`requestPermissionExtend`): он самый актуальный, а повторный запрос
-  /// сразу после диалога может ещё не отражать выданный ограниченный доступ
-  /// — из-за этого баннер «Разрешить ещё» не появлялся до перезахода.
-  /// При ПЕРЕПРОВЕРКЕ (возврат в приложение, после `presentLimited`) наоборот:
-  /// кешированный ответ может остаться `limited`, хотя доступ уже полный.
-  Future<void> _loadGallery({bool recheckPermission = false}) async {
+  /// Диалог показываем только в ответ на действие пользователя: при открытии
+  /// пикера и по кнопке «Разрешить ещё». На возврате в приложение доступ
+  /// только ПРОВЕРЯЕМ — `getPermissionState` спрашивает систему, ничего не
+  /// показывая.
+  ///
+  /// **Почему это важно.** Показ диалога сам уводит приложение в `inactive` и
+  /// возвращает в `resumed`. Раньше resume-хендлер при закрытом доступе снова
+  /// звал `requestPermissionExtend()` — то есть снова показывал диалог, снова
+  /// получал resume, и так по кругу. На части устройств окно доступа мигало
+  /// несколько секунд подряд, приложение подтормаживало, и всё равно всё
+  /// заканчивалось экраном «дайте доступ через настройки».
+  ///
+  /// Порядок «сначала проверить, потом спросить» заодно сохраняет прежнее
+  /// поведение по ограниченному доступу: на первом открытии проверка вернёт
+  /// «нет доступа», мы покажем диалог и возьмём именно его результат — он
+  /// самый свежий. При перепроверке используется живое состояние системы,
+  /// иначе баннер «Разрешить ещё» продолжал висеть после «Разрешить все».
+  Future<void> _loadGallery({bool askIfNeeded = false}) async {
     if (_galLoadInFlight) return; // уже грузим — второй запрос не нужен
     _galLoadInFlight = true;
     try {
-      final ps = await PhotoManager.requestPermissionExtend();
-      if (!ps.hasAccess) {
+      var state = await _currentPermission();
+      if ((state == null || !state.hasAccess) && askIfNeeded) {
+        state = await PhotoManager.requestPermissionExtend();
+      }
+      if (state == null || !state.hasAccess) {
         if (mounted) {
           setState(() {
             _galDenied = true;
@@ -302,11 +352,6 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
           });
         }
         return;
-      }
-      var state = ps;
-      if (recheckPermission) {
-        final fresh = await _currentPermission();
-        if (fresh != null) state = fresh;
       }
       final limited = state == PermissionState.limited;
       // onlyAll: false — получаем ВСЕ альбомы/папки (Камера, Скриншоты,
@@ -359,7 +404,7 @@ class _PhotoPickerScreenState extends State<_PhotoPickerScreen>
     // могло затереть данные уже идущей (запущенной из resume) загрузки —
     // альбом пропадал из шапки, хотя фото подгружались.
     setState(() => _galLoading = true);
-    await _loadGallery(recheckPermission: true);
+    await _loadGallery();
   }
 
   Future<void> _selectAlbum(AssetPathEntity album) async {

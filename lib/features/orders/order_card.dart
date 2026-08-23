@@ -110,6 +110,31 @@ class _OrderCardState extends State<OrderCard> {
 
                 const SizedBox(height: 8),
 
+                // ── Кто заказал ────────────────────────────────────────
+                // Магазину не показываем: он сам и есть заказчик, своё имя
+                // в собственной карточке — лишний шум.
+                if (!isShop && dto.shopFirstName.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person_outline_rounded,
+                        size: 13,
+                        color: c.inkMuted,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          dto.shopFirstName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.semiBold(fontSize: 12, color: c.ink),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                ],
+
                 // ── Row 2-3: addresses ─────────────────────────────────
                 _buildAddressRow(
                   icon: Icons.inventory_2_outlined,

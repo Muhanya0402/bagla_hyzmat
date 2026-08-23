@@ -27,6 +27,11 @@ class OrderDto {
   final String deliveryAddressTk;
   // Контакты
   final String shopName;
+
+  /// Имя заказчика — **только имя, без фамилии**. Показывается курьеру в
+  /// карточке заказа и в деталях, чтобы было видно, кто заказал.
+  /// `shopName` для этого не годится: там «Имя Фамилия».
+  final String shopFirstName;
   final String shopPhone;
   final String clientPhone;
   final String courierPhone;
@@ -65,6 +70,7 @@ class OrderDto {
     required this.deliveryAddressRu,
     required this.deliveryAddressTk,
     required this.shopName,
+    required this.shopFirstName,
     required this.shopPhone,
     required this.clientPhone,
     required this.courierPhone,
@@ -94,6 +100,18 @@ class OrderDto {
     }
 
     final pics = m['pictures'];
+    // Имя заказчика. `shop_first_name` подставляет OrderService при decorate;
+    // если его нет (заказ пришёл по WS или из кэша) — берём первое слово из
+    // «Имя Фамилия», чтобы UI не оставался пустым.
+    final shopFullName = (m['shop_name'] ?? m['shop_title'] ?? '')
+        .toString()
+        .trim();
+    final firstNameDirect = (m['shop_first_name'] ?? '').toString().trim();
+    final shopFirst = firstNameDirect.isNotEmpty
+        ? firstNameDirect
+        : (shopFullName.isEmpty
+              ? ''
+              : shopFullName.split(RegExp(r'\s+')).first);
     // category может прийти как string slug или Map (expanded m2o).
     final rawCat = m['category'];
     final categorySlug = rawCat == null
@@ -120,7 +138,8 @@ class OrderDto {
       shopAddressTk: s('shop_adresstk'),
       deliveryAddressRu: s('adress_of_delivery'),
       deliveryAddressTk: s('adress_of_deliverytk'),
-      shopName: (m['shop_name'] ?? m['shop_title'] ?? '').toString(),
+      shopName: shopFullName,
+      shopFirstName: shopFirst,
       shopPhone: s('shop_phone'),
       clientPhone: s('client_phone'),
       courierPhone: s('courier_phone'),

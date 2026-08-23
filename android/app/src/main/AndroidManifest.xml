@@ -5,6 +5,16 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Android 14+: пользователь может дать доступ не ко всей галерее, а к
+         выбранным фото. photo_manager на API 34+ ВСЕГДА запрашивает это
+         разрешение вместе с READ_MEDIA_IMAGES (PermissionDelegate34), а
+         Android отклоняет незаявленные разрешения молча, даже не показывая
+         диалог. Без этой строки частичный доступ выдать было невозможно: в
+         системных настройках значилось «Фото: разрешено (выбранные)», а
+         приложение видело «нет доступа» и отправляло в те же настройки.
+         READ_MEDIA_VIDEO намеренно НЕ добавляем — видео приложению не нужно,
+         плагин работает и без него. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- READ_MEDIA_VIDEO УБРАНО: приложение не работает с видео,
          только selfie + photo заказа. Лишний permission уменьшал
          доверие пользователя и попадал под GDPR data minimization. -->

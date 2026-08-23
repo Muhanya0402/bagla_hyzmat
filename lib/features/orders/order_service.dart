@@ -18,6 +18,18 @@ enum CancelOutcome {
   error,
 }
 
+/// Результат попытки застолбить заказ [OrderService.claimOrder].
+enum TakeOutcome {
+  /// Заказ закреплён за курьером.
+  taken,
+
+  /// Заказ уже занят другим курьером (или отменён) — назначение не применено.
+  alreadyTaken,
+
+  /// Сетевая/серверная ошибка. Взял заказ курьер или нет — неизвестно.
+  error,
+}
+
 class OrderService {
   final ApiClient _apiClient = ApiClient();
 
@@ -222,6 +234,134 @@ class OrderService {
     }
   }
 
+  /// Первый элемент M2A-связи (`[{item: <id>, collection: '...'}]`).
+  /// Возвращает `null`, если связь пуста или пришла неразвёрнутой.
+  static String? _m2aFirstItemId(dynamic field) {
+    if (field is! List || field.isEmpty) return null;
+    final first = field[0];
+    if (first is! Map) return null;
+    final id = first['item'];
+    if (id is Map) return id['id']?.toString();
+    return id?.toString();
+  }
+
+  /// Можно ли открыть карточку этого заказа текущему пользователю.
+  ///
+  /// Уведомление «Новый заказ» уходит всем курьерам сразу, и к моменту тапа
+  /// заказ часто уже взят кем-то другим. Без этой проверки курьер
+  /// проваливался в чужой заказ и видел там телефон и адрес клиента —
+  /// данные, закрытые для посторонних (`OrderDetailScreen` прячет их только
+  /// пока заказ в статусе `published`).
+  ///
+  /// Правило намеренно «разрешительное» в спорных случаях: открываем, если
+  /// пользователь — создатель заказа или назначенный исполнитель, либо если
+  /// заказ ещё свободен. Закрываем только когда точно known, что заказ взял
+  /// кто-то другой.
+  ///
+  /// Если связи пришли неразвёрнутыми (fallback `fields: '*'` после 403),
+  /// владельца определить нельзя — тогда НЕ блокируем, чтобы не отрезать
+  /// человека от собственного заказа. Настоящая защита данных — права на
+  /// чтение в Directus, здесь только UI-барьер.
+  @visibleForTesting
+  static bool canOpenOrder(
+    Map<String, dynamic> order, {
+    required String role,
+    required String userId,
+  }) {
+    if (userId.isEmpty) return true;
+
+    final shopId = _m2aFirstItemId(order['shopId']);
+    final courierId = _m2aFirstItemId(order['courierId']);
+
+    if (shopId == null && courierId == null) return true; // не судим вслепую
+    if (shopId == userId) return true; // свой заказ
+    if (courierId == userId) return true; // назначен исполнителем
+    if (courierId != null && courierId.isNotEmpty) return false; // взят другим
+
+    final status = ((order['status'] ?? order['order_status']) ?? '')
+        .toString()
+        .toLowerCase()
+        .trim();
+    return status == 'published'; // ещё свободен — виден всем курьерам
+  }
+
+  /// Разбор ответа условного bulk-PATCH. Directus возвращает массив реально
+  /// изменённых записей; пустой массив означает, что фильтр не совпал.
+  ///
+  /// Вынесено отдельно, потому что от этой трактовки зависит, спишутся ли у
+  /// курьера жетоны за чужой заказ.
+  @visibleForTesting
+  static bool conditionalUpdateApplied(dynamic body) {
+    final updated = (body is Map) ? body['data'] : null;
+    return updated is List && updated.isNotEmpty;
+  }
+
+  /// Застолбить свободный заказ за курьером.
+  ///
+  /// **Почему не обычный PATCH.** [updateStatus] бьёт по `/items/orders/:id`
+  /// безусловно — он не проверяет, свободен ли ещё заказ. Из-за этого один и
+  /// тот же заказ могли взять двое и больше курьеров: у кого-то обрывалась
+  /// сеть, в списке продолжал висеть старый `published`, и его PATCH спокойно
+  /// перезаписывал чужое назначение. Каждый такой курьер видел заказ в «Моих
+  /// заказах», и у каждого списывались жетоны.
+  ///
+  /// **Решение** — тот же приём, что и в [cancelOrderIfOpen]: bulk-update с
+  /// фильтром, который проверяет сервер, а не приложение. Условие дословно
+  /// повторяет определение «свободного заказа» из `getOrders`
+  /// (`order_status = published` и `courierId` пуст), поэтому застолбить можно
+  /// ровно то, что показано во вкладке «Доступные». Если заказ уже заняли,
+  /// фильтр не совпадёт, Directus вернёт пустой массив — и вместо перезаписи
+  /// чужого назначения мы получаем честный [TakeOutcome.alreadyTaken].
+  Future<TakeOutcome> claimOrder(
+    String orderId, {
+    required String courierId,
+    required String courierPhone,
+  }) async {
+    if (orderId.isEmpty || courierId.isEmpty) return TakeOutcome.error;
+    try {
+      final response = await _apiClient.dio.patch(
+        '/items/orders',
+        data: {
+          'query': {
+            'filter': {
+              'id': {'_eq': orderId},
+              'order_status': {'_eq': 'published'},
+              'courierId': {'_null': true},
+            },
+          },
+          'data': {
+            'order_status': 'active',
+            'courierId': [
+              {'item': courierId, 'collection': 'customers'},
+            ],
+            'courier_phone': courierPhone,
+          },
+        },
+      );
+      return conditionalUpdateApplied(response.data)
+          ? TakeOutcome.taken
+          : TakeOutcome.alreadyTaken;
+    } on DioException catch (e) {
+      // Уникальный индекс на таблице-связке `courierId` (если он заведён)
+      // ловит двойное назначение на уровне БД — это единственная защита от
+      // одновременного нажатия «Взять» в одну и ту же миллисекунду. Такую
+      // ошибку трактуем как «заказ уже занят», а не как сбой сети.
+      if (_isUniqueViolation(e)) return TakeOutcome.alreadyTaken;
+      if (kDebugMode) print('Ошибка claimOrder: $e');
+      return TakeOutcome.error;
+    } catch (e) {
+      if (kDebugMode) print('Ошибка claimOrder: $e');
+      return TakeOutcome.error;
+    }
+  }
+
+  /// Directus отдаёт нарушение уникальности как `RECORD_NOT_UNIQUE`.
+  static bool _isUniqueViolation(DioException e) {
+    final data = e.response?.data;
+    if (data == null) return false;
+    return data.toString().contains('RECORD_NOT_UNIQUE');
+  }
+
   Future<bool> updateStatus(
     String orderId,
     String newStatus, {
@@ -418,7 +558,7 @@ class OrderService {
             '/items/customers',
             queryParameters: {
               'filter[id][_in]': customerIds.join(','),
-              'fields': 'id,name,surname,selfie_scan',
+              'fields': 'id,name,surname,selfie_scan,phone',
             },
           );
           final data = resp.data?['data'];
@@ -447,6 +587,15 @@ class OrderService {
           if (selfieId.isNotEmpty) {
             order['courier_selfie_file_id'] = selfieId;
           }
+          // Телефон курьера. Колонка `courier_phone` на заказе заполняется
+          // копией в момент взятия — и у части заказов пустая (у курьера не
+          // был подтянут номер). Тогда у заказчика в принятом заказе просто
+          // не было строки с кнопкой «Позвонить». Берём актуальный номер из
+          // карточки курьера: он ещё и всегда свежий, в отличие от копии.
+          if ((order['courier_phone'] ?? '').toString().trim().isEmpty) {
+            final ph = (c['phone'] ?? '').toString().trim();
+            if (ph.isNotEmpty) order['courier_phone'] = ph;
+          }
         }
 
         // ── Decorate shop_name из связанного customer'а ────────────────
@@ -461,6 +610,12 @@ class OrderService {
           final fullName = '${s['name'] ?? ''} ${s['surname'] ?? ''}'.trim();
           if (fullName.isNotEmpty) {
             order['shop_name'] = fullName;
+          }
+          // Отдельно — только имя: его показываем курьеру в карточке и в
+          // деталях заказа («кто заказал»), фамилия там лишняя.
+          final firstName = (s['name'] ?? '').toString().trim();
+          if (firstName.isNotEmpty) {
+            order['shop_first_name'] = firstName;
           }
         }
       }
@@ -558,7 +713,7 @@ class OrderService {
             '/items/customers',
             queryParameters: {
               'filter[id][_in]': ids.join(','),
-              'fields': 'id,name,surname,selfie_scan',
+              'fields': 'id,name,surname,selfie_scan,phone',
             },
           );
           final list = resp.data?['data'];
@@ -579,11 +734,19 @@ class OrderService {
                       ? (selfie['id']?.toString() ?? '')
                       : selfie.toString();
               if (selfieId.isNotEmpty) order['courier_selfie_file_id'] = selfieId;
+              // См. getOrders: `courier_phone` может быть пустым.
+              if ((order['courier_phone'] ?? '').toString().trim().isEmpty) {
+                final ph = (c['phone'] ?? '').toString().trim();
+                if (ph.isNotEmpty) order['courier_phone'] = ph;
+              }
             }
             if (sid != null && map.containsKey(sid)) {
               final s = map[sid]!;
               final full = '${s['name'] ?? ''} ${s['surname'] ?? ''}'.trim();
               if (full.isNotEmpty) order['shop_name'] = full;
+              // Только имя — для строки «кто заказал» (см. getOrders).
+              final first = (s['name'] ?? '').toString().trim();
+              if (first.isNotEmpty) order['shop_first_name'] = first;
             }
           }
         } catch (_) {}

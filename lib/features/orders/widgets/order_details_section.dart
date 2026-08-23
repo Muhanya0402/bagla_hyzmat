@@ -62,6 +62,8 @@ class OrderDetailsSection extends StatelessWidget {
     final phone = dto.clientPhone;
     final counterPhone = isShop ? dto.courierPhone : dto.shopPhone;
     final courierName = dto.courierName;
+    // Имя того, кто создал заказ — без фамилии.
+    final ordererName = dto.shopFirstName;
 
     return Column(
       children: [
@@ -147,6 +149,23 @@ class OrderDetailsSection extends StatelessWidget {
           value: _transportLabel(transportType, words),
         ),
 
+        // ── Кто заказал (свободный заказ) ─────────────────────────────────
+        // На свободном заказе контакты скрыты, и строки контрагента ниже нет
+        // — а курьеру именно тут важно видеть, кто заказал, чтобы решить,
+        // брать ли. Показываем только имя, без телефона. На взятом заказе имя
+        // уходит в подпись строки контрагента, поэтому здесь не дублируется.
+        if (isLocked && ordererName.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(height: 0.5, color: c.borderSoft),
+          const SizedBox(height: 10),
+          _DetailRow(
+            icon: Icons.storefront_outlined,
+            iconColor: c.inkMuted,
+            label: words.orderSender,
+            value: ordererName,
+          ),
+        ],
+
         const SizedBox(height: 10),
         Container(height: 0.5, color: c.borderSoft),
         const SizedBox(height: 10),
@@ -184,11 +203,15 @@ class OrderDetailsSection extends StatelessWidget {
                     size: 34,
                   )
                 : null,
+            // Симметрично: магазин видит «Курьер — Имя Фамилия», курьер —
+            // «Отправитель — Имя». У заказчика намеренно только имя.
             label: isShop
                 ? (courierName.isNotEmpty
                       ? '${words.courier} — $courierName'
                       : words.courier)
-                : words.orderSender,
+                : (ordererName.isNotEmpty
+                      ? '${words.orderSender} — $ordererName'
+                      : words.orderSender),
             value: formatPhoneCompact(counterPhone),
             trailing: _CallButton(onTap: () => _makeCall(counterPhone)),
           ),

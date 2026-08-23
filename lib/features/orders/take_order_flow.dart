@@ -185,30 +185,42 @@ class TakeOrderFlow {
     );
     if (ok != true || !context.mounted) return;
 
-    try {
-      await service.updateStatus(
-        dto.id,
-        'active',
-        userId: currentUserId,
-        courierPhone: courierPhone,
-      );
-      onUpdate?.call();
-    } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            words.error,
-            style: AppText.regular(fontSize: 13, color: c.errorMuted),
-          ),
-          backgroundColor: c.errorTint,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+    // Условное назначение: сервер сам проверит, что заказ ещё свободен.
+    // Безусловный PATCH здесь позволял двум и более курьерам взять один и
+    // тот же заказ — у кого оборвалась сеть, тот видел устаревший
+    // `published` и перезаписывал чужое назначение.
+    final outcome = await service.claimOrder(
+      dto.id,
+      courierId: currentUserId,
+      courierPhone: courierPhone,
+    );
+    if (!context.mounted) return;
+
+    switch (outcome) {
+      case TakeOutcome.taken:
+        onUpdate?.call();
+      case TakeOutcome.alreadyTaken:
+        // Заказ занят кем-то другим. Показываем это прямо и обновляем
+        // список — устаревшая карточка должна уйти с экрана.
+        _showError(context, words.orderAlreadyTaken, c);
+        onUpdate?.call();
+      case TakeOutcome.error:
+        _showError(context, words.error, c);
     }
+  }
+
+  static void _showError(BuildContext context, String message, AppColors c) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: AppText.regular(fontSize: 13, color: c.errorMuted),
+        ),
+        backgroundColor: c.errorTint,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   static void _showRestrictedModal(BuildContext context, VoidCallback? onUpdate) {

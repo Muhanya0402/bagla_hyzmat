@@ -184,7 +184,15 @@ class PushNotificationService {
         // ignore: use_build_context_synchronously
         final auth = ctx.read<AuthProvider>();
         final order = await OrderService().getOrderById(orderId);
-        if (order != null) {
+        // В чужой заказ не проваливаемся — см. OrderService.canOpenOrder.
+        // Пуш «Новый заказ» получают все курьеры, и к моменту тапа заказ
+        // мог уже уйти другому. Тогда просто открываем список уведомлений.
+        if (order != null &&
+            OrderService.canOpenOrder(
+              order,
+              role: auth.role,
+              userId: auth.userId,
+            )) {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (_) => OrderDetailScreen(

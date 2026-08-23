@@ -258,9 +258,6 @@ void showCourierFilterModal({
   required ClassifierCache cache,
   required AuthRepository authRepo,
   required List<CourierFilterItem> shopItems,
-  bool applyDefaults = true,
-  CourierFilterItem? defaultProvince,
-  CourierFilterItem? defaultEtrap,
   required void Function(CourierFilters) onApply,
   required VoidCallback onClear,
 }) {
@@ -284,9 +281,6 @@ void showCourierFilterModal({
       cache: cache,
       authRepo: authRepo,
       shopItems: shopItems,
-      applyDefaults: applyDefaults,
-      defaultProvince: defaultProvince,
-      defaultEtrap: defaultEtrap,
       onApply: onApply,
       onClear: onClear,
     ),
@@ -305,9 +299,6 @@ class _FilterOverlay extends StatefulWidget {
   final ClassifierCache cache;
   final AuthRepository authRepo;
   final List<CourierFilterItem> shopItems;
-  final bool applyDefaults;
-  final CourierFilterItem? defaultProvince;
-  final CourierFilterItem? defaultEtrap;
   final void Function(CourierFilters) onApply;
   final VoidCallback onClear;
 
@@ -319,9 +310,6 @@ class _FilterOverlay extends StatefulWidget {
     required this.cache,
     required this.authRepo,
     required this.shopItems,
-    required this.applyDefaults,
-    required this.defaultProvince,
-    required this.defaultEtrap,
     required this.onApply,
     required this.onClear,
   });
@@ -435,9 +423,6 @@ class _FilterOverlayState extends State<_FilterOverlay>
                   cache: widget.cache,
                   authRepo: widget.authRepo,
                   shopItems: widget.shopItems,
-                  applyDefaults: widget.applyDefaults,
-                  defaultProvince: widget.defaultProvince,
-                  defaultEtrap: widget.defaultEtrap,
                   onApply: (filters) {
                     widget.onApply(filters);
                     _close();
@@ -463,10 +448,7 @@ class CourierFilterModal extends StatefulWidget {
   final AppLocalizations words;
   final ClassifierCache cache;
   final AuthRepository authRepo;
-  final CourierFilterItem? defaultProvince;
-  final CourierFilterItem? defaultEtrap;
   final List<CourierFilterItem> shopItems;
-  final bool applyDefaults;
   final void Function(CourierFilters) onApply;
   final VoidCallback onClear;
 
@@ -478,9 +460,6 @@ class CourierFilterModal extends StatefulWidget {
     required this.cache,
     required this.authRepo,
     required this.shopItems,
-    this.applyDefaults = true,
-    this.defaultProvince,
-    this.defaultEtrap,
     required this.onApply,
     required this.onClear,
   });
@@ -493,7 +472,6 @@ class _CourierFilterModalState extends State<CourierFilterModal>
     with AppTourMixin<CourierFilterModal> {
   late CourierFilters _draft;
   bool _loadingAny = false;
-  bool _defaultsApplied = false;
   final _transportKey = GlobalKey();
   final _applyKey = GlobalKey();
 
@@ -506,8 +484,12 @@ class _CourierFilterModalState extends State<CourierFilterModal>
   @override
   void initState() {
     super.initState();
+    // Никакого автозаполнения по региону курьера: фильтр применяется только
+    // тем, что курьер выбрал сам. Раньше при первом открытии сюда молча
+    // подставлялись его велаят и этрап (и для забора, и для доставки), и
+    // после «Применить» лента сужалась до его этрапа — курьеры не понимали,
+    // почему пропали заказы.
     _draft = widget.initial;
-    _applyDefaults();
     startTourIfNeeded(
       screenKey: TourKeys.courierFilter,
       targetsBuilder: _buildTourTargets,
@@ -540,31 +522,6 @@ class _CourierFilterModalState extends State<CourierFilterModal>
       align: ContentAlign.top,
     ),
   ];
-
-  void _applyDefaults() {
-    if (_defaultsApplied) return;
-    _defaultsApplied = true;
-    if (!widget.applyDefaults) return;
-
-    var d = _draft;
-    if (d.shopProvince == null && widget.defaultProvince != null) {
-      d = d.copyWith(shopProvince: widget.defaultProvince);
-    }
-    if (d.shopEtrap == null &&
-        d.shopProvince != null &&
-        widget.defaultEtrap != null) {
-      d = d.copyWith(shopEtrap: widget.defaultEtrap);
-    }
-    if (d.deliveryProvince == null && widget.defaultProvince != null) {
-      d = d.copyWith(deliveryProvince: widget.defaultProvince);
-    }
-    if (d.deliveryEtrap == null &&
-        d.deliveryProvince != null &&
-        widget.defaultEtrap != null) {
-      d = d.copyWith(deliveryEtrap: widget.defaultEtrap);
-    }
-    _draft = d;
-  }
 
   // ── Loaders ────────────────────────────────────────────────────────────────
 

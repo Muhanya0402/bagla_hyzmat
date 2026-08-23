@@ -275,6 +275,7 @@ const Map<String, String> stringsRu = {
   'confirmNoPoints': 'Заказ будет закреплён за вами. Приступить?',
   'topUpDisabled': 'Пополнение жетонов временно недоступно',
   'tooManyOrders': 'Нельзя брать больше 3 заказов одновременно',
+  'orderAlreadyTaken': 'Заказ уже взял другой курьер',
   'transportMismatch': 'Этот заказ требует другой тип транспорта',
   'orderAlreadyClosed': 'Заказ уже завершён или отменён',
   'networkError': 'Ошибка сети. Попробуйте позже.',
@@ -660,8 +661,6 @@ const Map<String, String> stringsRu = {
   'bankPickerError': 'Не удалось загрузить банки',
   'bankPickerRetry': 'Повторить',
   // ── Create order ───────────────────────────────────────────────────────────
-  'createOrderTokensInfo':
-      'Публикация заказа: {n} жетонов. Будут списаны после принятия курьером',
   // ── Restricted access (banned/pending) ─────────────────────────────────────
   'restrictedDefaultTitle': 'Доступ к заказам временно ограничен',
   'restrictedDefaultMessage':

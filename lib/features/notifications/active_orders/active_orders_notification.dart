@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui' show DartPluginRegistrant;
 
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -219,6 +222,45 @@ abstract final class ActiveOrdersNotification {
     await _renderAt(idx);
   }
 
+  /// Убрать один заказ из снимков и сразу перерисовать шторку — **без похода
+  /// в сеть**.
+  ///
+  /// Нужно для фонового пуша о смене статуса. MIUI и другие «энергосберегающие»
+  /// прошивки дают процессу на обработку broadcast'а около трёх секунд (видно
+  /// в logcat: `idle->background(3109ms)` → `background->idle(3001ms)`), и
+  /// сетевой пересчёт `ActiveOrdersSync` на медленном сервере в этот бюджет не
+  /// укладывался. Из-за этого у заказчика завершённый курьером заказ висел в
+  /// шторке активным, пока тот не откроет приложение. Локальное удаление
+  /// занимает миллисекунды и успевает всегда.
+  ///
+  /// Если заказа в снимках нет — no-op. Если он был последним — уведомление
+  /// снимается целиком.
+  static Future<void> removeOrder(String orderId) async {
+    if (orderId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final list = ActiveOrderSnapshot.decodeList(prefs.getString(_kOrdersKey));
+    if (list.isEmpty) return;
+
+    final rest = list.where((o) => o.id != orderId).toList();
+    if (rest.length == list.length) return; // такого заказа тут и не было
+
+    if (rest.isEmpty) {
+      await hide();
+      return;
+    }
+
+    await prefs.setString(_kOrdersKey, ActiveOrderSnapshot.encodeList(rest));
+    await prefs.remove('$_kCodeSentPrefix$orderId');
+
+    // Индекс мог указывать на удалённый (или последний) заказ.
+    int idx = prefs.getInt(_kIndexKey) ?? 0;
+    if (idx >= rest.length) idx = rest.length - 1;
+    if (idx < 0) idx = 0;
+    await prefs.setInt(_kIndexKey, idx);
+
+    await _renderAt(idx);
+  }
+
   /// Скрыть уведомление полностью (например, на logout).
   static Future<void> hide() async {
     final prefs = await SharedPreferences.getInstance();
@@ -269,11 +311,19 @@ abstract final class ActiveOrdersNotification {
     //   пакета крутится на ГЛАВНОМ isolate и прерывается при terminate — из-за
     //   чего стрелки были ненадёжны.)
     //
-    // «Позвонить» / «Завершить» — `Default`: будят app в main isolate.
-    //   Оба действия ставят pending action, который контроллер home
-    //   вычитывает при запуске/возврате. Для звонка это единственный
-    //   надёжный путь: url_launcher требует foreground Activity, а фоновый
-    //   isolate пакета не даёт ни Activity, ни полной регистрации плагинов.
+    // «Позвонить» — `SilentBackgroundAction` на Android: набираем номер
+    //   НЕ открывая приложение. Раньше здесь стоял `Default` (app выходил на
+    //   передний план и звонил из main isolate), но на MIUI приложение под
+    //   «Замком приложений» упиралось в экран пароля и до набора дело не
+    //   доходило. Прямой путь стал возможен после того, как в обработчике
+    //   появился `DartPluginRegistrant.ensureInitialized()` — без него в
+    //   фоновом isolate не поднимался ни один Dart-плагин. Набор делаем
+    //   системным intent'ом (`AndroidIntent`), а не `url_launcher`: тому
+    //   нужна живая Activity, которой в фоне нет (`NO_ACTIVITY`).
+    //   На iOS фоновых intent'ов нет — там остаётся `Default`.
+    //
+    // «Завершить» — `Default`: будит app в main isolate и ставит pending
+    //   action, который контроллер home вычитывает при запуске/возврате.
     //
     // «Завершить» — `Default`: открывает сам заказ и форму подтверждения
     //   завершения в приложении (через pending action) — тут вывод app нужен.
@@ -290,13 +340,9 @@ abstract final class ActiveOrdersNotification {
         NotificationActionButton(
           key: _actCall,
           label: callLabel,
-          // `Default`: будит приложение и работает даже когда оно выгружено.
-          // Набор номера делаем НЕ здесь, а в main isolate через pending
-          // action — там есть Activity и живые плагины. Попытки звонить из
-          // фонового isolate (SilentAction/SilentBackgroundAction + intent)
-          // на устройстве не срабатывали: фоновый движок awesome_notifications
-          // не регистрирует Dart-плагины полноценно.
-          actionType: ActionType.Default,
+          actionType: Platform.isAndroid
+              ? ActionType.SilentBackgroundAction
+              : ActionType.Default,
           autoDismissible: false,
         ),
       // «Завершить» — открывает приложение на этом заказе и форму
@@ -411,12 +457,12 @@ abstract final class ActiveOrdersNotification {
         break;
 
       case _actCall:
-        // Набираем не отсюда: приложение может быть выгружено, и плагины в
-        // фоне недоступны. Кладём pending action — контроллер home откроет
-        // диалер, как только приложение поднимется (тот же механизм, что у
-        // «Завершить»).
         final phone = list[idx].phoneToCall;
         if (phone.isEmpty) return;
+        // Открываем диалер прямо отсюда — приложение при этом не поднимается.
+        if (await _dialFromBackground(phone)) break;
+        // Не вышло (iOS или система заблокировала фоновый старт Activity) —
+        // откатываемся на прежний путь: наберём, когда app окажется на экране.
         await prefs.setString(_kPendingActionKey, 'call:$phone');
         break;
 
@@ -430,6 +476,35 @@ abstract final class ActiveOrdersNotification {
           'open_finish:${list[idx].id}',
         );
         break;
+    }
+  }
+
+  /// Открыть системный диалер с уже введённым номером прямо из фонового
+  /// isolate — без вывода приложения на передний план.
+  ///
+  /// `url_launcher` тут непригоден: его Android-часть требует живую Activity
+  /// и бросает `NO_ACTIVITY`. Системный intent с `FLAG_ACTIVITY_NEW_TASK`
+  /// стартует диалер из background-контекста.
+  ///
+  /// Берём `ACTION_DIAL`, а не `ACTION_CALL`: последний звонит сразу и
+  /// требует разрешения `CALL_PHONE`. Нам нужен именно набор с номером.
+  ///
+  /// Возвращает `false`, если набрать не удалось — вызывающий код тогда
+  /// откатывается на pending action.
+  static Future<bool> _dialFromBackground(String phone) async {
+    if (!Platform.isAndroid) return false;
+    final digits = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    if (digits.isEmpty) return false;
+    try {
+      await AndroidIntent(
+        action: 'android.intent.action.DIAL',
+        data: 'tel:$digits',
+        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+      ).launch();
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('Прямой набор из фона не удался: $e');
+      return false;
     }
   }
 }

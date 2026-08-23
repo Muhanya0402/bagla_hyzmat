@@ -1,3 +1,4 @@
+import 'package:bagla/core/app_settings_provider.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/tour/app_tour_mixin.dart';
@@ -318,7 +319,15 @@ class HomeScreenState extends State<HomeScreen>
               key: _ordersKey,
               color: c.ink,
               backgroundColor: c.surface,
-              onRefresh: handleRefresh,
+              // Вместе с лентой перечитываем и настройки приложения: от
+              // `top_up_enabled` зависит, доступно ли курьеру пополнение
+              // жетонов. Раньше настройки грузились только в профиле, и после
+              // выключения пополнения в Directus кнопка на главной оставалась
+              // «живой» до захода в профиль со свайпом.
+              onRefresh: () => Future.wait([
+                handleRefresh(),
+                context.read<AppSettingsProvider>().load(),
+              ]),
               child: HomeOrdersList(
                 orders: filteredOrders,
                 isLoading: ordersLoading,

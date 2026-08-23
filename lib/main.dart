@@ -15,6 +15,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:ui' show DartPluginRegistrant;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -41,6 +42,14 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // ⚠️ ОБЯЗАТЕЛЬНО первой строкой. firebase_messaging НЕ вызывает
+  // DartPluginRegistrant для фонового isolate, а shared_preferences_android
+  // регистрируется именно на стороне Dart (`dartPluginClass`). Без этого
+  // `SharedPreferences.getInstance()` внутри runFromPrefs падает, и
+  // persistent-уведомление «Активные заказы» не пересобиралось: у заказчика
+  // завершённый курьером заказ висел активным, пока он не откроет приложение.
+  DartPluginRegistrant.ensureInitialized();
+
   // Firebase уже инициализирован в main(), повторный вызов не нужен.
   // Не логируем messageId — это корреляция с пользователем.
   if (kDebugMode) print('Фоновое сообщение получено');
@@ -50,13 +59,37 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // заказчика число активных заказов «зависало» в шторке, пока он не
   // откроет приложение (в фоне WebSocket отключён, и пересчёта не было).
   final type = (message.data['type'] ?? '').toString();
-  final hasOrder = (message.data['order_id'] ?? '').toString().isNotEmpty;
-  if (hasOrder || type.contains('order')) {
+  final orderId = (message.data['order_id'] ?? '').toString();
+  final orderStatus = (message.data['order_status'] ?? '').toString();
+  if (orderId.isEmpty && !type.contains('order')) return;
+
+  // ── Быстрый путь: заказ закрыт → снимаем его со шторки локально ─────────
+  // Без сети. MIUI даёт процессу на обработку пуша около трёх секунд
+  // (logcat: `idle->background(3109ms)` → `background->idle(3001ms)`), а
+  // сетевой пересчёт ниже на медленном Directus в этот бюджет не влезает.
+  // Из-за этого у заказчика завершённый курьером заказ висел активным, пока
+  // тот не откроет приложение. Локальное удаление успевает всегда.
+  // `order_status` кладёт в data флоу «Уведомление - Изменение статуса
+  // заказа»; если его нет (старая версия флоу) — просто идём дальше.
+  const terminalStatuses = {'completed', 'canceled', 'cancelled', 'closed'};
+  if (orderId.isNotEmpty && terminalStatuses.contains(orderStatus)) {
     try {
-      await ActiveOrdersSync.runFromPrefs();
-    } catch (_) {
-      // background isolate best-effort — на ошибке молчим.
+      await ActiveOrdersNotification.removeOrder(orderId);
+    } catch (e) {
+      if (kDebugMode) print('Не удалось снять заказ со шторки: $e');
     }
+  }
+
+  // ── Полный пересчёт — по возможности ───────────────────────────────────
+  // Уточняет картину (новые заказы, смена адреса). Если система усыпит
+  // процесс раньше, чем придёт ответ сервера, быстрый путь выше уже
+  // отработал.
+  try {
+    await ActiveOrdersSync.runFromPrefs();
+  } catch (e) {
+    // best-effort, но в debug причину показываем: молчаливый catch уже
+    // однажды спрятал именно этот сбой.
+    if (kDebugMode) print('ActiveOrdersSync (фон) не отработал: $e');
   }
 }
 
@@ -201,7 +234,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),
         ChangeNotifierProvider(create: (_) => LevelProvider()),
-        ChangeNotifierProvider(create: (_) => AppSettingsProvider()),
+        // `..load()` — иначе настройки читались только при свайпе в профиле,
+        // и до первого захода туда приложение считало пополнение жетонов
+        // включённым, даже если администратор его выключил.
+        ChangeNotifierProvider(create: (_) => AppSettingsProvider()..load()),
         ChangeNotifierProvider.value(value: data.langProvider),
         ChangeNotifierProvider.value(value: data.themeProvider),
       ],

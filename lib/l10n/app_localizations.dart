@@ -253,6 +253,7 @@ class AppLocalizations {
   String get confirmWithPoints => get('confirmWithPoints');
   String get confirmNoPoints => get('confirmNoPoints');
   String get tooManyOrders => get('tooManyOrders');
+  String get orderAlreadyTaken => get('orderAlreadyTaken');
   String get topUpDisabled => get('topUpDisabled');
   String get transportMismatch => get('transportMismatch');
   String get orderAlreadyClosed => get('orderAlreadyClosed');
@@ -600,7 +601,6 @@ class AppLocalizations {
   String get bankPickerError => get('bankPickerError');
   String get bankPickerRetry => get('bankPickerRetry');
   // ── Create order ───────────────────────────────────────────────────────
-  String get createOrderTokensInfo => get('createOrderTokensInfo');
   // ── Restricted access ──────────────────────────────────────────────────
   String get restrictedDefaultTitle => get('restrictedDefaultTitle');
   String get restrictedDefaultMessage => get('restrictedDefaultMessage');

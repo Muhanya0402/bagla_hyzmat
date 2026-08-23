@@ -35,6 +35,22 @@ class TourManager {
     }
   }
 
+  /// Ключ prefs, где лежит id текущего пользователя.
+  static const _kUserIdKey = 'user_id';
+
+  /// Активный namespace пользователя.
+  ///
+  /// ⚠️ Берём его из prefs, а НЕ из поля `_userId`. Поле требует, чтобы
+  /// кто-то вызвал [setUserId] в правильный момент, и при рассинхроне
+  /// `markSeen` писал один ключ, а `isSeen` читал другой — гид показывался
+  /// заново после повторного входа. prefs — единственный источник правды:
+  /// он один и тот же в обоих вызовах, независимо от порядка инициализации.
+  /// Поле остаётся запасным вариантом (например, до записи prefs).
+  String get _activeUserId {
+    final fromPrefs = _prefs?.getString(_kUserIdKey) ?? '';
+    return fromPrefs.isNotEmpty ? fromPrefs : _userId;
+  }
+
   /// true — тур на этом экране уже был показан/пропущен для текущего user'а.
   ///
   /// ⚠️ T5-fix: если userId задан, легаси-глобальный ключ
@@ -45,9 +61,10 @@ class TourManager {
   bool isSeen(String screenKey) {
     final p = _prefs;
     if (p == null) return false;
+    final uid = _activeUserId;
     final scoped =
-        p.getBool(TourKeys.prefsKey(screenKey, userId: _userId)) ?? false;
-    if (_userId.isEmpty) {
+        p.getBool(TourKeys.prefsKey(screenKey, userId: uid)) ?? false;
+    if (uid.isEmpty) {
       if (kDebugMode) debugPrint('🗺️  isSeen[$screenKey] = $scoped');
       return scoped;
     }
@@ -64,8 +81,9 @@ class TourManager {
   Future<void> markSeen(String screenKey) async {
     final p = _prefs;
     if (p == null) return;
-    await p.setBool(TourKeys.prefsKey(screenKey, userId: _userId), true);
-    if (_userId.isNotEmpty) {
+    final uid = _activeUserId;
+    await p.setBool(TourKeys.prefsKey(screenKey, userId: uid), true);
+    if (uid.isNotEmpty) {
       // Подчищаем легаси-ключ если он образовался во время cold-start race.
       await p.remove(TourKeys.prefsKey(screenKey));
     }
@@ -76,7 +94,7 @@ class TourManager {
   Future<void> resetScreen(String screenKey) async {
     final p = _prefs;
     if (p == null) return;
-    await p.remove(TourKeys.prefsKey(screenKey, userId: _userId));
+    await p.remove(TourKeys.prefsKey(screenKey, userId: _activeUserId));
     // Сбрасываем и легаси-ключ — иначе replay не сработает (isSeen вернёт
     // true по легаси-ключу).
     await p.remove(TourKeys.prefsKey(screenKey));
@@ -87,10 +105,19 @@ class TourManager {
   /// Туры других аккаунтов на устройстве не трогаем.
   Future<void> resetAllForCurrentUser() async {
     final keys = _prefs?.getKeys() ?? {};
-    final namespace = _userId.isEmpty
+    final uid = _activeUserId;
+    // ⚠️ При пустом namespace префикс совпал бы со ВСЕМИ тур-ключами и
+    // стёр бы прогресс других аккаунтов устройства. Чистим только глобальные.
+    final namespace = uid.isEmpty
         ? TourKeys.prefsPrefix
-        : '${TourKeys.prefsPrefix}${_userId}_';
-    final tourKeys = keys.where((k) => k.startsWith(namespace)).toList();
+        : '${TourKeys.prefsPrefix}${uid}_';
+    final onlyGlobal = uid.isEmpty;
+    final tourKeys = keys
+        .where((k) => k.startsWith(namespace))
+        // Глобальный ключ — без второго '_'-сегмента с id.
+        .where((k) => !onlyGlobal ||
+            !RegExp(r'^' + TourKeys.prefsPrefix + r'\d+_').hasMatch(k))
+        .toList();
     for (final k in tourKeys) {
       await _prefs?.remove(k);
     }

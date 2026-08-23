@@ -428,6 +428,26 @@ class NotificationsScreenState extends State<NotificationsScreen>
       return;
     }
 
+    // Уведомление «Новый заказ» приходит всем курьерам, и к моменту тапа
+    // заказ мог уже уйти другому. В чужой заказ не пускаем — там видны
+    // телефон и адрес клиента.
+    if (!OrderService.canOpenOrder(
+      order,
+      role: auth.role,
+      userId: auth.userId,
+    )) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            words.orderAlreadyTaken,
+            style: AppText.regular(fontSize: 13),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     navigator.push(
       MaterialPageRoute(
         builder: (_) => OrderDetailScreen(
