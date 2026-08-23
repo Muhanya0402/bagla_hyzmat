@@ -26,6 +26,10 @@ class OrderRealtimeService {
   WebSocketChannel? _channel;
   StreamSubscription? _sub;
   Timer? _pingTimer;
+
+  /// Когда последний раз пришло ХОТЬ ЧТО-ТО от сервера (включая pong).
+  /// По нему сторож в [_startPing] отличает живое соединение от «висящего».
+  DateTime? _lastInboundAt;
   Timer? _reconnectTimer;
 
   bool _connected = false;
@@ -180,6 +184,7 @@ class OrderRealtimeService {
   // ── Обработка сообщений ───────────────────────────────────────────────────
 
   void _onMessage(dynamic raw) {
+    _lastInboundAt = DateTime.now();
     try {
       final msg = jsonDecode(raw as String) as Map<String, dynamic>;
       final type = msg['type'] as String? ?? '';
@@ -425,8 +430,26 @@ class OrderRealtimeService {
 
   void _startPing() {
     _pingTimer?.cancel();
+    _lastInboundAt = DateTime.now();
     _pingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_connected) _send({'type': 'ping'});
+      if (!_connected) return;
+      _send({'type': 'ping'});
+
+      // ── Сторож «висящего» соединения ──────────────────────────────────
+      // Пинг мы слали и раньше, но ОТВЕТ никто не проверял. На мобильной
+      // сети сокет часто остаётся открытым на уровне TCP, а данные уже не
+      // идут: `_connected` навсегда оставался true, реконнекта не было, и
+      // лента протухала до ручного свайпа. Именно это выглядело как
+      // «WebSocket подтраивает».
+      //
+      // Порог 90 секунд — три пропущенных пинга подряд. Одиночная задержка
+      // сети под него не попадает, поэтому лишних переподключений не будет.
+      final last = _lastInboundAt;
+      if (last != null &&
+          DateTime.now().difference(last) > const Duration(seconds: 90)) {
+        debugPrint('🔌 WS: тишина >90 с — считаем соединение мёртвым');
+        _scheduleReconnect();
+      }
     });
   }
 

@@ -73,6 +73,10 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   /// использует `handleRefresh` напрямую и НЕ дебаунсится.
   Timer? _cardRefreshDebounce;
 
+  /// Периодическая сверка ленты «Доступные» с сервером — страховка на случай,
+  /// когда WebSocket подвис. Подробности в [reconcileAvailable].
+  Timer? _availabilityTimer;
+
   /// Обновление ленты по событию от карточки — с дебаунсом (см. выше).
   void refreshFromCard() {
     _cardRefreshDebounce?.cancel();
@@ -250,6 +254,49 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     }
   }
 
+  /// Убрать из ленты «Доступные» заказы, которые уже кто-то забрал.
+  ///
+  /// Раньше это делал ТОЛЬКО WebSocket. Он на мобильной сети подвисает —
+  /// соединение живо, событий нет, — и курьер продолжал видеть чужой заказ:
+  /// жал «Взять» и упирался в отказ. Данные при этом целы (сервер не отдаст
+  /// занятый заказ), но пользоваться приложением невозможно, и чем больше
+  /// заказов в системе, тем чаще это происходит.
+  ///
+  /// Сверяем только то, что сейчас на экране, и получаем в ответ одни `id` —
+  /// поэтому запрос одинаково дёшев и на десяти заказах, и на тысяче.
+  ///
+  /// При сетевой ошибке [OrderService.stillAvailable] возвращает `null`, и мы
+  /// не убираем ничего: временный сбой не должен опустошать ленту.
+  Future<void> reconcileAvailable() async {
+    if (!mounted) return;
+    // Только вкладка «Доступные» у курьера: в «Моих заказах» и у магазина
+    // занятость чужими курьерами ничего не меняет.
+    if (selectedFilterIndex != 0) return;
+    final auth = context.read<AuthProvider>();
+    if (auth.role != 'courier') return;
+
+    final ids = <String>[];
+    for (final o in orders) {
+      if (o is! Map) continue;
+      final st = ((o['status'] ?? o['order_status']) ?? '')
+          .toString()
+          .toLowerCase()
+          .trim();
+      if (st == 'published') ids.add(o['id'].toString());
+    }
+    if (ids.isEmpty) return;
+
+    final free = await orderService.stillAvailable(ids);
+    if (!mounted) return;
+
+    final gone = OrderService.ordersToDrop(ids, free);
+    if (gone.isEmpty) return;
+
+    setState(() {
+      orders.removeWhere((o) => o is Map && gone.contains(o['id'].toString()));
+    });
+  }
+
   void disposeController() {
     _lifecycleListener?.dispose();
     _lifecycleListener = null;
@@ -257,6 +304,8 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     _notifTickTimer = null;
     _cardRefreshDebounce?.cancel();
     _cardRefreshDebounce = null;
+    _availabilityTimer?.cancel();
+    _availabilityTimer = null;
     realtimeService.disconnect();
     scrollController.dispose();
   }
@@ -619,9 +668,22 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
   }
 
   void setupRealtimeCallbacks() {
-    realtimeService.onConnectionChanged = (_) {
-      if (mounted) setState(() {});
+    realtimeService.onConnectionChanged = (ok) {
+      if (!mounted) return;
+      setState(() {});
+      // Соединение восстановлено: события, случившиеся за время разрыва, до
+      // нас не дошли и не дойдут. Сверяем ленту сразу, не дожидаясь таймера.
+      if (ok) unawaited(reconcileAvailable());
     };
+
+    // Страховка на случай «живого, но молчащего» сокета — он не рвётся, и
+    // onConnectionChanged не сработает. Раз в 25 секунд перепроверяем, что
+    // показанные свободные заказы всё ещё свободны.
+    _availabilityTimer?.cancel();
+    _availabilityTimer = Timer.periodic(
+      const Duration(seconds: 25),
+      (_) => unawaited(reconcileAvailable()),
+    );
 
     // Оставляем пустым, так как за первичные данные теперь отвечает HTTP-клиент
     realtimeService.onOrdersUpdate = null;

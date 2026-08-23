@@ -234,6 +234,61 @@ class OrderService {
     }
   }
 
+  /// Из переданных id вернуть те заказы, что ещё свободны — `published` и без
+  /// назначенного курьера.
+  ///
+  /// Дешёвая сверка для ленты «Доступные». Нужна потому, что исчезновение
+  /// занятого заказа из чужой ленты держалось **только** на WebSocket, а он на
+  /// мобильной сети подвисает: сокет остаётся открытым, события не приходят,
+  /// и курьер продолжает видеть заказ, который уже забрали. Данные при этом
+  /// целы (`claimOrder` не даст его взять), но работать невозможно.
+  ///
+  /// Спрашиваем только про то, что сейчас на экране, и просим один `id` —
+  /// объём ответа зависит от размера страницы, а не от общего числа заказов
+  /// в системе. Поэтому сверка одинаково дешева и на десяти заказах, и на
+  /// тысяче.
+  ///
+  /// Возвращает `null`, если запрос не удался. Это важно отличать от пустого
+  /// множества: при сетевой ошибке из ленты нельзя убирать НИЧЕГО, иначе
+  /// временный сбой стёр бы курьеру все доступные заказы.
+  Future<Set<String>?> stillAvailable(List<String> orderIds) async {
+    if (orderIds.isEmpty) return <String>{};
+    try {
+      final r = await _apiClient.dio.get(
+        '/items/orders',
+        queryParameters: {
+          'fields': 'id',
+          'limit': -1,
+          'filter[id][_in]': orderIds.join(','),
+          'filter[order_status][_eq]': 'published',
+          'filter[courierId][_null]': true,
+        },
+      );
+      final data = r.data?['data'];
+      if (data is! List) return null;
+      return data
+          .map((e) => (e is Map ? e['id'] : e).toString())
+          .where((e) => e.isNotEmpty)
+          .toSet();
+    } catch (e) {
+      if (kDebugMode) print('Сверка доступных заказов не удалась: $e');
+      return null;
+    }
+  }
+
+  /// Какие из показанных заказов пора убрать из ленты «Доступные».
+  ///
+  /// [shown] — id заказов, которые сейчас видит курьер как свободные;
+  /// [stillFree] — ответ [stillAvailable], либо `null`, если сверка не удалась.
+  ///
+  /// `null` обязан означать «не трогаем ничего». Если трактовать его как
+  /// пустое множество, любой сетевой сбой стёр бы курьеру всю ленту — это
+  /// хуже той проблемы, ради которой сверка вводилась.
+  static Set<String> ordersToDrop(List<String> shown, Set<String>? stillFree) {
+    if (stillFree == null) return const <String>{};
+    return shown.where((id) => !stillFree.contains(id)).toSet();
+  }
+
   /// Первый элемент M2A-связи (`[{item: <id>, collection: '...'}]`).
   /// Возвращает `null`, если связь пуста или пришла неразвёрнутой.
   static String? _m2aFirstItemId(dynamic field) {
