@@ -18,18 +18,40 @@ import 'package:flutter/material.dart';
   }
 }
 
-IconData notifTypeIcon(String type) {
+/// Иконка уведомления.
+///
+/// [transport] — вид транспорта курьера по этому заказу, если известен.
+/// Раньше у всех уведомлений о статусе заказа стоял грузовик, на чём бы
+/// человек ни ездил. Теперь иконка совпадает с транспортом; у старых
+/// уведомлений транспорта нет, и они остаются с прежней общей иконкой.
+IconData notifTypeIcon(String type, {String transport = ''}) {
   switch (type) {
     case 'account_status':
       return Icons.verified_user_rounded;
     case 'new_order':
       return Icons.shopping_bag_rounded;
     case 'order_status':
-      return Icons.local_shipping_rounded;
+      return transportIcon(transport);
     case 'daily_bonus':
       return Icons.bolt_rounded;
     default:
       return Icons.notifications_rounded;
+  }
+}
+
+/// Иконка вида транспорта. Пустое значение и всё незнакомое — грузовик,
+/// как было раньше: иконка уведомления не должна пропадать из-за того, что
+/// транспорт неизвестен.
+IconData transportIcon(String transport) {
+  switch (transport.trim()) {
+    case 'car':
+      return Icons.directions_car_rounded;
+    case 'truck':
+      return Icons.local_shipping_rounded;
+    case 'any':
+      return Icons.directions_run_rounded;
+    default:
+      return Icons.local_shipping_rounded;
   }
 }
 

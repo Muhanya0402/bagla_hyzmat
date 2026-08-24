@@ -12,6 +12,12 @@ class NotificationDto {
   final String bodyTk;
   final DateTime? createdAt;
   final bool isRead;
+
+  /// Вид транспорта курьера по этому заказу: `car`, `truck` или пусто.
+  /// Заполняет флоу уведомлений; у старых записей пусто — тогда иконка
+  /// остаётся прежней, общей.
+  final String transportType;
+
   // Сырая мапа — на случай если где-то понадобится поле, которого нет в DTO.
   final Map<String, dynamic> raw;
 
@@ -24,6 +30,7 @@ class NotificationDto {
     required this.bodyTk,
     required this.createdAt,
     required this.isRead,
+    required this.transportType,
     required this.raw,
   });
 
@@ -54,6 +61,7 @@ class NotificationDto {
       bodyTk: pick('body_tk', 'body'),
       createdAt: parsed,
       isRead: m['is_read'] == true,
+      transportType: (m['transport_type'] ?? '').toString().trim(),
       raw: m,
     );
   }
@@ -71,6 +79,7 @@ class NotificationDto {
         bodyTk: bodyTk,
         createdAt: createdAt,
         isRead: isRead ?? this.isRead,
+        transportType: transportType,
         raw: raw,
       );
 }

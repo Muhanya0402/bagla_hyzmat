@@ -655,7 +655,7 @@ class _NotifCardState extends State<_NotifCard> {
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
-                    notifTypeIcon(n.type),
+                    notifTypeIcon(n.type, transport: n.transportType),
                     color: style.icon,
                     size: 18,
                   ),

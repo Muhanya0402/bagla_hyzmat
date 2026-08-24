@@ -277,7 +277,11 @@ class _NotifRowState extends State<_NotifRow> {
                   color: s.bg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(notifTypeIcon(n.type), color: s.icon, size: 16),
+                child: Icon(
+                  notifTypeIcon(n.type, transport: n.transportType),
+                  color: s.icon,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 12),
 
