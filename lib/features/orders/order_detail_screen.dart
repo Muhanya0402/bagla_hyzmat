@@ -712,6 +712,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     OrderService service,
     AppLocalizations words,
   ) {
+    // Заказ мог стать терминальным уже после открытия шторки. В этом случае
+    // сообщение показываем ПОСЛЕ её закрытия (в .then) — снек рисуется в
+    // Scaffold этого экрана, а шторка лежит поверх него отдельным слоем
+    // маршрутов, так что до закрытия шторки снек всё равно не виден.
+    var showAlreadyClosedMessage = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -738,24 +744,47 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
             'wrong_address': words.cancelReasonWrongAddress,
             'other': words.cancelReasonOther,
           }[reasonId]!;
+          // CAS-отмена: применяется только если заказ ещё published/active.
+          // Защита от отмены уже доставленного заказа при устаревшем UI магазина.
           final outcome = await service.cancelOrderIfOpen(
             orderId,
             cancelReason: label + (comment.isNotEmpty ? ': $comment' : ''),
             shopId: widget.currentUserId,
           );
           if (outcome == CancelOutcome.applied) {
+            // Обновляем список — заказ пропал из ленты магазина после отмены.
             widget.onUpdate?.call();
             return true;
           }
-          if (context.mounted && outcome == CancelOutcome.alreadyClosed) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(words.orderAlreadyClosed)),
-            );
+          if (outcome == CancelOutcome.alreadyClosed) {
+            // Повторять попытку бессмысленно — закрываем шторку, сообщение
+            // покажем в .then(), когда шторка уже сойдёт с экрана.
+            showAlreadyClosedMessage = true;
+            return true;
           }
           return false;
         },
       ),
-    ).then((_) => widget.onUpdate?.call());
+    ).then((_) {
+      if (showAlreadyClosedMessage && context.mounted) {
+        final c = AppColors.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              words.orderAlreadyClosed,
+              style: AppText.regular(fontSize: 13, color: c.errorMuted),
+            ),
+            backgroundColor: c.errorTint,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+      // Рефрешим — UI подтянет актуальный статус (в т.ч. терминальный).
+      widget.onUpdate?.call();
+    });
   }
 
   Widget _handle() => const SheetHandle(topPadding: 0);
