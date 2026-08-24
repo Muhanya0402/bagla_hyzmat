@@ -9,6 +9,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/orders/return_order_flow.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
 import 'package:bagla/features/orders/widgets/cashback_success_dialog.dart';
 import 'package:bagla/features/orders/widgets/order_countdown_card.dart';
@@ -476,16 +477,34 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       if (status == 'active') {
         final double cashback = _isExpired ? 0.0 : dto.cashbackAmount;
 
-        return OrderPrimaryButton(
-          label: cashback > 0
-              ? words.finishWithCashback.replaceAll(
-                  '{cashback}',
-                  '${cashback.toDouble()}',
-                )
-              : words.finishOrder,
-          color: c.ink,
-          filled: true,
-          onTap: () => _showDeliveryCodeModal(context, orderId, service, words),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OrderPrimaryButton(
+              label: cashback > 0
+                  ? words.finishWithCashback.replaceAll(
+                      '{cashback}',
+                      '${cashback.toDouble()}',
+                    )
+                  : words.finishOrder,
+              color: c.ink,
+              filled: true,
+              onTap: () => _showDeliveryCodeModal(context, orderId, service, words),
+            ),
+            const SizedBox(height: 10),
+            OrderPrimaryButton(
+              label: words.returnOrder,
+              color: c.errorMuted,
+              filled: false,
+              // Экран не закрываем: заказ ушёл из работы, курьер сам решит,
+              // куда идти дальше — а onUpdate обновит ленту под ним.
+              onTap: () => ReturnOrderFlow.start(
+                context,
+                dto: dto,
+                onUpdate: widget.onUpdate,
+              ),
+            ),
+          ],
         );
       }
     }

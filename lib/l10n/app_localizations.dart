@@ -255,6 +255,17 @@ class AppLocalizations {
   String get tooManyOrders => get('tooManyOrders');
   String get orderAlreadyTaken => get('orderAlreadyTaken');
   String get orderAlreadyTakenBody => get('orderAlreadyTakenBody');
+  String get returnOrder => get('returnOrder');
+  String get returnOrderTitle => get('returnOrderTitle');
+  String get returnOrderSubtitle => get('returnOrderSubtitle');
+  String get returnReasonBreakdown => get('returnReasonBreakdown');
+  String get returnReasonIllness => get('returnReasonIllness');
+  String get returnReasonNoTime => get('returnReasonNoTime');
+  String get returnOrderTokenWarning => get('returnOrderTokenWarning');
+  String get returnOrderDone => get('returnOrderDone');
+  String get returnLimitReached => get('returnLimitReached');
+  String get returnNotYourOrder => get('returnNotYourOrder');
+  String get returnsLeft => get('returnsLeft');
   String get gotIt => get('gotIt');
   String get deliveryTimeTooSoon => get('deliveryTimeTooSoon');
   String get topUpDisabled => get('topUpDisabled');

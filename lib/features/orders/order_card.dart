@@ -4,6 +4,7 @@ import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/orders/return_order_flow.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
 import 'package:bagla/features/orders/widgets/order_status_badge.dart';
@@ -334,9 +335,23 @@ class _OrderCardState extends State<OrderCard> {
     }
 
     if (status == 'active' && role == 'courier') {
-      return _ActionButton(
-        label: words.finishOrder,
-        onTap: () => onTap?.call(),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ActionButton(
+            label: words.finishOrder,
+            onTap: () => onTap?.call(),
+          ),
+          const SizedBox(height: 8),
+          _OutlineButton(
+            label: words.returnOrder,
+            onTap: () => ReturnOrderFlow.start(
+              context,
+              dto: dto,
+              onUpdate: onUpdate,
+            ),
+          ),
+        ],
       );
     }
 
