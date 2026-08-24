@@ -30,6 +30,22 @@ enum TakeOutcome {
   error,
 }
 
+/// Результат попытки отказаться от взятого заказа [OrderService.returnOrder].
+enum ReturnOutcome {
+  /// Заказ возвращён в свободные.
+  returned,
+
+  /// Заказ уже не закреплён за этим курьером: его отменили или завершили,
+  /// пока курьер думал.
+  notYourOrder,
+
+  /// Суточный лимит отказов исчерпан.
+  limitReached,
+
+  /// Сетевая или серверная ошибка. Вернулся заказ или нет — неизвестно.
+  error,
+}
+
 class OrderService {
   final ApiClient _apiClient = ApiClient();
 
@@ -1054,6 +1070,77 @@ class OrderService {
         'xp_earned': 0,
         'level_up': false,
       };
+    }
+  }
+
+  // ─── 6.1. ОТКАЗ КУРЬЕРА ОТ ЗАКАЗА ────────────────────────────────────────
+
+  /// Разбор ответа флоу «Возврат заказа курьером».
+  ///
+  /// Вынесено в чистую функцию намеренно: на взятии заказа мы уже ошиблись,
+  /// трактуя невнятный ответ сервера как успех. Всё, что не является явным
+  /// `ok: true`, считается ошибкой.
+  static (ReturnOutcome, int) parseReturnResponse(dynamic raw) {
+    Map<String, dynamic>? body;
+    if (raw is Map) {
+      body = Map<String, dynamic>.from(raw);
+    } else if (raw is String && raw.isNotEmpty) {
+      try {
+        final d = jsonDecode(raw);
+        if (d is Map) body = Map<String, dynamic>.from(d);
+      } catch (_) {}
+    }
+    if (body == null) return (ReturnOutcome.error, 0);
+
+    final left = body['returns_left'] is num
+        ? (body['returns_left'] as num).toInt()
+        : 0;
+
+    if (body['ok'] == true) return (ReturnOutcome.returned, left);
+
+    switch ((body['code'] ?? '').toString()) {
+      case 'LIMIT_REACHED':
+        return (ReturnOutcome.limitReached, left);
+      // Для курьера обе ситуации выглядят одинаково: заказ больше не его.
+      case 'NOT_YOUR_ORDER':
+      case 'ORDER_NOT_ACTIVE':
+        return (ReturnOutcome.notYourOrder, left);
+      default:
+        return (ReturnOutcome.error, left);
+    }
+  }
+
+  /// Отказаться от взятого заказа: он вернётся в свободные.
+  ///
+  /// Курьера сервер определяет по авторизации, поэтому его id не передаём —
+  /// иначе подменённый клиент вернул бы чужой заказ.
+  Future<(ReturnOutcome, int)> returnOrder({
+    required String orderId,
+    required String reason,
+    String comment = '',
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/flows/trigger/8544cf3e-0b09-41a0-a5eb-d62ed03de95a',
+        data: {'order_id': orderId, 'reason': reason, 'comment': comment},
+      );
+      return parseReturnResponse(response.data);
+    } on DioException catch (e) {
+      // Флоу сообщает об отказе исключением, поэтому текст ошибки —
+      // это наш же JSON с кодом причины.
+      final parsed = parseReturnResponse(e.response?.data);
+      if (parsed.$1 != ReturnOutcome.error) return parsed;
+      final body = e.response?.data?.toString() ?? '';
+      for (final code in const ['LIMIT_REACHED', 'NOT_YOUR_ORDER', 'ORDER_NOT_ACTIVE']) {
+        if (body.contains(code)) {
+          return parseReturnResponse({'ok': false, 'code': code, 'returns_left': 0});
+        }
+      }
+      if (kDebugMode) print('Ошибка returnOrder: $e');
+      return (ReturnOutcome.error, 0);
+    } catch (e) {
+      if (kDebugMode) print('Ошибка returnOrder: $e');
+      return (ReturnOutcome.error, 0);
     }
   }
 
