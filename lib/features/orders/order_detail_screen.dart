@@ -718,11 +718,42 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => CancelReasonModal(
-        orderId: orderId,
-        currentUserId: widget.currentUserId,
-        service: service,
-        onSuccess: () => widget.onUpdate?.call(),
         words: words,
+        title: words.cancelReasonTitle,
+        subtitle: words.cancelReasonSubtitle,
+        reasons: [
+          ReasonOption(id: 'client_refused',
+              label: words.cancelReasonClientRefused, icon: Icons.person_off_outlined),
+          ReasonOption(id: 'courier_late',
+              label: words.cancelReasonCourierLate, icon: Icons.timer_off_outlined),
+          ReasonOption(id: 'wrong_address',
+              label: words.cancelReasonWrongAddress, icon: Icons.location_off_outlined),
+          ReasonOption(id: 'other',
+              label: words.cancelReasonOther, icon: Icons.help_outline_rounded),
+        ],
+        onSubmit: (reasonId, comment) async {
+          final label = {
+            'client_refused': words.cancelReasonClientRefused,
+            'courier_late': words.cancelReasonCourierLate,
+            'wrong_address': words.cancelReasonWrongAddress,
+            'other': words.cancelReasonOther,
+          }[reasonId]!;
+          final outcome = await service.cancelOrderIfOpen(
+            orderId,
+            cancelReason: label + (comment.isNotEmpty ? ': $comment' : ''),
+            shopId: widget.currentUserId,
+          );
+          if (outcome == CancelOutcome.applied) {
+            widget.onUpdate?.call();
+            return true;
+          }
+          if (context.mounted && outcome == CancelOutcome.alreadyClosed) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(words.orderAlreadyClosed)),
+            );
+          }
+          return false;
+        },
       ),
     ).then((_) => widget.onUpdate?.call());
   }

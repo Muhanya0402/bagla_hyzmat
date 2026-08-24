@@ -1,24 +1,27 @@
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/widgets/sheet_handle.dart';
-import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class CancelReasonModal extends StatefulWidget {
-  final String orderId;
-  final String currentUserId;
-  final OrderService service;
-  final VoidCallback? onSuccess;
   final AppLocalizations words;
+  final String title;
+  final String subtitle;
+  final List<ReasonOption> reasons;
+
+  /// Что делать по нажатию. Возвращает `true`, если действие удалось —
+  /// тогда модалка закроется. Показ ошибок остаётся на вызывающей стороне:
+  /// у отмены магазином и отказа курьера они разные.
+  final Future<bool> Function(String reasonId, String comment) onSubmit;
 
   const CancelReasonModal({
     super.key,
-    required this.orderId,
-    required this.currentUserId,
-    required this.service,
-    this.onSuccess,
     required this.words,
+    required this.title,
+    required this.subtitle,
+    required this.reasons,
+    required this.onSubmit,
   });
 
   @override
@@ -30,29 +33,6 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
   final _commentCtrl = TextEditingController();
   bool _isLoading = false;
 
-  List<_ReasonOption> _reasons(AppLocalizations w) => [
-    _ReasonOption(
-      id: 'client_refused',
-      label: w.cancelReasonClientRefused,
-      icon: Icons.person_off_outlined,
-    ),
-    _ReasonOption(
-      id: 'courier_late',
-      label: w.cancelReasonCourierLate,
-      icon: Icons.timer_off_outlined,
-    ),
-    _ReasonOption(
-      id: 'wrong_address',
-      label: w.cancelReasonWrongAddress,
-      icon: Icons.location_off_outlined,
-    ),
-    _ReasonOption(
-      id: 'other',
-      label: w.cancelReasonOther,
-      icon: Icons.help_outline_rounded,
-    ),
-  ];
-
   bool get _isOther => _selectedId == 'other';
 
   @override
@@ -63,49 +43,16 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
   Future<void> _submit() async {
     if (_selectedId == null) return;
-    final option = _reasons(widget.words).firstWhere((r) => r.id == _selectedId);
-    final comment = _commentCtrl.text.trim();
-    final fullReason = option.label + (comment.isNotEmpty ? ': $comment' : '');
-
     setState(() => _isLoading = true);
-    // CAS-отмена: применяется только если заказ ещё published/active.
-    // Защита от отмены уже доставленного заказа при устаревшем UI магазина.
-    final outcome = await widget.service.cancelOrderIfOpen(
-      widget.orderId,
-      cancelReason: fullReason,
-      shopId: widget.currentUserId,
-    );
+    final ok = await widget.onSubmit(_selectedId!, _commentCtrl.text.trim());
     if (!mounted) return;
     setState(() => _isLoading = false);
-
-    if (outcome == CancelOutcome.alreadyClosed) {
-      final c = AppColors.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.words.orderAlreadyClosed,
-            style: AppText.regular(fontSize: 13, color: c.errorMuted),
-          ),
-          backgroundColor: c.errorTint,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      Navigator.pop(context);
-      // Рефрешим — UI подтянет актуальный (терминальный) статус.
-      widget.onSuccess?.call();
-      return;
-    }
-
-    Navigator.pop(context);
-    widget.onSuccess?.call();
+    if (ok) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final reasons = _reasons(widget.words);
+    final reasons = widget.reasons;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
@@ -143,7 +90,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    widget.words.cancelReasonTitle,
+                    widget.title,
                     style: AppText.serif(fontSize: 17, color: c.ink),
                   ),
                 ),
@@ -160,7 +107,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 const SizedBox(width: 5),
                 Expanded(
                   child: Text(
-                    widget.words.cancelReasonSubtitle,
+                    widget.subtitle,
                     style: AppText.regular(fontSize: 12, color: c.inkMuted).copyWith(height: 1.45),
                   ),
                 ),
@@ -261,7 +208,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
 
 // ── Reason tile ───────────────────────────────────────────────────────────────
 class _ReasonTile extends StatelessWidget {
-  final _ReasonOption reason;
+  final ReasonOption reason;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -448,12 +395,12 @@ class _ConfirmButtonState extends State<_ConfirmButton> {
 }
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-class _ReasonOption {
+class ReasonOption {
   final String id;
   final String label;
   final IconData icon;
 
-  const _ReasonOption({
+  const ReasonOption({
     required this.id,
     required this.label,
     required this.icon,
