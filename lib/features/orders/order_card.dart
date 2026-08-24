@@ -103,7 +103,7 @@ class _OrderCardState extends State<OrderCard> {
                       _buildCategoryChip(dto.category, c),
                     ],
                     const SizedBox(width: 6),
-                    _buildIdPill(dto.shortId, c),
+                    _buildIdPill(dto.shortId, c, words),
                     const Spacer(),
                     OrderStatusBadge(status: dto.status),
                   ],
@@ -238,8 +238,8 @@ class _OrderCardState extends State<OrderCard> {
     );
   }
 
-  // ── ID pill ────────────────────────────────────────────────────────────────
-  Widget _buildIdPill(String shortId, AppColors c) {
+  // ── Номер заказа ───────────────────────────────────────────────────────────
+  Widget _buildIdPill(String shortId, AppColors c, AppLocalizations words) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -247,7 +247,7 @@ class _OrderCardState extends State<OrderCard> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        'ID: $shortId',
+        '${words.orderNumberLabel} $shortId',
         style: AppText.medium(fontSize: 10, color: c.inkSoft),
       ),
     );

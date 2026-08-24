@@ -223,7 +223,7 @@ class ConfirmTakeOrderDialog extends StatelessWidget {
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          'ID: $shortOrderId • $address',
+                          '${words.orderNumberLabel} $shortOrderId • $address',
                           style: AppText.regular(
                             fontSize: 11,
                             color: c.inkMuted,

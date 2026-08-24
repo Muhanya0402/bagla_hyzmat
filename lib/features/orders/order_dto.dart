@@ -82,6 +82,28 @@ class OrderDto {
     required this.raw,
   });
 
+  /// Развёрнутая карточка заказчика из M2A-связи `shopId`.
+  ///
+  /// В WS-событии связь приходит как `[{item: {id, name, surname}}]`, при
+  /// обычной загрузке — как `[{item: '254'}]`. Второй случай нам здесь не
+  /// нужен: там имя уже подставлено отдельным полем.
+  static Map<String, dynamic>? _expandedShop(dynamic field) {
+    if (field is! List || field.isEmpty) return null;
+    final first = field.first;
+    if (first is! Map) return null;
+    final item = first['item'];
+    return item is Map ? Map<String, dynamic>.from(item) : null;
+  }
+
+  /// Первое непустое значение после обрезки пробелов.
+  static String _firstNonEmpty(List<String> values) {
+    for (final v in values) {
+      final t = v.trim();
+      if (t.isNotEmpty) return t;
+    }
+    return '';
+  }
+
   factory OrderDto.fromMap(Map<String, dynamic> m) {
     String s(String k) => (m[k] ?? '').toString();
     double d(String k) {
@@ -100,18 +122,24 @@ class OrderDto {
     }
 
     final pics = m['pictures'];
-    // Имя заказчика. `shop_first_name` подставляет OrderService при decorate;
-    // если его нет (заказ пришёл по WS или из кэша) — берём первое слово из
-    // «Имя Фамилия», чтобы UI не оставался пустым.
-    final shopFullName = (m['shop_name'] ?? m['shop_title'] ?? '')
-        .toString()
-        .trim();
-    final firstNameDirect = (m['shop_first_name'] ?? '').toString().trim();
-    final shopFirst = firstNameDirect.isNotEmpty
-        ? firstNameDirect
-        : (shopFullName.isEmpty
-              ? ''
-              : shopFullName.split(RegExp(r'\s+')).first);
+
+    // Имя заказчика приходит тремя путями, и берём первый доступный:
+    //   1. `shop_first_name` — подставляет OrderService при загрузке списка;
+    //   2. развёрнутая связь `shopId` — так имя приезжает в WS-событии;
+    //   3. первое слово из «Имя Фамилия» — на случай старых данных.
+    // Три источника, потому что заказ попадает в приложение по-разному, а
+    // курьеру имя нужно одинаково во всех случаях: без него новый заказ
+    // выглядел безымянным до тех пор, пока список не перезагрузится.
+    final expanded = _expandedShop(m['shopId']);
+    final shopFullName = _firstNonEmpty([
+      (m['shop_name'] ?? m['shop_title'] ?? '').toString(),
+      '${expanded?['name'] ?? ''} ${expanded?['surname'] ?? ''}',
+    ]);
+    final shopFirst = _firstNonEmpty([
+      (m['shop_first_name'] ?? '').toString(),
+      (expanded?['name'] ?? '').toString(),
+      shopFullName.isEmpty ? '' : shopFullName.split(RegExp(r'\s+')).first,
+    ]);
     // category может прийти как string slug или Map (expanded m2o).
     final rawCat = m['category'];
     final categorySlug = rawCat == null

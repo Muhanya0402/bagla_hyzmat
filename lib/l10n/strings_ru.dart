@@ -276,6 +276,7 @@ const Map<String, String> stringsRu = {
   'topUpDisabled': 'Пополнение жетонов временно недоступно',
   'tooManyOrders': 'Нельзя брать больше 3 заказов одновременно',
   'orderAlreadyTaken': 'Заказ уже взял другой курьер',
+  'orderNumberLabel': 'Заказ №',
   'updateRequiredTitle': 'Нужно обновить приложение',
   'updateRequiredBody': 'Эта версия больше не поддерживается. Обновитесь, чтобы продолжить работу.',
   'updateRequiredButton': 'Обновить',

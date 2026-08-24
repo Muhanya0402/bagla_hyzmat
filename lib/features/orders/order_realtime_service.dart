@@ -279,6 +279,14 @@ class OrderRealtimeService {
           'shop_province.province_ru',
           'shop_province.province_tk',
           'courierId.*',
+          // Имя заказчика прямо в событии. Без него новый заказ прилетал
+          // безымянным: имя подставляется при загрузке списка с сервера
+          // (там карточки клиентов дочитываются пачкой), а WS этот шаг
+          // минует — и курьер видел «кто заказал» только после того, как
+          // список перезагрузится, то есть уже взяв заказ.
+          'shopId.item:customers.id',
+          'shopId.item:customers.name',
+          'shopId.item:customers.surname',
         ],
         'sort': ['-date_created'],
         'limit': 100,

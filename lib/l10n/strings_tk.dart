@@ -278,6 +278,7 @@ const Map<String, String> stringsTk = {
   'topUpDisabled': 'Tylla dolduryş wagtlaýyn elýeterli däl',
   'tooManyOrders': 'Bir wagtda 3-den köp sargyt almak bolmaýar',
   'orderAlreadyTaken': 'Sargydy başga eltip beriji eýýäm aldy',
+  'orderNumberLabel': 'Sargyt №',
   'updateRequiredTitle': 'Programmany täzelemeli',
   'updateRequiredBody': 'Bu wersiýa indi goldanylmaýar. Işi dowam etdirmek üçin täzeläň.',
   'updateRequiredButton': 'Täzelemek',
