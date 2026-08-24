@@ -42,5 +42,33 @@ void main() {
       expect(outcome, ReturnOutcome.returned);
       expect(left, 2);
     });
+
+    test('успех, завёрнутый в ключ операции, разбирается как успех', () {
+      final (outcome, left) = OrderService.parseReturnResponse({
+        'trigger_8544cf3e': {'ok': true, 'returns_left': 3},
+      });
+      expect(outcome, ReturnOutcome.returned);
+      expect(left, 3);
+    });
+
+    test('ошибка с кодом, завёрнутая в ключ операции, разбирается верно', () {
+      final (outcome, left) = OrderService.parseReturnResponse({
+        'trigger_8544cf3e': {
+          'ok': false,
+          'code': 'LIMIT_REACHED',
+          'returns_left': 0,
+        },
+      });
+      expect(outcome, ReturnOutcome.limitReached);
+      expect(left, 0);
+    });
+
+    test('мусор без ok/code на обоих уровнях по-прежнему даёт error', () {
+      final (outcome, _) = OrderService.parseReturnResponse({
+        'foo': 'bar',
+        'baz': {'unrelated': 1},
+      });
+      expect(outcome, ReturnOutcome.error);
+    });
   });
 }

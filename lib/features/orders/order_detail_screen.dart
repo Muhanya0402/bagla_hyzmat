@@ -496,12 +496,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               label: words.returnOrder,
               color: c.errorMuted,
               filled: false,
-              // Экран не закрываем: заказ ушёл из работы, курьер сам решит,
-              // куда идти дальше — а onUpdate обновит ленту под ним.
+              // После успешного отказа заказ больше не принадлежит курьеру,
+              // а `dto` строится из `widget.order` и сам не перечитывается —
+              // если экран оставить открытым, кнопки «Завершить»/«Отказаться»
+              // остались бы для чужого уже заказа (нажатие «Завершить» ушло
+              // бы на сервер по чужому заказу). Закрываем экран так же, как
+              // при успешном взятии заказа (см. ветку `published` выше).
               onTap: () => ReturnOrderFlow.start(
                 context,
                 dto: dto,
-                onUpdate: widget.onUpdate,
+                onUpdate: () {
+                  widget.onUpdate?.call();
+                  if (mounted) Navigator.pop(context);
+                },
               ),
             ),
           ],

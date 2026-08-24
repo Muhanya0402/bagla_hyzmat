@@ -33,6 +33,16 @@ class ReturnOrderFlow {
         ? '${words.returnOrderSubtitle}. ${words.returnOrderTokenWarning}'
         : words.returnOrderSubtitle;
 
+    // Шторка закрывается при ЛЮБОМ исходе — как и у отмены магазином
+    // (`_showCancelReasonModal` в order_card.dart / order_detail_screen.dart):
+    // снек рисуется в Scaffold под шторкой и невидим, пока она открыта,
+    // поэтому запоминаем исход в локальной переменной и показываем сообщение
+    // уже в `.then()`, после того как шторка сошла с экрана. Да, при сетевой
+    // ошибке курьеру придётся открыть шторку заново — это осознанный размен:
+    // увидеть причину важнее, чем сэкономить одно нажатие.
+    ReturnOutcome? pendingOutcome;
+    var pendingLeft = 0;
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -55,33 +65,34 @@ class ReturnOrderFlow {
         onSubmit: (reasonId, comment) async {
           final (outcome, left) = await service.returnOrder(
             orderId: dto.id, reason: reasonId, comment: comment);
-          if (!sheetCtx.mounted) return outcome == ReturnOutcome.returned;
-
-          final messenger = ScaffoldMessenger.of(sheetCtx);
-          switch (outcome) {
-            case ReturnOutcome.returned:
-              messenger.showSnackBar(SnackBar(
-                content: Text('${words.returnOrderDone}. '
-                    '${words.returnsLeft.replaceAll('{n}', '$left')}',
-                    style: AppText.regular(fontSize: 13)),
-                behavior: SnackBarBehavior.floating,
-              ));
-              onUpdate?.call();
-              return true;
-            case ReturnOutcome.limitReached:
-              _err(messenger, words.returnLimitReached, c);
-              return false;
-            case ReturnOutcome.notYourOrder:
-              _err(messenger, words.returnNotYourOrder, c);
-              onUpdate?.call();
-              return false;
-            case ReturnOutcome.error:
-              _err(messenger, words.error, c);
-              return false;
-          }
+          pendingOutcome = outcome;
+          pendingLeft = left;
+          return true;
         },
       ),
-    );
+    ).then((_) {
+      final outcome = pendingOutcome;
+      if (outcome == null || !context.mounted) return;
+
+      final messenger = ScaffoldMessenger.of(context);
+      switch (outcome) {
+        case ReturnOutcome.returned:
+          messenger.showSnackBar(SnackBar(
+            content: Text('${words.returnOrderDone}. '
+                '${words.returnsLeft.replaceAll('{n}', '$pendingLeft')}',
+                style: AppText.regular(fontSize: 13)),
+            behavior: SnackBarBehavior.floating,
+          ));
+          onUpdate?.call();
+        case ReturnOutcome.limitReached:
+          _err(messenger, words.returnLimitReached, c);
+        case ReturnOutcome.notYourOrder:
+          _err(messenger, words.returnNotYourOrder, c);
+          onUpdate?.call();
+        case ReturnOutcome.error:
+          _err(messenger, words.error, c);
+      }
+    });
   }
 
   static void _err(ScaffoldMessengerState m, String text, AppColors c) {

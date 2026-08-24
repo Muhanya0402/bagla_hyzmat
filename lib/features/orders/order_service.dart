@@ -1090,15 +1090,35 @@ class OrderService {
         if (d is Map) body = Map<String, dynamic>.from(d);
       } catch (_) {}
     }
-    if (body == null) return (ReturnOutcome.error, 0);
+    final topLevel = body;
+    if (topLevel == null) return (ReturnOutcome.error, 0);
 
-    final left = body['returns_left'] is num
-        ? (body['returns_left'] as num).toInt()
+    // Соседи по файлу (generateDeliveryCode, verifyDeliveryCode) вынуждены
+    // искать полезную нагрузку flow во вложенных значениях — значит, Directus
+    // как минимум иногда заворачивает результат в ключ операции. Если на
+    // верхнем уровне нет ни `ok`, ни `code`, заглядываем на один уровень
+    // вглубь и, если там найдётся объект с одним из этих ключей, разбираем
+    // уже его. Плоский ответ (уже содержащий `ok`/`code`) это не трогает.
+    var resolved = topLevel;
+    if (!topLevel.containsKey('ok') && !topLevel.containsKey('code')) {
+      for (final v in topLevel.values) {
+        if (v is Map) {
+          final nested = Map<String, dynamic>.from(v);
+          if (nested.containsKey('ok') || nested.containsKey('code')) {
+            resolved = nested;
+            break;
+          }
+        }
+      }
+    }
+
+    final left = resolved['returns_left'] is num
+        ? (resolved['returns_left'] as num).toInt()
         : 0;
 
-    if (body['ok'] == true) return (ReturnOutcome.returned, left);
+    if (resolved['ok'] == true) return (ReturnOutcome.returned, left);
 
-    switch ((body['code'] ?? '').toString()) {
+    switch ((resolved['code'] ?? '').toString()) {
       case 'LIMIT_REACHED':
         return (ReturnOutcome.limitReached, left);
       // Для курьера обе ситуации выглядят одинаково: заказ больше не его.
@@ -1131,9 +1151,18 @@ class OrderService {
       final parsed = parseReturnResponse(e.response?.data);
       if (parsed.$1 != ReturnOutcome.error) return parsed;
       final body = e.response?.data?.toString() ?? '';
+      // Код ошибки достаём по подстроке из текста ответа, но раньше вместе
+      // с ним терялся `returns_left` и подставлялся ноль — курьер видел
+      // «лимит исчерпан» без числа оставшихся отказов, хотя сервер его
+      // прислал. Вытаскиваем число из текста тем же способом, если оно там
+      // есть.
+      final leftMatch = RegExp(r'returns_left\D{0,5}(\d+)').firstMatch(body);
+      final leftFromText =
+          leftMatch != null ? int.tryParse(leftMatch.group(1)!) ?? 0 : 0;
       for (final code in const ['LIMIT_REACHED', 'NOT_YOUR_ORDER', 'ORDER_NOT_ACTIVE']) {
         if (body.contains(code)) {
-          return parseReturnResponse({'ok': false, 'code': code, 'returns_left': 0});
+          return parseReturnResponse(
+              {'ok': false, 'code': code, 'returns_left': leftFromText});
         }
       }
       if (kDebugMode) print('Ошибка returnOrder: $e');
