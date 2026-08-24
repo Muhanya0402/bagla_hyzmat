@@ -485,6 +485,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.charyew.bagla;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				DEVELOPMENT_TEAM = XG5LJWT3AZ;
 				CODE_SIGN_STYLE = Automatic;
@@ -675,6 +676,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.charyew.bagla;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				DEVELOPMENT_TEAM = XG5LJWT3AZ;
 				CODE_SIGN_STYLE = Automatic;
@@ -701,6 +703,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.charyew.bagla;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				DEVELOPMENT_TEAM = XG5LJWT3AZ;
 				CODE_SIGN_STYLE = Automatic;

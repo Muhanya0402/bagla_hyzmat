@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Без этого ключа iOS отказывает в registerForRemoteNotifications
+	     («no valid aps-environment entitlement string found»), APNs-токен
+	     не выдаётся, а значит FirebaseMessaging.getToken() возвращает null
+	     и fcm_token у iOS-пользователя в Directus никогда не появляется.
+	     Именно поэтому пуши на iOS не приходили вообще.
+
+	     Значение development работает и для TestFlight/App Store: Apple
+	     подменяет его на production при подписи дистрибутивным профилем.
+	     Для явного релизного билда можно завести отдельный Release-файл. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

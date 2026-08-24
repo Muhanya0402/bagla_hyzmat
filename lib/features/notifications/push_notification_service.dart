@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:bagla/core/api_client.dart';
 import 'package:bagla/core/secure_token_store.dart';
@@ -101,9 +103,36 @@ class PushNotificationService {
     }
   }
 
+  /// Дождаться APNs-токена на iOS.
+  ///
+  /// FCM-токен там выдаётся только после того, как система вернула APNs-токен.
+  /// Сразу после старта его ещё нет, и `getToken()` возвращает `null` — токен
+  /// не попадал в Directus, и пуши не приходили до следующего запуска (а если
+  /// регистрация в APNs вообще не сделана — не приходили никогда).
+  ///
+  /// Ждём недолго: блокировать вход нельзя, а второй шанс даёт
+  /// `onTokenRefresh`. На Android вызывать не нужно — там APNs нет.
+  Future<void> _waitForApnsToken({
+    Duration timeout = const Duration(seconds: 8),
+    Duration pollEvery = const Duration(milliseconds: 400),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      try {
+        final apns = await _messaging.getAPNSToken();
+        if (apns != null && apns.isNotEmpty) return;
+      } catch (_) {
+        // Не поддерживается/не готово — просто пробуем ещё раз.
+      }
+      await Future.delayed(pollEvery);
+    }
+    if (kDebugMode) print('⚠️ APNs-токен не получен за отведённое время');
+  }
+
   /// Синхронизирует текущий FCM-токен с залогиненным пользователем.
   Future<void> _syncTokenToCurrentUser() async {
     try {
+      if (Platform.isIOS) await _waitForApnsToken();
       final String? token = await _messaging.getToken();
       if (token != null) {
         // ⚠️ НЕ логируем сам FCM-token — это identifier устройства,

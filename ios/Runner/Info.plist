@@ -55,5 +55,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- remote-notification — обязателен, чтобы iOS будила приложение на
+	     пуш и вызывала фоновый обработчик FCM (пересборка шторки
+	     «Активные заказы»). Без этого ключа пуш с payload'ом доставляется
+	     только когда приложение на экране. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
