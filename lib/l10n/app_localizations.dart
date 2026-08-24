@@ -236,6 +236,7 @@ class AppLocalizations {
   String get courier => get('courier');
   String get orderSender => get('orderSender');
   String get itemPrice => get('itemPrice');
+  String get orderTotal => get('orderTotal');
   String get cashbackPercent => get('cashbackPercent');
   String get tokens => get('tokens');
   String get toShopReceive => get('toShopReceive');

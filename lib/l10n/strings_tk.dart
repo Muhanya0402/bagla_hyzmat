@@ -259,6 +259,7 @@ const Map<String, String> stringsTk = {
   'courier': 'Eltip beriji',
   'orderSender': 'Sargytçy',
   'itemPrice': 'Haryt(lar) üçin',
+  'orderTotal': 'Jemi',
   'cashbackPercent': 'Keşbek (20%)',
   'tokens': 'tylla',
   'toShopReceive': 'Almaly',

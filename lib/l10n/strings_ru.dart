@@ -256,6 +256,7 @@ const Map<String, String> stringsRu = {
   'courier': 'Курьер',
   'orderSender': 'Заказчик',
   'itemPrice': 'За товар(ы)',
+  'orderTotal': 'Итого',
   'cashbackPercent': 'Кэшбек (20%)',
   'tokens': 'жетонов',
   'toShopReceive': 'К получению',
