@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:bagla/core/api_client.dart';
+import 'package:bagla/core/app_version.dart';
 import 'package:bagla/core/secure_token_store.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
@@ -161,6 +162,16 @@ class PushNotificationService {
     return false;
   }
 
+  /// Пишет в профиль FCM-токен и версию установленного приложения.
+  ///
+  /// Версия едет вместе с токеном не по смыслу, а по расчёту: этот запрос
+  /// и так уходит при каждом входе, и добавление поля не стоит ни одного
+  /// лишнего обращения к серверу.
+  ///
+  /// Зачем версия в профиле: без неё на жалобу «не работает» невозможно
+  /// понять, не старая ли у человека сборка. На этом уже терялось время —
+  /// правки проверялись на APK недельной давности, и причина находилась
+  /// только через системные логи устройства.
   Future<void> _saveTokenToDirectus(String fcmToken) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -174,7 +185,12 @@ class PushNotificationService {
       final ApiClient apiClient = ApiClient();
       await apiClient.dio.patch(
         '/items/customers/$userId',
-        data: {'fcm_token': fcmToken},
+        data: {
+          'fcm_token': fcmToken,
+          // Пустую версию не шлём: затирать в профиле известное значение
+          // тем, что не смогли прочитать, — хуже, чем не обновить его.
+          if (AppVersion.display.isNotEmpty) 'app_version': AppVersion.display,
+        },
       );
 
       if (kDebugMode) {

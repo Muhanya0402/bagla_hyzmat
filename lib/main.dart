@@ -1,4 +1,6 @@
 import 'package:bagla/core/app_settings_provider.dart';
+import 'package:bagla/core/app_version.dart';
+import 'package:bagla/core/widgets/update_required_screen.dart';
 import 'package:bagla/core/splash_screen.dart';
 import 'package:bagla/core/theme/app_theme.dart';
 import 'package:bagla/core/theme/theme_provider.dart';
@@ -145,6 +147,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
   Future<void> _initialize(VoidCallback onSplashDone) async {
     await initializeDateFormatting('ru', null);
 
+    // Своя версия нужна до первого экрана: по ней решается, пускать ли
+    // человека дальше, и она же уходит в профиль вместе с FCM-токеном.
+    await AppVersion.load();
+
     // Firebase и onBackgroundMessage уже зарегистрированы в main()
 
     final langProvider = LanguageProvider();
@@ -281,6 +287,16 @@ class MyApp extends StatelessWidget {
     }
 
     final themeMode = context.watch<ThemeProvider>().themeMode;
+    final settings = context.watch<AppSettingsProvider>();
+
+    // Версия ниже минимальной — дальше не пускаем. Проверка стоит здесь, а
+    // не в конкретном экране, потому что несовместимой оказывается вся
+    // работа с сервером, а не отдельная кнопка.
+    //
+    // Настройки грузятся асинхронно, и до их прихода `minVersion` пуст —
+    // тогда `isBelow` вернёт false и человек спокойно работает. Пустое
+    // значение в Directus означает то же самое: проверка выключена.
+    final blocked = AppVersion.isBelow(AppVersion.version, settings.minVersion);
 
     return MaterialApp(
       navigatorKey: navigatorKey,
@@ -312,7 +328,12 @@ class MyApp extends StatelessWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: home,
+      home: blocked
+          ? UpdateRequiredScreen(
+              words: context.watch<LanguageProvider>().words,
+              updateUrl: settings.updateUrl,
+            )
+          : home,
       onGenerateRoute: (settings) {
         if (settings.name == '/registration_details') {
           final role = settings.arguments as String? ?? 'client';

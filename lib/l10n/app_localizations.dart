@@ -254,6 +254,11 @@ class AppLocalizations {
   String get confirmNoPoints => get('confirmNoPoints');
   String get tooManyOrders => get('tooManyOrders');
   String get orderAlreadyTaken => get('orderAlreadyTaken');
+  String get updateRequiredTitle => get('updateRequiredTitle');
+  String get updateRequiredBody => get('updateRequiredBody');
+  String get updateRequiredButton => get('updateRequiredButton');
+  String get updateRequiredNoLink => get('updateRequiredNoLink');
+  String get updateRequiredYourVersion => get('updateRequiredYourVersion');
   String get orderAlreadyTakenBody => get('orderAlreadyTakenBody');
   String get returnOrder => get('returnOrder');
   String get returnOrderTitle => get('returnOrderTitle');

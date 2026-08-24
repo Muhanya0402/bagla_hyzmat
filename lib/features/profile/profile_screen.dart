@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:bagla/core/app_settings_provider.dart';
+import 'package:bagla/core/app_version.dart';
 import 'package:bagla/core/app_text_styles.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/core/theme/theme_toggle_button.dart';
@@ -187,7 +188,7 @@ class ProfileScreenState extends State<ProfileScreen>
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 36),
                 child: FooterSection(
                   companyName: settings.companyName,
-                  appVersion: settings.appVersion,
+                  appVersion: AppVersion.display,
                 ),
               ),
             ),
