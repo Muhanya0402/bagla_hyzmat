@@ -50,6 +50,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // завершённый курьером заказ висел активным, пока он не откроет приложение.
   DartPluginRegistrant.ensureInitialized();
 
+  // ⚠️ Фоновому isolate ЗАПРЕЩЕНО обновлять токены. Refresh-токен Directus
+  // одноразовый; ротация из фона (плюс убийство процесса MIUI посреди
+  // refresh, до записи новой пары) оставляла в хранилище погашенный токен —
+  // и основной isolate спустя минуты выкидывал пользователя на экран входа.
+  // Здесь работаем только на живом access-токене: протух — просто выходим,
+  // шторку обновит основной isolate при следующем событии.
+  ApiClient.tokenRefreshDisabled = true;
+
   // Firebase уже инициализирован в main(), повторный вызов не нужен.
   // Не логируем messageId — это корреляция с пользователем.
   if (kDebugMode) print('Фоновое сообщение получено');

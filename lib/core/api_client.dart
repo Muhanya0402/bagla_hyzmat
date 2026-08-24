@@ -58,6 +58,23 @@ class ApiClient {
   static const _refreshCooldown = Duration(seconds: 30);
   DateTime? _lastRefreshAt;
 
+  /// Запрет любых операций с refresh-токеном в ТЕКУЩЕМ isolate.
+  ///
+  /// Включается в фоновых isolate (FCM background handler) первым делом.
+  /// Причина: refresh-токен Directus ОДНОРАЗОВЫЙ (повторное использование →
+  /// 401 INVALID_CREDENTIALS), а у каждого isolate свой экземпляр ApiClient —
+  /// singleflight и cooldown защищают от двойного refresh только внутри
+  /// одного isolate. Фоновый обработчик пушей, обновляя шторку, ротировал
+  /// пару под ногами у основного isolate; MIUI к тому же убивает фоновый
+  /// процесс через ~3 секунды, и новая пара не успевала записаться в
+  /// Keystore — в хранилище оставался уже погашенный refresh-токен. Основной
+  /// isolate спустя минуты делал им refresh, получал 401 и выкидывал
+  /// пользователя на экран входа посреди работы.
+  ///
+  /// С этим флагом фоновый isolate работает только на живом access-токене:
+  /// протух — запрос честно падает 401, шторку обновит основной isolate.
+  static bool tokenRefreshDisabled = false;
+
   /// Колбэк показа toast'а пользователю при принудительном logout
   /// (например, refresh-token протух). Задаётся снаружи (main.dart),
   /// чтобы ApiClient не зависел от MaterialApp/ScaffoldMessenger.
@@ -80,7 +97,7 @@ class ApiClient {
           final isRefreshCall =
               options.path.contains('/auth/refresh');
 
-          if (!isRefreshCall) {
+          if (!isRefreshCall && !tokenRefreshDisabled) {
             // Proactive refresh: если до истечения <60 сек И мы не
             // refresh'ились в течение последних `_refreshCooldown`,
             // обновляем токен ДО отправки запроса. Cooldown спасает от
@@ -122,6 +139,7 @@ class ApiClient {
           // caller обработает (getOrders сам ретраит с `fields=*`).
           // Также не трогаем сам /auth/refresh, чтобы не зациклиться.
           if (statusCode != 401 ||
+              tokenRefreshDisabled ||
               e.requestOptions.path.contains('/auth/refresh')) {
             return handler.next(e);
           }
