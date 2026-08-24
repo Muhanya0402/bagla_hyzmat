@@ -8,6 +8,12 @@ class CancelReasonModal extends StatefulWidget {
   final AppLocalizations words;
   final String title;
   final String subtitle;
+
+  /// Подпись кнопки подтверждения. Отмена магазином и отказ курьера — разные
+  /// по последствиям действия, поэтому подпись не хардкодим и не даём ей
+  /// значение по умолчанию: каждый вызывающий обязан явно решить, что на ней
+  /// написано.
+  final String confirmLabel;
   final List<ReasonOption> reasons;
 
   /// Что делать по нажатию. Возвращает `true`, если шторку нужно закрыть —
@@ -22,6 +28,7 @@ class CancelReasonModal extends StatefulWidget {
     required this.words,
     required this.title,
     required this.subtitle,
+    required this.confirmLabel,
     required this.reasons,
     required this.onSubmit,
   });
@@ -193,7 +200,7 @@ class _CancelReasonModalState extends State<CancelReasonModal> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _ConfirmButton(
-                    label: widget.words.cancelOrder,
+                    label: widget.confirmLabel,
                     enabled: _selectedId != null,
                     isLoading: _isLoading,
                     onTap: _submit,

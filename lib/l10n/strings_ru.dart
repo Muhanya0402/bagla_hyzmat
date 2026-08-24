@@ -288,6 +288,7 @@ const Map<String, String> stringsRu = {
   'returnLimitReached': 'Лимит отказов на сегодня исчерпан',
   'returnNotYourOrder': 'Этот заказ уже не ваш',
   'returnsLeft': 'Осталось отказов сегодня: {n}',
+  'returnOrderConfirm': 'Отказаться',
   'gotIt': 'Понятно',
   'deliveryTimeTooSoon': 'Срок доставки — не раньше чем через 40 минут',
   'transportMismatch': 'Этот заказ требует другой тип транспорта',

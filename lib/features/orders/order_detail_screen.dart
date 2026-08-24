@@ -746,6 +746,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         words: words,
         title: words.cancelReasonTitle,
         subtitle: words.cancelReasonSubtitle,
+        confirmLabel: words.cancelOrder,
         reasons: [
           ReasonOption(id: 'client_refused',
               label: words.cancelReasonClientRefused, icon: Icons.person_off_outlined),

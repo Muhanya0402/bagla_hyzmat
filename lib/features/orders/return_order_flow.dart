@@ -41,6 +41,7 @@ class ReturnOrderFlow {
         words: words,
         title: words.returnOrderTitle,
         subtitle: subtitle,
+        confirmLabel: words.returnOrderConfirm,
         reasons: [
           ReasonOption(id: 'breakdown',
               label: words.returnReasonBreakdown, icon: Icons.car_repair_outlined),

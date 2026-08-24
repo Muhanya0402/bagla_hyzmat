@@ -266,6 +266,7 @@ class AppLocalizations {
   String get returnLimitReached => get('returnLimitReached');
   String get returnNotYourOrder => get('returnNotYourOrder');
   String get returnsLeft => get('returnsLeft');
+  String get returnOrderConfirm => get('returnOrderConfirm');
   String get gotIt => get('gotIt');
   String get deliveryTimeTooSoon => get('deliveryTimeTooSoon');
   String get topUpDisabled => get('topUpDisabled');

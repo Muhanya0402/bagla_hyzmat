@@ -290,6 +290,7 @@ const Map<String, String> stringsTk = {
   'returnLimitReached': 'Şu günki ýüz öwürmek çägi doldy',
   'returnNotYourOrder': 'Bu sargyt indi siziňki däl',
   'returnsLeft': 'Şu gün galan ýüz öwürmeler: {n}',
+  'returnOrderConfirm': 'Ýüz öwürmek',
   'gotIt': 'Düşnükli',
   'deliveryTimeTooSoon': 'Eltip beriş wagty — 40 minutdan ir bolmaly däl',
   'transportMismatch': 'Bu sargyt başga ulag görnüşini talap edýär',
