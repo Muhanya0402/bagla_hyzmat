@@ -235,6 +235,11 @@ class AuthRepository {
   static final Map<String, List<District>> _districtsCache = {};
   static final Map<String, DateTime> _districtsAt = {};
 
+  // Отдельный кеш для выборки по велаяту — ключи те же (идентификаторы), но
+  // смысл разный, и складывать их в одну карту нельзя.
+  static final Map<String, List<District>> _distByProvCache = {};
+  static final Map<String, DateTime> _distByProvAt = {};
+
   static bool _fresh(DateTime? at) =>
       at != null && DateTime.now().difference(at) < _locTtl;
 
@@ -322,6 +327,55 @@ class AuthRepository {
     } catch (e) {
       if (query.isEmpty && _districtsCache[etrapId] != null) {
         return _districtsCache[etrapId]!;
+      }
+      throw Exception("Ошибка загрузки районов: $e");
+    }
+  }
+
+  /// Все районы указанного велаята.
+  ///
+  /// Прямой связи «район → велаят» в справочнике нет — только через этрап,
+  /// поэтому фильтруем по `etrap.province`. Сам этрап забираем развёрнутым:
+  /// создание заказа больше не спрашивает его отдельным шагом и определяет
+  /// по выбранному району.
+  Future<List<District>> getDistrictsByProvince(
+    String provinceId, {
+    String query = '',
+    String lang = 'ru',
+  }) async {
+    if (provinceId.trim().isEmpty) return [];
+    if (query.isEmpty) {
+      final cached = _distByProvCache[provinceId];
+      if (cached != null && _fresh(_distByProvAt[provinceId])) return cached;
+    }
+    try {
+      final params = <String, dynamic>{
+        'fields': 'id,district_ru,district_tk,'
+            'etrap.id,etrap.etrap_ru,etrap.etrap_tk',
+        'filter[etrap][province][_eq]': provinceId,
+        'sort': 'district_ru',
+        'limit': 200,
+      };
+      if (query.isNotEmpty) {
+        final field = lang == 'ru' ? 'district_ru' : 'district_tk';
+        params['filter[$field][_icontains]'] = query;
+        params['limit'] = 30;
+      }
+
+      final res = await _api.dio.get(
+        '/items/district_classifier',
+        queryParameters: params,
+      );
+      final List data = res.data['data'];
+      final list = data.map((e) => District.fromJson(e)).toList();
+      if (query.isEmpty) {
+        _distByProvCache[provinceId] = list;
+        _distByProvAt[provinceId] = DateTime.now();
+      }
+      return list;
+    } catch (e) {
+      if (query.isEmpty && _distByProvCache[provinceId] != null) {
+        return _distByProvCache[provinceId]!;
       }
       throw Exception("Ошибка загрузки районов: $e");
     }

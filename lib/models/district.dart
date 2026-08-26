@@ -3,14 +3,39 @@ class District {
   final String tk;
   final String ru;
 
-  District({required this.id, required this.tk, required this.ru});
+  /// Этрап, к которому относится район.
+  ///
+  /// Раньше не хранился: создание заказа спрашивало этрап отдельным шагом.
+  /// Теперь шага нет — этрап определяется выбранным районом, поэтому едет
+  /// вместе с ним. Пустые значения означают, что связь не разворачивали.
+  final String etrapId;
+  final String etrapRu;
+  final String etrapTk;
+
+  District({
+    required this.id,
+    required this.tk,
+    required this.ru,
+    this.etrapId = '',
+    this.etrapRu = '',
+    this.etrapTk = '',
+  });
 
   factory District.fromJson(Map<String, dynamic> json) {
+    // `etrap` приходит либо развёрнутым объектом, либо просто идентификатором
+    // — зависит от того, какие поля запросили.
+    final e = json['etrap'];
+    final Map<String, dynamic> etrap = e is Map
+        ? Map<String, dynamic>.from(e)
+        : const {};
     return District(
       // .toString() защитит от ошибки, если придет число вместо строки
       id: json['id']?.toString() ?? '',
       tk: json['district_tk'] ?? '',
       ru: json['district_ru'] ?? '',
+      etrapId: (etrap['id'] ?? (e is Map ? null : e))?.toString() ?? '',
+      etrapRu: (etrap['etrap_ru'] ?? '').toString(),
+      etrapTk: (etrap['etrap_tk'] ?? '').toString(),
     );
   }
 

@@ -12,9 +12,7 @@ import 'package:bagla/core/widgets/photo_picker_sheet.dart';
 import 'package:bagla/features/auth/auth_repository.dart';
 import 'package:bagla/l10n/app_localizations.dart';
 import 'package:bagla/models/district.dart';
-import 'package:bagla/models/etrap.dart';
 import 'package:bagla/models/points_rule.dart';
-import 'package:bagla/models/province.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/features/orders/order_service.dart';
@@ -96,19 +94,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     }
   }
   // ── Location ───────────────────────────────────────────────────────────────
-  List<Province> _provinces = [];
-  List<Etrap> _etraps = [];
+  //
+  // Выбирается только район. Велаят берётся из профиля магазина, этрап —
+  // из выбранного района. Раньше здесь был мастер из трёх шагов, но магазин
+  // всегда создаёт заказы в своём же велаяте, а этрап однозначно определяется
+  // районом — два шага из трёх были лишними нажатиями.
   List<District> _districts = [];
-
-  Province? _selectedProvince;
-  Etrap? _selectedEtrap;
   District? _selectedDistrict;
-
-  bool _loadingProvinces = false;
-  bool _loadingEtraps = false;
   bool _loadingDistricts = false;
-
-  int _locationStep = 0;
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
 
@@ -118,7 +111,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   @override
   void initState() {
     super.initState();
-    _loadProvinces(context.read<LanguageProvider>().words);
+    _loadDistricts(context.read<LanguageProvider>().words);
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text.toLowerCase());
     });
@@ -164,12 +157,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     _draftDebounce = Timer(const Duration(milliseconds: 400), _saveDraft);
   }
 
-  Map<String, dynamic> _locToJson(dynamic o, String prefix) => {
-        '${prefix}_id': o.id,
-        '${prefix}_ru': o.ru,
-        '${prefix}_tk': o.tk,
-      };
-
   Future<void> _saveDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -182,14 +169,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         'dateTime': _selectedDateTime?.toIso8601String(),
         'locationSelected': _locationSelected,
         'images': _images.map((x) => x.path).toList(),
-        if (_selectedProvince != null)
-          'province': _locToJson(_selectedProvince, 'province'),
-        if (_selectedEtrap != null) ...{
-          'etrap': _locToJson(_selectedEtrap, 'etrap'),
-          'etrapProvinceId': _selectedEtrap!.provinceId,
-        },
+        // Этрап храним вместе с районом: он нужен для адреса заказа, а
+        // отдельного выбора этрапа больше нет.
         if (_selectedDistrict != null)
-          'district': _locToJson(_selectedDistrict, 'district'),
+          'district': {
+            'district_id': _selectedDistrict!.id,
+            'district_ru': _selectedDistrict!.ru,
+            'district_tk': _selectedDistrict!.tk,
+            'etrap_id': _selectedDistrict!.etrapId,
+            'etrap_ru': _selectedDistrict!.etrapRu,
+            'etrap_tk': _selectedDistrict!.etrapTk,
+          },
       };
       await prefs.setString(_draftKey, jsonEncode(draft));
     } catch (_) {
@@ -245,33 +235,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         }
         _images = imgs.take(3).toList();
 
-        final prov = d['province'];
-        if (prov is Map) {
-          _selectedProvince = Province(
-            id: (prov['province_id'] ?? '').toString(),
-            ru: (prov['province_ru'] ?? '').toString(),
-            tk: (prov['province_tk'] ?? '').toString(),
-          );
-        }
-        final etr = d['etrap'];
-        if (etr is Map) {
-          _selectedEtrap = Etrap(
-            id: (etr['etrap_id'] ?? '').toString(),
-            ru: (etr['etrap_ru'] ?? '').toString(),
-            tk: (etr['etrap_tk'] ?? '').toString(),
-            provinceId: (d['etrapProvinceId'] ?? '').toString(),
-          );
-        }
         final dist = d['district'];
         if (dist is Map) {
           _selectedDistrict = District(
             id: (dist['district_id'] ?? '').toString(),
             ru: (dist['district_ru'] ?? '').toString(),
             tk: (dist['district_tk'] ?? '').toString(),
+            etrapId: (dist['etrap_id'] ?? '').toString(),
+            etrapRu: (dist['etrap_ru'] ?? '').toString(),
+            etrapTk: (dist['etrap_tk'] ?? '').toString(),
           );
         }
-        _locationSelected = d['locationSelected'] == true &&
-            _selectedProvince != null;
+        _locationSelected =
+            d['locationSelected'] == true && _selectedDistrict != null;
       });
     } catch (_) {
       // повреждённый черновик — игнорируем
@@ -367,73 +343,23 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   // ── Location loaders ───────────────────────────────────────────────────────
 
-  Future<void> _loadProvinces(AppLocalizations words) async {
-    setState(() => _loadingProvinces = true);
+  /// Районы велаята, указанного в профиле магазина.
+  ///
+  /// Велаят не спрашиваем: магазин создаёт заказы в своём же велаяте, а
+  /// список районов однозначно из него следует. Если велаят в профиле не
+  /// заполнен, список окажется пустым — экран честно скажет об этом, а не
+  /// покажет чужие районы.
+  Future<void> _loadDistricts(AppLocalizations words) async {
+    final provinceId = context.read<AuthProvider>().provinceId;
+    setState(() => _loadingDistricts = true);
     try {
-      final list = await _authRepo.getProvinces();
-      setState(() => _provinces = list);
-    } catch (e) {
-      _msg('${words.errorLoadProvinces}: $e', isError: true);
-    } finally {
-      setState(() => _loadingProvinces = false);
-    }
-  }
-
-  Future<void> _selectProvince(Province p, AppLocalizations words) async {
-    setState(() {
-      _selectedProvince = p;
-      _selectedEtrap = null;
-      _selectedDistrict = null;
-      _etraps = [];
-      _districts = [];
-      _locationStep = 1;
-      _searchQuery = '';
-      _loadingEtraps = true;
-      _locationSelected = false;
-    });
-    _searchCtrl.clear();
-    try {
-      final list = await _authRepo.getEtrapsByProvince(p.id);
-      setState(() {
-        _etraps = list;
-        if (list.isEmpty) {
-          _locationSelected = true;
-          _locationStep = 0;
-        }
-      });
-    } catch (e) {
-      _msg('${words.errorLoadEtraps}: $e', isError: true);
-    } finally {
-      setState(() => _loadingEtraps = false);
-      _scheduleDraftSave();
-    }
-  }
-
-  Future<void> _selectEtrap(Etrap e, AppLocalizations words) async {
-    setState(() {
-      _selectedEtrap = e;
-      _selectedDistrict = null;
-      _districts = [];
-      _locationStep = 2;
-      _searchQuery = '';
-      _loadingDistricts = true;
-      _locationSelected = false;
-    });
-    _searchCtrl.clear();
-    try {
-      final list = await _authRepo.getDistrictsByEtrap(e.id);
-      setState(() {
-        _districts = list;
-        if (list.isEmpty) {
-          _locationSelected = true;
-          _locationStep = 1;
-        }
-      });
+      final list = await _authRepo.getDistrictsByProvince(provinceId);
+      if (!mounted) return;
+      setState(() => _districts = list);
     } catch (e) {
       _msg('${words.errorLoadDistricts}: $e', isError: true);
     } finally {
-      setState(() => _loadingDistricts = false);
-      _scheduleDraftSave();
+      if (mounted) setState(() => _loadingDistricts = false);
     }
   }
 
@@ -447,20 +373,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     _scheduleDraftSave();
   }
 
-  void _resetLocationStep(int step) {
+  /// Сбросить выбранный район и вернуться к списку.
+  void _resetLocation() {
     setState(() {
-      _locationStep = step;
       _searchQuery = '';
       _searchCtrl.clear();
       _locationSelected = false;
-      if (step == 0) {
-        _selectedProvince = null;
-        _selectedEtrap = null;
-        _selectedDistrict = null;
-      } else if (step == 1) {
-        _selectedEtrap = null;
-        _selectedDistrict = null;
-      }
+      _selectedDistrict = null;
     });
     _scheduleDraftSave();
   }
@@ -740,7 +659,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     }
 
     // ── 4. Локация ─────────────────────────────────────────────────────────
-    if (!_locationSelected) {
+    // Проверяем и сам район: ниже он берётся без проверки на null, а велаят
+    // больше не участвует — гарантию даёт только выбранный район.
+    if (!_locationSelected || _selectedDistrict == null) {
       await _scrollToKey(_locationKey);
       _showErrorToast(title, words.selectDistrictError);
       return;
@@ -757,16 +678,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       final double deliveryFee = double.parse(_deliveryController.text);
 
       await OrderService().createOrder(
-        address: _selectedDistrict != null
-            ? "${_selectedEtrap!.ru} - ${_selectedDistrict!.ru}"
-            : _selectedEtrap != null
-            ? _selectedEtrap!.ru
-            : _selectedProvince!.ru,
-        addresstk: _selectedDistrict != null
-            ? "${_selectedEtrap!.tk} - ${_selectedDistrict!.tk}"
-            : _selectedEtrap != null
-            ? _selectedEtrap!.tk
-            : _selectedProvince!.tk,
+        // Адрес доставки: «этрап - район». Этрап берётся из самого района,
+        // отдельно его больше не выбирают. Если связь не развернулась,
+        // остаётся один район — пустого адреса не будет.
+        address: _selectedDistrict!.etrapRu.isNotEmpty
+            ? "${_selectedDistrict!.etrapRu} - ${_selectedDistrict!.ru}"
+            : _selectedDistrict!.ru,
+        addresstk: _selectedDistrict!.etrapTk.isNotEmpty
+            ? "${_selectedDistrict!.etrapTk} - ${_selectedDistrict!.tk}"
+            : _selectedDistrict!.tk,
         // Адрес магазина (RU/TK) строится по тому же принципу, что
         // delivery-адрес выше — из province/etrap/district магазина,
         // которые AuthProvider подгружает из prefs (туда их пишет
@@ -787,9 +707,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         images: _images,
         userId: auth.userId,
         shopPhone: auth.phone,
-        districtId: _selectedDistrict?.id,
-        etrapId: _selectedEtrap?.id,
-        provinceId: _selectedProvince!.id,
+        districtId: _selectedDistrict!.id,
+        // Этрап следует из района, велаят — из профиля магазина.
+        etrapId: _selectedDistrict!.etrapId.isNotEmpty
+            ? _selectedDistrict!.etrapId
+            : null,
+        provinceId: auth.provinceId,
         shopDistrictId: auth.districtId.isNotEmpty ? auth.districtId : null,
         shopEtrapId: auth.etraptId.isNotEmpty ? auth.etraptId : null,
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
@@ -1643,111 +1566,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildStepIndicator(words),
-        const SizedBox(height: 12),
-        if (_selectedProvince != null ||
-            _selectedEtrap != null ||
-            _selectedDistrict != null)
-          _buildBreadcrumb(isRu),
-        if (_locationStep > 0 && !_locationSelected) ...[
-          const SizedBox(height: 8),
-          _buildSearchField(words),
-        ],
+        // Индикатора шагов больше нет: шаг остался один — выбор района.
+        if (!_locationSelected) _buildSearchField(words),
         const SizedBox(height: 8),
         _locationSelected
             ? _buildLocationDone(isRu)
-            : _buildCurrentStepList(isRu, words),
+            : _buildDistrictList(isRu, words),
       ],
     );
   }
 
-  Widget _buildStepIndicator(AppLocalizations words) {
-    final steps = [words.stepProvince, words.stepEtrap, words.stepDistrict];
-    return Row(
-      children: List.generate(3, (i) {
-        final isDone =
-            i < _locationStep || (i == 2 && _selectedDistrict != null);
-        final isActive = i == _locationStep && _selectedDistrict == null;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () {
-              if (i < _locationStep) _resetLocationStep(i);
-            },
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: (isDone || isActive)
-                              ? AppColors.of(context).ink
-                              : AppColors.of(context).border,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        steps[i],
-                        style:
-                            AppText.medium(
-                              fontSize: 10,
-                              color: (isDone || isActive)
-                                  ? AppColors.of(context).ink
-                                  : AppColors.of(context).inkSoft,
-                            ).copyWith(
-                              fontWeight: isActive ? FontWeight.w700 : null,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (i < 2) const SizedBox(width: 6),
-              ],
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildBreadcrumb(bool isRu) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [
-          if (_selectedProvince != null)
-            _BreadcrumbChip(
-              label: _selectedProvince!.label(isRu),
-              onTap: () => _resetLocationStep(0),
-            ),
-          if (_selectedEtrap != null && !_locationSelected)
-            _BreadcrumbChip(
-              label: _selectedEtrap!.label(isRu),
-              onTap: () => _resetLocationStep(1),
-            ),
-          if (_selectedDistrict != null && !_locationSelected)
-            _BreadcrumbChip(
-              label: _selectedDistrict!.label(isRu),
-              isSelected: true,
-              onTap: () => _resetLocationStep(1),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSearchField(AppLocalizations words) {
-    final hints = ['', words.searchEtrap, words.searchDistrict];
     return TextField(
       controller: _searchCtrl,
       style: AppText.regular(fontSize: 14, color: AppColors.of(context).ink),
       decoration: InputDecoration(
-        hintText: hints[_locationStep],
+        hintText: words.searchDistrict,
         hintStyle: AppText.regular(
           fontSize: 14,
           color: AppColors.of(context).inkSoft,
@@ -1792,65 +1626,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
           vertical: 12,
         ),
       ),
-    );
-  }
-
-  Widget _buildCurrentStepList(bool isRu, AppLocalizations words) {
-    if (_locationStep == 0) return _buildProvinceGrid(isRu, words);
-    if (_locationStep == 1) return _buildEtrapList(isRu, words);
-    return _buildDistrictList(isRu, words);
-  }
-
-  Widget _buildProvinceGrid(bool isRu, AppLocalizations words) {
-    if (_loadingProvinces) return _loader();
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 2.8,
-      ),
-      itemCount: _provinces.length,
-      itemBuilder: (_, i) {
-        final p = _provinces[i];
-        return GestureDetector(
-          onTap: () => _selectProvince(p, words),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.of(context).borderSoft,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.of(context).border),
-            ),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              p.label(isRu),
-              textAlign: TextAlign.center,
-              style: AppText.semiBold(
-                fontSize: 13,
-                color: AppColors.of(context).ink,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEtrapList(bool isRu, AppLocalizations words) {
-    if (_loadingEtraps) return _loader();
-    final filtered = _etraps
-        .where((e) => e.label(isRu).toLowerCase().contains(_searchQuery))
-        .toList();
-    return _itemList(
-      items: filtered,
-      labelFn: (e) => e.label(isRu),
-      onTap: (e) => _selectEtrap(e, words),
-      words: words,
     );
   }
 
@@ -1941,7 +1716,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   Widget _buildLocationDone(bool isRu) {
     return GestureDetector(
-      onTap: () => _resetLocationStep(0),
+      onTap: _resetLocation,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -1968,26 +1743,30 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedDistrict?.label(isRu) ??
-                        _selectedEtrap?.label(isRu) ??
-                        _selectedProvince?.label(isRu) ??
-                        '',
+                    _selectedDistrict?.label(isRu) ?? '',
                     style: AppText.semiBold(
                       fontSize: 14,
                       color: AppColors.of(context).ink,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      _selectedProvince?.label(isRu),
-                      if (_selectedEtrap != null) _selectedEtrap!.label(isRu),
-                    ].whereType<String>().join(' · '),
-                    style: AppText.regular(
-                      fontSize: 12,
-                      color: AppColors.of(context).inkMuted,
+                  // Второй строкой — этрап выбранного района: он уходит в
+                  // адрес заказа, и человек должен видеть, что именно уйдёт.
+                  if ((isRu
+                          ? _selectedDistrict?.etrapRu
+                          : _selectedDistrict?.etrapTk)
+                      ?.isNotEmpty ==
+                      true) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      isRu
+                          ? _selectedDistrict!.etrapRu
+                          : _selectedDistrict!.etrapTk,
+                      style: AppText.regular(
+                        fontSize: 12,
+                        color: AppColors.of(context).inkMuted,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -2166,49 +1945,3 @@ class _SubmitButtonState extends State<_SubmitButton> {
 
 // ── Breadcrumb chip ───────────────────────────────────────────────────────────
 
-class _BreadcrumbChip extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool isSelected;
-
-  const _BreadcrumbChip({
-    required this.label,
-    required this.onTap,
-    this.isSelected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.of(context).ink
-              : AppColors.of(context).borderSoft,
-          borderRadius: BorderRadius.circular(20),
-          border: isSelected
-              ? null
-              : Border.all(color: AppColors.of(context).border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppText.semiBold(
-                fontSize: 12,
-                color: isSelected ? Colors.white : AppColors.of(context).ink,
-              ),
-            ),
-            if (!isSelected) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.close, size: 12, color: AppColors.of(context).inkSoft),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
