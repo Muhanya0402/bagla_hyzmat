@@ -825,4 +825,8 @@ const Map<String, String> stringsRu = {
   'trustedNotFound': 'Этого курьера нет в списке',
   'trustedCourierUnavailable': 'Курьер недоступен',
   'trustedGenericError': 'Не удалось. Попробуйте ещё раз',
+  'trustedCreateOn': 'Этот заказ увидят только ваши надёжные курьеры ({n})',
+  'trustedCreateOff': 'Заказ увидят все курьеры',
+  'trustedCreateEmptyHint': 'Заказ дорогой, но список надёжных курьеров пуст — его увидят все.',
+  'trustedCreateEmptyAction': 'Заполнить',
 };

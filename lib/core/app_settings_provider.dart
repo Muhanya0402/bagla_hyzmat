@@ -23,6 +23,16 @@ class AppSettingsProvider extends ChangeNotifier {
   String minVersion = '';
   String updateUrl = '';
 
+  /// С какой суммы заказ автоматически становится «только для надёжных
+  /// курьеров» (`app_settings.trusted_amount_threshold`), в манатах.
+  ///
+  /// `0` — режим выключен целиком. Это и значение по умолчанию: если
+  /// настройка не загрузилась, заказы не должны вдруг начать прятаться от
+  /// курьеров. Здесь осторожность работает в другую сторону, чем у
+  /// [topUpEnabled]: там сбой не должен отнимать возможность, здесь — не
+  /// должен её незаметно включать.
+  int trustedAmountThreshold = 0;
+
   bool _loading = false;
 
   bool get isLoading => _loading;
@@ -36,7 +46,8 @@ class AppSettingsProvider extends ChangeNotifier {
         queryParameters: {
           'fields': 'company_name,support_phone,top_up_enabled,'
               'min_version_android,min_version_ios,'
-              'update_url_android,update_url_ios',
+              'update_url_android,update_url_ios,'
+              'trusted_amount_threshold',
           'limit': 1,
         },
       );
@@ -60,6 +71,11 @@ class AppSettingsProvider extends ChangeNotifier {
       updateUrl =
           (d[isIos ? 'update_url_ios' : 'update_url_android'] ?? '')
               .toString();
+
+      final rawThreshold = d['trusted_amount_threshold'];
+      trustedAmountThreshold = rawThreshold is num
+          ? rawThreshold.toInt()
+          : int.tryParse('${rawThreshold ?? ''}') ?? 0;
     } catch (_) {
       // оставляем fallback-значения
     } finally {

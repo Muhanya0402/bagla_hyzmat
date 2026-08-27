@@ -818,4 +818,8 @@ const Map<String, String> stringsTk = {
   'trustedNotFound': 'Bu kurýer sanawda ýok',
   'trustedCourierUnavailable': 'Kurýer elýeterli däl',
   'trustedGenericError': 'Başartmady. Ýene synanyşyň',
+  'trustedCreateOn': 'Bu sargydy diňe ynamly kurýerleriňiz görer ({n})',
+  'trustedCreateOff': 'Sargydy ähli kurýerler görer',
+  'trustedCreateEmptyHint': 'Sargyt gymmat, ýöne ynamly kurýerler sanawy boş — ony hemmeler görer.',
+  'trustedCreateEmptyAction': 'Doldurmak',
 };

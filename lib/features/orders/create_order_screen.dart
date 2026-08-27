@@ -16,6 +16,8 @@ import 'package:bagla/models/points_rule.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/l10n/language_provider.dart';
 import 'package:bagla/features/orders/order_service.dart';
+import 'package:bagla/features/profile/trusted_couriers_service.dart';
+import 'package:bagla/core/app_settings_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -72,6 +74,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   /// само приложение: если форма провисела открытой и «сейчас + 40 минут»
   /// уже прошло, такой срок молча сдвигается, а не отвергается с ошибкой.
   bool _deliveryTimeAuto = false;
+
+  /// Сколько курьеров у магазина в списке надёжных. Ноль означает, что режим
+  /// «только для своих» включать НЕЛЬЗЯ: заказ не открывается всем никогда,
+  /// и с пустым списком он стал бы невидим вообще для всех.
+  int _trustedCount = 0;
+
+  /// Заказчик снял пометку вручную на этом заказе.
+  bool _trustedOptedOut = false;
+
   List<XFile> _images = [];
   String _transportType = 'any';
   bool _multipleItems = false;
@@ -121,6 +132,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     _phoneController.addListener(_onAnyFieldChanged);
     _orderService.fetchPointsRules().then((rules) {
       setState(() => _pointsRules = rules);
+    });
+    // Список надёжных курьеров нужен, чтобы решить, прятать ли дорогой заказ.
+    TrustedCouriersService()
+        .list(context.read<AuthProvider>().userId)
+        .then((list) {
+      if (mounted) setState(() => _trustedCount = list.length);
     });
     startTourIfNeeded(
       screenKey: TourKeys.createOrder,
@@ -605,6 +622,100 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     );
   }
 
+  /// Порог суммы из настроек Directus. Ноль — режим выключен целиком.
+  int get _trustedThreshold =>
+      context.read<AppSettingsProvider>().trustedAmountThreshold;
+
+  /// Сумма дотягивает до порога — независимо от того, есть ли кому отдать.
+  /// Нужно отдельно от [_trustedOnly], чтобы показать магазину подсказку,
+  /// когда заказ дорогой, а список надёжных пуст.
+  bool _amountReachesThreshold(double total) =>
+      _trustedThreshold > 0 && total >= _trustedThreshold;
+
+  /// Итоговое решение по этому заказу.
+  bool _trustedOnly(double total) =>
+      !_trustedOptedOut &&
+      OrderService.shouldBeTrustedOnly(
+        totalAmount: total,
+        threshold: _trustedThreshold,
+        trustedCount: _trustedCount,
+      );
+
+  /// Пометка над кнопкой отправки: заказчик должен понимать, что дорогой
+  /// заказ увидят не все, и иметь возможность это отменить.
+  Widget _buildTrustedNotice(double total, AppLocalizations words) {
+    if (!_amountReachesThreshold(total)) return const SizedBox.shrink();
+    final c = AppColors.of(context);
+
+    // Список пуст — режим не включится. Молчать нельзя: магазин отправляет
+    // дорогой товар и вправе знать, что защита не работает.
+    if (_trustedCount == 0) {
+      return _noticeBox(
+        icon: Icons.info_outline,
+        tint: c.amberTint,
+        border: c.amber,
+        text: words.trustedCreateEmptyHint,
+        action: GestureDetector(
+          onTap: () => Navigator.pushNamed(context, '/trusted-couriers'),
+          child: Text(
+            words.trustedCreateEmptyAction,
+            style: AppText.semiBold(fontSize: 12, color: c.ink),
+          ),
+        ),
+      );
+    }
+
+    final on = _trustedOnly(total);
+    return _noticeBox(
+      icon: on ? Icons.verified_user_outlined : Icons.public,
+      tint: on ? c.emeraldTint : c.bannerBg,
+      border: on ? c.accent : c.bannerBorder,
+      text: on
+          ? words.trustedCreateOn.replaceAll('{n}', '$_trustedCount')
+          : words.trustedCreateOff,
+      action: Switch.adaptive(
+        value: on,
+        onChanged: (v) => setState(() => _trustedOptedOut = !v),
+      ),
+    );
+  }
+
+  Widget _noticeBox({
+    required IconData icon,
+    required Color tint,
+    required Color border,
+    required String text,
+    required Widget action,
+  }) {
+    final c = AppColors.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: c.ink),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: AppText.regular(
+                fontSize: 12,
+                color: c.ink,
+              ).copyWith(height: 1.35),
+            ),
+          ),
+          const SizedBox(width: 8),
+          action,
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitOrder(AppLocalizations words) async {
     final title = words.regToastFixTitle;
 
@@ -718,6 +829,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
         category: auth.category.isNotEmpty ? auth.category : null,
         multipleItems: _multipleItems,
+        // Дорогой заказ уходит только надёжным курьерам магазина.
+        // Решение принимается здесь, а не на сервере: рассылка пушей
+        // срабатывает на создание заказа немедленно.
+        trustedOnly: _trustedOnly(itemPrice + deliveryFee),
       );
 
       // Заказ создан — черновик больше не нужен.
@@ -1813,6 +1928,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _buildTrustedNotice(total, words),
           Row(
             children: [
               Expanded(

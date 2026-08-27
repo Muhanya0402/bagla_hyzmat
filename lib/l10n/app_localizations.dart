@@ -754,4 +754,8 @@ class AppLocalizations {
   String get trustedNotFound => get('trustedNotFound');
   String get trustedCourierUnavailable => get('trustedCourierUnavailable');
   String get trustedGenericError => get('trustedGenericError');
+  String get trustedCreateOn => get('trustedCreateOn');
+  String get trustedCreateOff => get('trustedCreateOff');
+  String get trustedCreateEmptyHint => get('trustedCreateEmptyHint');
+  String get trustedCreateEmptyAction => get('trustedCreateEmptyAction');
 }
