@@ -761,4 +761,31 @@ class AppLocalizations {
   String get trustedBadge => get('trustedBadge');
   String get trustedNoticeShop => get('trustedNoticeShop');
   String get trustedNoticeCourier => get('trustedNoticeCourier');
+
+  // ── Приведи друга ─────────────────────────────────────────────────────
+  String get refMenu => get('refMenu');
+  String get refTitle => get('refTitle');
+  String get refHowTitle => get('refHowTitle');
+  String get refStep1 => get('refStep1');
+  String get refStep2 => get('refStep2');
+  String get refStep3 => get('refStep3');
+  String get refInviteBtn => get('refInviteBtn');
+  String get refAskTitle => get('refAskTitle');
+  String get refAskSubtitle => get('refAskSubtitle');
+  String get refAskSubmit => get('refAskSubmit');
+  String get refEmpty => get('refEmpty');
+  String get refSummary => get('refSummary');
+  String get refStatusWaiting => get('refStatusWaiting');
+  String get refStatusRegistered => get('refStatusRegistered');
+  String get refStatusPaid => get('refStatusPaid');
+  String get refInvited => get('refInvited');
+  String get refCancelled => get('refCancelled');
+  String get refErrBadPhone => get('refErrBadPhone');
+  String get refErrSelf => get('refErrSelf');
+  String get refErrRegistered => get('refErrRegistered');
+  String get refErrInvited => get('refErrInvited');
+  String get refErrLimit => get('refErrLimit');
+  String get refErrNotFound => get('refErrNotFound');
+  String get refErrDisabled => get('refErrDisabled');
+  String get refErrGeneric => get('refErrGeneric');
 }

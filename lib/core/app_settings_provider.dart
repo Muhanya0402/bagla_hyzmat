@@ -33,6 +33,13 @@ class AppSettingsProvider extends ChangeNotifier {
   /// должен её незаметно включать.
   int trustedAmountThreshold = 0;
 
+  /// Сколько жетонов получает курьер за приглашённого друга
+  /// (`app_settings.referral_reward`). `0` — программа выключена.
+  ///
+  /// По умолчанию 0 по той же причине, что и порог выше: если настройка не
+  /// загрузилась, приложение не должно обещать приз, которого может не быть.
+  int referralReward = 0;
+
   bool _loading = false;
 
   bool get isLoading => _loading;
@@ -47,7 +54,7 @@ class AppSettingsProvider extends ChangeNotifier {
           'fields': 'company_name,support_phone,top_up_enabled,'
               'min_version_android,min_version_ios,'
               'update_url_android,update_url_ios,'
-              'trusted_amount_threshold',
+              'trusted_amount_threshold,referral_reward',
           'limit': 1,
         },
       );
@@ -76,6 +83,11 @@ class AppSettingsProvider extends ChangeNotifier {
       trustedAmountThreshold = rawThreshold is num
           ? rawThreshold.toInt()
           : int.tryParse('${rawThreshold ?? ''}') ?? 0;
+
+      final rawReward = d['referral_reward'];
+      referralReward = rawReward is num
+          ? rawReward.toInt()
+          : int.tryParse('${rawReward ?? ''}') ?? 0;
     } catch (_) {
       // оставляем fallback-значения
     } finally {

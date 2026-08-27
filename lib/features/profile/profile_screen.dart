@@ -271,6 +271,17 @@ class ProfileScreenState extends State<ProfileScreen>
       items.add(
         Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
       );
+      // «Приведи друга» — только у курьера: приглашать может он и приз его.
+      items.add(
+        ProfileMenuTile(
+          icon: Icons.group_add_outlined,
+          title: words.refMenu,
+          onTap: () => Navigator.pushNamed(context, '/referrals'),
+        ),
+      );
+      items.add(
+        Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+      );
     }
 
     // Надёжные курьеры — только у магазина: дорогие заказы уходят только тем,

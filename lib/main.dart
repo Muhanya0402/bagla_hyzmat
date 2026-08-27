@@ -7,6 +7,7 @@ import 'package:bagla/core/theme/theme_provider.dart';
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/appeals/appeals_screen.dart';
 import 'package:bagla/features/shell/main_shell.dart';
+import 'package:bagla/features/profile/referrals_screen.dart';
 import 'package:bagla/features/profile/trusted_couriers_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
@@ -375,6 +376,9 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (_) => const RegistrationFixScreen(),
           );
+        }
+        if (settings.name == '/referrals') {
+          return MaterialPageRoute(builder: (_) => const ReferralsScreen());
         }
         if (settings.name == '/trusted-couriers') {
           return MaterialPageRoute(
