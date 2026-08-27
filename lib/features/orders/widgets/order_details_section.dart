@@ -66,6 +66,40 @@ class OrderDetailsSection extends StatelessWidget {
 
     return Column(
       children: [
+        // ── Только для надёжных курьеров ─────────────────────────────────
+        // Спокойная плашка, а не предупреждение: это не проблема, а
+        // объяснение — курьеру, почему заказ у него есть, а разговоров о
+        // нём нет; магазину, почему заказ берут не сразу.
+        if (dto.trustedOnly) ...[
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: c.emeraldTint,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: c.accent.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.verified_user_outlined, size: 18, color: c.ink),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isShop ? words.trustedNoticeShop : words.trustedNoticeCourier,
+                    style: AppText.regular(
+                      fontSize: 12.5,
+                      color: c.ink,
+                    ).copyWith(height: 1.35),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+
         // ── Multiple items banner — особый highlight для курьера ──────────
         // Курьер должен сразу видеть, что нужно сфотать несколько вариаций,
         // а не просто забрать один товар. Поэтому используем amber-плашку,

@@ -102,6 +102,10 @@ class _OrderCardState extends State<OrderCard> {
                       const SizedBox(width: 6),
                       _buildCategoryChip(dto.category, c),
                     ],
+                    if (dto.trustedOnly) ...[
+                      const SizedBox(width: 6),
+                      _buildTrustedChip(c, words),
+                    ],
                     const SizedBox(width: 6),
                     _buildIdPill(dto.shortId, c, words),
                     const Spacer(),
@@ -235,6 +239,30 @@ class _OrderCardState extends State<OrderCard> {
       ),
       alignment: Alignment.center,
       child: Icon(iconForSlug(slug), size: 13, color: c.ink),
+    );
+  }
+
+  // ── Только для надёжных курьеров ───────────────────────────────────────────
+  // Курьеру значок объясняет, почему заказ есть у него и нет у остальных;
+  // магазину — что заказ ушёл узкому кругу и берут его не сразу.
+  Widget _buildTrustedChip(AppColors c, AppLocalizations words) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.emeraldTint,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified_user_outlined, size: 11, color: c.ink),
+          const SizedBox(width: 4),
+          Text(
+            words.trustedBadge,
+            style: AppText.medium(fontSize: 10, color: c.ink),
+          ),
+        ],
+      ),
     );
   }
 

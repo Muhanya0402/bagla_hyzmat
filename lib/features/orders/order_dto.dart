@@ -48,6 +48,12 @@ class OrderDto {
   /// клиент выбирает). У старых заказов всегда false.
   final bool multipleItems;
 
+  /// Заказ виден только надёжным курьерам этого магазина.
+  ///
+  /// Курьеру значок объясняет, почему заказ есть у него и нет у других;
+  /// магазину — что заказ ушёл узкому кругу и берут его не сразу.
+  final bool trustedOnly;
+
   /// ID курьера (customer id). Нужен для `generateDeliveryCode` из
   /// background isolate'а при нажатии «Завершить». Пустая строка у магазина.
   final String courierId;
@@ -79,6 +85,7 @@ class OrderDto {
     required this.courierId,
     required this.category,
     required this.multipleItems,
+    required this.trustedOnly,
     required this.raw,
   });
 
@@ -175,6 +182,7 @@ class OrderDto {
       courierSelfieFileId: s('courier_selfie_file_id'),
       category: categorySlug,
       multipleItems: m['multiple_items'] == true,
+      trustedOnly: m['trusted_only'] == true,
       courierId: s('courierId'),
       raw: m,
     );

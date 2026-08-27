@@ -758,4 +758,7 @@ class AppLocalizations {
   String get trustedCreateOff => get('trustedCreateOff');
   String get trustedCreateEmptyHint => get('trustedCreateEmptyHint');
   String get trustedCreateEmptyAction => get('trustedCreateEmptyAction');
+  String get trustedBadge => get('trustedBadge');
+  String get trustedNoticeShop => get('trustedNoticeShop');
+  String get trustedNoticeCourier => get('trustedNoticeCourier');
 }

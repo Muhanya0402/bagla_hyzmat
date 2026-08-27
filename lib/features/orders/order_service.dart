@@ -723,7 +723,7 @@ class OrderService {
           'comment,time_of_delivery,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
           'shop_phone,client_phone,courier_phone,'
-          'category,multiple_items,'
+          'category,multiple_items,trusted_only,'
           'pictures.directus_files_id,'
           // M2A relations — `item` это UUID связанной сущности, `collection`
           // имя коллекции. `shopId` нужен чтобы в decorate-цикле подтянуть

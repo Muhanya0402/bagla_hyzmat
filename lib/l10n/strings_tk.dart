@@ -822,4 +822,7 @@ const Map<String, String> stringsTk = {
   'trustedCreateOff': 'Sargydy ähli kurýerler görer',
   'trustedCreateEmptyHint': 'Sargyt gymmat, ýöne ynamly kurýerler sanawy boş — ony hemmeler görer.',
   'trustedCreateEmptyAction': 'Doldurmak',
+  'trustedBadge': 'Ynamly',
+  'trustedNoticeShop': 'Bu sargydy diňe siziň ynamly kurýerleriňiz görýär.',
+  'trustedNoticeCourier': 'Bu dükanyň ynamly kurýerleri üçin sargyt. Beýleki kurýerler ony görmeýär.',
 };

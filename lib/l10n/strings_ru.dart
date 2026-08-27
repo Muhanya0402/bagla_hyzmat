@@ -829,4 +829,7 @@ const Map<String, String> stringsRu = {
   'trustedCreateOff': 'Заказ увидят все курьеры',
   'trustedCreateEmptyHint': 'Заказ дорогой, но список надёжных курьеров пуст — его увидят все.',
   'trustedCreateEmptyAction': 'Заполнить',
+  'trustedBadge': 'Надёжные',
+  'trustedNoticeShop': 'Этот заказ видят только ваши надёжные курьеры.',
+  'trustedNoticeCourier': 'Заказ для надёжных курьеров этого магазина. Другие курьеры его не видят.',
 };

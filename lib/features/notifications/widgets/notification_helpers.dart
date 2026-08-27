@@ -34,6 +34,8 @@ IconData notifTypeIcon(String type, {String transport = ''}) {
       return transportIcon(transport);
     case 'daily_bonus':
       return Icons.bolt_rounded;
+    case 'trusted_added':
+      return Icons.verified_user_outlined;
     default:
       return Icons.notifications_rounded;
   }
