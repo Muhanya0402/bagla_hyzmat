@@ -273,7 +273,13 @@ class NotificationsScreenState extends State<NotificationsScreen>
         title: words.tourNotifListTitle,
         body: words.tourNotifListBody,
         isLast: true,
-        align: ContentAlign.top,
+        // Подсветка накрывает ВЕСЬ список, а он начинается сразу под шапкой.
+        // При `ContentAlign.top` карточке негде разместиться сверху, и на
+        // невысоких экранах она уезжала за край вместе с «Пропустить» и
+        // «Продолжить». Прижимаем её к низу экрана — тот же приём, что уже
+        // применён на «Обращениях» и «Истории транзакций», где такие же
+        // списки на всю высоту.
+        customPosition: CustomTargetContentPosition(bottom: 110),
       ),
     ];
   }

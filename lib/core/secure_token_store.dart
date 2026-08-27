@@ -58,11 +58,36 @@ class SecureTokenStore {
     if (!_changes.isClosed) _changes.add(null);
   }
 
+  // ── Оперативная копия токенов ──────────────────────────────────────────
+
+  /// Токены, действующие в этом процессе.
+  ///
+  /// **Зачем.** Refresh-токен здесь ОДНОРАЗОВЫЙ: после успешного обновления
+  /// старый уже погашен на сервере. А запись в Keystore на части устройств
+  /// (замечено на MIUI) может тихо не сработать — `flutter_secure_storage`
+  /// бросает, мы это ловили и молча проглатывали. Получалось так: обновление
+  /// прошло, старый токен погашен, новая пара НЕ легла в хранилище. Следующее
+  /// обновление уходило с погашенным токеном, получало 401 — и человека
+  /// выбрасывало на экран входа «на ровном месте».
+  ///
+  /// Поэтому источник правды в пределах процесса — память, а хранилище
+  /// нужно, чтобы пережить перезапуск приложения.
+  String? _accessMem;
+  String? _refreshMem;
+
+  /// Последняя запись в защищённое хранилище не удалась. Сессия при этом
+  /// продолжает работать на оперативной копии, но перезапуск приложения
+  /// её потеряет.
+  bool persistFailed = false;
+
   // ── Public API ─────────────────────────────────────────────────────────
 
   Future<String?> getAccessToken() async {
+    if (_accessMem != null) return _accessMem;
     try {
-      return await _storage.read(key: _kAccessToken);
+      final v = await _storage.read(key: _kAccessToken);
+      _accessMem = v;
+      return v;
     } catch (e) {
       if (kDebugMode) debugPrint('SecureTokenStore.getAccessToken: $e');
       return null;
@@ -70,8 +95,11 @@ class SecureTokenStore {
   }
 
   Future<String?> getRefreshToken() async {
+    if (_refreshMem != null) return _refreshMem;
     try {
-      return await _storage.read(key: _kRefreshToken);
+      final v = await _storage.read(key: _kRefreshToken);
+      _refreshMem = v;
+      return v;
     } catch (e) {
       if (kDebugMode) debugPrint('SecureTokenStore.getRefreshToken: $e');
       return null;
@@ -82,6 +110,14 @@ class SecureTokenStore {
     required String? accessToken,
     required String? refreshToken,
   }) async {
+    // Сначала память — она не может отказать. Даже если хранилище ниже
+    // упадёт, текущая сессия продолжит работать с ВЕРНОЙ парой токенов.
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _accessMem = accessToken;
+    }
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      _refreshMem = refreshToken;
+    }
     try {
       if (accessToken != null && accessToken.isNotEmpty) {
         await _storage.write(key: _kAccessToken, value: accessToken);
@@ -89,32 +125,45 @@ class SecureTokenStore {
       if (refreshToken != null && refreshToken.isNotEmpty) {
         await _storage.write(key: _kRefreshToken, value: refreshToken);
       }
-      _emitChange();
+      persistFailed = false;
     } catch (e) {
-      if (kDebugMode) debugPrint('SecureTokenStore.setTokens: $e');
+      persistFailed = true;
+      if (kDebugMode) {
+        debugPrint('🔐 НЕ УДАЛОСЬ СОХРАНИТЬ ТОКЕНЫ: $e');
+        debugPrint('🔐 сессия живёт на оперативной копии до перезапуска');
+      }
     }
+    _emitChange();
   }
 
   Future<void> setAccessToken(String token) async {
+    _accessMem = token;
     try {
       await _storage.write(key: _kAccessToken, value: token);
-      _emitChange();
+      persistFailed = false;
     } catch (e) {
-      if (kDebugMode) debugPrint('SecureTokenStore.setAccessToken: $e');
+      persistFailed = true;
+      if (kDebugMode) debugPrint('🔐 НЕ УДАЛОСЬ СОХРАНИТЬ access-токен: $e');
     }
+    _emitChange();
   }
 
   /// Стирает оба токена. Используется при:
   ///   - logout (включая server-side revoke)
   ///   - неуспешный refresh (interceptor чистит сессию)
   Future<void> clear() async {
+    // Память чистим первой и безусловно: если ниже хранилище упадёт,
+    // процесс не должен продолжать пользоваться отозванными токенами.
+    _accessMem = null;
+    _refreshMem = null;
+    persistFailed = false;
     try {
       await _storage.delete(key: _kAccessToken);
       await _storage.delete(key: _kRefreshToken);
-      _emitChange();
     } catch (e) {
       if (kDebugMode) debugPrint('SecureTokenStore.clear: $e');
     }
+    _emitChange();
   }
 
   // ── JWT expiry detection ───────────────────────────────────────────────
