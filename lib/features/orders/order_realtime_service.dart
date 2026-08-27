@@ -14,6 +14,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:bagla/core/base_url.dart';
 import 'package:bagla/core/secure_token_store.dart';
+import 'package:bagla/features/orders/order_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as ws_status;
@@ -328,6 +329,9 @@ class OrderRealtimeService {
         clauses.add({
           'courierId': {'_null': true},
         });
+        // Заказы «только для надёжных» — то же выражение, что в REST-ленте
+        // и в праве Directus №164. Живёт в одном месте намеренно.
+        clauses.add(OrderService.trustedVisibilityClause(_userId));
       }
     } else if (_role == 'shop' || _role == 'business') {
       clauses.add({
@@ -346,6 +350,7 @@ class OrderRealtimeService {
           '_nin': ['completed', 'canceled'],
         },
       });
+      clauses.add(OrderService.trustedVisibilityClause(_userId));
     }
 
     // ── Доп. фильтры пользователя (модалка курьера) ────────────────────────

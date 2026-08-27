@@ -403,6 +403,86 @@ class OrderService {
     return updated is List && updated.isNotEmpty;
   }
 
+  // ─── Видимость «дорогих» заказов ──────────────────────────────────────────
+
+  /// Ветка видимости заказов, помеченных «только для надёжных курьеров».
+  ///
+  /// Обычный заказ видят все; помеченный — только курьеры из списка магазина
+  /// (`shop_trusted_couriers`). Магазин собирает список сам, включается режим
+  /// по сумме заказа.
+  ///
+  /// ⚠️ **Ровно то же выражение стоит в праве Directus №164** (`orders.update`)
+  /// и во флоу рассылки пушей. Меняете здесь — меняйте и там: иначе курьер
+  /// увидит заказ в ленте и получит отказ при нажатии «Взять», либо получит
+  /// пуш о заказе, которого у него нет.
+  ///
+  /// `trusted_only` проверяется двумя ветками, а не одним `_neq: true`.
+  /// У заказов, созданных до появления поля, там `NULL`, а `NULL <> true`
+  /// в SQL даёт не «истину» — такие заказы пропали бы из ленты целиком.
+  /// Backfill на сервере уже сделан, но защита остаётся на случай записей,
+  /// созданных в обход приложения.
+  static Map<String, dynamic> trustedVisibilityClause(String courierId) => {
+    '_or': [
+      {
+        'trusted_only': {'_null': true},
+      },
+      {
+        'trusted_only': {'_eq': false},
+      },
+      {
+        'shopId': {
+          'item:customers': {
+            'trusted_couriers': {
+              'courier_id': {
+                'id': {'_eq': courierId},
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
+
+  /// Разворачивает вложенный фильтр в плоские query-ключи Dio.
+  ///
+  /// Живая лента (WebSocket) принимает фильтр вложенным объектом, а
+  /// `getOrders` строит плоские ключи `filter[поле][оператор]`. Чтобы
+  /// выражение видимости жило в единственном экземпляре, оно описано
+  /// один раз вложенным объектом, а здесь переводится во вторую форму.
+  ///
+  /// Проверено на живом сервере: ключи `filter[поле][оп]` и
+  /// `filter[_and][N][...]` в одном запросе **складываются по И**, а не
+  /// затирают друг друга, поэтому ветку можно добавлять к уже собранным
+  /// фильтрам, ничего в них не трогая.
+  static Map<String, String> flattenFilter(
+    dynamic node, {
+    required String prefix,
+  }) {
+    final out = <String, String>{};
+    void walk(dynamic n, String path) {
+      if (n is Map) {
+        n.forEach((k, v) => walk(v, '$path[$k]'));
+      } else if (n is List) {
+        // Список скаляров — это значение оператора вроде `_nin`, Directus
+        // ждёт его через запятую. Список объектов — это ветки `_or`/`_and`,
+        // они разворачиваются по индексам.
+        final nested = n.any((e) => e is Map || e is List);
+        if (nested) {
+          for (var i = 0; i < n.length; i++) {
+            walk(n[i], '$path[$i]');
+          }
+        } else {
+          out[path] = n.join(',');
+        }
+      } else {
+        out[path] = '$n';
+      }
+    }
+
+    walk(node, prefix);
+    return out;
+  }
+
   /// Застолбить свободный заказ за курьером.
   ///
   /// **Почему не обычный PATCH.** [updateStatus] бьёт по `/items/orders/:id`
@@ -549,12 +629,24 @@ class OrderService {
         } else {
           qp['filter[order_status][_nin]'] = 'completed,canceled';
           qp['filter[courierId][_null]'] = 'true';
+          qp.addAll(
+            flattenFilter(
+              trustedVisibilityClause(userId),
+              prefix: 'filter[_and][0]',
+            ),
+          );
         }
       } else if (role == 'shop' || role == 'business') {
         qp['filter[shopId][item:customers][id][_eq]'] = userId;
       } else {
         qp['filter[courierId][_null]'] = 'true';
         qp['filter[order_status][_nin]'] = 'completed,canceled';
+        qp.addAll(
+          flattenFilter(
+            trustedVisibilityClause(userId),
+            prefix: 'filter[_and][0]',
+          ),
+        );
       }
 
       // ── Серверная фильтрация ───────────────────────────────────────
