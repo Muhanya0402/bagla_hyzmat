@@ -733,4 +733,25 @@ class AppLocalizations {
   String get appealsYourRequest => get('appealsYourRequest');
   String get appealsSupportReply => get('appealsSupportReply');
   String get appealsWaitingReply => get('appealsWaitingReply');
+
+  // ── Надёжные курьеры магазина ─────────────────────────────────────────
+  String get trustedCouriersTitle => get('trustedCouriersTitle');
+  String get trustedMenu => get('trustedMenu');
+  String get trustedHint => get('trustedHint');
+  String get trustedEmptyTitle => get('trustedEmptyTitle');
+  String get trustedEmptyBody => get('trustedEmptyBody');
+  String get trustedAddBtn => get('trustedAddBtn');
+  String get trustedPickTitle => get('trustedPickTitle');
+  String get trustedPickSubtitle => get('trustedPickSubtitle');
+  String get trustedNoCandidates => get('trustedNoCandidates');
+  String get trustedDeliveries => get('trustedDeliveries');
+  String get trustedAdded => get('trustedAdded');
+  String get trustedRemoved => get('trustedRemoved');
+  String get trustedRemoveTitle => get('trustedRemoveTitle');
+  String get trustedRemoveBody => get('trustedRemoveBody');
+  String get trustedRemoveConfirm => get('trustedRemoveConfirm');
+  String get trustedAlreadyAdded => get('trustedAlreadyAdded');
+  String get trustedNotFound => get('trustedNotFound');
+  String get trustedCourierUnavailable => get('trustedCourierUnavailable');
+  String get trustedGenericError => get('trustedGenericError');
 }

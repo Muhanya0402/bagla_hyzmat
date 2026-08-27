@@ -273,6 +273,21 @@ class ProfileScreenState extends State<ProfileScreen>
       );
     }
 
+    // Надёжные курьеры — только у магазина: дорогие заказы уходят только тем,
+    // кто в этом списке.
+    if (auth.isShop) {
+      items.add(
+        ProfileMenuTile(
+          icon: Icons.verified_user_outlined,
+          title: words.trustedMenu,
+          onTap: () => Navigator.pushNamed(context, '/trusted-couriers'),
+        ),
+      );
+      items.add(
+        Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+      );
+    }
+
     items.add(
       ProfileMenuTile(
         icon: Icons.inbox_outlined,
