@@ -36,6 +36,14 @@ class _OtpScreenState extends State<OtpScreen>
   bool _forceError = false; // подсветка через errorPinTheme
   bool _disabled = false; // кнопка временно неактивна после ошибки
 
+  /// Идёт повторная отправка кода.
+  ///
+  /// Без этого флага ссылка «отправить повторно» ловила два быстрых нажатия:
+  /// таймер перезапускается только ПОСЛЕ ответа сервера, и всё это время
+  /// ссылка оставалась живой. Два нажатия — два разных кода в двух SMS,
+  /// и человек не знает, какой из них вводить.
+  bool _resending = false;
+
   // Горизонтальный shake всего пин-блока
   late final AnimationController _shakeCtrl;
   late final Animation<double> _shakeAnim;
@@ -215,6 +223,20 @@ class _OtpScreenState extends State<OtpScreen>
   }
 
   Future<void> _onResend(
+    AuthProvider auth,
+    LanguageProvider lang,
+    dynamic words,
+  ) async {
+    if (_resending) return;
+    setState(() => _resending = true);
+    try {
+      await _doResend(auth, lang, words);
+    } finally {
+      if (mounted) setState(() => _resending = false);
+    }
+  }
+
+  Future<void> _doResend(
     AuthProvider auth,
     LanguageProvider lang,
     dynamic words,
@@ -449,6 +471,7 @@ class _OtpScreenState extends State<OtpScreen>
                           )
                         : _ResendLink(
                             key: const ValueKey('resend'),
+                            enabled: !_resending,
                             onPressed: () => _onResend(auth, lang, words),
                           ),
                   ),
@@ -588,7 +611,15 @@ class _OtpSmsRetriever implements SmsRetriever {
 
 class _ResendLink extends StatelessWidget {
   final VoidCallback onPressed;
-  const _ResendLink({required this.onPressed, super.key});
+
+  /// Пока идёт отправка — ссылка гаснет и не реагирует на нажатие.
+  final bool enabled;
+
+  const _ResendLink({
+    required this.onPressed,
+    this.enabled = true,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -596,13 +627,16 @@ class _ResendLink extends StatelessWidget {
     final c = AppColors.of(context);
 
     return GestureDetector(
-      onTap: onPressed,
+      onTap: enabled ? onPressed : null,
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Text(
           words.authOtpResendLink,
-          style: AppText.semiBold(fontSize: 13.5, color: c.ink).copyWith(
+          style: AppText.semiBold(
+            fontSize: 13.5,
+            color: enabled ? c.ink : c.inkSoft,
+          ).copyWith(
             decoration: TextDecoration.underline,
             decorationColor: c.ink,
             decorationThickness: 1.2,
