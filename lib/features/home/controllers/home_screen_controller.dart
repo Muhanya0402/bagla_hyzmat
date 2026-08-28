@@ -591,6 +591,45 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     order['shop_first_name'] = name.split(RegExp(r'\s+')).first;
   }
 
+  /// Идентификатор курьера из M2A-связи заказа.
+  static String? _courierIdOf(dynamic order) {
+    if (order is! Map) return null;
+    final field = order['courierId'];
+    if (field is! List || field.isEmpty) return null;
+    final first = field.first;
+    if (first is! Map) return null;
+    final item = first['item'];
+    if (item == null) return null;
+    return item is Map ? item['id']?.toString() : item.toString();
+  }
+
+  /// Переносит на свежую строку заказа данные курьера, которых в ней нет.
+  ///
+  /// WebSocket отдаёт строку такой, как она лежит в базе, а колонка
+  /// `courier_phone` там пуста у доброй половины заказов. Загрузка списка это
+  /// компенсирует — подставляет номер, имя и фото из карточки курьера. Но
+  /// обновление по сокету заменяло строку ЦЕЛИКОМ, и подставленное пропадало:
+  /// у заказчика на глазах исчезала строка с кнопкой «Позвонить». Отсюда и
+  /// «то выходит, то нет».
+  ///
+  /// Переносим, только если курьер ТОТ ЖЕ. Сменился или снят (курьер вернул
+  /// заказ) — старые данные уже не про него, тянуть их нельзя.
+  static void _carryCourierInfo(dynamic fresh, dynamic previous) {
+    if (fresh is! Map || previous is! Map) return;
+    final id = _courierIdOf(fresh);
+    if (id == null || id != _courierIdOf(previous)) return;
+
+    for (final key in const [
+      'courier_phone',
+      'courier_name',
+      'courier_selfie_file_id',
+    ]) {
+      if ((fresh[key] ?? '').toString().trim().isNotEmpty) continue;
+      final old = (previous[key] ?? '').toString().trim();
+      if (old.isNotEmpty) fresh[key] = old;
+    }
+  }
+
   List<dynamic> applyFilters(List<dynamic> targetOrders) {
     if (selectedStatus == null) {
       // Статус «Все»: сортируем по очередности статусов (порядок как у чипов).
@@ -751,6 +790,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
         } else if (event == 'update') {
           final idx = orders.indexWhere((o) => o['id'].toString() == id);
           if (idx != -1) {
+            _carryCourierInfo(order, orders[idx]);
             orders[idx] = order;
           } else {
             // Если заказа не было в списке, но он обновился под наши критерии — добавляем вверх
