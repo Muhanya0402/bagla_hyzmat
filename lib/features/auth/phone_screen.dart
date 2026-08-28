@@ -418,30 +418,35 @@ class _PhoneField extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: TextInputType.phone,
-              // Нормализатор ДО маски: срезает код страны 993 при массовой
-              // вставке (autofill/paste/SIM-hint), оставляя 8 цифр. Обычный
-              // посимвольный ввод пропускает без изменений.
-              inputFormatters: [const _TmPhoneNormalizer(), formatter],
-              // Autofill: система предложит сохранённый номер над клавиатурой.
-              autofillHints: const [AutofillHints.telephoneNumberDevice],
-              textInputAction: TextInputAction.done,
-              style: AppText.medium(
-                fontSize: 17,
-                color: c.ink,
-              ).copyWith(letterSpacing: 0.4),
-              cursorColor: hasError ? c.errorMuted : c.ink,
-              cursorWidth: 1.5,
-              decoration: InputDecoration(
-                hintText: '__ __ __ __',
-                hintStyle: AppText.regular(
+            // Подсказке с клавиатурой нужна группа автозаполнения: без неё
+            // система не находит, в какое поле класть значение, и нажатие
+            // подсказки не даёт ничего. Та же причина, что была у поля кода.
+            child: AutofillGroup(
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                // Нормализатор ДО маски: срезает код страны 993 при массовой
+                // вставке (autofill/paste/SIM-hint), оставляя 8 цифр. Обычный
+                // посимвольный ввод пропускает без изменений.
+                inputFormatters: [const _TmPhoneNormalizer(), formatter],
+                // Autofill: система предложит сохранённый номер над клавиатурой.
+                autofillHints: const [AutofillHints.telephoneNumberDevice],
+                textInputAction: TextInputAction.done,
+                style: AppText.medium(
                   fontSize: 17,
-                  color: c.inkSoft,
+                  color: c.ink,
                 ).copyWith(letterSpacing: 0.4),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                cursorColor: hasError ? c.errorMuted : c.ink,
+                cursorWidth: 1.5,
+                decoration: InputDecoration(
+                  hintText: '__ __ __ __',
+                  hintStyle: AppText.regular(
+                    fontSize: 17,
+                    color: c.inkSoft,
+                  ).copyWith(letterSpacing: 0.4),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
               ),
             ),
           ),

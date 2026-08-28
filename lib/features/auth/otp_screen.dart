@@ -176,6 +176,11 @@ class _OtpScreenState extends State<OtpScreen>
     if (!mounted) return;
 
     if (ok) {
+      // Сеанс автозаполнения закрываем явно и БЕЗ сохранения: система иначе
+      // может предложить «сохранить» одноразовый код, который через пять
+      // минут ничего не значит.
+      TextInput.finishAutofillContext(shouldSave: false);
+
       // ── Success-морфинг (#3) ──────────────────────────────────────────
       HapticFeedback.lightImpact();
       _pulseCtrl.stop();
@@ -407,44 +412,63 @@ class _OtpScreenState extends State<OtpScreen>
                       ),
                     ),
                     child: _success
-                        ? _SuccessCheck(key: const ValueKey('ok'), ctrl: _successCtrl)
+                        ? _SuccessCheck(
+                            key: const ValueKey('ok'),
+                            ctrl: _successCtrl,
+                          )
                         : AnimatedBuilder(
                             key: const ValueKey('pins'),
                             // Слушаем shake И pulse — оба влияют на отрисовку.
-                            animation: Listenable.merge([_shakeAnim, _pulseCtrl]),
+                            animation: Listenable.merge([
+                              _shakeAnim,
+                              _pulseCtrl,
+                            ]),
                             builder: (_, _) {
                               final t = Curves.easeInOut.transform(
                                 _pulseCtrl.value,
                               );
                               return Transform.translate(
                                 offset: Offset(_shakeAnim.value, 0),
-                                child: Pinput(
-                                  length: 4,
-                                  controller: auth.otpController,
-                                  smsRetriever: _smsRetriever, // авто-чтение SMS
-                                  // #5 spring-появление цифры (overshoot).
-                                  pinAnimationType: PinAnimationType.scale,
-                                  animationCurve: Curves.easeOutBack,
-                                  animationDuration:
-                                      const Duration(milliseconds: 300),
-                                  defaultPinTheme: _defaultTheme(c),
-                                  focusedPinTheme: _focusedTheme(c, t), // #2/#6
-                                  submittedPinTheme: _submittedTheme(c), // #1
-                                  errorPinTheme: _errorTheme(c), // #4
-                                  forceErrorState: _forceError,
-                                  separatorBuilder: (_) =>
-                                      const SizedBox(width: 12),
-                                  showCursor: true,
-                                  cursor: Container(
-                                    width: 1.5,
-                                    height: 26,
-                                    decoration: BoxDecoration(
-                                      color: c.ink,
-                                      borderRadius: BorderRadius.circular(1),
+                                // Без AutofillGroup подсказка с клавиатурой
+                                // не работает. Система присылает код с меткой
+                                // поля, а фреймворк ищет получателя по этой
+                                // метке ИМЕННО в группе. Группы нет — искать
+                                // негде, и нажатие подсказки просто ничего не
+                                // делает: подсказка видна, а код не вставляется.
+                                child: AutofillGroup(
+                                  child: Pinput(
+                                    length: 4,
+                                    controller: auth.otpController,
+                                    smsRetriever:
+                                        _smsRetriever, // авто-чтение SMS
+                                    // #5 spring-появление цифры (overshoot).
+                                    pinAnimationType: PinAnimationType.scale,
+                                    animationCurve: Curves.easeOutBack,
+                                    animationDuration: const Duration(
+                                      milliseconds: 300,
                                     ),
+                                    defaultPinTheme: _defaultTheme(c),
+                                    focusedPinTheme: _focusedTheme(
+                                      c,
+                                      t,
+                                    ), // #2/#6
+                                    submittedPinTheme: _submittedTheme(c), // #1
+                                    errorPinTheme: _errorTheme(c), // #4
+                                    forceErrorState: _forceError,
+                                    separatorBuilder: (_) =>
+                                        const SizedBox(width: 12),
+                                    showCursor: true,
+                                    cursor: Container(
+                                      width: 1.5,
+                                      height: 26,
+                                      decoration: BoxDecoration(
+                                        color: c.ink,
+                                        borderRadius: BorderRadius.circular(1),
+                                      ),
+                                    ),
+                                    onCompleted: (_) =>
+                                        _onVerify(fromAutoComplete: true),
                                   ),
-                                  onCompleted: (_) =>
-                                      _onVerify(fromAutoComplete: true),
                                 ),
                               );
                             },
@@ -538,7 +562,11 @@ class _SuccessCheck extends StatelessWidget {
             ),
             child: FadeTransition(
               opacity: checkFade,
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 34),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 34,
+              ),
             ),
           ),
         ),
@@ -615,11 +643,7 @@ class _ResendLink extends StatelessWidget {
   /// Пока идёт отправка — ссылка гаснет и не реагирует на нажатие.
   final bool enabled;
 
-  const _ResendLink({
-    required this.onPressed,
-    this.enabled = true,
-    super.key,
-  });
+  const _ResendLink({required this.onPressed, this.enabled = true, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -633,15 +657,16 @@ class _ResendLink extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Text(
           words.authOtpResendLink,
-          style: AppText.semiBold(
-            fontSize: 13.5,
-            color: enabled ? c.ink : c.inkSoft,
-          ).copyWith(
-            decoration: TextDecoration.underline,
-            decorationColor: c.ink,
-            decorationThickness: 1.2,
-            letterSpacing: 0.1,
-          ),
+          style:
+              AppText.semiBold(
+                fontSize: 13.5,
+                color: enabled ? c.ink : c.inkSoft,
+              ).copyWith(
+                decoration: TextDecoration.underline,
+                decorationColor: c.ink,
+                decorationThickness: 1.2,
+                letterSpacing: 0.1,
+              ),
         ),
       ),
     );
