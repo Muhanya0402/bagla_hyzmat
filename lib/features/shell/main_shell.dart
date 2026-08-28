@@ -5,6 +5,8 @@ import 'package:bagla/features/home/home_screen.dart';
 import 'package:bagla/features/home/widgets/home_create_button.dart';
 import 'package:bagla/features/notifications/notifications_screen.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
+import 'package:bagla/features/profile/referrals_screen.dart';
+import 'package:bagla/features/profile/trusted_couriers_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/transactions/transaction_history_screen.dart';
@@ -297,6 +299,23 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         settings: settings,
       );
     }
+    if (name == '/referrals') {
+      return MaterialPageRoute(
+        builder: (_) => const ReferralsScreen(),
+        settings: settings,
+      );
+    }
+    if (name == '/trusted-couriers') {
+      return MaterialPageRoute(
+        builder: (_) => const TrustedCouriersScreen(),
+        settings: settings,
+      );
+    }
+    // ⚠️ Экран, которого здесь нет, из вкладки НЕ ОТКРОЕТСЯ. У каждой вкладки
+    // свой навигатор, и нажатие ловит именно он, а не корневой: маршрут,
+    // прописанный только в main.dart, отсюда недостижим — кнопка молча
+    // ничего не делает. Добавляя новый экран в меню профиля, добавляйте его
+    // и сюда.
     return null;
   }
 }
