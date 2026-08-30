@@ -788,4 +788,5 @@ class AppLocalizations {
   String get refErrNotFound => get('refErrNotFound');
   String get refErrDisabled => get('refErrDisabled');
   String get refErrGeneric => get('refErrGeneric');
+  String get authOtpChangeNumber => get('authOtpChangeNumber');
 }

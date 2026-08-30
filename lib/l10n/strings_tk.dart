@@ -851,4 +851,5 @@ const Map<String, String> stringsTk = {
   'refErrDisabled': 'Maksatnama häzir elýeterli däl',
   'refErrNotFound': 'Çagyryş tapylmady',
   'refErrGeneric': 'Başartmady. Ýene synanyşyň',
+  'authOtpChangeNumber': 'Üýtgetmek',
 };

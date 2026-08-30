@@ -858,4 +858,5 @@ const Map<String, String> stringsRu = {
   'refErrNotFound': 'Приглашение не найдено',
   'refErrDisabled': 'Программа сейчас недоступна',
   'refErrGeneric': 'Не удалось. Попробуйте ещё раз',
+  'authOtpChangeNumber': 'Изменить',
 };

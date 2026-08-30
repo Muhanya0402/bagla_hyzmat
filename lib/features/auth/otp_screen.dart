@@ -375,25 +375,56 @@ class _OtpScreenState extends State<OtpScreen>
                 // ── Title (calm serif) ─────────────────────────────────────
                 Text(words.authOtpTitle, style: AppText.serif(fontSize: 34)),
                 const SizedBox(height: 12),
-                RichText(
-                  text: TextSpan(
-                    style: AppText.regular(
-                      fontSize: 14.5,
-                      color: c.inkMuted,
-                    ).copyWith(height: 1.5, letterSpacing: 0.1),
-                    children: [
-                      TextSpan(text: words.authOtpSubtitle),
-                      TextSpan(
-                        text: auth.phoneController.text.isNotEmpty
+                Text(
+                  words.authOtpSubtitle.trim(),
+                  style: AppText.regular(
+                    fontSize: 14.5,
+                    color: c.inkMuted,
+                  ).copyWith(height: 1.5, letterSpacing: 0.1),
+                ),
+                const SizedBox(height: 10),
+
+                // ── Номер, на который ушёл код ────────────────────────────
+                // Раньше номер был вплетён в подзаголовок мелким текстом, и
+                // ошибку в нём не замечали: в базе есть случай, когда человек
+                // пять раз подряд запросил код на номер с опечаткой в одной
+                // цифре, все пять SMS ушли постороннему, и только на шестой
+                // раз он ввёл свой номер верно. Теперь номер крупный, и
+                // поправить его можно не возвращаясь назад вслепую.
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        auth.phoneController.text.isNotEmpty
                             ? '+993 ${auth.phoneController.text}'
                             : '+993 6X XX XX XX',
-                        style: TextStyle(
+                        style: AppText.semiBold(
+                          fontSize: 19,
                           color: c.ink,
-                          fontWeight: FontWeight.w600,
+                        ).copyWith(letterSpacing: 0.6),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).maybePop(),
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          words.authOtpChangeNumber,
+                          style: AppText.semiBold(fontSize: 13.5, color: c.ink)
+                              .copyWith(
+                                decoration: TextDecoration.underline,
+                                decorationColor: c.ink,
+                                decorationThickness: 1.2,
+                              ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 40),
