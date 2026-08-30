@@ -57,7 +57,7 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/bagla_logo.png"
-  image_path_ios: "assets/images/bagla_logo.png" # единый файл для всех платформ
+  image_path_ios: "assets/images/bagla_logo_ios.png" # непрозрачный 1024 (App Store запрещает альфу)
   remove_alpha_ios: true # Apple запрещает прозрачность в иконках
   background_color_ios: "#ffffff" # белый фон, как у Android
   # Adaptive-иконка (Android 8+): белый фон + логотип как foreground.
