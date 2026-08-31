@@ -591,17 +591,56 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     order['shop_first_name'] = name.split(RegExp(r'\s+')).first;
   }
 
-  /// Идентификатор курьера из M2A-связи заказа.
-  static String? _courierIdOf(dynamic order) {
+  /// Догружает наименование заказчика для заказа, пришедшего по сокету.
+  ///
+  /// Нужен для только что созданных заказов: переносить имя не с чего, а в
+  /// кеше магазинов заказчик появляется лишь после того, как встретился в
+  /// загруженном списке — у нового магазина первый заказ шёл без имени.
+  ///
+  /// Запрос уходит только когда имени действительно нет, и переиспользует
+  /// готовую декорацию из `getOrderById`.
+  Future<void> _backfillShopName(dynamic order) async {
+    if (order is! Map) return;
+    if ((order['shop_name'] ?? '').toString().trim().isNotEmpty) return;
+    final id = order['id']?.toString();
+    if (id == null || id.isEmpty) return;
+
+    final full = await orderService.getOrderById(id);
+    if (full == null || !mounted) return;
+    final name = (full['shop_name'] ?? '').toString().trim();
+    if (name.isEmpty) return;
+    final first = (full['shop_first_name'] ?? '').toString().trim();
+
+    setState(() {
+      for (final o in orders) {
+        if (o is Map && o['id'].toString() == id) {
+          o['shop_name'] = name;
+          if (first.isNotEmpty) o['shop_first_name'] = first;
+          break;
+        }
+      }
+    });
+    _refreshShopCache(); // чтобы следующим заказам магазина хватило кеша
+  }
+
+  /// Идентификатор участника заказа из M2A-связи ([field] — `courierId`
+  /// либо `shopId`).
+  static String? _m2aItemId(dynamic order, String field) {
     if (order is! Map) return null;
-    final field = order['courierId'];
-    if (field is! List || field.isEmpty) return null;
-    final first = field.first;
+    final link = order[field];
+    if (link is! List || link.isEmpty) return null;
+    final first = link.first;
     if (first is! Map) return null;
     final item = first['item'];
     if (item == null) return null;
     return item is Map ? item['id']?.toString() : item.toString();
   }
+
+  /// Идентификатор курьера из M2A-связи заказа.
+  static String? _courierIdOf(dynamic order) => _m2aItemId(order, 'courierId');
+
+  /// Идентификатор заказчика из M2A-связи заказа.
+  static String? _shopIdOf(dynamic order) => _m2aItemId(order, 'shopId');
 
   /// Переносит на свежую строку заказа данные курьера, которых в ней нет.
   ///
@@ -624,6 +663,27 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       'courier_name',
       'courier_selfie_file_id',
     ]) {
+      if ((fresh[key] ?? '').toString().trim().isNotEmpty) continue;
+      final old = (previous[key] ?? '').toString().trim();
+      if (old.isNotEmpty) fresh[key] = old;
+    }
+  }
+
+  /// Переносит на свежую строку заказа наименование заказчика.
+  ///
+  /// Колонки `shop_name` в базе нет — имя живёт на карточке заказчика и
+  /// подставляется при загрузке списка. Обновление по сокету заменяет строку
+  /// целиком, и подставленное пропадает: в карточке заказа и в деталях имя
+  /// то есть, то нет. Добор из кеша магазинов спасает не всегда — заказчик
+  /// туда попадает только после того, как встретился в загруженном списке.
+  ///
+  /// Переносим, только если заказчик ТОТ ЖЕ: иначе показали бы чужое имя.
+  static void _carryShopInfo(dynamic fresh, dynamic previous) {
+    if (fresh is! Map || previous is! Map) return;
+    final id = _shopIdOf(fresh);
+    if (id == null || id != _shopIdOf(previous)) return;
+
+    for (final key in const ['shop_name', 'shop_first_name']) {
       if ((fresh[key] ?? '').toString().trim().isNotEmpty) continue;
       final old = (previous[key] ?? '').toString().trim();
       if (old.isNotEmpty) fresh[key] = old;
@@ -791,6 +851,7 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
           final idx = orders.indexWhere((o) => o['id'].toString() == id);
           if (idx != -1) {
             _carryCourierInfo(order, orders[idx]);
+            _carryShopInfo(order, orders[idx]);
             orders[idx] = order;
           } else {
             // Если заказа не было в списке, но он обновился под наши критерии — добавляем вверх
@@ -807,6 +868,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
       });
 
       _refreshShopCache(); // ← кеш заказчиков для фильтра (WS create/update)
+
+      // Имени всё ещё нет (новый магазин, кеш пуст) — догружаем точечно.
+      if (event != 'delete') unawaited(_backfillShopName(order));
 
       // Переприменяем локальные фильтры (по велаятам/этрапам),
       // чтобы новый или обновленный сокет-заказ сразу правильно отфильтровался на экране

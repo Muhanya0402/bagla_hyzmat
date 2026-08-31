@@ -128,7 +128,9 @@ class NotificationsScreenState extends State<NotificationsScreen>
     }
     // markAllAsRead сам обновит локальный кэш read-id, сервер и revision
     // (внутри берёт реальный список непрочитанных — повторный вызов безопасен).
-    _service.markAllAsRead(_userId);
+    // Ошибку здесь глушим: экран открывается молча, показывать пользователю
+    // нечего — при следующем открытии пометка просто повторится.
+    _service.markAllAsRead(_userId).catchError((_) {});
   }
 
   // ── Data ────────────────────────────────────────────────────────────────

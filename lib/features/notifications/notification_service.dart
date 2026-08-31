@@ -75,27 +75,61 @@ class NotificationService {
     } catch (_) {}
   }
 
+  /// Помечает прочитанными ВСЕ непрочитанные уведомления пользователя.
+  ///
+  /// Раньше список брался через `getNotifications`, а это 30 последних
+  /// записей — непрочитанные из более старых туда просто не попадали и
+  /// оставались непрочитанными навсегда: пользователь жал «Прочитать все»,
+  /// а при следующем запуске снова видел ту же пачку. Теперь непрочитанные
+  /// запрашиваются у сервера напрямую, без окна.
+  ///
+  /// Бросает исключение, если сервер не принял изменение — вызывающий код
+  /// не должен показывать подтверждение, когда на деле ничего не сохранилось.
   Future<void> markAllAsRead(String customerId) async {
     _assertScope(customerId);
+
+    final response = await _api.dio.get(
+      '/items/notifications',
+      queryParameters: {
+        'filter[customer_id][_eq]': customerId,
+        'filter[is_read][_eq]': false,
+        'fields': 'id',
+        'limit': -1,
+      },
+    );
+    final unread = (response.data['data'] as List)
+        .map((n) => n['id'].toString())
+        .toList();
+
+    if (unread.isEmpty) return;
+
+    // Локальный override: добавляем сразу, ДО PATCH'а — гарантирует
+    // что параллельные GET'ы увидят их прочитанными.
+    _locallyReadIds.addAll(unread);
+    _bumpReadState(); // уведомить открытый notifications_screen
+
     try {
-      final notifications = await getNotifications(customerId);
-      final unread = notifications
-          .where((n) => n['is_read'] == false)
-          .map((n) => n['id'].toString())
-          .toList();
-
-      if (unread.isEmpty) return;
-
-      // Локальный override: добавляем сразу, ДО PATCH'а — гарантирует
-      // что параллельные GET'ы увидят их прочитанными.
-      _locallyReadIds.addAll(unread);
-      _bumpReadState(); // уведомить открытый notifications_screen
-
-      await _api.dio.patch(
-        '/items/notifications',
-        data: unread.map((id) => {'id': id, 'is_read': true}).toList(),
-      );
-    } catch (_) {}
+      // Пачками — на случай, когда непрочитанных накопились сотни.
+      for (var i = 0; i < unread.length; i += 100) {
+        final chunk = unread.sublist(
+          i,
+          i + 100 > unread.length ? unread.length : i + 100,
+        );
+        await _api.dio.patch(
+          '/items/notifications',
+          data: {
+            'keys': chunk,
+            'data': {'is_read': true},
+          },
+        );
+      }
+    } catch (_) {
+      // Сервер не принял — снимаем локальную отметку, иначе экран будет
+      // показывать прочитанным то, что на сервере таковым не стало.
+      _locallyReadIds.removeAll(unread);
+      _bumpReadState();
+      rethrow;
+    }
   }
 
   Future<int> getUnreadCount(String customerId) async {
