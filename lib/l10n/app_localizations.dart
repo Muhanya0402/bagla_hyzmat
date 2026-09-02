@@ -293,13 +293,6 @@ class AppLocalizations {
   String get reportReasonLate => get('reportReasonLate');
   String get reportReasonNoContact => get('reportReasonNoContact');
   String get reportReasonNotDelivered => get('reportReasonNotDelivered');
-  String get reportBlockBtn => get('reportBlockBtn');
-  String get reportBlockDone => get('reportBlockDone');
-  String get reportBlockFailed => get('reportBlockFailed');
-  String get reportBlockConfirmTitle => get('reportBlockConfirmTitle');
-  String get reportBlockConfirmBody => get('reportBlockConfirmBody');
-  String get reportBlockConfirmYes => get('reportBlockConfirmYes');
-  String get reportBlockConfirmNo => get('reportBlockConfirmNo');
   String get cancelOrderBtn => get('cancelOrderBtn');
   String get confirmTitle => get('confirmTitle');
   String get confirmWithPoints => get('confirmWithPoints');

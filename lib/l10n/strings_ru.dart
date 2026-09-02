@@ -314,13 +314,6 @@ const Map<String, String> stringsRu = {
   'reportReasonLate': 'Опоздал',
   'reportReasonNoContact': 'Не вышел на связь',
   'reportReasonNotDelivered': 'Не довёз заказ',
-  'reportBlockBtn': 'Отстранить',
-  'reportBlockDone': 'Курьер отстранён',
-  'reportBlockFailed': 'Не удалось отстранить',
-  'reportBlockConfirmTitle': 'Отстранить курьера?',
-  'reportBlockConfirmBody': 'Доступ к заказам закроется на указанный срок и вернётся сам. Курьер получит уведомление.',
-  'reportBlockConfirmYes': 'Отстранить',
-  'reportBlockConfirmNo': 'Отмена',
   'cancelOrderBtn': 'Отменить заказ',
   'confirmTitle': 'Принять заказ',
   'confirmWithPoints':

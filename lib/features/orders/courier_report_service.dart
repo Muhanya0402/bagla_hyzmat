@@ -21,13 +21,11 @@ enum ReportReason {
 /// заказ не этого магазина или курьер его не вёз, флоу пометит запись
 /// отклонённой и баллов никому не начислит.
 ///
-/// Отстранение идёт только через флоу: право менять чужую учётку у
-/// приложения не выдано, и сервер сам проверяет, что нажимал модератор.
+/// Отстранять курьеров приложение не умеет намеренно: это делается в
+/// панели, командой на карточке пользователя. Так право закрыть человеку
+/// доступ не зависит от того, что можно послать с телефона.
 class CourierReportService {
   final ApiClient _api = ApiClient();
-
-  /// Флоу «Отстранить курьера».
-  static const String blockFlowId = 'c87d76db-7d3f-44af-9d01-2356c6b2d73d';
 
   /// Сколько часов после закрытия заказа можно жаловаться.
   /// Столько же проверяет сервер — здесь только чтобы не показывать кнопку,
@@ -66,26 +64,6 @@ class CourierReportService {
       return true;
     } catch (e) {
       if (kDebugMode) print('CourierReportService.sendReport: $e');
-      return false;
-    }
-  }
-
-  /// Отстранить курьера на [days] суток. Доступно только модератору —
-  /// проверку делает сервер, здесь мы лишь передаём, кто нажал.
-  Future<bool> blockCourier({
-    required String courierId,
-    required int days,
-    required String moderatorId,
-  }) async {
-    try {
-      await _api.dio.post('/flows/trigger/$blockFlowId', data: {
-        'courier_id': int.tryParse(courierId) ?? courierId,
-        'days': days,
-        'moderator_id': int.tryParse(moderatorId) ?? moderatorId,
-      });
-      return true;
-    } catch (e) {
-      if (kDebugMode) print('CourierReportService.blockCourier: $e');
       return false;
     }
   }

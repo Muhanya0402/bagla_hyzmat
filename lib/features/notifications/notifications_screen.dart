@@ -10,7 +10,6 @@ import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/notifications/notification_dto.dart';
 import 'package:bagla/features/notifications/notification_service.dart';
 import 'package:bagla/features/notifications/widgets/notification_helpers.dart';
-import 'package:bagla/features/orders/courier_report_service.dart';
 import 'package:bagla/features/orders/order_detail_screen.dart';
 import 'package:bagla/features/orders/order_service.dart';
 import 'package:bagla/features/shell/main_shell.dart';
@@ -730,174 +729,12 @@ class _NotifCardState extends State<_NotifCard> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-
-                      // Кнопка модератора: отстранить курьера прямо отсюда,
-                      // не заходя в панель. Приходит только тем учёткам, у
-                      // которых стоит признак модератора.
-                      if (n.type == 'report_alert') ...[
-                        const SizedBox(height: 10),
-                        _BlockCourierButton(notif: n),
-                      ],
                     ],
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Кнопка «Отстранить» в уведомлении модератора
-// ═════════════════════════════════════════════════════════════════════════════
-
-/// Отстраняет курьера на срок, который предложил сервер.
-///
-/// Кого и на сколько — приходит в самом уведомлении, так что модератору не
-/// нужно ничего вводить: посмотрел причину и нажал. Право отстранять
-/// проверяет сервер, здесь мы лишь передаём, кто нажал.
-class _BlockCourierButton extends StatefulWidget {
-  final NotificationDto notif;
-  const _BlockCourierButton({required this.notif});
-
-  @override
-  State<_BlockCourierButton> createState() => _BlockCourierButtonState();
-}
-
-class _BlockCourierButtonState extends State<_BlockCourierButton> {
-  bool _loading = false;
-  bool _done = false;
-
-  String get _courierId =>
-      (widget.notif.raw['report_courier_id'] ?? '').toString();
-
-  int get _days {
-    final v = widget.notif.raw['report_block_days'];
-    return v is int ? v : int.tryParse((v ?? '').toString()) ?? 1;
-  }
-
-  Future<void> _confirmAndBlock(AppLocalizations words) async {
-    final c = AppColors.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: c.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text(
-          words.reportBlockConfirmTitle,
-          style: AppText.serif(fontSize: 17, color: c.ink),
-        ),
-        content: Text(
-          words.reportBlockConfirmBody,
-          style: AppText.regular(fontSize: 13.5, color: c.inkMuted)
-              .copyWith(height: 1.45),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              words.reportBlockConfirmNo,
-              style: AppText.medium(fontSize: 14, color: c.inkMuted),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              words.reportBlockConfirmYes,
-              style: AppText.semiBold(fontSize: 14, color: c.errorMuted),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-
-    setState(() => _loading = true);
-    final messenger = ScaffoldMessenger.of(context);
-    final moderatorId = context.read<AuthProvider>().userId;
-    final success = await CourierReportService().blockCourier(
-      courierId: _courierId,
-      days: _days,
-      moderatorId: moderatorId,
-    );
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _done = success;
-    });
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? words.reportBlockDone : words.reportBlockFailed,
-          style: AppText.regular(
-            fontSize: 13,
-            color: success ? c.ink : c.errorMuted,
-          ),
-        ),
-        backgroundColor: success ? c.emeraldTint : c.errorTint,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_courierId.isEmpty) return const SizedBox.shrink();
-    final c = AppColors.of(context);
-    final words = context.watch<LanguageProvider>().words;
-
-    if (_done) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle_outline_rounded, size: 14, color: c.inkMuted),
-          const SizedBox(width: 6),
-          Text(
-            words.reportBlockDone,
-            style: AppText.medium(fontSize: 12, color: c.inkMuted),
-          ),
-        ],
-      );
-    }
-
-    return GestureDetector(
-      onTap: _loading ? null : () => _confirmAndBlock(words),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: c.errorTint,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: c.errorMuted.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_loading)
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: c.errorMuted,
-                ),
-              )
-            else
-              Icon(Icons.block_rounded, size: 14, color: c.errorMuted),
-            const SizedBox(width: 7),
-            Text(
-              '${words.reportBlockBtn} · $_days',
-              style: AppText.semiBold(fontSize: 12.5, color: c.errorMuted),
-            ),
-          ],
         ),
       ),
     );
