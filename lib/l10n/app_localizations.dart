@@ -226,6 +226,7 @@ class AppLocalizations {
   String get priceSection => get('priceSection');
   String get photoSection => get('photoSection');
   String get commentSection => get('commentSection');
+  String get orderCommentHint => get('orderCommentHint');
   String get transportCar => get('transportCar');
   String get transportTruck => get('transportTruck');
   String get transportAny => get('transportAny');
@@ -569,6 +570,10 @@ class AppLocalizations {
   String get done => get('done');
   // ── Несколько товаров на выбор ──────────────────────────────────────────
   String get orderMultipleItemsLabel => get('orderMultipleItemsLabel');
+  String get orderDoorDeliveryLabel => get('orderDoorDeliveryLabel');
+  String get orderDoorDeliveryHint => get('orderDoorDeliveryHint');
+  String get orderDoorDeliveryCourierHint =>
+      get('orderDoorDeliveryCourierHint');
   String get orderMultipleItemsHint => get('orderMultipleItemsHint');
   String get orderMultipleItemsCourierHint =>
       get('orderMultipleItemsCourierHint');

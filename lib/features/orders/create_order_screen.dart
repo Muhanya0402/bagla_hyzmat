@@ -43,7 +43,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   bool _locationSelected = false;
 
   // ── Controllers ────────────────────────────────────────────────────────────
-  final _descController = TextEditingController();
+  /// Комментарий к заказу — необязательный. Курьер видит его в деталях заказа.
+  final _commentController = TextEditingController();
   final _phoneController = TextEditingController();
   final _priceController = TextEditingController();
   final _deliveryController = TextEditingController();
@@ -86,6 +87,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   List<XFile> _images = [];
   String _transportType = 'any';
   bool _multipleItems = false;
+
+  /// Заказчик просит донести до двери. Пока просто пометка для курьера.
+  bool _doorDelivery = false;
 
   // Только (value, icon) — лейблы локализованные, берём через AppLocalizations.
   static const _transportOptions = [
@@ -181,8 +185,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         'phone': _phoneController.text,
         'price': _priceController.text,
         'delivery': _deliveryController.text,
+        'comment': _commentController.text,
         'transport': _transportType,
         'multiple': _multipleItems,
+        'doorDelivery': _doorDelivery,
         'dateTime': _selectedDateTime?.toIso8601String(),
         'locationSelected': _locationSelected,
         'images': _images.map((x) => x.path).toList(),
@@ -236,8 +242,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         }
         _priceController.text = (d['price'] ?? '').toString();
         _deliveryController.text = (d['delivery'] ?? '').toString();
+        _commentController.text = (d['comment'] ?? '').toString();
         _transportType = (d['transport'] ?? 'any').toString();
         _multipleItems = d['multiple'] == true;
+        _doorDelivery = d['doorDelivery'] == true;
         // Пустое значение в черновике не должно затирать подставленный по
         // умолчанию срок — иначе после возврата к черновику поле оказывалось
         // пустым, хотя на свежей форме оно заполнено.
@@ -339,7 +347,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   @override
   void dispose() {
     _draftDebounce?.cancel();
-    _descController.dispose();
+    _commentController.dispose();
     _phoneController
       ..removeListener(_onAnyFieldChanged)
       ..dispose();
@@ -810,7 +818,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         shopAddressTk: auth.shopAddressTk,
         transportType: _transportType,
         phone: _phoneController.text,
-        comment: '',
+        comment: _commentController.text.trim(),
         deliveryTime: _selectedDateTime,
         itemPrice: itemPrice,
         deliveryFee: deliveryFee,
@@ -829,6 +837,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
         shopProvinceId: auth.provinceId.isNotEmpty ? auth.provinceId : null,
         category: auth.category.isNotEmpty ? auth.category : null,
         multipleItems: _multipleItems,
+        doorDelivery: _doorDelivery,
         // Дорогой заказ уходит только надёжным курьерам магазина.
         // Решение принимается здесь, а не на сервере: рассылка пушей
         // срабатывает на создание заказа немедленно.
@@ -1035,6 +1044,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                             _priceField(words),
                             const SizedBox(height: 8),
                             _deliveryField(words),
+                            const SizedBox(height: 8),
+                            _commentField(words),
                           ],
                         ),
                       ),
@@ -1053,7 +1064,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                         child: _section(
                           icon: Icons.map_outlined,
                           title: words.orderDeliveryArea,
-                          child: _buildLocationStepper(isRu, words),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLocationStepper(isRu, words),
+                              const SizedBox(height: 10),
+                              _doorDeliveryCheckbox(words),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -1137,25 +1155,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   /// Чекбокс «Несколько товаров на выбор» — даёт магазину сказать курьеру,
   /// что нужно сфотать каждую вариацию, чтобы клиент выбрал.
-  Widget _multipleItemsCheckbox(AppLocalizations words) {
+  /// Плитка-галочка: рамка подсвечивается, когда включена.
+  /// Одна разметка на все переключатели формы, чтобы они не разъезжались.
+  Widget _checkTile({
+    required bool value,
+    required String label,
+    required String hint,
+    required VoidCallback onTap,
+  }) {
     final c = AppColors.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        setState(() => _multipleItems = !_multipleItems);
-        _scheduleDraftSave();
-      },
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
         decoration: BoxDecoration(
-          color: _multipleItems ? c.emeraldTint : c.borderSoft,
+          color: value ? c.emeraldTint : c.borderSoft,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _multipleItems
-                ? c.ink.withValues(alpha: 0.35)
-                : c.border,
-            width: _multipleItems ? 1.5 : 1,
+            color: value ? c.ink.withValues(alpha: 0.35) : c.border,
+            width: value ? 1.5 : 1,
           ),
         ),
         child: Row(
@@ -1165,14 +1185,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
               width: 20,
               height: 20,
               decoration: BoxDecoration(
-                color: _multipleItems ? c.ink : Colors.transparent,
+                color: value ? c.ink : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: _multipleItems ? c.ink : c.border,
+                  color: value ? c.ink : c.border,
                   width: 1.5,
                 ),
               ),
-              child: _multipleItems
+              child: value
                   ? const Icon(Icons.check_rounded,
                       size: 13, color: Colors.white)
                   : null,
@@ -1184,12 +1204,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    words.orderMultipleItemsLabel,
+                    label,
                     style: AppText.semiBold(fontSize: 13.5, color: c.ink),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    words.orderMultipleItemsHint,
+                    hint,
                     style:
                         AppText.regular(fontSize: 11.5, color: c.inkMuted)
                             .copyWith(height: 1.35),
@@ -1202,6 +1222,28 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       ),
     );
   }
+
+  Widget _multipleItemsCheckbox(AppLocalizations words) => _checkTile(
+        value: _multipleItems,
+        label: words.orderMultipleItemsLabel,
+        hint: words.orderMultipleItemsHint,
+        onTap: () {
+          setState(() => _multipleItems = !_multipleItems);
+          _scheduleDraftSave();
+        },
+      );
+
+  /// Пометка «донести до двери». Пока только признак: на стоимость доставки
+  /// не влияет, этаж и лифт не спрашиваем — к тарифу вернёмся отдельно.
+  Widget _doorDeliveryCheckbox(AppLocalizations words) => _checkTile(
+        value: _doorDelivery,
+        label: words.orderDoorDeliveryLabel,
+        hint: words.orderDoorDeliveryHint,
+        onTap: () {
+          setState(() => _doorDelivery = !_doorDelivery);
+          _scheduleDraftSave();
+        },
+      );
 
   Widget _imagePickerWidget(AppLocalizations words) {
     return SizedBox(
@@ -1586,6 +1628,34 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       ),
       validator: (v) =>
           (v == null || v.isEmpty || v == '0') ? words.specifyDelivery : null,
+    );
+  }
+
+  /// Комментарий к заказу. Поле необязательное — валидатора нет намеренно,
+  /// пустое значение уходит на сервер пустой строкой, как и раньше.
+  Widget _commentField(AppLocalizations words) {
+    return TextFormField(
+      controller: _commentController,
+      keyboardType: TextInputType.multiline,
+      textInputAction: TextInputAction.newline,
+      textCapitalization: TextCapitalization.sentences,
+      minLines: 1,
+      maxLines: 3,
+      // Ограничение по длине без счётчика под полем: заказчику он не нужен,
+      // а на сервере колонка не резиновая.
+      inputFormatters: [LengthLimitingTextInputFormatter(300)],
+      // Только сохранение черновика: на заполненность формы комментарий не
+      // влияет, поэтому лишний setState на каждую букву не нужен.
+      onChanged: (_) => _scheduleDraftSave(),
+      style: AppText.regular(fontSize: 15, color: AppColors.of(context).ink),
+      decoration: _fieldDecor(
+        hint: words.orderCommentHint,
+        prefix: Icon(
+          Icons.notes_rounded,
+          color: AppColors.of(context).ink,
+          size: 18,
+        ),
+      ),
     );
   }
 

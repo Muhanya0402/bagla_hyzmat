@@ -248,7 +248,7 @@ class _QuickSummary extends StatelessWidget {
               icon: Icons.bolt_rounded,
               iconColor: AppColors.of(context).amber,
               iconBg: AppColors.of(context).amberTint,
-              text: 'Zakaz üçin 5 žeton',
+              text: 'Sargyt üçin 5 žeton',
             ),
             _SummaryItem(
               icon: Icons.local_shipping_rounded,

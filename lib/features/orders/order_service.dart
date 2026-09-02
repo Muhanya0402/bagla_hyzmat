@@ -85,6 +85,9 @@ class OrderService {
     String? category,
     // ── Несколько товаров на выбор ─────────────────────────────────────────
     bool multipleItems = false,
+    // ── Донести до двери ───────────────────────────────────────────────────
+    // Пока только пометка для курьера: на стоимость доставки не влияет.
+    bool doorDelivery = false,
     // ── Только для надёжных курьеров магазина ──────────────────────────────
     // Ставится здесь, при создании, а НЕ отдельным флоу: рассылка пушей
     // срабатывает на создание заказа немедленно, и при отложенной пометке
@@ -170,6 +173,9 @@ class OrderService {
         // Несколько товаров на выбор — отправляем всегда (даже false),
         // чтобы у новых заказов поле было заполнено явно.
         'multiple_items': multipleItems,
+        // Как и соседние признаки, шлём всегда — чтобы у новых заказов
+        // поле было заполнено явно, а не досталось из умолчания.
+        'door_delivery': doorDelivery,
         // Отправляем всегда, даже false: у NULL и false разная судьба в
         // фильтре видимости, и полагаться на значение по умолчанию не стоит.
         'trusted_only': trustedOnly,
@@ -723,7 +729,7 @@ class OrderService {
           'comment,time_of_delivery,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
           'shop_phone,client_phone,courier_phone,'
-          'category,multiple_items,trusted_only,'
+          'category,multiple_items,trusted_only,door_delivery,'
           'pictures.directus_files_id,'
           // M2A relations — `item` это UUID связанной сущности, `collection`
           // имя коллекции. `shopId` нужен чтобы в decorate-цикле подтянуть
@@ -895,7 +901,7 @@ class OrderService {
           'comment,time_of_delivery,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
           'shop_phone,client_phone,courier_phone,'
-          'category,multiple_items,'
+          'category,multiple_items,door_delivery,'
           'pictures.directus_files_id,'
           'courierId.item,courierId.collection,'
           'shopId.item,shopId.collection';

@@ -158,6 +158,60 @@ class OrderDetailsSection extends StatelessWidget {
           const SizedBox(height: 10),
         ],
 
+        // ── До двери — просьба заказчика ──────────────────────────────────
+        // Спокойная плашка, а не amber: это пожелание к вручению, а не
+        // предупреждение о содержимом заказа.
+        if (dto.doorDelivery) ...[
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: c.emeraldTint,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.border, width: 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: c.borderSoft,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.meeting_room_outlined,
+                    size: 16,
+                    color: c.ink,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        words.orderDoorDeliveryLabel,
+                        style: AppText.semiBold(fontSize: 13, color: c.ink),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        words.orderDoorDeliveryCourierHint,
+                        style: AppText.regular(
+                          fontSize: 11.5,
+                          color: c.inkMuted,
+                        ).copyWith(height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+
         // ── Category row (если есть) ──────────────────────────────────────
         if (dto.category.isNotEmpty) ...[
           _DetailRow(

@@ -48,6 +48,10 @@ class OrderDto {
   /// клиент выбирает). У старых заказов всегда false.
   final bool multipleItems;
 
+  /// Заказчик просит донести до двери. Пока только пометка: на
+  /// стоимость доставки не влияет.
+  final bool doorDelivery;
+
   /// Заказ виден только надёжным курьерам этого магазина.
   ///
   /// Курьеру значок объясняет, почему заказ есть у него и нет у других;
@@ -85,6 +89,7 @@ class OrderDto {
     required this.courierId,
     required this.category,
     required this.multipleItems,
+    this.doorDelivery = false,
     required this.trustedOnly,
     required this.raw,
   });
@@ -182,6 +187,7 @@ class OrderDto {
       courierSelfieFileId: s('courier_selfie_file_id'),
       category: categorySlug,
       multipleItems: m['multiple_items'] == true,
+      doorDelivery: m['door_delivery'] == true,
       trustedOnly: m['trusted_only'] == true,
       courierId: s('courierId'),
       raw: m,

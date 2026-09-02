@@ -246,6 +246,7 @@ const Map<String, String> stringsRu = {
   'priceSection': 'Стоимость',
   'photoSection': 'Фото товара',
   'commentSection': 'Комментарий',
+  'orderCommentHint': 'Комментарий для курьера (необязательно)',
   'transportCar': 'Легковой авто',
   'transportTruck': 'Грузовой авто',
   'transportAny': 'Авто необязательно',
@@ -629,6 +630,11 @@ const Map<String, String> stringsRu = {
   'done': 'Готово',
   // ── Несколько товаров на выбор ─────────────────────────────────────────────
   'orderMultipleItemsLabel': 'Несколько товаров на выбор',
+  'orderDoorDeliveryLabel': 'Доставка до двери',
+  'orderDoorDeliveryHint':
+      'Курьер поднимется и передаст заказ у двери, а не у подъезда',
+  'orderDoorDeliveryCourierHint':
+      'Заказчик просит подняться и передать заказ у двери',
   'orderMultipleItemsHint':
       'Курьер сфотографирует варианты, чтобы клиент выбрал нужный.',
   'orderMultipleItemsCourierHint':
