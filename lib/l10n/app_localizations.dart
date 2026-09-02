@@ -250,6 +250,11 @@ class AppLocalizations {
   String get statusOnWay => get('statusOnWay');
   String get statusOrderDone => get('statusOrderDone');
   String get statusOrderCanceled => get('statusOrderCanceled');
+  String get editAmountBtn => get('editAmountBtn');
+  String get editAmountTitle => get('editAmountTitle');
+  String get editAmountCourierNotice => get('editAmountCourierNotice');
+  String get editAmountSave => get('editAmountSave');
+  String get editAmountFailed => get('editAmountFailed');
   String get cancelOrderBtn => get('cancelOrderBtn');
   String get confirmTitle => get('confirmTitle');
   String get confirmWithPoints => get('confirmWithPoints');

@@ -8,6 +8,7 @@ import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
+import 'package:bagla/features/orders/edit_amount_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/orders/return_order_flow.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
@@ -442,11 +443,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     }
 
     if (isShop && (status == 'published' || status == 'active')) {
-      return OrderPrimaryButton(
-        label: words.cancelOrderBtn,
-        color: c.errorMuted,
-        filled: false,
-        onTap: () => _showCancelReasonModal(context, orderId, service, words),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          OrderPrimaryButton(
+            label: words.editAmountBtn,
+            color: c.ink,
+            filled: false,
+            onTap: () => _showEditAmountModal(context, dto, service, words),
+          ),
+          const SizedBox(height: 10),
+          OrderPrimaryButton(
+            label: words.cancelOrderBtn,
+            color: c.errorMuted,
+            filled: false,
+            onTap: () => _showCancelReasonModal(context, orderId, service, words),
+          ),
+        ],
       );
     }
 
@@ -734,6 +747,42 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         ),
       ),
     );
+  }
+
+  /// Шторка «Изменить сумму заказа» — только для магазина, пока заказ не
+  /// закрыт. Курьеру уйдёт пуш: его шлёт флоу на изменение сумм заказа.
+  void _showEditAmountModal(
+    BuildContext context,
+    OrderDto dto,
+    OrderService service,
+    AppLocalizations words,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (_) => EditAmountModal(
+        words: words,
+        itemPrice: dto.totalAmount - dto.deliveryAmount,
+        deliveryFee: dto.deliveryAmount,
+        courierAssigned: dto.courierId.isNotEmpty,
+        onSubmit: (itemPrice, deliveryFee) async {
+          final ok = await service.updateAmounts(
+            orderId: dto.id,
+            itemPrice: itemPrice,
+            deliveryFee: deliveryFee,
+          );
+          if (ok) {
+            widget.onUpdate?.call();
+            return true;
+          }
+          // Не закрываем шторку: введённое не потеряется, а сообщение об
+          // ошибке шторка покажет у себя — снек за ней не виден.
+          return false;
+        },
+      ),
+    ).then((_) => widget.onUpdate?.call());
   }
 
   void _showCancelReasonModal(

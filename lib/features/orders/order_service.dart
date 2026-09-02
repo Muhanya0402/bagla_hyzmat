@@ -621,6 +621,36 @@ class OrderService {
     }
   }
 
+  /// Меняет суммы уже опубликованного заказа: стоимость товара и доставки.
+  ///
+  /// Курьер узнаёт об изменении пушем — его шлёт флоу «Уведомление — Сумма
+  /// заказа изменена», который срабатывает на изменение `total_amount` или
+  /// `delivery_amount`.
+  ///
+  /// Начисления НЕ трогаем: `points_amount` уже списан с курьера при взятии
+  /// заказа, а `cashback_amount` посчитан от исходной доставки. Пересчёт
+  /// задним числом означал бы повторное списание или незаработанный кэшбэк.
+  Future<bool> updateAmounts({
+    required String orderId,
+    required double itemPrice,
+    required double deliveryFee,
+  }) async {
+    try {
+      await _apiClient.dio.patch(
+        '/items/orders/$orderId',
+        data: {
+          'total_amount': itemPrice + deliveryFee,
+          'delivery_amount': deliveryFee,
+        },
+      );
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('Ошибка updateAmounts: $e');
+      return false;
+    }
+  }
+
+
   // ─── 3. ПОЛУЧЕНИЕ ЗАКАЗОВ С ПАГИНАЦИЕЙ ───────────────────────────────────
 
   Future<List<dynamic>> getOrders({

@@ -13,6 +13,8 @@ import 'package:flutter/material.dart';
       return (bg: c.emeraldTint, icon: c.ink);
     case 'account_status':
       return (bg: c.errorTint, icon: c.errorMuted);
+    case 'order_amount':
+      return (bg: c.amberTint, icon: c.ink);
     default:
       return (bg: c.borderSoft, icon: c.inkSoft);
   }
@@ -38,6 +40,8 @@ IconData notifTypeIcon(String type, {String transport = ''}) {
       return Icons.verified_user_outlined;
     case 'referral_paid':
       return Icons.card_giftcard_rounded;
+    case 'order_amount':
+      return Icons.payments_rounded;
     default:
       return Icons.notifications_rounded;
   }

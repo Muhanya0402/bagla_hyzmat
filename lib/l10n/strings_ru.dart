@@ -270,6 +270,12 @@ const Map<String, String> stringsRu = {
   'statusOnWay': 'Курьер в пути',
   'statusOrderDone': 'Заказ выполнен',
   'statusOrderCanceled': 'Заказ отменён',
+  'editAmountBtn': 'Изменить сумму',
+  'editAmountTitle': 'Изменить сумму заказа',
+  'editAmountCourierNotice':
+      'Курьер уже взял заказ — он получит уведомление о новой сумме.',
+  'editAmountSave': 'Сохранить',
+  'editAmountFailed': 'Не удалось сохранить. Проверьте связь и повторите.',
   'cancelOrderBtn': 'Отменить заказ',
   'confirmTitle': 'Принять заказ',
   'confirmWithPoints':

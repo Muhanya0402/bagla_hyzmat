@@ -273,6 +273,13 @@ const Map<String, String> stringsTk = {
   'statusOnWay': 'Eltip beriji ýolda',
   'statusOrderDone': 'Sargyt tamamlandy',
   'statusOrderCanceled': 'Sargyt ýatyryldy',
+  'editAmountBtn': 'Möçberi üýtgetmek',
+  'editAmountTitle': 'Sargydyň möçberini üýtgetmek',
+  'editAmountCourierNotice':
+      'Eltip beriji sargydy eýýäm aldy — täze möçber barada habar alar.',
+  'editAmountSave': 'Ýatda saklamak',
+  'editAmountFailed':
+      'Ýatda saklamak başartmady. Baglanyşygy barlaň we gaýtadan synanyşyň.',
   'cancelOrderBtn': 'Sargydy ýatyr',
   'confirmTitle': 'Sargydy kabul et',
   'confirmWithPoints': 'Balansyňyzdan {points} bal aýrylar. Dowam etmek?',
