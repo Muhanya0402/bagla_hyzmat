@@ -4,6 +4,7 @@ import 'package:bagla/core/widgets/point_icon.dart';
 import 'package:bagla/core/widgets/pressable_scale.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
+import 'package:bagla/features/orders/widgets/order_countdown_chip.dart';
 import 'package:bagla/features/orders/return_order_flow.dart';
 import 'package:bagla/features/profile/widgets/shop_categories.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
@@ -156,6 +157,17 @@ class _OrderCardState extends State<OrderCard> {
                 ),
 
                 const SizedBox(height: 8),
+
+                // ── Обратный отсчёт до срока доставки ──────────────────
+                // Только у живых заказов: у завершённого и отменённого срок
+                // уже ничего не значит, а строка отнимала бы место в ленте.
+                if (dto.status == 'published' || dto.status == 'active') ...[
+                  OrderCountdownChip(
+                    timeOfDelivery: dto.timeOfDelivery,
+                    words: words,
+                  ),
+                  const SizedBox(height: 8),
+                ],
 
                 // ── Row 4: price + action button ───────────────────────
                 Divider(color: c.borderSoft, height: 1, thickness: 1),
