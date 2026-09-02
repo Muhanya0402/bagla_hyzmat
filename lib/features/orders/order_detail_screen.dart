@@ -8,6 +8,7 @@ import 'package:bagla/core/tour/tour_target.dart';
 import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
+import 'package:bagla/features/orders/courier_report_service.dart';
 import 'package:bagla/features/orders/edit_amount_modal.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/orders/return_order_flow.dart';
@@ -439,6 +440,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     final orderId = dto.id;
 
     if (status == 'completed' || status == 'canceled') {
+      // Заказ закрыт — действий почти нет, но сутки после закрытия магазин
+      // может пожаловаться на курьера. Позже кнопку прячем: жалобы по
+      // горячим следам разбирать честнее, чем спустя неделю.
+      if (isShop &&
+          CourierReportService.canReport(
+            status: status,
+            closedAt: dto.closedAt,
+            courierId: dto.courierItemId,
+          )) {
+        return OrderPrimaryButton(
+          label: words.reportCourierBtn,
+          color: c.errorMuted,
+          filled: false,
+          onTap: () => _showReportModal(context, dto, words),
+        );
+      }
       return const SizedBox.shrink();
     }
 
@@ -747,6 +764,95 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         ),
       ),
     );
+  }
+
+  /// Шторка «Пожаловаться на курьера».
+  ///
+  /// Переиспользуем шторку выбора причины: набор закрытых вариантов плюс
+  /// комментарий — ровно то, что нужно и здесь. Сервер разбирает жалобу сам
+  /// и сам решает, начислять ли штрафные баллы.
+  void _showReportModal(
+    BuildContext context,
+    OrderDto dto,
+    AppLocalizations words,
+  ) {
+    final service = CourierReportService();
+    var sent = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (_) => CancelReasonModal(
+        words: words,
+        title: words.reportCourierTitle,
+        subtitle: words.reportCourierSubtitle,
+        confirmLabel: words.reportCourierSend,
+        reasons: [
+          ReasonOption(
+              id: 'rude',
+              label: words.reportReasonRude,
+              icon: Icons.sentiment_very_dissatisfied_outlined),
+          ReasonOption(
+              id: 'extortion',
+              label: words.reportReasonExtortion,
+              icon: Icons.playlist_add_check_circle_outlined),
+          ReasonOption(
+              id: 'no_door',
+              label: words.reportReasonNoDoor,
+              icon: Icons.stairs_outlined),
+          ReasonOption(
+              id: 'late',
+              label: words.reportReasonLate,
+              icon: Icons.timer_off_outlined),
+          ReasonOption(
+              id: 'no_contact',
+              label: words.reportReasonNoContact,
+              icon: Icons.phone_disabled_outlined),
+          ReasonOption(
+              id: 'not_delivered',
+              label: words.reportReasonNotDelivered,
+              icon: Icons.remove_shopping_cart_outlined),
+        ],
+        onSubmit: (reasonId, comment) async {
+          final reason = ReportReason.values.firstWhere(
+            (r) => r.id == reasonId,
+            orElse: () => ReportReason.late,
+          );
+          final ok = await service.sendReport(
+            orderId: dto.id,
+            courierId: dto.courierItemId,
+            shopId: widget.currentUserId,
+            reason: reason,
+            comment: comment,
+          );
+          sent = ok;
+          // Закрываем в любом случае: повторная отправка той же жалобы
+          // ничего не даст, а держать шторку открытой без объяснения хуже.
+          return true;
+        },
+      ),
+    ).then((_) {
+      if (!context.mounted) return;
+      final c = AppColors.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sent ? words.reportCourierSent : words.reportCourierFailed,
+            style: AppText.regular(
+              fontSize: 13,
+              color: sent ? c.ink : c.errorMuted,
+            ),
+          ),
+          backgroundColor: sent ? c.emeraldTint : c.errorTint,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    });
   }
 
   /// Шторка «Изменить сумму заказа» — только для магазина, пока заказ не

@@ -651,6 +651,47 @@ class OrderService {
   }
 
 
+  // ─── Ограничение по жалобам ───────────────────────────────────────────────
+
+  /// С какого момента курьеру показывать заказы, если он под ограничением.
+  ///
+  /// Возвращает `null`, когда ограничения нет. Баллы читаем один раз за
+  /// сессию: значение меняется редко, а лента дёргается часто.
+  static double? _cachedPoints;
+  static String _cachedPointsFor = '';
+
+  static const double restrictionThreshold = 6;
+  static const Duration restrictionDelay = Duration(minutes: 2);
+
+  Future<DateTime?> _restrictionDelay(String userId) async {
+    if (userId.isEmpty) return null;
+    if (_cachedPointsFor != userId) {
+      _cachedPointsFor = userId;
+      _cachedPoints = null;
+      try {
+        final res = await _apiClient.dio.get(
+          '/items/customers/$userId',
+          queryParameters: {'fields': 'report_points'},
+        );
+        final v = res.data?['data']?['report_points'];
+        _cachedPoints = v is num ? v.toDouble() : double.tryParse('$v');
+      } catch (_) {
+        // Не смогли прочитать — не ограничиваем. Ошибка сети не должна
+        // молча отрезать курьера от заказов.
+        _cachedPoints = 0;
+      }
+    }
+    final points = _cachedPoints ?? 0;
+    if (points < restrictionThreshold) return null;
+    return DateTime.now().subtract(restrictionDelay);
+  }
+
+  /// Сбросить запомненные баллы — после того, как ограничение могло измениться.
+  static void forgetRestriction() {
+    _cachedPointsFor = '';
+    _cachedPoints = null;
+  }
+
   // ─── 3. ПОЛУЧЕНИЕ ЗАКАЗОВ С ПАГИНАЦИЕЙ ───────────────────────────────────
 
   Future<List<dynamic>> getOrders({
@@ -694,6 +735,15 @@ class OrderService {
         } else {
           qp['filter[order_status][_nin]'] = 'completed,canceled';
           qp['filter[courierId][_null]'] = 'true';
+          // Курьер со штрафными баллами видит свежие заказы позже остальных:
+          // первые минуты они достаются тем, на кого не жалуются. Это и есть
+          // мягкое ограничение — человек остаётся на линии, но теряет
+          // преимущество первого взгляда.
+          final delay = await _restrictionDelay(userId);
+          if (delay != null) {
+            qp['filter[date_created][_lte]'] =
+                delay.toUtc().toIso8601String();
+          }
           qp.addAll(
             flattenFilter(
               trustedVisibilityClause(userId),
@@ -756,7 +806,7 @@ class OrderService {
       // customer.name + customer.surname.
       const leanFields = 'id,order_status,transport_type,'
           'total_amount,delivery_amount,points_amount,cashback_amount,'
-          'comment,time_of_delivery,'
+          'comment,time_of_delivery,date_updated,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
           'shop_phone,client_phone,courier_phone,'
           'category,multiple_items,trusted_only,door_delivery,'
@@ -928,7 +978,7 @@ class OrderService {
     try {
       const fields = 'id,order_status,transport_type,'
           'total_amount,delivery_amount,points_amount,cashback_amount,'
-          'comment,time_of_delivery,'
+          'comment,time_of_delivery,date_updated,'
           'shop_adress,shop_adresstk,adress_of_delivery,adress_of_deliverytk,'
           'shop_phone,client_phone,courier_phone,'
           'category,multiple_items,door_delivery,'

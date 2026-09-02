@@ -197,6 +197,28 @@ class OrderDto {
   /// Короткий ID для отображения в UI: первый сегмент UUID в верхнем регистре.
   String get shortId => id.isEmpty ? '' : id.split('-').first.toUpperCase();
 
+  /// Числовой идентификатор курьера из связи заказа.
+  ///
+  /// Поле `courierId` хранит связь целиком (список пар «элемент —
+  /// коллекция»), приведённый к строке: годится, чтобы понять «курьер есть»,
+  /// но не для запросов. Здесь достаём именно идентификатор.
+  String get courierItemId => _m2aItemId(raw['courierId']);
+
+  /// То же для заказчика.
+  String get shopItemId => _m2aItemId(raw['shopId']);
+
+  static String _m2aItemId(dynamic field) {
+    if (field is! List || field.isEmpty) return '';
+    final first = field.first;
+    final item = first is Map ? first['item'] : first;
+    if (item == null) return '';
+    if (item is Map) return (item['id'] ?? '').toString();
+    return item.toString();
+  }
+
+  /// Когда заказ закрыли — по нему считается срок на жалобу.
+  String get closedAt => (raw['date_updated'] ?? '').toString();
+
   /// Адрес магазина с учётом языка + локализованный fallback.
   String shopAddress(bool isRu, {String? fallback}) {
     if (isRu) {
