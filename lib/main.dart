@@ -10,6 +10,7 @@ import 'package:bagla/features/shell/main_shell.dart';
 import 'package:bagla/features/profile/referrals_screen.dart';
 import 'package:bagla/features/profile/trusted_couriers_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
+import 'package:bagla/features/profile/traffic_screen.dart';
 import 'package:bagla/features/profile/user_type_selection_screen.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/levels/level_provider.dart';
@@ -384,6 +385,9 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (_) => const TrustedCouriersScreen(),
           );
+        }
+        if (settings.name == '/traffic') {
+          return MaterialPageRoute(builder: (_) => const TrafficScreen());
         }
         if (settings.name == '/terms') {
           return MaterialPageRoute(builder: (_) => const TermsScreen());

@@ -328,6 +328,17 @@ class ProfileScreenState extends State<ProfileScreen>
       Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
     );
     items.add(
+      Divider(height: 1, thickness: 0.8, indent: 52, color: c.borderSoft),
+    );
+    items.add(
+      ProfileMenuTile(
+        icon: Icons.data_usage_rounded,
+        title: words.trafficMenu,
+        onTap: () => Navigator.pushNamed(context, '/traffic'),
+      ),
+    );
+
+    items.add(
       ProfileMenuTile(
         icon: Icons.replay_rounded,
         title: words.profileReplayTour,

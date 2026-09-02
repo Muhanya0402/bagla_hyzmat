@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bagla/core/base_url.dart';
 import 'package:bagla/core/secure_token_store.dart';
+import 'package:bagla/core/traffic_tracker.dart';
 import 'package:bagla/core/tour/tour_manager.dart';
 import 'package:bagla/features/auth/logout_prefs.dart';
 import 'package:bagla/features/notifications/active_orders/active_orders_notification.dart';
@@ -128,7 +130,14 @@ class ApiClient {
           }
           return handler.next(options);
         },
+        onResponse: (response, handler) {
+          _countTraffic(response.requestOptions, response);
+          return handler.next(response);
+        },
         onError: (DioException e, handler) async {
+          // Неудачный запрос тратит трафик ровно так же, как удачный.
+          _countTraffic(e.requestOptions, e.response);
+
           final statusCode = e.response?.statusCode;
 
           // Только 401 = протухший/невалидный access-token → refresh.
@@ -344,4 +353,48 @@ class ApiClient {
       options: options,
     );
   }
+
+  /// Прикидка объёма одного обмена с сервером для раздела «Анализ трафика».
+  ///
+  /// Точных байтов из Dio не достать: ответ приходит уже разобранным в
+  /// объекты. Берём `content-length`, когда сервер его прислал, иначе меряем
+  /// длину тела в UTF-8 — для JSON это близко к правде. Заголовки считаем
+  /// грубой надбавкой, иначе счёт занижался бы на каждом мелком запросе.
+  static void _countTraffic(RequestOptions options, Response? response) {
+    try {
+      int sent = _bodySize(options.data);
+      sent += 400; // строка запроса, токен и прочие заголовки
+
+      int received = 0;
+      final len = response?.headers.value('content-length');
+      if (len != null) {
+        received = int.tryParse(len) ?? 0;
+      }
+      if (received == 0 && response?.data != null) {
+        received = _bodySize(response!.data);
+      }
+      received += 200; // заголовки ответа
+
+      TrafficTracker().record(
+        path: options.path,
+        sent: sent,
+        received: received,
+      );
+    } catch (_) {
+      // Статистика не стоит того, чтобы из-за неё падал запрос.
+    }
+  }
+
+  static int _bodySize(dynamic body) {
+    if (body == null) return 0;
+    if (body is FormData) return body.length;
+    if (body is String) return utf8.encode(body).length;
+    if (body is List<int>) return body.length;
+    try {
+      return utf8.encode(jsonEncode(body)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
 }
