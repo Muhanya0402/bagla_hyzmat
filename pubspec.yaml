@@ -2,11 +2,7 @@ name: bagla
 description: "Bagla project"
 publish_to: 'none'
 
-<<<<<<< HEAD
 version: 1.0.0+7
-=======
-version: 1.0.0+6
->>>>>>> a0706e78ea6326524192e45a3560557b0238e8f7
 
 environment:
   sdk: ^3.10.7
