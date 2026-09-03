@@ -74,16 +74,18 @@ class OrderDetailsSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             decoration: BoxDecoration(
-              color: c.emeraldTint,
+              color: c.amberTint,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: c.accent.withValues(alpha: 0.3),
+                color: c.amber.withValues(alpha: 0.4),
                 width: 1,
               ),
             ),
             child: Row(
               children: [
-                Icon(Icons.verified_user_outlined, size: 18, color: c.ink),
+                // Та же звезда, что и в карточке: человек должен узнать
+                // пометку, а не разгадывать её заново на другом экране.
+                Icon(Icons.star_rounded, size: 20, color: c.amber),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

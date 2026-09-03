@@ -257,21 +257,25 @@ class _OrderCardState extends State<OrderCard> {
   // ── Только для надёжных курьеров ───────────────────────────────────────────
   // Курьеру значок объясняет, почему заказ есть у него и нет у остальных;
   // магазину — что заказ ушёл узкому кругу и берут его не сразу.
+  /// Метка индивидуального заказа — того, что виден только надёжным курьерам
+  /// магазина. Звезда, а не щит: в ленте она читается с одного взгляда, а
+  /// щит терялся среди прочих значков и его попросту не замечали.
   Widget _buildTrustedChip(AppColors c, AppLocalizations words) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: c.emeraldTint,
+        color: c.amberTint,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.amber.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.verified_user_outlined, size: 11, color: c.ink),
+          Icon(Icons.star_rounded, size: 13, color: c.amber),
           const SizedBox(width: 4),
           Text(
             words.trustedBadge,
-            style: AppText.medium(fontSize: 10, color: c.ink),
+            style: AppText.semiBold(fontSize: 10, color: c.ink),
           ),
         ],
       ),

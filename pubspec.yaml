@@ -13,7 +13,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   dio: ^5.4.1
   shared_preferences: ^2.2.2
-  intl: 0.20.2
+  intl: ^0.20.3
   provider: ^6.1.2
   pinput: ^5.0.0
   smart_auth: ^3.0.1
@@ -21,7 +21,10 @@ dependencies:
   flutter_image_compress: ^2.3.0
   # Чтение медиатеки для кастомного инлайн-пикера фото (плитка «Камера» +
   # сетка последних фото в собственном UI) — PhotoPickerSheet.
-  photo_manager: ^3.6.0
+  # Закреплено точно: на 3.12.0 не компилируется Kotlin-код самого
+  # плагина (Unresolved reference DBUtils/ThumbnailUtil/ScopedCache)
+  # при нашей связке Kotlin 2.2.20 + AGP 8.11.1.
+  photo_manager: 3.9.0
   # Живой видоискатель камеры внутри PhotoPickerSheet (WB-стиль): preview,
   # затвор, переключение фронт/тыл — без выхода в системную камеру.
   camera: ^0.11.0
