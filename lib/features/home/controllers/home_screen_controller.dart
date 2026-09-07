@@ -591,31 +591,63 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
     order['shop_first_name'] = name.split(RegExp(r'\s+')).first;
   }
 
-  /// Догружает наименование заказчика для заказа, пришедшего по сокету.
+  /// Догружает то, чего нет в строке заказа, пришедшей по сокету: имя
+  /// заказчика и данные курьера.
   ///
-  /// Нужен для только что созданных заказов: переносить имя не с чего, а в
-  /// кеше магазинов заказчик появляется лишь после того, как встретился в
-  /// загруженном списке — у нового магазина первый заказ шёл без имени.
+  /// Сокет отдаёт строку такой, как она лежит в базе, — без имён, которые
+  /// подставляет загрузка списка. Перенести их со старой строки удаётся не
+  /// всегда: у только что созданного заказа старой строки нет вовсе, а в
+  /// момент, когда курьер берёт заказ, переносить его данные не с чего —
+  /// раньше курьера у заказа не было. Именно поэтому имя «то есть, то нет».
   ///
-  /// Запрос уходит только когда имени действительно нет, и переиспользует
-  /// готовую декорацию из `getOrderById`.
-  Future<void> _backfillShopName(dynamic order) async {
+  /// Один запрос закрывает оба случая: `getOrderById` возвращает заказ уже
+  /// с подставленными именами. Уходит он только когда чего-то не хватает.
+  Future<void> _backfillMissingNames(dynamic order) async {
     if (order is! Map) return;
-    if ((order['shop_name'] ?? '').toString().trim().isNotEmpty) return;
+
+    final needShop = (order['shop_name'] ?? '').toString().trim().isEmpty;
+    // Курьера добираем, только если он у заказа есть: у свободного заказа
+    // пустое имя — это норма, а не пропажа.
+    final hasCourier = _m2aItemId(order, 'courierId') != null;
+    final needCourier =
+        hasCourier && (order['courier_name'] ?? '').toString().trim().isEmpty;
+    if (!needShop && !needCourier) return;
+
     final id = order['id']?.toString();
     if (id == null || id.isEmpty) return;
 
     final full = await orderService.getOrderById(id);
     if (full == null || !mounted) return;
-    final name = (full['shop_name'] ?? '').toString().trim();
-    if (name.isEmpty) return;
-    final first = (full['shop_first_name'] ?? '').toString().trim();
+
+    String pick(String key) => (full[key] ?? '').toString().trim();
+    final shopName = pick('shop_name');
+    final shopFirst = pick('shop_first_name');
+    final courierName = pick('courier_name');
+    final courierPhone = pick('courier_phone');
+    final courierSelfie = pick('courier_selfie_file_id');
+
+    if (shopName.isEmpty && courierName.isEmpty) return;
 
     setState(() {
       for (final o in orders) {
         if (o is Map && o['id'].toString() == id) {
-          o['shop_name'] = name;
-          if (first.isNotEmpty) o['shop_first_name'] = first;
+          if (needShop && shopName.isNotEmpty) {
+            o['shop_name'] = shopName;
+            if (shopFirst.isNotEmpty) o['shop_first_name'] = shopFirst;
+          }
+          if (needCourier && courierName.isNotEmpty) {
+            o['courier_name'] = courierName;
+            // Телефон и фото тянутся тем же запросом — берём заодно, если
+            // в строке их тоже не оказалось.
+            if ((o['courier_phone'] ?? '').toString().trim().isEmpty &&
+                courierPhone.isNotEmpty) {
+              o['courier_phone'] = courierPhone;
+            }
+            if ((o['courier_selfie_file_id'] ?? '').toString().trim().isEmpty &&
+                courierSelfie.isNotEmpty) {
+              o['courier_selfie_file_id'] = courierSelfie;
+            }
+          }
           break;
         }
       }
@@ -869,8 +901,9 @@ mixin HomeScreenController<T extends StatefulWidget> on State<T> {
 
       _refreshShopCache(); // ← кеш заказчиков для фильтра (WS create/update)
 
-      // Имени всё ещё нет (новый магазин, кеш пуст) — догружаем точечно.
-      if (event != 'delete') unawaited(_backfillShopName(order));
+      // Чего-то не хватает (новый магазин или только что назначенный
+      // курьер) — догружаем точечно, одним запросом.
+      if (event != 'delete') unawaited(_backfillMissingNames(order));
 
       // Переприменяем локальные фильтры (по велаятам/этрапам),
       // чтобы новый или обновленный сокет-заказ сразу правильно отфильтровался на экране
