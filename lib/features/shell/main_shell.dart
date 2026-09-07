@@ -7,6 +7,7 @@ import 'package:bagla/features/notifications/notifications_screen.dart';
 import 'package:bagla/features/orders/create_order_screen.dart';
 import 'package:bagla/features/profile/referrals_screen.dart';
 import 'package:bagla/features/profile/trusted_couriers_screen.dart';
+import 'package:bagla/features/profile/traffic_screen.dart';
 import 'package:bagla/features/profile/profile_screen.dart';
 import 'package:bagla/features/profile/terms_screen.dart';
 import 'package:bagla/features/profile/transactions/transaction_history_screen.dart';
@@ -308,6 +309,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     if (name == '/trusted-couriers') {
       return MaterialPageRoute(
         builder: (_) => const TrustedCouriersScreen(),
+        settings: settings,
+      );
+    }
+    if (name == '/traffic') {
+      return MaterialPageRoute(
+        builder: (_) => const TrafficScreen(),
         settings: settings,
       );
     }
