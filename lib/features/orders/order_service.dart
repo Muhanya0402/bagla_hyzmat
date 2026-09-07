@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:bagla/models/cashback_rule.dart';
 import 'package:bagla/models/points_rule.dart';
 import 'package:dio/dio.dart';
@@ -621,35 +622,78 @@ class OrderService {
     }
   }
 
-  /// Меняет суммы уже опубликованного заказа: стоимость товара и доставки.
+  /// Правит уже опубликованный заказ.
   ///
-  /// Курьер узнаёт об изменении пушем — его шлёт флоу «Уведомление — Сумма
-  /// заказа изменена», который срабатывает на изменение `total_amount` или
-  /// `delivery_amount`.
+  /// Меняются только переданные поля — остальное остаётся как было. Курьер
+  /// узнаёт об изменении пушем: флоу «Уведомление — Заказ изменён» смотрит,
+  /// какие поля пришли, и перечисляет их в сообщении.
   ///
   /// Начисления НЕ трогаем: `points_amount` уже списан с курьера при взятии
   /// заказа, а `cashback_amount` посчитан от исходной доставки. Пересчёт
   /// задним числом означал бы повторное списание или незаработанный кэшбэк.
-  Future<bool> updateAmounts({
+  ///
+  /// Фотографии: [keepFileIds] — те, что остаются, [newImages] — что добавить.
+  /// Оба списка вместе задают итоговый набор; если передан хотя бы один из
+  /// них, набор заменяется целиком.
+  Future<bool> updateOrder({
     required String orderId,
-    required double itemPrice,
-    required double deliveryFee,
+    double? itemPrice,
+    double? deliveryFee,
+    String? address,
+    String? addressTk,
+    String? districtId,
+    String? etrapId,
+    String? comment,
+    DateTime? deliveryTime,
+    List<String>? keepFileIds,
+    List<File>? newImages,
   }) async {
     try {
-      await _apiClient.dio.patch(
-        '/items/orders/$orderId',
-        data: {
-          'total_amount': itemPrice + deliveryFee,
-          'delivery_amount': deliveryFee,
-        },
-      );
+      final Map<String, dynamic> data = {};
+
+      // Суммы идут парой: итог считается из обеих, поэтому менять их
+      // поодиночке нельзя — получилась бы рассинхронизация.
+      if (itemPrice != null && deliveryFee != null) {
+        data['total_amount'] = itemPrice + deliveryFee;
+        data['delivery_amount'] = deliveryFee;
+      }
+
+      if (address != null) data['adress_of_delivery'] = address;
+      if (addressTk != null) data['adress_of_deliverytk'] = addressTk;
+      if (districtId != null) data['district'] = tryParse(districtId);
+      if (etrapId != null) data['etrap'] = tryParse(etrapId);
+      if (comment != null) data['comment'] = comment;
+      if (deliveryTime != null) {
+        data['time_of_delivery'] = deliveryTime.toIso8601String();
+      }
+
+      if (keepFileIds != null || newImages != null) {
+        final ids = <String>[...(keepFileIds ?? const [])];
+        for (final image in newImages ?? const <File>[]) {
+          try {
+            final formData = FormData.fromMap({
+              'file': await MultipartFile.fromFile(image.path),
+            });
+            final res = await _apiClient.dio.post('/files', data: formData);
+            final id = res.data?['data']?['id']?.toString();
+            if (id != null && id.isNotEmpty) ids.add(id);
+          } catch (_) {
+            // Одно упавшее фото не должно отменять всю правку заказа.
+          }
+        }
+        data['pictures'] =
+            ids.map((id) => {'directus_files_id': id}).toList();
+      }
+
+      if (data.isEmpty) return true; // менять нечего — и хорошо
+
+      await _apiClient.dio.patch('/items/orders/$orderId', data: data);
       return true;
     } catch (e) {
-      if (kDebugMode) print('Ошибка updateAmounts: $e');
+      if (kDebugMode) print('Ошибка updateOrder: $e');
       return false;
     }
   }
-
 
   // ─── Ограничение по жалобам ───────────────────────────────────────────────
 

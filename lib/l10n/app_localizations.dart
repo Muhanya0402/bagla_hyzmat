@@ -250,11 +250,6 @@ class AppLocalizations {
   String get statusOnWay => get('statusOnWay');
   String get statusOrderDone => get('statusOrderDone');
   String get statusOrderCanceled => get('statusOrderCanceled');
-  String get editAmountBtn => get('editAmountBtn');
-  String get editAmountTitle => get('editAmountTitle');
-  String get editAmountCourierNotice => get('editAmountCourierNotice');
-  String get editAmountSave => get('editAmountSave');
-  String get editAmountFailed => get('editAmountFailed');
   String get trafficMenu => get('trafficMenu');
   String get trafficTitle => get('trafficTitle');
   String get trafficToday => get('trafficToday');
@@ -293,6 +288,14 @@ class AppLocalizations {
   String get reportReasonLate => get('reportReasonLate');
   String get reportReasonNoContact => get('reportReasonNoContact');
   String get reportReasonNotDelivered => get('reportReasonNotDelivered');
+  String get editOrderBtn => get('editOrderBtn');
+  String get editOrderTitle => get('editOrderTitle');
+  String get editOrderCourierNotice => get('editOrderCourierNotice');
+  String get editOrderSave => get('editOrderSave');
+  String get editOrderFailed => get('editOrderFailed');
+  String get editOrderTimeSection => get('editOrderTimeSection');
+  String get editOrderTimeNotSet => get('editOrderTimeNotSet');
+  String get editOrderPickDistrict => get('editOrderPickDistrict');
   String get cancelOrderBtn => get('cancelOrderBtn');
   String get confirmTitle => get('confirmTitle');
   String get confirmWithPoints => get('confirmWithPoints');

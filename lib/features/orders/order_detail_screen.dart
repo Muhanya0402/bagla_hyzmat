@@ -9,7 +9,7 @@ import 'package:bagla/core/theme/app_colors.dart';
 import 'package:bagla/features/auth/auth_provider.dart';
 import 'package:bagla/features/orders/cancel_reason_modal.dart';
 import 'package:bagla/features/orders/courier_report_service.dart';
-import 'package:bagla/features/orders/edit_amount_modal.dart';
+import 'package:bagla/features/orders/edit_order_screen.dart';
 import 'package:bagla/features/orders/order_dto.dart';
 import 'package:bagla/features/orders/return_order_flow.dart';
 import 'package:bagla/features/orders/take_order_flow.dart';
@@ -464,10 +464,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           OrderPrimaryButton(
-            label: words.editAmountBtn,
+            label: words.editOrderBtn,
             color: c.ink,
             filled: false,
-            onTap: () => _showEditAmountModal(context, dto, service, words),
+            onTap: () => _openEditOrder(context, dto),
           ),
           const SizedBox(height: 10),
           OrderPrimaryButton(
@@ -855,40 +855,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     });
   }
 
-  /// Шторка «Изменить сумму заказа» — только для магазина, пока заказ не
-  /// закрыт. Курьеру уйдёт пуш: его шлёт флоу на изменение сумм заказа.
-  void _showEditAmountModal(
-    BuildContext context,
-    OrderDto dto,
-    OrderService service,
-    AppLocalizations words,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (_) => EditAmountModal(
-        words: words,
-        itemPrice: dto.totalAmount - dto.deliveryAmount,
-        deliveryFee: dto.deliveryAmount,
-        courierAssigned: dto.courierId.isNotEmpty,
-        onSubmit: (itemPrice, deliveryFee) async {
-          final ok = await service.updateAmounts(
-            orderId: dto.id,
-            itemPrice: itemPrice,
-            deliveryFee: deliveryFee,
-          );
-          if (ok) {
-            widget.onUpdate?.call();
-            return true;
-          }
-          // Не закрываем шторку: введённое не потеряется, а сообщение об
-          // ошибке шторка покажет у себя — снек за ней не виден.
-          return false;
-        },
-      ),
-    ).then((_) => widget.onUpdate?.call());
+  /// Полная правка заказа: суммы, адрес, время, комментарий, фотографии.
+  ///
+  /// Открывается экраном, а не шторкой: полей много, и часть из них требует
+  /// своих шторок (район, время, выбор фото) — вложенные шторки на телефоне
+  /// ведут себя плохо.
+  Future<void> _openEditOrder(BuildContext context, OrderDto dto) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => EditOrderScreen(dto: dto)),
+    );
+    if (changed == true) widget.onUpdate?.call();
   }
 
   void _showCancelReasonModal(
