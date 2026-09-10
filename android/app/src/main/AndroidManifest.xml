@@ -56,7 +56,14 @@
             android:resource="@drawable/ic_notification" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/notification_color" />    
+            android:resource="@color/notification_color" />
+        <!-- Канал для уведомлений, которые рисует система, пока приложение
+             свёрнуто или закрыто. Без него Android кладёт их в запасной
+             канал Firebase с обычной важностью: без баннера и звука.
+             Сам канал создаёт приложение при запуске. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="bagla_channel" />    
 
             
     </application>
